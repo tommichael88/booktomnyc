@@ -18,7 +18,7 @@
 |:----------------------|
 | Date of service booking. |
 
-###
+
 This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client whose details will be provided upon booking, hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."
 
 ---
