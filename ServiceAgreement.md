@@ -26,59 +26,59 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 
 | Service Agreement: Main Provisions |
 |:----------------------|
-| [1 Introduction](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#1-introduction) |
-| [2 Definitions](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#2-definitions) |
-| [3 Scope Of Services](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#3-scope-of-services) |
-| [4 Fees And Payment](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#4-fees-and-payment) |
-| [5 Service Providers Status](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#5-service-providers-status) |
-| [6 Clients Responsibilities](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#6-clients-responsibilities) |
-| [7 Hold Harmless Clause](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#7-hold-harmless-clause) |
-| [8 Limitation Of Liability](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#8-limitation-of-liability) |
-| [9 Dispute Resolution](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#9-dispute-resolution) |
-| [10 Governing Law And Jurisdiction](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#10-governing-law-and-jurisdiction) |
-| [11 Severability](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#11-severability) |
-| [12 Agreement Updates](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#12-agreement-updates) |
-| [13 Completed Work Media Usage](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#13-completed-work-media-usage) |
-| [14 Emergency Situations](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#14-emergency-situations) |
-| [15 Timeframes](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#15-timeframes) |
-| [16 Waiver Clause](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#16-waiver-clause) |
-| [17 Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#17-agreement-acceptance-and-payment-terms) |
-| [18 Resolution Of Unsatisfactory Services](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#18-resolution-of-unsatisfactory-services) |
-| [19 Payment As Acceptance Of Terms](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#19-payment-as-acceptance-of-terms) |
-| [20 Refusal To Pay](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#20-refusal-to-pay) |
-| [21 Quality Of Work And Guarantee](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#21-quality-of-work-and-guarantee) |
-| [22. Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#22-media-policy-and-client-feedback-ownership) |
+| [1 Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction) |
+| [2 Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions) |
+| [3 Scope Of Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services) |
+| [4 Fees And Payment](https://tommichael88.github.io/booktomnyc/ServiceAgreement#4-fees-and-payment) |
+| [5 Service Providers Status](https://tommichael88.github.io/booktomnyc/ServiceAgreement#5-service-providers-status) |
+| [6 Clients Responsibilities](https://tommichael88.github.io/booktomnyc/ServiceAgreement#6-clients-responsibilities) |
+| [7 Hold Harmless Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#7-hold-harmless-clause) |
+| [8 Limitation Of Liability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#8-limitation-of-liability) |
+| [9 Dispute Resolution](https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-dispute-resolution) |
+| [10 Governing Law And Jurisdiction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-governing-law-and-jurisdiction) |
+| [11 Severability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-severability) |
+| [12 Agreement Updates](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-agreement-updates) |
+| [13 Completed Work Media Usage](https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-completed-work-media-usage) |
+| [14 Emergency Situations](https://tommichael88.github.io/booktomnyc/ServiceAgreement#14-emergency-situations) |
+| [15 Timeframes](https://tommichael88.github.io/booktomnyc/ServiceAgreement#15-timeframes) |
+| [16 Waiver Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#16-waiver-clause) |
+| [17 Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#17-agreement-acceptance-and-payment-terms) |
+| [18 Resolution Of Unsatisfactory Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#18-resolution-of-unsatisfactory-services) |
+| [19 Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-payment-as-acceptance-of-terms) |
+| [20 Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-refusal-to-pay) |
+| [21 Quality Of Work And Guarantee](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-quality-of-work-and-guarantee) |
+| [22. Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#22-media-policy-and-client-feedback-ownership) |
 
 | Service Agreement: Annex A - Scope of Work |
 |:---------------------------|
-| [**A. Minor Home Repairs**](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#a-minor-home-repairs) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Doors & Lock Installation](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#a-1-door-handles-&-locks-installation) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Hollow Door Repair](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#a-2-hollow-door-repair) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[3: Wall Repair - Patch & Paint](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#a-3-wall-repair-patch-&-paint) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[4: Appliances Hourly Service Rate](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#a-4-appliances-hourly-service-rate) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[5: Furniture Repair Hourly Service Rate](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#a-5-furniture-repair-hourly-service-rate) |
-| [**B. Wall Mounting**](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#b-wall-mounting) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Curtains/Drapes w. Single Rod Installation](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#b-1-curtains/drapes-w-single-rod-installation) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Frame/Shelf Mounting Hourly Service Rate](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#b-2-frame/shelf-mounting-hourly-service-rate) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[3: TV Mounting (Under 60”) without cable management](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#b-3-tv-mounting-under-60”-without-cable-management) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[4: TV Mounting (Under 60”) + Concealed Cables](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#b-4-tv-mounting-under-60”-+-concealed-cables) |
-| [**C. Computer Tech Services**](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#c-computer-tech-services) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: PC Diagnostic Service](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#c-1-pc-diagnostic-service) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Data Transfer / Data Back-Up](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#c-2-data-transfer-/-data-back-up) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[3: Part Replacement/Upgrade](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#c-3-part-replacement/upgrade) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[4: Software Install/Update/Removal](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#c-4-software-install/update/removal-(4)) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[5: System Restore](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#c-5-system-restore) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[6: Virus/Malware Removal](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#c-6-virus/malware-removal) |
-| [**D. Electrical help**](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#d-electrical-help) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Light Fixture Swap](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#d-1-light-fixture-swap) |
-| [**E. Furniture Fixes & Assembly**](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#e-furniture-fixes-&-assembly) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Furniture Assembly Hourly Service Rate](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#e-1-furniture-assembly-hourly-service-rate) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Furniture Repair Hourly Service Rate](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#e-2-furniture-repair-hourly-service-rate) |
-| [**F. Plumbing help**](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#f-plumbing-help) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Bidet Accessory Install/Removal](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#f-1-bidet-accessory-install/removal) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Fixture Swap (Cosmetic)](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#f-2-fixture-swap-(cosmetic)) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[3: Leak Under Sink Repair](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#f-3-leak-under-sink-repair) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[4: Unclog Sink/Shower/Toilet (Minor)](https://tommichael88.github.io/booktom.nyc/ServiceAgreement#f-4-unclog-sink/shower/toilet-(minor)) |
+| [**A. Minor Home Repairs**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[1: Doors & Lock Installation](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-1-door-handles-&-locks-installation) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[2: Hollow Door Repair](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-2-hollow-door-repair) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[3: Wall Repair - Patch & Paint](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-3-wall-repair-patch-&-paint) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[4: Appliances Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-4-appliances-hourly-service-rate) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[5: Furniture Repair Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-5-furniture-repair-hourly-service-rate) |
+| [**B. Wall Mounting**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[1: Curtains/Drapes w. Single Rod Installation](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-1-curtains/drapes-w-single-rod-installation) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[2: Frame/Shelf Mounting Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-2-frame/shelf-mounting-hourly-service-rate) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[3: TV Mounting (Under 60”) without cable management](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-3-tv-mounting-under-60”-without-cable-management) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[4: TV Mounting (Under 60”) + Concealed Cables](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-4-tv-mounting-under-60”-+-concealed-cables) |
+| [**C. Computer Tech Services**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[1: PC Diagnostic Service](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-1-pc-diagnostic-service) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[2: Data Transfer / Data Back-Up](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-2-data-transfer-/-data-back-up) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[3: Part Replacement/Upgrade](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-3-part-replacement/upgrade) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[4: Software Install/Update/Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-4-software-install/update/removal-(4)) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[5: System Restore](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-5-system-restore) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[6: Virus/Malware Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-6-virus/malware-removal) |
+| [**D. Electrical help**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[1: Light Fixture Swap](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-1-light-fixture-swap) |
+| [**E. Furniture Fixes & Assembly**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes-&-assembly) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[1: Furniture Assembly Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-1-furniture-assembly-hourly-service-rate) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[2: Furniture Repair Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-2-furniture-repair-hourly-service-rate) |
+| [**F. Plumbing help**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[1: Bidet Accessory Install/Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-1-bidet-accessory-install/removal) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[2: Fixture Swap (Cosmetic)](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-2-fixture-swap-(cosmetic)) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[3: Leak Under Sink Repair](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-3-leak-under-sink-repair) |
+| &nbsp;&nbsp;&nbsp;&nbsp;[4: Unclog Sink/Shower/Toilet (Minor)](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-4-unclog-sink/shower/toilet-(minor)) |
 
 ---
 
@@ -133,7 +133,7 @@ This Agreement follows the laws of the State of New York. Legal actions related 
 If a provision of this Agreement is deemed invalid, the other provisions remain in effect. The invalid provision will be replaced with a valid one that closely mirrors the original's intent and economic effect.
 
 ## 12. Agreement Updates
-Changes to this Agreement can be found at [Service Agreement](https://pastebin.com/raw/6BdZJ5SP) referenced upon booking services through website hosted on [Setmore](https://booktom.setmore.com). All updates will be communicated via the provided URL(s).
+Changes to this Agreement can be found at [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement) referenced upon booking services through website hosted on [Setmore](https://booktom.setmore.com). All updates will be communicated via the provided URL(s).
 
 ## 13. Completed Work Media Usage
 The Client permits the Service Provider to use specific media (photos, videos, testimonials) of completed work for marketing. Clients retain the right to review and approve any media before public use.
