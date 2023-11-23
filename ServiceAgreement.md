@@ -130,7 +130,7 @@ Exceptions to this guarantee include:
 Clients should report any issues to the Service Provider in writing [see Service Provider contact details as listed in the Agreement] within the guarantee period, providing relevant details and evidence of the issue.
 
 ## 9. Fees and Payment
-The Client agrees to compensate the Service Provider immediately upon satisfaction with the services rendered and upon receipt of an invoice, whether delivered via text, email, or in person.
+The Client agrees to compensate the Service Provider immediately upon satisfaction with the services rendered and upon receipt of an invoice, whether delivered via text, email, or in person. The Client has the option to refuse to pay for any services rendered to which the Client determines are unsatisfactory. In such event where the Client is dissatisfied with work completed by the Service Provider the Client and Service Provider will engage in the Dispute Resolution process outlined in Section 18.
 
 ## 10. Agreement Acceptance and Payment Terms
 - **10-1**: By accessing the Service Provider's website, booking services, and/or making any form of payment, the Client acknowledges and accepts the terms outlined in this Agreement.
@@ -139,10 +139,10 @@ The Client agrees to compensate the Service Provider immediately upon satisfacti
 - **10-4**: The relationship between the Service Provider and the Client is on an "at-will" basis. The Service Provider is not an employee, agent, or representative of the Client. Both parties understand and agree that the Service Provider will provide services under the terms of this Agreement, and that no long-term employment relationship is established.
 
 ## 11. Payment as Acceptance of Terms
-Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms outlined in this Agreement.
+Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms outlined in this Agreement and shall constitute as acknowlegemet of the Service Provider's fullfillment of the agreement.
 
 ## 12. Refusal to Pay
-If the Client does not agree to any of the terms of this Agreement, they are obligated to refuse payment for the service.
+If the Client is unsatisfied with services rendered, they must to cancel or terminate any existing or further Service arrangements immediately. This does not invalidate any provision of this agreement between either the Service Provider or the Client and neither party can retroactively cancel any part of this agreement after work as been completed or services have been rendered.  
 
 ## 13. Clients Responsibilities
 - **13-1**: Confirms their legal age and authority for service decisions.
@@ -173,7 +173,7 @@ In situations deemed emergencies due to unforeseen service interruptions or haza
 The Service Provider will strive to complete services within agreed timeframes and will promptly communicate any unforeseen delays.
 
 ## 18. Dispute Resolution
-- **18-1**: In line with section 6-8, if the Client identifies any actions by the Service Provider that are in violation of this agreement, beyond the Scope of Work as described in Annex A, or any other conduct that is not to the Client's satisfaction, they are obligated to inform the Service Provider immediately.
+- **18-1**: In line with section 13-8, if the Client identifies any actions by the Service Provider that are in violation of this agreement, beyond the Scope of Work as described in Annex A, or any other conduct that is not to the Client's satisfaction, they are obligated to inform the Service Provider immediately.
 - **18-2**: Upon such notification, the Service Provider will either correct the action or conduct in question or cease performing the agreed-upon services. The terms of termination and any associated payments or refunds will be determined and agreed upon by both parties either immediately at the time of notice of termination or within no more than 24 hours after any termination.
 - **18-3**: If a satisfactory resolution is not achieved following the above steps, the Client shall refuse to pay for any or part of the services until such resolution is met. In the event a civil agreement, either as a refund or non-payment for services, would satisfy the Service Provider's end of the agreement and fulfill their obligations.
 
