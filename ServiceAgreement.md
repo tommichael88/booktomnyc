@@ -157,6 +157,7 @@ If the Client does not agree to any of the terms of this Agreement, they are obl
   - **Opportunity to Correct**: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
   - **Termination**: The Client reserves the right to demand the Service Provider to stop performing the agreed-upon services and to terminate the agreement. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
   - **At-Will Relationship**: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
+- **13-9**: Has read, retained a copy and agrees to the terms as detailed in the Service Provider's [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
 
 
 ## 14. Agreement Updates
@@ -190,71 +191,9 @@ When the Client leaves feedback, comments, or reviews ("Client Feedback") either
 By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
 
 
-## 20. Privacy Policy
+## 20. Privacy and Data Handling
 
-- **20-1**: Introduction
-
-Tom Kongerslev offers handyman and computer repair services in New York City and surrounding areas, including New Jersey. This policy outlines the management of personal information when services are booked with Tom Kongerslev, through booktom.nyc, or via third-party referral sites.
-
-- **20-2**: Third-Party Websites and Services
-
-Tom Kongerslev utilizes various third-party websites and services. These include, but are not limited to:
-
-- [Setmore](https://www.setmore.com/#privacy-policy)
-- [Google](https://policies.google.com/privacy?hl=en-US)
-- [PythonAnywhere](https://www.pythonanywhere.com/privacy_v2/)
-- [QR Code Chimp](https://www.qrcodechimp.com/privacy)
-- [Apple](https://www.apple.com/legal/privacy/en-ww/)
-- [OpenAI](https://openai.com/policies/privacy-policy)
-- [GPTBots](https://www.gptbots.ai/privacy-agreement)
-- [GoDaddy](https://www.godaddy.com/agreements/privacy)
-- [Cloudflare](https://www.cloudflare.com/privacypolicy/)
-
-Each of these services operates under its own privacy policy, and Tom Kongerslev does not assume responsibility for their data handling practices.
-
-- **20-3**: Consent and Usage of Information
-
-By using Tom Kongerslev's services, clients implicitly agree to the collection and use of personal information for service delivery, appointment management, and marketing purposes. This includes instances where third-party services are used by the client or by Tom Kongerslev during or after the provision of services.
-
-- **20-4**: Media and Feedback Ownership
-
-As per [Section 19: Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) Tom Kongerslev owns 100% of the rights to any client feedback, comments, or reviews. This includes the right to use, modify, and republish such content.
-
-- **20-5**: Disclosure of Information
-
-Personal data is shared under these conditions:
-
-- As agreed by clients through the use of services.
-- For legal purposes or to protect rights.
-- To facilitate service provision.
-
-- **20-6**: Data Security and Breach Disclaimer
-
-Reasonable measures are implemented to protect personal data. However, no liability is assumed for data breaches, particularly during computer servicing or data stored on communication devices.
-
-- **20-7**:Limitation on Removal Requests
-
-Tom Kongerslev does not control third-party platforms and therefore cannot guarantee the execution of removal or opt-out requests for content accessible via these platforms.
-
-- **20-8**: Data Retention
-
-Personal information is retained as necessary for service provision and legal compliance.
-
-- **20-9**: Client Rights
-
-Clients have the right to request access, correction, or deletion of personal data by contacting booktom@icloud.com.
-
-- **20-10**: Policy Updates
-
-Significant changes to this policy will be communicated through email or on the website.
-
-- **20-11**: Contact for Queries
-
-For questions about this policy, contact booktom@icloud.com.
-
-- **20-12**: Review of Third-Party Policies
-
-Clients are advised to review the privacy policies of any third-party websites and services used.
+- **20-1**: Client and Service Provider agree to the terms and conditions as detailed in the [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy) as written and updated by the Service Provider.
 
 
 
