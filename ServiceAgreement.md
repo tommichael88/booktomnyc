@@ -102,7 +102,9 @@ The Service Provider will provide the Client with the services as mutually agree
 This Agreement follows the laws of the State of New York. Legal actions related to this Agreement will be taken exclusively in New York City, New York courts.
 
 ## 5. Service Providers Status
-The Service Provider is not a general contractor and does not claim to be one. The Service Provider does not perform any work or services as a general contractor.
+The Service Provider is not a general contractor and does not represent themselves as such. The Service Provider is not obligated to accept or perform any tasks requiring the skills of a professional tradesman (i.e., a licensed professional plumber or certified professional electrician) or any work necessitating specific licensing, insurance, or permits as mandated by law.
+
+In the State of New York, the Service Provider will comply with legal standards for handyman work. If the Client requests work that does not align with these standards, the Client assumes all associated risks, except as prohibited by law. The Client is responsible for confirming whether any work requires permits, licenses, or specific qualifications of the Service Provider to comply with the law. Failure by the Client to verify or enforce these requirements is at their own risk.
 
 ## 6. Hold Harmless Clause
 The Client agrees to insure, hold harmless, and indemnify the Service Provider from and against any and all claims, liabilities, damages, losses, or expenses, including legal fees, arising from the services provided under this Agreement. However, this clause shall not be construed to transfer or shift any liability imposed by law from the Service Provider to the Client or any other third party.
@@ -130,7 +132,7 @@ Exceptions to this guarantee include:
 Clients should report any issues to the Service Provider in writing [see Service Provider contact details as listed in the Agreement] within the guarantee period, providing relevant details and evidence of the issue.
 
 ## 9. Fees and Payment
-The Client agrees to compensate the Service Provider immediately upon satisfaction with the services rendered and upon receipt of an invoice, whether delivered via text, email, or in person. The Client has the option to refuse to pay for any services rendered to which the Client determines are unsatisfactory. In such event where the Client is dissatisfied with work completed by the Service Provider the Client and Service Provider will engage in the Dispute Resolution process outlined in Section 18.
+The Client agrees to compensate the Service Provider immediately upon satisfaction with the services rendered and upon receipt of an invoice, whether delivered via text, email, or in person.
 
 ## 10. Agreement Acceptance and Payment Terms
 - **10-1**: By accessing the Service Provider's website, booking services, and/or making any form of payment, the Client acknowledges and accepts the terms outlined in this Agreement.
@@ -139,12 +141,13 @@ The Client agrees to compensate the Service Provider immediately upon satisfacti
 - **10-4**: The relationship between the Service Provider and the Client is on an "at-will" basis. The Service Provider is not an employee, agent, or representative of the Client. Both parties understand and agree that the Service Provider will provide services under the terms of this Agreement, and that no long-term employment relationship is established.
 
 ## 11. Payment as Acceptance of Terms
-Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms outlined in this Agreement and shall constitute as acknowlegemet of the Service Provider's fullfillment of the agreement.
+Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms outlined in this Agreement.
 
 ## 12. Refusal to Pay
-If the Client is unsatisfied with services rendered, they must to cancel or terminate any existing or further Service arrangements immediately. This does not invalidate any provision of this agreement between either the Service Provider or the Client and neither party can retroactively cancel any part of this agreement after work as been completed or services have been rendered.  
+If the Client does not agree to any of the terms of this Agreement, they are obligated to refuse payment for the service.
 
 ## 13. Clients Responsibilities
+
 - **13-1**: Confirms their legal age and authority for service decisions.
 - **13-2**: Secured necessary permissions from property owners or landlords to perform services.
 - **13-3**: Ensures and acknowledges that the services do not require city or state permits and are not legally restricted to professional tradespeople or licensed contractors.
@@ -153,15 +156,16 @@ If the Client is unsatisfied with services rendered, they must to cancel or term
 - **13-6**: Ensures they have full comprehensive insurance covering potential property damage, injury, or errors and affirms they will handle any and all claims through such policy.
 - **13-7**: Commits to inspecting the Service Provider's work and addressing any discovered errors.
 - **13-8**: Communication and Termination:
-  - **Immediate Communication**: The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
-  - **Opportunity to Correct**: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
-  - **Termination**: The Client reserves the right to demand the Service Provider to stop performing the agreed-upon services and to terminate the agreement. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
-  - **At-Will Relationship**: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
-- **13-9**: Has read, retained a copy and agrees to the terms as detailed in the Service Provider's [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
+  - Immediate Communication: The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
+  - Opportunity to Correct: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
+  - Termination: The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the agreement before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
+  - At-Will Relationship: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
 
+**13-9: Dissatisfaction and Obligations**
+In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. The Client's dissatisfaction or any problems arising from the services shall not absolve the Client of their obligations under this Agreement. The Client is still responsible for fulfilling all their duties and commitments as outlined in Sections 13-1 through 13-8, regardless of any disputes or concerns related to the services rendered. Failure to meet these responsibilities shall not release the Client from any liability or obligations under this Agreement.
 
 ## 14. Agreement Updates
-Changes to this Agreement can be found directly at [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement) or prior to finalizing booking services through [Setmore](https://booktom.setmore.com) .
+Changes to this Agreement can be found at [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement) referenced upon booking services through the website hosted on [Setmore](https://booktom.setmore.com).
 
 ## 15. Severability
 If a provision of this Agreement is deemed invalid, the other provisions remain in effect. The invalid provision will be replaced with a valid one that closely mirrors the original's intent and economic effect.
@@ -173,29 +177,24 @@ In situations deemed emergencies due to unforeseen service interruptions or haza
 The Service Provider will strive to complete services within agreed timeframes and will promptly communicate any unforeseen delays.
 
 ## 18. Dispute Resolution
-- **18-1**: In line with section 13-8, if the Client identifies any actions by the Service Provider that are in violation of this agreement, beyond the Scope of Work as described in Annex A, or any other conduct that is not to the Client's satisfaction, they are obligated to inform the Service Provider immediately.
+- **18-1**: In line with section 6-8, if the Client identifies any actions by the Service Provider that are in violation of this agreement, beyond the Scope of Work as described in Annex A, or any other conduct that is not to the Client's satisfaction, they are obligated to inform the Service Provider immediately.
 - **18-2**: Upon such notification, the Service Provider will either correct the action or conduct in question or cease performing the agreed-upon services. The terms of termination and any associated payments or refunds will be determined and agreed upon by both parties either immediately at the time of notice of termination or within no more than 24 hours after any termination.
 - **18-3**: If a satisfactory resolution is not achieved following the above steps, the Client shall refuse to pay for any or part of the services until such resolution is met. In the event a civil agreement, either as a refund or non-payment for services, would satisfy the Service Provider's end of the agreement and fulfill their obligations.
 
 ## 19. Media Policy and Client Feedback Ownership
 When the Client leaves feedback, comments, or reviews ("Client Feedback") either in response to a solicitation by the Service Provider or unsolicited but in a publicly accessible manner, the Service Provider shall own 100% of the rights to the written text of such Client Feedback in its entirety.
 
-- **19-1**: Rights and Permissions
+- **19-1**: **Rights and Permissions**
+	- *Use and Modification*: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback for marketing or promotional purposes.
+	- *Platform Independence*: The Service Provider has the right to use Client reviews, comments or feedback on other websites, platforms, or media channels, whether now known or hereafter invented.
 
-    - **Use and Modification**: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback for marketing or promotional purposes.
-  
-    - **Platform Independence**: The Service Provider has the right to use the Client Feedback on other websites, platforms, or media channels, whether now known or hereafter invented.
+- **19-2**: Waiver of Confidentiality: By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
 
-- **19-2**: Waiver of Confidentiality
+## 20. Privacy Policy
 
-By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
+Client and Service Provider agree to the terms and conditions as detailed in the [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
 
-
-## 20. Privacy and Data Handling
-
-- **20-1**: Client and Service Provider agree to the terms and conditions as detailed in the [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy) as written and updated by the Service Provider.
-
-
+---
 
 ## Annex A: Scope of Work
 
@@ -378,4 +377,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Thursday, November 23, 2023 12:42AM EST
+###### **LAST UPDATED**: Thursday, November 23, 2023 03:30AM EST
