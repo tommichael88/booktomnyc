@@ -257,6 +257,7 @@ For questions about this policy, contact booktom@icloud.com.
 Clients are advised to review the privacy policies of any third-party websites and services used.
 
 
+
 ## Annex A: Scope of Work
 
 The following details the services provided by the Service Provider under each category:
