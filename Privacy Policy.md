@@ -27,7 +27,7 @@ By using Tom Kongerslev's services, clients implicitly agree to the collection a
 
 ## Media and Feedback Ownership
 
-As per [Section 22](https://tommichael88.github.io/booktomnyc/ServiceAgreement#22-media-policy-and-client-feedback-ownership) of the [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement), Tom Kongerslev owns 100% of the rights to any client feedback, comments, or reviews. This ownership includes the right to use, modify, and republish such content. The extent of this right to ownership may extend to instances where such data is shared with or utilized by third parties.
+As per [Section 19](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) of the [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement), Tom Kongerslev owns 100% of the rights to any client feedback, comments, or reviews. This ownership includes the right to use, modify, and republish such content. The extent of this right to ownership may extend to instances where such data is shared with or utilized by third parties.
 
 ## Disclosure of Information
 
