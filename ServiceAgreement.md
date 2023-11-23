@@ -160,7 +160,7 @@ If the Client does not agree to any of the terms of this Agreement, they are obl
 
 
 ## 14. Agreement Updates
-Changes to this Agreement can be found at [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement) referenced upon booking services through the website hosted on [Setmore](https://booktom.setmore.com).
+Changes to this Agreement can be found directly at [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement) or prior to finalizing booking services through [Setmore](https://booktom.setmore.com) .
 
 ## 15. Severability
 If a provision of this Agreement is deemed invalid, the other provisions remain in effect. The invalid provision will be replaced with a valid one that closely mirrors the original's intent and economic effect.
