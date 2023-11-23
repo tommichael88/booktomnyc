@@ -1,5 +1,6 @@
 # **SERVICE AGREEMENT**
 
+*Legal Disclaimer* The forthcoming "Service Agreement" constitutes a legally binding contract and is not intended as legal advice or guidance. For personalized legal assistance, please consult with a qualified attorney or legal professional.
 
 |**Service Provider:**|
 |:----------------------|
@@ -22,32 +23,32 @@
 This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client whose details will be provided upon booking, hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."
 
 ---
+
 ## Table of Contents
 
 | Service Agreement: Main Provisions |
-|:----------------------|
-| [1 Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction) |
-| [2 Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions) |
-| [3 Scope Of Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services) |
-| [4 Fees And Payment](https://tommichael88.github.io/booktomnyc/ServiceAgreement#4-fees-and-payment) |
-| [5 Service Providers Status](https://tommichael88.github.io/booktomnyc/ServiceAgreement#5-service-providers-status) |
-| [6 Clients Responsibilities](https://tommichael88.github.io/booktomnyc/ServiceAgreement#6-clients-responsibilities) |
-| [7 Hold Harmless Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#7-hold-harmless-clause) |
-| [8 Limitation Of Liability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#8-limitation-of-liability) |
-| [9 Dispute Resolution](https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-dispute-resolution) |
-| [10 Governing Law And Jurisdiction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-governing-law-and-jurisdiction) |
-| [11 Severability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-severability) |
-| [12 Agreement Updates](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-agreement-updates) |
-| [13 Completed Work Media Usage](https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-completed-work-media-usage) |
-| [14 Emergency Situations](https://tommichael88.github.io/booktomnyc/ServiceAgreement#14-emergency-situations) |
-| [15 Timeframes](https://tommichael88.github.io/booktomnyc/ServiceAgreement#15-timeframes) |
-| [16 Waiver Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#16-waiver-clause) |
-| [17 Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#17-agreement-acceptance-and-payment-terms) |
-| [18 Resolution Of Unsatisfactory Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#18-resolution-of-unsatisfactory-services) |
-| [19 Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-payment-as-acceptance-of-terms) |
-| [20 Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-refusal-to-pay) |
-| [21 Quality Of Work And Guarantee](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-quality-of-work-and-guarantee) |
-| [22. Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#22-media-policy-and-client-feedback-ownership) |
+| --------------------------------- |
+| 1. [Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction) |
+| 2. [Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions) |
+| 3. [Scope Of Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services) |
+| 4. [Governing Law And Jurisdiction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-governing-law-and-jurisdiction) |
+| 5. [Service Providers Status](https://tommichael88.github.io/booktomnyc/ServiceAgreement#5-service-providers-status) |
+| 6. [Hold Harmless Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#6-hold-harmless-clause) |
+| 7. [Limitation Of Liability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#7-limitation-of-liability) |
+| 8. [Quality Of Work And Guarantee](https://tommichael88.github.io/booktomnyc/ServiceAgreement#8-quality-of-work-and-guarantee) |
+| 9. [Fees And Payment](https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-fees-and-payment) |
+| 10. [Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-agreement-acceptance-and-payment-terms) |
+| 11. [Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-payment-as-acceptance-of-terms) |
+| 12. [Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-refusal-to-pay) |
+| 13. [Clients Responsibilities](https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-client-responsibilities) |
+| 14. [Agreement Updates](https://tommichael88.github.io/booktomnyc/ServiceAgreement#14-agreement-updates) |
+| 15. [Severability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#15-severability) |
+| 16. [Emergency Situations](https://tommichael88.github.io/booktomnyc/ServiceAgreement#16-emergency-situations) |
+| 17. [Timeframes](https://tommichael88.github.io/booktomnyc/ServiceAgreement#17-timeframes) |
+| 18. [Dispute Resolution](https://tommichael88.github.io/booktomnyc/ServiceAgreement#18-dispute-resolution) |
+| 19. [Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) |
+| 20. [Privacy Policy](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-privacy-policy) |
+
 
 | Service Agreement: Annex A - Scope of Work |
 |:---------------------------|
@@ -97,76 +98,19 @@ By accessing and using the services provided by the Service Provider, the Client
 ## 3. Scope of Services
 The Service Provider will provide the Client with the services as mutually agreed upon in writing. The detailed scope of each service is provided in Annex A.
 
-## 4. Fees and Payment
-The Client agrees to compensate the Service Provider immediately upon satisfaction with the services rendered and upon receipt of an invoice, whether delivered via text, email, or in person.
-
-## 5. Service Provider's Status
-The Service Provider is not a general contractor and does not claim to be one. The Service Provider does not perform any work or services as a general contractor.
-
-## 6. Client's Responsibilities
-- **6-1**: Confirms their legal age and authority for service decisions.
-- **6-2**: Secured necessary permissions from property owners or landlords to perform services.
-- **6-3**: Ensures and acknowledges that the services do not require city or state permits and are not legally restricted to professional tradespeople or licensed contractors.
-- **6-4**: Will ensure that the Service Provider does not perform renovation work.
-- **6-5**: Accepts full responsibility for the Service Provider's work, especially in the realm of plumbing services, limited to cosmetic modifications or minor alterations.
-- **6-6**: Ensures they have full comprehensive insurance covering potential property damage, injury, or errors and affirms they will handle any and all claims through such policy.
-- **6-7**: Commits to inspecting the Service Provider's work and addressing any discovered errors.
-- **6-8**: Communication and Termination:
-  - **Immediate Communication**: The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
-  - **Opportunity to Correct**: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
-  - **Termination**: The Client reserves the right to demand the Service Provider to stop performing the agreed-upon services and to terminate the agreement. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
-  - **At-Will Relationship**: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
-
-## 7. Hold Harmless Clause
-The Client agrees to insure, hold harmless, and indemnify the Service Provider from and against any and all claims, liabilities, damages, losses, or expenses, including legal fees, arising from the services provided under this Agreement. However, this clause shall not be construed to transfer or shift any liability imposed by law from the Service Provider to the Client or any other third party.
-
-## 8. Limitation of Liability
-Any damages, losses, or liabilities arising from the Service Provider's work shall not exceed the amount the Client paid for those services.
-
-## 9. Dispute Resolution
-Disputes from this Agreement shall be resolved through mediation or arbitration in New York City, New York.
-
-## 10. Governing Law and Jurisdiction
+## 4. Governing Law and Jurisdiction
 This Agreement follows the laws of the State of New York. Legal actions related to this Agreement will be taken exclusively in New York City, New York courts.
 
-## 11. Severability
-If a provision of this Agreement is deemed invalid, the other provisions remain in effect. The invalid provision will be replaced with a valid one that closely mirrors the original's intent and economic effect.
+## 5. Service Providers Status
+The Service Provider is not a general contractor and does not claim to be one. The Service Provider does not perform any work or services as a general contractor.
 
-## 12. Agreement Updates
-Changes to this Agreement can be found at [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement) referenced upon booking services through website hosted on [Setmore](https://booktom.setmore.com). All updates will be communicated via the provided URL(s).
+## 6. Hold Harmless Clause
+The Client agrees to insure, hold harmless, and indemnify the Service Provider from and against any and all claims, liabilities, damages, losses, or expenses, including legal fees, arising from the services provided under this Agreement. However, this clause shall not be construed to transfer or shift any liability imposed by law from the Service Provider to the Client or any other third party.
 
-## 13. Completed Work Media Usage
-The Client permits the Service Provider to use specific media (photos, videos, testimonials) of completed work for marketing. Clients retain the right to review and approve any media before public use.
+## 7. Limitation of Liability
+Any damages, losses, or liabilities arising from the Service Provider's work shall not exceed the amount the Client paid for those services.
 
-## 14. Emergency Situations
-In situations deemed emergencies due to unforeseen service interruptions or hazards, both Parties commit to swift communication and collaboration to find an appropriate solution.
-
-## 15. Timeframes
-The Service Provider will strive to complete services within agreed timeframes and will promptly communicate any unforeseen delays.
-
-## 16. Waiver Clause
-Not enforcing a provision does not forfeit the right to enforce it later.
-between the Client and the Service Provider is strictly that of an independent contractor. This Agreement does not establish an employer-employee relationship. The Service Provider holds sole responsibility for all taxes, withholdings, and other statutory or contractual obligations.
-
-## 17. Agreement Acceptance and Payment Terms
-- **17-1**: By accessing the Service Provider's website, booking services, and/or making any form of payment, the Client acknowledges and accepts the terms outlined in this Agreement.
-- **17-2**: The Service Agreement is accessible at all times publicly at the specified URL prior to booking the service. In cases where an electronic hyperlink is not available on the invoice or other communication, the URL will be provided in written form. If the Client requires a physical or electronic copy of the Agreement, they may request the Service Provider to deliver it to their specified address.
-- **17-3**: Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms of this Agreement. If the Client does not agree to any of the terms of this Agreement, they are obligated to refuse payment for the service. Payment for the service, either in full or partial, is a binding provision of this Agreement.
-- **17-4**: The relationship between the Service Provider and the Client is on an "at-will" basis. The Service Provider is not an employee, agent, or representative of the Client. Both parties understand and agree that the Service Provider will provide services under the terms of this Agreement, and that no long-term employment relationship is established.
-
-## 18. Resolution of Unsatisfactory Services
-- **18-1**: In line with section 6-8, if the Client identifies any actions by the Service Provider that are in violation of this agreement, beyond the Scope of Work as described in Annex A, or any other conduct that is not to the Client's satisfaction, they are obligated to inform the Service Provider immediately.
-- **18-2**: Upon such notification, the Service Provider will either correct the action or conduct in question or cease performing the agreed-upon services. The terms of termination and any associated payments or refunds will be determined and agreed upon by both parties either immediately at the time of notice of termination or within no more than 24 hours after any termination.
-- **18-3**: If a satisfactory resolution is not achieved following the above steps, the Client shall refuse to pay for any or part of the services until such resolution is met. In the event a civil agreement, either as a refund or non-payment for services, would satisfy the Service Provider's end of the agreement and fulfill their obligations.
-
-## 19. Payment as Acceptance of Terms
-Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms outlined in this Agreement.
-
-## 20. Refusal to Pay
-If the Client does not agree to any of the terms of this Agreement, they are obligated to refuse payment for the service. Payment for the service, either in full or partial, is a binding provision of this Agreement.
-
-## 21. Quality of Work and Guarantee
-
+## 8. Quality of Work and Guarantee
 The Service Provider commits to performing services that meet the agreed-upon standards and benchmarks as outlined in [specific section or annex detailing the standards]. The Service Provider guarantees the quality of the work for a period of 30 days from the completion date.
 
 If, within this 30-day period, the work does not meet the specified standards or a previously addressed problem reoccurs due to no fault of the Client or external factors (e.g., natural disasters, third-party interventions), the Service Provider agrees to return and rectify the issue.
@@ -178,26 +122,139 @@ This guarantee covers:
 
 Exceptions to this guarantee include:
 
-- **21-1**: Situations where additional parts or materials are required.
-- **21-2**: Misdiagnosis of the initial problem leading to unforeseen complications.
-- **21-3**: Significant hardware failures or issues beyond the initial service scope.
-- **21-4**: In cases where additional costs arise, the Service Provider will provide a detailed estimate. Any additional labor costs will be discussed and agreed upon with the Client before proceeding.
+- **8-1**: Situations where additional parts or materials are required.
+- **8-2**: Misdiagnosis of the initial problem leading to unforeseen complications.
+- **8-3**: Significant hardware failures or issues beyond the initial service scope.
+- **8-4**: In cases where additional costs arise, the Service Provider will provide a detailed estimate. Any additional labor costs will be discussed and agreed upon with the Client before proceeding.
 
 Clients should report any issues to the Service Provider in writing [see Service Provider contact details as listed in the Agreement] within the guarantee period, providing relevant details and evidence of the issue.
 
-## 22. Media Policy and Client Feedback Ownership
+## 9. Fees and Payment
+The Client agrees to compensate the Service Provider immediately upon satisfaction with the services rendered and upon receipt of an invoice, whether delivered via text, email, or in person.
 
+## 10. Agreement Acceptance and Payment Terms
+- **10-1**: By accessing the Service Provider's website, booking services, and/or making any form of payment, the Client acknowledges and accepts the terms outlined in this Agreement.
+- **10-2**: The Service Agreement is accessible at all times publicly at the specified URL prior to booking the service. In cases where an electronic hyperlink is not available on the invoice or other communication, the URL will be provided in written form. If the Client requires a physical or electronic copy of the Agreement, they may request the Service Provider to deliver it to their specified address.
+- **10-3**: Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms of this Agreement. If the Client does not agree to any of the terms of this Agreement, they are obligated to refuse payment for the service. Payment for the service, either in full or partial, is a binding provision of this Agreement.
+- **10-4**: The relationship between the Service Provider and the Client is on an "at-will" basis. The Service Provider is not an employee, agent, or representative of the Client. Both parties understand and agree that the Service Provider will provide services under the terms of this Agreement, and that no long-term employment relationship is established.
+
+## 11. Payment as Acceptance of Terms
+Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms outlined in this Agreement.
+
+## 12. Refusal to Pay
+If the Client does not agree to any of the terms of this Agreement, they are obligated to refuse payment for the service.
+
+## 13. Clients Responsibilities
+- **13-1**: Confirms their legal age and authority for service decisions.
+- **13-2**: Secured necessary permissions from property owners or landlords to perform services.
+- **13-3**: Ensures and acknowledges that the services do not require city or state permits and are not legally restricted to professional tradespeople or licensed contractors.
+- **13-4**: Will ensure that the Service Provider does not perform renovation work.
+- **13-5**: Accepts full responsibility for the Service Provider's work, especially in the realm of plumbing services, limited to cosmetic modifications or minor alterations.
+- **13-6**: Ensures they have full comprehensive insurance covering potential property damage, injury, or errors and affirms they will handle any and all claims through such policy.
+- **13-7**: Commits to inspecting the Service Provider's work and addressing any discovered errors.
+- **13-8**: Communication and Termination:
+  - **Immediate Communication**: The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
+  - **Opportunity to Correct**: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
+  - **Termination**: The Client reserves the right to demand the Service Provider to stop performing the agreed-upon services and to terminate the agreement. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
+  - **At-Will Relationship**: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
+
+
+## 14. Agreement Updates
+Changes to this Agreement can be found at [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement) referenced upon booking services through the website hosted on [Setmore](https://booktom.setmore.com).
+
+## 15. Severability
+If a provision of this Agreement is deemed invalid, the other provisions remain in effect. The invalid provision will be replaced with a valid one that closely mirrors the original's intent and economic effect.
+
+## 16. Emergency Situations
+In situations deemed emergencies due to unforeseen service interruptions or hazards, both Parties commit to swift communication and collaboration to find an appropriate solution.
+
+## 17. Timeframes
+The Service Provider will strive to complete services within agreed timeframes and will promptly communicate any unforeseen delays.
+
+## 18. Dispute Resolution
+- **18-1**: In line with section 6-8, if the Client identifies any actions by the Service Provider that are in violation of this agreement, beyond the Scope of Work as described in Annex A, or any other conduct that is not to the Client's satisfaction, they are obligated to inform the Service Provider immediately.
+- **18-2**: Upon such notification, the Service Provider will either correct the action or conduct in question or cease performing the agreed-upon services. The terms of termination and any associated payments or refunds will be determined and agreed upon by both parties either immediately at the time of notice of termination or within no more than 24 hours after any termination.
+- **18-3**: If a satisfactory resolution is not achieved following the above steps, the Client shall refuse to pay for any or part of the services until such resolution is met. In the event a civil agreement, either as a refund or non-payment for services, would satisfy the Service Provider's end of the agreement and fulfill their obligations.
+
+## 19. Media Policy and Client Feedback Ownership
 When the Client leaves feedback, comments, or reviews ("Client Feedback") either in response to a solicitation by the Service Provider or unsolicited but in a publicly accessible manner, the Service Provider shall own 100% of the rights to the written text of such Client Feedback in its entirety.
 
-- **22-1**: Rights and Permissions
+- **19-1**: Rights and Permissions
 
     - **Use and Modification**: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback for marketing or promotional purposes.
   
     - **Platform Independence**: The Service Provider has the right to use the Client Feedback on other websites, platforms, or media channels, whether now known or hereafter invented.
 
-- **22-2**: Waiver of Confidentiality
+- **19-2**: Waiver of Confidentiality
 
 By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
+
+
+## 20. Privacy Policy
+
+- **20-1**: Introduction
+
+Tom Kongerslev offers handyman and computer repair services in New York City and surrounding areas, including New Jersey. This policy outlines the management of personal information when services are booked with Tom Kongerslev, through booktom.nyc, or via third-party referral sites.
+
+- **20-2**: Third-Party Websites and Services
+
+Tom Kongerslev utilizes various third-party websites and services. These include, but are not limited to:
+
+- [Setmore](https://www.setmore.com/#privacy-policy)
+- [Google](https://policies.google.com/privacy?hl=en-US)
+- [PythonAnywhere](https://www.pythonanywhere.com/privacy_v2/)
+- [QR Code Chimp](https://www.qrcodechimp.com/privacy)
+- [Apple](https://www.apple.com/legal/privacy/en-ww/)
+- [OpenAI](https://openai.com/policies/privacy-policy)
+- [GPTBots](https://www.gptbots.ai/privacy-agreement)
+- [GoDaddy](https://www.godaddy.com/agreements/privacy)
+- [Cloudflare](https://www.cloudflare.com/privacypolicy/)
+
+Each of these services operates under its own privacy policy, and Tom Kongerslev does not assume responsibility for their data handling practices.
+
+- **20-3**: Consent and Usage of Information
+
+By using Tom Kongerslev's services, clients implicitly agree to the collection and use of personal information for service delivery, appointment management, and marketing purposes. This includes instances where third-party services are used by the client or by Tom Kongerslev during or after the provision of services.
+
+- **20-4**: Media and Feedback Ownership
+
+As per [Section 19: Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) Tom Kongerslev owns 100% of the rights to any client feedback, comments, or reviews. This includes the right to use, modify, and republish such content.
+
+- **20-5**: Disclosure of Information
+
+Personal data is shared under these conditions:
+
+- As agreed by clients through the use of services.
+- For legal purposes or to protect rights.
+- To facilitate service provision.
+
+- **20-6**: Data Security and Breach Disclaimer
+
+Reasonable measures are implemented to protect personal data. However, no liability is assumed for data breaches, particularly during computer servicing or data stored on communication devices.
+
+- **20-7**:Limitation on Removal Requests
+
+Tom Kongerslev does not control third-party platforms and therefore cannot guarantee the execution of removal or opt-out requests for content accessible via these platforms.
+
+- **20-8**: Data Retention
+
+Personal information is retained as necessary for service provision and legal compliance.
+
+- **20-9**: Client Rights
+
+Clients have the right to request access, correction, or deletion of personal data by contacting booktom@icloud.com.
+
+- **20-10**: Policy Updates
+
+Significant changes to this policy will be communicated through email or on the website.
+
+- **20-11**: Contact for Queries
+
+For questions about this policy, contact booktom@icloud.com.
+
+- **20-12**: Review of Third-Party Policies
+
+Clients are advised to review the privacy policies of any third-party websites and services used.
 
 
 ## Annex A: Scope of Work
@@ -381,4 +438,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: August 24, 2023 5:22AM EST
+###### **LAST UPDATED**: Thursday, November 23, 2023 12:42AM EST
