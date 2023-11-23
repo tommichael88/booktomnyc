@@ -26,7 +26,7 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 
 ## Table of Contents
 
-| Service Agreement: Main Provisions |
+| Service Agreement |
 | --------------------------------- |
 | 1. [Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction) |
 | 2. [Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions) |
