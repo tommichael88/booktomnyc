@@ -20,7 +20,7 @@
 | Date of service booking. |
 
 
-This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client whose details will be provided upon booking, hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."
+This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client (where specific details are provided upon booking), hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."
 
 ---
 
@@ -84,11 +84,11 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 ---
 
 ## 1. Introduction
-By accessing and using the services provided by the Service Provider, the Client agrees to the terms and conditions outlined in this Agreement. The Client acknowledges that they have full and comprehensive insurance coverage, which extends to anyone impacted by the service they are requesting. The Service Provider operates under the assumption that the Client is fully insured and will not accept any work where this is not the case.
+By accessing and using the services provided by the Service Provider, the Client agrees to the terms and conditions outlined in this Agreement. The Client acknowledges that they have full and comprehensive insurance coverage, which extends to anyone impacted by the service they are requesting. The Service Provider operates under the assumption that the Client is fully insured and will not accept responsibility for any work where this is not the case as permitted by law.
 
 ## 2. Definitions
 - **Service Provider**: Refers to Tom Kongerslev or alias Thomas Kongerslev, offering handyman and tech services.
-- **Client**: Refers to [Client's Full Name], utilizing the services provided by the Service Provider.
+- **Client**: Refers to the individual (or individuals) utilizing and/or requesting services performed by the Service Provider.
 - **Services**: Refers to handyman, tech, and computer services provided by the Service Provider.
 - **Job**: Refers to the entire scope of work or project that the Client has requested. This encompasses all tasks, services, and other related activities required to complete the Client's request from start to finish.
 - **Work**: Refers to the physical or digital actions, efforts, and activities performed by the Service Provider to fulfill a specific task, service, or job.
@@ -194,7 +194,6 @@ When the Client leaves feedback, comments, or reviews ("Client Feedback") either
 
 Client and Service Provider agree to the terms and conditions as detailed in the [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
 
----
 
 ## Annex A: Scope of Work
 
@@ -377,4 +376,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Thursday, November 23, 2023 03:30AM EST
+###### **LAST UPDATED**: Thursday, November 23, 2023 03:43AM EST
