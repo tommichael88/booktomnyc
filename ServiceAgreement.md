@@ -160,7 +160,7 @@ If the Client does not agree to any of the terms of this Agreement, they are obl
     - Termination: The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the agreement before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
     - At-Will Relationship: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
 -**13-9: Dissatisfaction and Obligations**
-In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. The Client's dissatisfaction or any problems arising from the services shall not absolve the Client of their obligations under this Agreement. The Client is still responsible for fulfilling all their duties and commitments as outlined in Sections 13-1 through 13-8, regardless of any disputes or concerns related to the services rendered. Failure to meet these responsibilities shall not release the Client from any liability or obligations under this Agreement.
+	- In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. The Client's dissatisfaction or any problems arising from the services shall not absolve the Client of their obligations under this Agreement. The Client is still responsible for fulfilling all their duties and commitments as outlined in Sections 13-1 through 13-8, regardless of any disputes or concerns related to the services rendered. Failure to meet these responsibilities shall not release the Client from any liability or obligations under this Agreement.
 
 ## 14. Agreement Updates
 Changes to this Agreement can be found at [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement) referenced upon booking services through the website hosted on [Setmore](https://booktom.setmore.com).
@@ -183,10 +183,10 @@ The Service Provider will strive to complete services within agreed timeframes a
 When the Client leaves feedback, comments, or reviews ("Client Feedback") either in response to a solicitation by the Service Provider or unsolicited but in a publicly accessible manner, the Service Provider shall own 100% of the rights to the written text of such Client Feedback in its entirety.
 
 - **19-1**: **Rights and Permissions**
-	- *Use and Modification*: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback for marketing or promotional purposes.
-	- *Platform Independence*: The Service Provider has the right to use Client reviews, comments or feedback on other websites, platforms, or media channels, whether now known or hereafter invented.
+	- **Use and Modification**: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback for marketing or promotional purposes.
+	- **Platform Independence**: The Service Provider has the right to use Client reviews, comments or feedback on other websites, platforms, or media channels, whether now known or hereafter invented.
 
-- **19-2**: Waiver of Confidentiality: By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
+- **19-2**: **Waiver of Confidentiality**: By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
 
 ## 20. Privacy Policy
 
@@ -196,47 +196,47 @@ Client and Service Provider agree to the terms and conditions as detailed in the
 
 This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full document [found here]((https://tommichael88.github.io/booktomnyc/Privacy%20Policy).
 
-#### Key Points
+##### Important provisions per the Privacy Policy but not limited to
 
--**Third-Party Websites and Services**: Use of various third-party services (like Setmore, Google, PythonAnywhere, etc.) is integral to our operations. These services have their own privacy policies, and Tom Kongerslev is not responsible for their data practices.
+	Third-Party Websites and Services: Use of various third-party services (like Setmore, Google, PythonAnywhere, etc.) is integral to our operations. These services have their own privacy policies, and Tom Kongerslev is not responsible for their data practices.
 
--**Consent and Usage of Information**: Clients agree to the collection and use of personal information for service delivery, appointment management, and marketing purposes. This includes information shared through third-party services.
+	Consent and Usage of Information: Clients agree to the collection and use of personal information for service delivery, appointment management, and marketing purposes. This includes information shared through third-party services.
 
--**Media and Feedback Ownership**: As per Section 19 of the Service Agreement, Tom Kongerslev owns rights to any client feedback or reviews, with the ability to modify and republish this content.
+	Media and Feedback Ownership: As per Section 19 of the Service Agreement, Tom Kongerslev owns rights to any client feedback or reviews, with the ability to modify and republish this content.
 
--**Disclosure of Information**: Personal data may be shared as agreed by clients, for legal purposes, or to facilitate service provision.
+	Disclosure of Information: Personal data may be shared as agreed by clients, for legal purposes, or to facilitate service provision.
 
--**Data Security and Breach Disclaimer**: While measures are taken to protect personal data, there is no liability for potential data breaches, especially during computer servicing.
+	Data Security and Breach Disclaimer: While measures are taken to protect personal data, there is no liability for potential data breaches, especially during computer servicing.
 
--**Limitation on Removal Requests**: Removal or opt-out requests for content on third-party platforms may not always be executable.
+	Limitation on Removal Requests: Removal or opt-out requests for content on third-party platforms may not always be executable.
 
--**Data Retention**: Personal information is retained as necessary for service provision and legal compliance.
+	Data Retention: Personal information is retained as necessary for service provision and legal compliance.
 
--**Client Rights**: Clients can request access to, correction of, or deletion of their personal data via booktom@icloud.com.
+	Client Rights: Clients can request access to, correction of, or deletion of their personal data via booktom@icloud.com.
 
--**Policy Updates**: Significant changes to the policy will be communicated during service booking.
+	Policy Updates: Significant changes to the policy will be communicated during service booking.
 
--**Contact for Queries**: For questions about the policy, contact booktom@icloud.com.
+	Contact for Queries: For questions about the policy, contact booktom@icloud.com.
 
--**Review of Third-Party Policies**: Clients are advised to review the privacy policies of third-party websites and services used.
+	Review of Third-Party Policies: Clients are advised to review the privacy policies of third-party websites and services used.
 
 ## 21. Disclaimer
 
 This Disclaimer section is a crucial part of the Service Agreement between the Service Provider (Tom Kongerslev) and the Client. It outlines the limitations of liability and responsibilities in the event of certain outcomes during the repair or service process.
 
-**21-A.** Limitations of Liability
-    - Damage to Equipment: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.
-    - Stolen Property: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.
+- **21-A**: Limitations of Liability
+    - **Damage to Equipment**: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.
+    - **Stolen Property**: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.
 
-**21-B.** Client's Responsibilities
+- **21-B**: Client Acknowledgement
     - The Client is responsible for backing up any data on devices submitted for repair.
-    - The Client acknowledges the inherent risks of damage during the repair of faulty or damaged hardware.
+    - The Client accepts the inherent risks of damage during the repair of faulty or damaged hardware.
 
-**21-C.** Efforts to Mitigate Risk
+- **21-C**: Efforts to Mitigate Risk
      - The Service Provider will take all reasonable precautions to securely store client property during the repair process.
-    - In cases of faulty hardware, the Service Provider will endeavor to prevent further damage during the repair.
+     - In cases of faulty hardware, the Service Provider will endeavor to prevent further damage during the repair.
 
-**21-D.** Agreement
+- **21-D**: Agreement
     - By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
 
 
