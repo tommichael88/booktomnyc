@@ -48,6 +48,7 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 | 18. [Dispute Resolution](https://tommichael88.github.io/booktomnyc/ServiceAgreement#18-dispute-resolution) |
 | 19. [Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) |
 | 20. [Privacy Policy](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-privacy-policy) |
+| 21. [Disclaimer](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-disclaimer) |
 
 
 | Service Agreement: Annex A - Scope of Work |
@@ -193,6 +194,58 @@ When the Client leaves feedback, comments, or reviews ("Client Feedback") either
 ## 20. Privacy Policy
 
 Client and Service Provider agree to the terms and conditions as detailed in the [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
+
+#### Overview
+
+This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full document [found here]((https://tommichael88.github.io/booktomnyc/Privacy%20Policy).
+
+#### Key Points
+
+1. **Third-Party Websites and Services**: Use of various third-party services (like Setmore, Google, PythonAnywhere, etc.) is integral to our operations. These services have their own privacy policies, and Tom Kongerslev is not responsible for their data practices.
+
+2. **Consent and Usage of Information**: Clients agree to the collection and use of personal information for service delivery, appointment management, and marketing purposes. This includes information shared through third-party services.
+
+3. **Media and Feedback Ownership**: As per Section 19 of the Service Agreement, Tom Kongerslev owns rights to any client feedback or reviews, with the ability to modify and republish this content.
+
+4. **Disclosure of Information**: Personal data may be shared as agreed by clients, for legal purposes, or to facilitate service provision.
+
+5. **Data Security and Breach Disclaimer**: While measures are taken to protect personal data, there is no liability for potential data breaches, especially during computer servicing.
+
+6. **Limitation on Removal Requests**: Removal or opt-out requests for content on third-party platforms may not always be executable.
+
+7. **Data Retention**: Personal information is retained as necessary for service provision and legal compliance.
+
+8. **Client Rights**: Clients can request access to, correction of, or deletion of their personal data via booktom@icloud.com.
+
+9. **Policy Updates**: Significant changes to the policy will be communicated during service booking.
+
+10. **Contact for Queries**: For questions about the policy, contact booktom@icloud.com.
+
+11. **Review of Third-Party Policies**: Clients are advised to review the privacy policies of third-party websites and services used.
+
+## 21. Disclaimer
+
+This Disclaimer section is a crucial part of the Service Agreement between the Service Provider (Tom Kongerslev) and the Client. It outlines the limitations of liability and responsibilities in the event of certain outcomes during the repair or service process.
+
+### 21-A. Limitations of Liability
+
+1. **Damage to Equipment**: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.
+
+2. **Stolen Property**: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.
+
+### 21-B. Client's Responsibilities
+
+- The Client is responsible for backing up any data on devices submitted for repair.
+- The Client acknowledges the inherent risks of damage during the repair of faulty or damaged hardware.
+
+### 21-C. Efforts to Mitigate Risk
+
+- The Service Provider will take all reasonable precautions to securely store client property during the repair process.
+- In cases of faulty hardware, the Service Provider will endeavor to prevent further damage during the repair.
+
+### 21-D. Agreement
+
+By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
 
 
 ## Annex A: Scope of Work
@@ -376,4 +429,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Thursday, November 23, 2023 03:43AM EST
+###### **LAST UPDATED**: Thursday, November 27, 2023 22:25pm EST
