@@ -4,8 +4,8 @@
 
 |**Service Provider:**|
 |:----------------------|
-| **Name:** Thomas Kongerslev |
-| **Email:** tommichael88@icloud.com |
+| **Name:** Tom Kongerslev |
+| **Email:** booktom@icloud.com |
 | **Phone:** 929-256-3252 |
 | **Websites:** |
 |   [booktom.nyc](https://booktom.nyc) |
