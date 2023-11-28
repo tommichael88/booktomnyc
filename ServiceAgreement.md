@@ -4,8 +4,8 @@
 
 |**Service Provider:**|
 |:----------------------|
-| **Name:** Tom Kongerslev |
-| **Email:** booktom@icloud.com |
+| **Name:** Thomas Kongerslev |
+| **Email:** tommichael88@icloud.com |
 | **Phone:** 929-256-3252 |
 | **Websites:** |
 |   [booktom.nyc](https://booktom.nyc) |
@@ -20,7 +20,7 @@
 | Date of service booking. |
 
 
-This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client (where specific details are provided upon booking), hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."
+This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client (where specific details are provided upon booking), hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."  **The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service.**
 
 ---
 
@@ -85,8 +85,7 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 ---
 
 ## 1. Introduction
-By accessing and using the services provided by the Service Provider, the Client agrees to the terms and conditions outlined in this Agreement. The Client acknowledges that they have full and comprehensive insurance coverage, which extends to anyone impacted by the service they are requesting. The Service Provider operates under the assumption that the Client is fully insured and will not accept responsibility for any work where this is not the case as permitted by law.
-
+By accessing and using the services provided by the Service Provider either through directly contacting Service Provider or by scheduling service through [BookTOM.NYC ](https://booktom.nyc)or [Setmore Appointments]](https://booktom.setmore.com), the Client agrees to the terms and conditions outlined in this Agreement. The Client acknowledges that they have full and comprehensive insurance coverage, which extends to anyone impacted by the service they are requesting. The Service Provider operates under the assumption that the Client is fully insured and will not accept responsibility for any work where this is not the case as permitted by law. **The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service .**
 ## 2. Definitions
 - **Service Provider**: Refers to Tom Kongerslev or alias Thomas Kongerslev, offering handyman and tech services.
 - **Client**: Refers to the individual (or individuals) utilizing and/or requesting services performed by the Service Provider.
@@ -103,7 +102,7 @@ The Service Provider will provide the Client with the services as mutually agree
 This Agreement follows the laws of the State of New York. Legal actions related to this Agreement will be taken exclusively in New York City, New York courts.
 
 ## 5. Service Providers Status
-The Service Provider is not a general contractor and does not represent themselves as such. The Service Provider is not obligated to accept or perform any tasks requiring the skills of a professional tradesman (i.e., a licensed professional plumber or certified professional electrician) or any work necessitating specific licensing, insurance, or permits as mandated by law.
+The Service Provider is not a licensed general contractor or professional tradesperson (such as a licensed plumber or electrician). Client acknowledges that the Service Provider does represent himself in such capacities and will not allow Service Provider to perform any work requiring such status by law.  The Service Provider is not obligated to accept or perform any tasks requiring the skills of a professional tradesman (i.e., a licensed professional plumber or certified professional electrician) or any work necessitating specific licensing, insurance, or permits as mandated by law.
 
 In the State of New York, the Service Provider will comply with legal standards for handyman work. If the Client requests work that does not align with these standards, the Client assumes all associated risks, except as prohibited by law. The Client is responsible for confirming whether any work requires permits, licenses, or specific qualifications of the Service Provider to comply with the law. Failure by the Client to verify or enforce these requirements is at their own risk.
 
@@ -114,7 +113,7 @@ The Client agrees to insure, hold harmless, and indemnify the Service Provider f
 Any damages, losses, or liabilities arising from the Service Provider's work shall not exceed the amount the Client paid for those services.
 
 ## 8. Quality of Work and Guarantee
-The Service Provider commits to performing services that meet the agreed-upon standards and benchmarks as outlined in [specific section or annex detailing the standards]. The Service Provider guarantees the quality of the work for a period of 30 days from the completion date.
+The Service Provider commits to performing services that meet the agreed-upon standards and benchmarks as outlined throughout. The Service Provider guarantees the quality of the work for a period of 30 days from the completion date.
 
 If, within this 30-day period, the work does not meet the specified standards or a previously addressed problem reoccurs due to no fault of the Client or external factors (e.g., natural disasters, third-party interventions), the Service Provider agrees to return and rectify the issue.
 
@@ -130,7 +129,7 @@ Exceptions to this guarantee include:
 - **8-3**: Significant hardware failures or issues beyond the initial service scope.
 - **8-4**: In cases where additional costs arise, the Service Provider will provide a detailed estimate. Any additional labor costs will be discussed and agreed upon with the Client before proceeding.
 
-Clients should report any issues to the Service Provider in writing [see Service Provider contact details as listed in the Agreement] within the guarantee period, providing relevant details and evidence of the issue.
+Clients should report any issues to the Service Provider in writing (see Service Provider contact details as listed at the top of this Service Agreement) within the guarantee period, providing relevant details and evidence of the issue.
 
 ## 9. Fees and Payment
 The Client agrees to compensate the Service Provider immediately upon satisfaction with the services rendered and upon receipt of an invoice, whether delivered via text, email, or in person.
@@ -197,7 +196,7 @@ Client and Service Provider agree to the terms and conditions as detailed in the
 
 #### Overview
 
-This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
+This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full document [found here]((https://tommichael88.github.io/booktomnyc/Privacy%20Policy).
 
 #### Key Points
 
@@ -429,4 +428,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Thursday, November 27, 2023 22:25pm EST
+###### **LAST UPDATED**: Thursday, November 23, 2023 00:26AM EST
