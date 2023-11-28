@@ -137,7 +137,7 @@ If the Client does not agree to any of the terms of this Agreement, they are obl
     - Opportunity to Correct: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
     - Termination: The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the agreement before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
     - At-Will Relationship: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
--**13-9: Dissatisfaction and Obligations**
+- **13-9**: Dissatisfaction and Obligations
 	- In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. The Client's dissatisfaction or any problems arising from the services shall not absolve the Client of their obligations under this Agreement. The Client is still responsible for fulfilling all their duties and commitments as outlined in Sections 13-1 through 13-8, regardless of any disputes or concerns related to the services rendered. Failure to meet these responsibilities shall not release the Client from any liability or obligations under this Agreement.
 
 ## 14. Agreement Updates
@@ -399,4 +399,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Tuesday, November 28, 2023 01:05AM EST
+###### **LAST UPDATED**: Tuesday, November 28, 2023 01:08AM EST
