@@ -200,19 +200,19 @@ This summary provides key points of the Privacy Policy related to the services o
 
 This Disclaimer section is a crucial part of the Service Agreement between the Service Provider (Tom Kongerslev) and the Client. It outlines the limitations of liability and responsibilities in the event of certain outcomes during the repair or service process.
 
-- **21-A**: Limitations of Liability
-    - **Damage to Equipment**: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.
-    - **Stolen Property**: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.
+- **21-A**: **Limitations of Liability**
+    - *Damage to Equipment*: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.
+    - *Stolen Property*: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.
 
-- **21-B**: Client Acknowledgement
+- **21-B**: **Client Acknowledgement**
     - The Client is responsible for backing up any data on devices submitted for repair.
     - The Client accepts the inherent risks of damage during the repair of faulty or damaged hardware.
 
-- **21-C**: Efforts to Mitigate Risk
+- **21-C**: **Efforts to Mitigate Risk**
      - The Service Provider will take all reasonable precautions to securely store client property during the repair process.
      - In cases of faulty hardware, the Service Provider will endeavor to prevent further damage during the repair.
 
-- **21-D**: Agreement
+- **21-D**: **Agreement**
     - By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
 
 
