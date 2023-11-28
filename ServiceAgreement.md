@@ -197,7 +197,7 @@ Client and Service Provider agree to the terms and conditions as detailed in the
 
 #### Overview
 
-This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full document [found here]((https://tommichael88.github.io/booktomnyc/Privacy%20Policy).
+This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
 
 #### Key Points
 
