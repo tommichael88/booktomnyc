@@ -55,34 +55,34 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 
 | Service Agreement: Annex A - Scope of Work |
 |:---------------------------|
-| [**A. Minor Home Repairs**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Doors & Lock Installation](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-1-door-handles-&-locks-installation) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Hollow Door Repair](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-2-hollow-door-repair) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[3: Wall Repair - Patch & Paint](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-3-wall-repair-patch-&-paint) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[4: Appliances Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-4-appliances-hourly-service-rate) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[5: Furniture Repair Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-5-furniture-repair-hourly-service-rate) |
-| [**B. Wall Mounting**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Curtains/Drapes w. Single Rod Installation](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-1-curtains/drapes-w-single-rod-installation) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Frame/Shelf Mounting Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-2-frame/shelf-mounting-hourly-service-rate) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[3: TV Mounting (Under 60”) without cable management](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-3-tv-mounting-under-60”-without-cable-management) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[4: TV Mounting (Under 60”) + Concealed Cables](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-4-tv-mounting-under-60”-+-concealed-cables) |
-| [**C. Computer Tech Services**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: PC Diagnostic Service](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-1-pc-diagnostic-service) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Data Transfer / Data Back-Up](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-2-data-transfer-/-data-back-up) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[3: Part Replacement/Upgrade](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-3-part-replacement/upgrade) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[4: Software Install/Update/Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-4-software-install/update/removal-(4)) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[5: System Restore](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-5-system-restore) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[6: Virus/Malware Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-6-virus/malware-removal) |
-| [**D. Electrical help**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Light Fixture Swap](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-1-light-fixture-swap) |
-| [**E. Furniture Fixes & Assembly**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes-&-assembly) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Furniture Assembly Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-1-furniture-assembly-hourly-service-rate) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Furniture Repair Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-2-furniture-repair-hourly-service-rate) |
-| [**F. Plumbing help**](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[1: Bidet Accessory Install/Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-1-bidet-accessory-install/removal) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[2: Fixture Swap (Cosmetic)](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-2-fixture-swap-(cosmetic)) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[3: Leak Under Sink Repair](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-3-leak-under-sink-repair) |
-| &nbsp;&nbsp;&nbsp;&nbsp;[4: Unclog Sink/Shower/Toilet (Minor)](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-4-unclog-sink/shower/toilet-(minor)) |
+| A. [Minor Home Repairs](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs) |
+| &nbsp;&nbsp;&nbsp;&nbsp;1: [Doors & Lock Installation](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-1-door-handles-&-locks-installation) |
+| &nbsp;&nbsp;&nbsp;&nbsp;2: [Hollow Door Repair](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-2-hollow-door-repair) |
+| &nbsp;&nbsp;&nbsp;&nbsp;3: [Wall Repair - Patch & Paint](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-3-wall-repair-patch-&-paint) |
+| &nbsp;&nbsp;&nbsp;&nbsp;4: [Appliances Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-4-appliances-hourly-service-rate) |
+| &nbsp;&nbsp;&nbsp;&nbsp;5: [Furniture Repair Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-5-furniture-repair-hourly-service-rate) |
+| B. [Wall Mounting](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting) |
+| &nbsp;&nbsp;&nbsp;&nbsp;1: [Curtains/Drapes w. Single Rod Installation](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-1-curtains/drapes-w-single-rod-installation) |
+| &nbsp;&nbsp;&nbsp;&nbsp;2: [Frame/Shelf Mounting Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-2-frame/shelf-mounting-hourly-service-rate) |
+| &nbsp;&nbsp;&nbsp;&nbsp;3: [TV Mounting (Under 60”) without cable management](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-3-tv-mounting-under-60”-without-cable-management) |
+| &nbsp;&nbsp;&nbsp;&nbsp;4: [TV Mounting (Under 60”) + Concealed Cables](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-4-tv-mounting-under-60”-+-concealed-cables) |
+| C. [Computer Tech Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services) |
+| &nbsp;&nbsp;&nbsp;&nbsp;1: [PC Diagnostic Service](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-1-pc-diagnostic-service) |
+| &nbsp;&nbsp;&nbsp;&nbsp;2: [Data Transfer / Data Back-Up](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-2-data-transfer-/-data-back-up) |
+| &nbsp;&nbsp;&nbsp;&nbsp;3: [Part Replacement/Upgrade](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-3-part-replacement/upgrade) |
+| &nbsp;&nbsp;&nbsp;&nbsp;4: [Software Install/Update/Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-4-software-install/update/removal-(4)) |
+| &nbsp;&nbsp;&nbsp;&nbsp;5: [System Restore](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-5-system-restore) |
+| &nbsp;&nbsp;&nbsp;&nbsp;6: [Virus/Malware Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-6-virus/malware-removal) |
+| D. [Electrical help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
+| &nbsp;&nbsp;&nbsp;&nbsp;1: [Light Fixture Swap](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-1-light-fixture-swap) |
+| E. [Furniture Fixes & Assembly](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes-&-assembly) |
+| &nbsp;&nbsp;&nbsp;&nbsp;1: [Furniture Assembly Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-1-furniture-assembly-hourly-service-rate) |
+| &nbsp;&nbsp;&nbsp;&nbsp;2: [Furniture Repair Hourly Service Rate](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-2-furniture-repair-hourly-service-rate) |
+| F. [Plumbing help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help) |
+| &nbsp;&nbsp;&nbsp;&nbsp;1: [Bidet Accessory Install/Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-1-bidet-accessory-install/removal) |
+| &nbsp;&nbsp;&nbsp;&nbsp;2: [Fixture Swap (Cosmetic)](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-2-fixture-swap-(cosmetic)) |
+| &nbsp;&nbsp;&nbsp;&nbsp;3: [Leak Under Sink Repair](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-3-leak-under-sink-repair) |
+| &nbsp;&nbsp;&nbsp;&nbsp;4: [Unclog Sink/Shower/Toilet (Minor)](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-4-unclog-sink/shower/toilet-(minor)) |
 
 ---
 
@@ -421,4 +421,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Monday, November 27, 2023 23:28PM EST
+###### **LAST UPDATED**: Tuesday, November 28, 2023 00:09AM EST
