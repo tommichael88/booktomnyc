@@ -20,7 +20,9 @@
 | Date of service booking. |
 
 
-This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client (where specific details are provided upon booking), hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."  **The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service.**
+This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client (where specific details are provided upon booking), hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."  
+
+**The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service.**
 
 ---
 
