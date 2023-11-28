@@ -7,9 +7,7 @@
 | **Name:** Tom Kongerslev |
 | **Email:** booktom@icloud.com |
 | **Phone:** 929-256-3252 |
-| **Websites:** |
-|   [booktom.nyc](https://booktom.nyc) |
-|   [booktom.setmore.com](https://booktom.setmore.com) |
+| **Websites:**  [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) ||
 
 | **Client**  |
 |----------------------|
@@ -399,4 +397,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Tuesday, November 28, 2023 01:14AM EST
+###### **LAST UPDATED**: Tuesday, November 28, 2023 01:17AM EST
