@@ -28,7 +28,7 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 
 ## Table of Contents
 
-|                   |     |
+| |  |
 | ----------------- | --- |
 | 1. [Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction) | 11. [Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-payment-as-acceptance-of-terms) |
 | 2. [Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions) | 12. [Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-refusal-to-pay) |
@@ -41,7 +41,7 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 | 9. [Fees And Payment](https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-fees-and-payment) | 19. [Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) |
 | 10. [Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-agreement-acceptance-and-payment-terms) | 20. [Privacy Policy](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-privacy-policy) |
 |  | 21. [Disclaimer](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-disclaimer) |
-|                   |     |
+||||
 | Annex A - Scope of Work |  |
 | A. [Minor Home Repairs](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs) | D. [Electrical help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
 | &nbsp;&nbsp;&nbsp;&nbsp;1: [Doors & Lock Installation](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-1-door-handles-&-locks-installation) | &nbsp;&nbsp;&nbsp;&nbsp;1: [Light Fixture Swap](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-1-light-fixture-swap) |
@@ -61,9 +61,6 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 | &nbsp;&nbsp;&nbsp;&nbsp;4: [Software Install/Update/Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-4-software-install/update/removal-(4)) |  |
 | &nbsp;&nbsp;&nbsp;&nbsp;5: [System Restore](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-5-system-restore) |  |
 | &nbsp;&nbsp;&nbsp;&nbsp;6: [Virus/Malware Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-6-virus/malware-removal) |  |
-
-
-
 
 ---
 
@@ -402,4 +399,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Tuesday, November 28, 2023 01:00AM EST
+###### **LAST UPDATED**: Tuesday, November 28, 2023 01:05AM EST
