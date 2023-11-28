@@ -170,7 +170,7 @@ Client and Service Provider agree to the terms and conditions as detailed in the
 
 #### Overview
 
-This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full document [found here]((https://tommichael88.github.io/booktomnyc/Privacy%20Policy).
+This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full document found [here](https://tommichael88.github.io/booktomnyc/Privacy%20Policy).
 
 ##### Important provisions per the Privacy Policy but not limited to
 
@@ -397,4 +397,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Tuesday, November 28, 2023 01:20AM EST
+###### **LAST UPDATED**: Tuesday, November 28, 2023 01:24AM EST
