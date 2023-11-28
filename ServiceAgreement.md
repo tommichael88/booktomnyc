@@ -87,7 +87,7 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 ---
 
 ## 1. Introduction
-By accessing and using the services provided by the Service Provider either through directly contacting Service Provider or by scheduling service through [BookTOM.NYC ](https://booktom.nyc)or [Setmore Appointments]](https://booktom.setmore.com), the Client agrees to the terms and conditions outlined in this Agreement. The Client acknowledges that they have full and comprehensive insurance coverage, which extends to anyone impacted by the service they are requesting. The Service Provider operates under the assumption that the Client is fully insured and will not accept responsibility for any work where this is not the case as permitted by law. **The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service.**
+By accessing and using the services provided by the Service Provider either through directly contacting Service Provider or by scheduling service through [BookTOM.NYC ](https://booktom.nyc)or [Setmore Appointments]](https://booktom.setmore.com), the Client agrees to the terms and conditions outlined in this Agreement. The Client acknowledges that they have full and comprehensive insurance coverage, which extends to anyone impacted by the service they are requesting. The Service Provider operates under the assumption that the Client is fully insured and will not accept responsibility for any work where this is not the case as permitted by law. **The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service .**
 ## 2. Definitions
 - **Service Provider**: Refers to Tom Kongerslev or alias Thomas Kongerslev, offering handyman and tech services.
 - **Client**: Refers to the individual (or individuals) utilizing and/or requesting services performed by the Service Provider.
@@ -104,7 +104,7 @@ The Service Provider will provide the Client with the services as mutually agree
 This Agreement follows the laws of the State of New York. Legal actions related to this Agreement will be taken exclusively in New York City, New York courts.
 
 ## 5. Service Providers Status
-The Service Provider is not a licensed contractor or tradesperson (e.g., plumber or electrician) and does not claim to be. The Client should not request work requiring such professional status by law. The Service Provider is not obligated to accept tasks needing specialized skills, licensing, insurance, or permits. For work in New York, the Service Provider follows legal handyman standards. If the Client requests non-standard work, they assume risks, unless prohibited by law. The Client must confirm work requirements and compliance with the law, failing which, it's at their own risk.
+The Service Provider is not a licensed contractor or tradesperson (e.g., plumber or electrician) and does not claim to be. The Client should not request work requiring such professional status by law. The Service Provider is not obligated to accept tasks needing specialized skills, licensing, insurance, or permits. For work in New York, the Service Provider follows legal handyman standards. If the Client requests non-standard work, Client assumes responsibility for and  accepts all risks resulting from such work as permitted by law. The Client must confirm work requirements and compliance with the law, failing which, is at the Client's risk and legal responsibility.
 ## 6. Hold Harmless Clause
 The Client agrees to insure, hold harmless, and indemnify the Service Provider from and against any and all claims, liabilities, damages, losses, or expenses, including legal fees, arising from the services provided under this Agreement. However, this clause shall not be construed to transfer or shift any liability imposed by law from the Service Provider to the Client or any other third party.
 
@@ -427,4 +427,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 - **Exclusions:** Major plumbing work or modifications, replacement of fixtures.
 
 ***
-###### **LAST UPDATED**: Thursday, November 23, 2023 23:14pm EST
+###### **LAST UPDATED**: Thursday, November 23, 2023 00:26AM EST
