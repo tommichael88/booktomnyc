@@ -23,11 +23,11 @@ Each of these services operates under its own privacy policy, and Tom Kongerslev
 
 ## Consent and Usage of Information
 
-By using Tom Kongerslev's services, clients implicitly agree to the collection and use of personal information for service delivery, appointment management, and marketing purposes. This includes instances where third-party services are used by the client or by Tom Kongerslev during or after the provision of services.
+By using Tom Kongerslev's services, clients explicitly agree to the collection, use, and sharing of personal information as detailed in this policy. This applies to service delivery, appointment management, and marketing purposes, including instances where third-party services are utilized.
 
 ## Media and Feedback Ownership
 
-As per [Section 19](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) of the [Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement), Tom Kongerslev owns 100% of the rights to any client feedback, comments, or reviews. This ownership includes the right to use, modify, and republish such content. The extent of this right to ownership may extend to instances where such data is shared with or utilized by third parties.
+As per Section [22](https://tommichael88.github.io/booktomnyc/ServiceAgreement#22-media-policy-and-client-feedback-ownership) of the Service Agreement, Tom Kongerslev owns the rights to any client feedback, comments, or reviews, including the right to use, modify, and republish such content.
 
 ## Disclosure of Information
 
@@ -39,7 +39,7 @@ Personal data is shared under these conditions:
 
 ## Data Security and Breach Disclaimer
 
-Reasonable measures are implemented to protect personal data. However, no liability is assumed for data breaches, particularly during computer servicing or data stored on communication devices.
+Tom Kongerslev implements reasonable measures to protect personal data. However, no method of transmission over the Internet or electronic storage is 100% secure.
 
 ## Limitation on Removal Requests
 
@@ -47,15 +47,20 @@ Tom Kongerslev does not control third-party platforms and therefore cannot guara
 
 ## Data Retention
 
-Personal information is retained as necessary for service provision and legal compliance.
-
+Personal information is retained only for as long as necessary for service provision, legal compliance, and as consented to by the client.
 ## Client Rights
 
-Clients have the right to request access, correction, or deletion of personal data by contacting booktom@icloud.com.
+Clients have the right to:
+
+    Request access to their personal data.
+    Correct any inaccuracies in their data.
+    Request deletion of their data.
+
+Requests should be directed to booktom@icloud.com.
 
 ## Policy Updates
 
-Significant policy changes will be written to amend the existing Privacy Policy and/or communicated or consented too when booking services.
+This policy may be updated periodically. Significant changes will be communicated to clients through the website or during the booking process.
 
 ## Contact for Queries
 
