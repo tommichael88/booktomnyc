@@ -1,6 +1,9 @@
 # SERVICE AGREEMENT 
 ---
-##### *Legal Disclaimer The forthcoming "Service Agreement" constitutes a legally binding contract and is not intended as legal advice or guidance. For personalized legal assistance, please consult with a qualified attorney or legal professional.*
+#### 
+**<u>Legal Disclaimer:</u>** *The forthcoming "Service Agreement" constitutes a legally binding contract and is not intended as legal advice or guidance. For personalized legal assistance, please consult with a qualified attorney or legal professional.*
+
+---
 ---
 | ****Service Provider****                                                                               |
 |:------------------------------------------------------------------------------------------------------:|
@@ -331,7 +334,7 @@ Plumbing help services are offered under the direct supervision or instruction o
 ***
 
 ```
-LAST UPDATED: Saturday, NDecember 2, 2023 01:18PM EST
+LAST UPDATED: Saturday, NDecember 2, 2023 01:25PM EST
 ```
 
 
