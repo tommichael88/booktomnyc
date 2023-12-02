@@ -1,10 +1,11 @@
-# SERVICE AGREEMENT 
----
-#### 
-**<u>Legal Disclaimer:</u>** *The forthcoming "Service Agreement" constitutes a legally binding contract and is not intended as legal advice or guidance. For personalized legal assistance, please consult with a qualified attorney or legal professional.*
+# SERVICE AGREEMENT
 
 ---
+
+##### <u>Legal Disclaimer:</u> The forthcoming "Service Agreement" constitutes a legally binding contract and is not intended as legal advice or guidance. For personalized legal assistance, please consult with a qualified attorney or legal professional.
+
 ---
+
 | ****Service Provider****                                                                               |
 |:------------------------------------------------------------------------------------------------------:|
 | **Name:** Tom Kongerslev                                                                               |
@@ -21,8 +22,6 @@
 | Date of service booking. |
 
 This Service Agreement (the "**Agreement**") is entered into between **Tom Kongerslev**, an alias for Thomas Kongerslev, hereinafter referred to as the "**Service Provider**," and the client (where specific details are provided upon booking), hereinafter referred to as the "**Client**." Together, they are collectively referred to as the "**Parties**."  
-
-
 
 **The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service.**
 
@@ -63,8 +62,6 @@ This Service Agreement (the "**Agreement**") is entered into between **Tom Konge
 | &nbsp;&nbsp;&nbsp;&nbsp;4: [Software Install/Update/Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-4-software-install/update/removal-(4))                             |                                                                                                                                                                            |
 | &nbsp;&nbsp;&nbsp;&nbsp;5: [System Restore](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-5-system-restore)                                                                   |                                                                                                                                                                            |
 | &nbsp;&nbsp;&nbsp;&nbsp;6: [Virus/Malware Removal](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-6-virus/malware-removal)                                                     |                                                                                                                                                                            |
-
-
 
 ## 1. Introduction
 
@@ -257,8 +254,6 @@ This Disclaimer section is a crucial part of the Service Agreement between the S
   
   - By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
 
-
-
 # *Annex A: Scope of Work*
 
 The following details the services provided by the Service Provider under each category:
@@ -334,10 +329,5 @@ Plumbing help services are offered under the direct supervision or instruction o
 ***
 
 ```
-LAST UPDATED: Saturday, NDecember 2, 2023 01:29PM EST
+LAST UPDATED: Saturday, NDecember 2, 2023 01:32PM EST
 ```
-
-
-
-
-
