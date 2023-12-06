@@ -9,6 +9,9 @@
       </a>
     </div>
   </div>
+  </body>
+</html>
+
   
   <h1><u>SERVICE AGREEMENT</u></h1>
 
@@ -393,5 +396,3 @@ Plumbing help services are offered under the direct supervision or instruction o
 ```
 LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST
 ```
-</body>
-</html>
