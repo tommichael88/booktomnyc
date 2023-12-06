@@ -1,30 +1,30 @@
- # SERVICE AGREEMENT</u>
+ # SERVICE AGREEMENT
 
 **<u>Legal Disclaimer</u>**: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.*
 
 ---
 
-| **SERVICE PROVIDER**                                                                               |
+| **SERVICE PROVIDER**                                                                                   |
 |:------------------------------------------------------------------------------------------------------:|
 | **Name:** Tom Kongerslev                                                                               |
 | **Email:** booktom@icloud.com                                                                          |
 | **Phone:** [929-256-3252](TEL:+19292563252)                                                            |
 | **Websites:**  [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
 
-| **CLIENT**                                                                                             |
+| **CLIENT**|
 |:------------------------------------------------------------------------------------------------------:|
 | Details provided during booking process                                                                |                                                              
 
-| **DATE**                                                                                               |
+| **DATE**|
 |:------------------------------------------------------------------------------------------------------:|
 | Effective immediately upon booking                                                                     |
 
 ---
 
-##### Table of Contents
+## Table of Contents
 
-| Sections 1-10                                                                                                                                      | Sections 11-21                                                                                                                                             |
-| -------------------------------------------------------------------------------------------------------------------------------------------------- |:---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sections 1-10                                             |  Sections 11-21   |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. [Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction)                                                       | 11. [Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-payment-as-acceptance-of-terms)                         |
 | 2. [Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions)                                                         | 12. [Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-refusal-to-pay)                                                         |
 | 3. [Scope Of Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services)                                             | 13. [Clients Responsibilities](https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-client-responsibilities)                                      |
