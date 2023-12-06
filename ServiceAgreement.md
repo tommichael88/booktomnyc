@@ -394,5 +394,4 @@ Plumbing help services are offered under the direct supervision or instruction o
 LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST
 ```
 </body>
-<script>var pfBtVersion='3';(function(){var js,pf;pf=document.createElement('script');pf.type='text/javascript';pf.src='//cdn.printfriendly.com/printfriendly.js';document.getElementsByTagName('head')[0].appendChild(pf)})();</script>
 </html>
