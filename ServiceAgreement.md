@@ -11,11 +11,11 @@
 | **Phone:** [929-256-3252](TEL:+19292563252)                                                            |
 | **Websites:**  [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
 
-| **CLIENT**|
+| **CLIENT**                                                                                             |
 |:------------------------------------------------------------------------------------------------------:|
 | Details provided during booking process                                                                |                                                              
 
-| **DATE**|
+| **DATE**                                                                                               |
 |:------------------------------------------------------------------------------------------------------:|
 | Effective immediately upon booking                                                                     |
 
