@@ -1,19 +1,4 @@
-<!DOCTYPE html>
-<html>
-<body>
-  <div class="print-icon-container">
-    <div>
-      <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
-      <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" style="color:#6D9F00;text-decoration:none;" class="printfriendly" onclick="window.print();return false;" title="Print Page">
-        <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/>
-      </a>
-    </div>
-  </div>
-  </body>
-</html>
-
-  
-  <h1><u>SERVICE AGREEMENT</u></h1>
+ # SERVICE AGREEMENT</u>
 
 **<u>Legal Disclaimer</u>**: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.*
 
@@ -396,3 +381,15 @@ Plumbing help services are offered under the direct supervision or instruction o
 ```
 LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST
 ```
+<html>
+<body>
+  <div class="print-icon-container">
+    <div>
+      <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
+      <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" style="color:#6D9F00;text-decoration:none;" class="printfriendly" onclick="window.print();return false;" title="Print Page">
+        <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/>
+      </a>
+    </div>
+  </div>
+  </body>
+</html>
