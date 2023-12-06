@@ -1,4 +1,4 @@
-# <u>**SERVICE AGREEMENT**</u>
+# <u>SERVICE AGREEMENT</u>
 
 ---
 
@@ -6,20 +6,20 @@
 
 ---
 
-| ****SERVICE PROVIDER****                                                                               |
+| **SERVICE PROVIDER**                                                                               |
 |:------------------------------------------------------------------------------------------------------:|
 | **Name:** Tom Kongerslev                                                                               |
 | **Email:** booktom@icloud.com                                                                          |
 | **Phone:** [929-256-3252](TEL:+19292563252)                                                            |
 | **Websites:**  [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
 
-| ****CLIENT****                          |
-|:---------------------------------------:|
-| Details provided during booking process |
+| **CLIENT**                                                                                             |
+|:------------------------------------------------------------------------------------------------------:|
+| Details provided during booking process                                                                |                                                              
 
-| ****DATE****                       |
-|:----------------------------------:|
-| Effective immediately upon booking |
+| **DATE**                                                                                               |
+|:------------------------------------------------------------------------------------------------------:|
+| Effective immediately upon booking                                                                     |
 
 ---
 
