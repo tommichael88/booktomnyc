@@ -1,5 +1,7 @@
 # SERVICE AGREEMENT
 
+---
+
 **<u>Legal Disclaimer</u>**: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.*
 
 ---
@@ -204,8 +206,7 @@ The Parties agree to the terms and conditions as detailed in the [Privacy Policy
 
 The forthcoming Privacy Policy is related to the services offered through the Service Provider. You may review the terms of the entire and complete [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy) by visiting the link referenced or by requesting the policy via email at booktom@icloud.com
 
-<html>
-<head>
+<html><head>
 <style>
   /* Add a CSS class for responsive iframes */
   .responsive-iframe {
@@ -213,8 +214,7 @@ The forthcoming Privacy Policy is related to the services offered through the Se
     height: 60vh; /* Adjust the height as needed (e.g., 60% of viewport height) */
     max-height: 600px; /* Set a maximum height to prevent it from becoming too tall on larger screens */
   }
-</style></head>
-<body><iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy#privacy-policy" width="400" height="1000" frameborder="5" scrolling="auto"></iframe>
+</style></head><body><iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy#privacy-policy" width="400" height="1000" frameborder="5" scrolling="auto"></iframe>
 </body>
 </html>
 
