@@ -1,6 +1,6 @@
-# SERVICE AGREEMENT
-
-
+# _________________**<u>SERVICE AGREEMENT</u>**_________________
+>
+>
 >
 ###### **<u>Legal Disclaimer</u>**: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.* 
 ---
@@ -20,9 +20,9 @@
 >| **DATE** |
 >| --- |
 >| Effective immediately upon booking |
-
+>
 ---
-
+>
 > ### Table of Contents
 >
 > 
@@ -44,7 +44,7 @@
 >| A. [Minor Home Repairs](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs) | D. [Electrical Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
 >| B. [Wall Mounting](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting) | E. [Furniture Fixes & Assembly](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes-&-assembly) |
 >| C. [Computer Tech Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services) | F. [Plumbing Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help) |
-
+>
 ---
 
 ## 1. Introduction
