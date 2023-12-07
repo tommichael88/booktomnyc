@@ -1,4 +1,4 @@
-# 𝐒𝐄𝐑𝐕𝐈𝐂𝐄 𝐀𝐆𝐑𝐄𝐄𝐌𝐄𝐍𝐓
+# Sᴇʀᴠɪᴄᴇ Aɢʀᴇᴇᴍᴇɴᴛ
 ---
 
 ###### Legal Disclaimer: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.* 
