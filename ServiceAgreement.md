@@ -1,3 +1,4 @@
+<!DOCTYPE markdown>
 # SERVICE AGREEMENT
 
 ---
