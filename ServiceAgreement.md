@@ -294,8 +294,9 @@ Disclaimer
 ```
 <html>
 <head></head>
-  <body>   
-<iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe></body></html>
+<body><iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe>
+</body>
+</html>
 
 ## 21. Disclaimer
 
@@ -318,7 +319,7 @@ This Disclaimer section is a crucial part of the Service Agreement between the S
   - By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
 
 
-# *Annex A: Scope of Work*
+## *Annex A: Scope of Work*
 
 The following details the services provided by the Service Provider under each category:
 
@@ -386,7 +387,6 @@ assembly tools and expertise.
 | --- | --- | --- | --- | --- |
 | E-1 | Furniture Assembly Hourly Service Rate | Assembly of various types of furniture. | Assembly tools and expertise. | Furniture in its original packaging with assembly instructions. |
 | E-2 | Furniture Repair Hourly Service Rate | Repair of various types of furniture. | Repair tools and materials. | Furniture piece for repair. |
-
 
 
 ### F. Plumbing Help
