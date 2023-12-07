@@ -1,9 +1,9 @@
-# _________________**<u>SERVICE AGREEMENT</u>**_________________
->
->
->
-###### **<u>Legal Disclaimer</u>**: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.* 
+# **SERVICE AGREEMENT**
 ---
+
+ ###### Legal Disclaimer: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.* 
+---
+>
 >
 >
 >| **SERVICE PROVIDER** |
@@ -23,7 +23,7 @@
 >
 ---
 >
-> ### Table of Contents
+>### Table of Contents
 >
 > 
 >| Sections 1-10 | Sections 11-21 |
