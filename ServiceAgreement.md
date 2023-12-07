@@ -213,9 +213,8 @@ The forthcoming Privacy Policy is related to the services offered through the Se
     height: 60vh; /* Adjust the height as needed (e.g., 60% of viewport height) */
     max-height: 600px; /* Set a maximum height to prevent it from becoming too tall on larger screens */
   }
-</style>
-</head>
-<body><iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy#privacy-policy" width="1000" height="1000" frameborder="5" scrolling="auto"></iframe>
+</style></head>
+<body><iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy#privacy-policy" width="600" height="1000" frameborder="5" scrolling="auto"></iframe>
 </body>
 </html>
 
