@@ -93,11 +93,12 @@ while True:
 
     try:
         # Generate assistant's reply
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Specify the model explicitly
-            messages=messages,
+        response = openai.Completion.create(
+            model="gpt-3.5-turbo",
+            prompt=messages,
             max_tokens=150,
-        )
+)
+
         reply = response["choices"][0]["text"]
 
         # Calculate total price
