@@ -295,9 +295,7 @@ Disclaimer
 <html>
 <head></head>
   <body>   
-<iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe>
-</body>
-</html>
+<iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe></body></html>
 
 ## 21. Disclaimer
 
@@ -319,6 +317,7 @@ This Disclaimer section is a crucial part of the Service Agreement between the S
   
   - By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
 
+
 # *Annex A: Scope of Work*
 
 The following details the services provided by the Service Provider under each category:
@@ -335,9 +334,9 @@ Minor Home Repairs refer to a range of small-scale repair services intended to f
 | A-4 | Appliances Hourly Service Rate | Maintenance, repair, or assessment of household appliances. | Diagnostic tools and expertise. | Appliance for repair and any specific replacement parts. |
 | A-5 | Furniture Repair Hourly Service Rate | Repair of various types of furniture. | Repair tools and materials. | Furniture piece for repair. |
 
-##
 
-## B. Wall Mounting
+
+### B. Wall Mounting
 
 Wall Mounting services involve securely attaching various objects to walls, such as televisions, shelves, or artwork, to enhance the living or working space.
 
@@ -348,7 +347,7 @@ Wall Mounting services involve securely attaching various objects to walls, such
 | B-3 | TV Mounting (Under 60”) without cable management | Mounting of TVs up to 60 inches without managing cables. | Basic mounting tools and expertise. | TV and specific mounting bracket. |
 | B-4 | TV Mounting (Under 60”) + Concealed Cables | Mounting of TVs up to 60 inches with cables concealed. | Mounting tools, cable concealment materials, and expertise. | TV, mounting bracket, and cables. |
 
-###
+
 
 ### C. Computer Tech Services
 
@@ -363,9 +362,9 @@ Computer Tech Services cover a range of technical support and repair services re
 | C-5 | System Restore | Restoration of PC’s operating system to a previous state. | Restoration tools and software. | PC and any relevant software licenses or credentials. |
 | C-6 | Virus / Malware Removal | Identification and removal of malicious software from a PC. | Antivirus and malware removal tools. | PC Guarantee against future infections, data recovery from ransomware attacks for 30 days. |
 
-##
 
-## D. Electrical Help
+
+### D. Electrical Help
 
 Electrical help services are provided under the direct supervision or instruction of the Client. These services involve assisting with minor electrical tasks such as changing light fixtures or replacing outlets. The Service Provider is in a helping role, thereby following direction or instructions from the Client, not hired to lead or make decisions independently.
 
@@ -373,9 +372,9 @@ Electrical help services are provided under the direct supervision or instructio
 | --- | --- | --- | --- | --- |
 | D-1 | Light Fixture Swap | Replacement of existing light fixtures with new ones. | Basic electrical tools and expertise. | New light fixture and any specific mounting hardware. |
 
-##
 
-## E. Furniture Fixes & Assembly
+
+### E. Furniture Fixes & Assembly
 
 Furniture fixes and assembly services encompass the assembly of various 
 types of furniture items. The Service Provider's role is to follow the 
@@ -388,7 +387,7 @@ assembly tools and expertise.
 | E-1 | Furniture Assembly Hourly Service Rate | Assembly of various types of furniture. | Assembly tools and expertise. | Furniture in its original packaging with assembly instructions. |
 | E-2 | Furniture Repair Hourly Service Rate | Repair of various types of furniture. | Repair tools and materials. | Furniture piece for repair. |
 
-###
+
 
 ### F. Plumbing Help
 
@@ -414,6 +413,4 @@ LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST
     <div>
       <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
       <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" style="color:#6D9F00;text-decoration:none;" class="printfriendly" onclick="window.print();return false;" title="Print Page">
-        <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/>
-              </a>
-    </div>
+        <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/></a></div></div></body></html>
