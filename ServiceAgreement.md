@@ -4,43 +4,43 @@
 
 ---
 
-| **SERVICE PROVIDER**                                                                                   |
-|:------------------------------------------------------------------------------------------------------:|
-| **Name:** Tom Kongerslev                                                                               |
-| **Email:** booktom@icloud.com                                                                          |
-| **Phone:** [929-256-3252](TEL:+19292563252)                                                            |
-| **Websites:**  [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
+| **SERVICE PROVIDER** |
+| --- |
+| **Name:** Tom Kongerslev |
+| **Email:** booktom@icloud.com |
+| **Phone:** [929-256-3252](TEL:+19292563252) |
+| **Websites:** [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
 
-| **CLIENT**                                                                                             |
-|:------------------------------------------------------------------------------------------------------:|
-| Details provided during booking process                                                                |                                                              
+| **CLIENT** |
+| --- |
+| Details provided during booking process |
 
-| **DATE**                                                                                               |
-|:------------------------------------------------------------------------------------------------------:|
-| Effective immediately upon booking                                                                     |
+| **DATE** |
+| --- |
+| Effective immediately upon booking |
 
 ---
 
 ## Table of Contents
 
-| Sections 1-10                                             |  Sections 11-21   |
-| -------------------------------------------------------------------------------------------------------------------------------------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. [Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction)                                                       | 11. [Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-payment-as-acceptance-of-terms)                         |
-| 2. [Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions)                                                         | 12. [Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-refusal-to-pay)                                                         |
-| 3. [Scope Of Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services)                                             | 13. [Clients Responsibilities](https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-client-responsibilities)                                      |
-| 4. [Governing Law And Jurisdiction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-governing-law-and-jurisdiction)                  | 14. [Agreement Updates](https://tommichael88.github.io/booktomnyc/ServiceAgreement#14-agreement-updates)                                                   |
-| 5. [Service Providers Status](https://tommichael88.github.io/booktomnyc/ServiceAgreement#5-service-providers-status)                               | 15. [Severability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#15-severability)                                                             |
-| 6. [Hold Harmless Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#6-hold-harmless-clause)                                       | 16. [Emergency Situations](https://tommichael88.github.io/booktomnyc/ServiceAgreement#16-emergency-situations)                                             |
-| 7. [Limitation Of Liability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#7-limitation-of-liability)                                 | 17. [Timeframes](https://tommichael88.github.io/booktomnyc/ServiceAgreement#17-timeframes)                                                                 |
-| 8. [Quality Of Work And Guarantee](https://tommichael88.github.io/booktomnyc/ServiceAgreement#8-quality-of-work-and-guarantee)                     | 18. [Dispute Resolution](https://tommichael88.github.io/booktomnyc/ServiceAgreement#18-dispute-resolution)                                                 |
-| 9. [Fees And Payment](https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-fees-and-payment)                                               | 19. [Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) |
-| 10. [Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-agreement-acceptance-and-payment-terms) | 20. [Privacy Policy](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-privacy-policy)                                                         |
-|                                                                                                                                                    | 21. [Disclaimer](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-disclaimer)                                                                 |
-|                                                                                                                                                    |                                                                                                                                                            |
-| *Annex A* **Sections A-C**                                                                                                                         | *Annex A* **Sections D-F**                                                                                                                                 |
-| A. [Minor Home Repairs](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs)                                           | D. [Electrical Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help)                                                         |
-| B. [Wall Mounting](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting)                                                     | E. [Furniture Fixes & Assembly](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes--assembly)                                   |
-| C. [Computer Tech Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services)                                   | F. [Plumbing Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help)                                                             |
+| Sections 1-10 | Sections 11-21 |
+| --- | --- |
+| 1. [Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction) | 11. [Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-payment-as-acceptance-of-terms) |
+| 2. [Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions) | 12. [Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-refusal-to-pay) |
+| 3. [Scope Of Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services) | 13. [Clients Responsibilities](https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-client-responsibilities) |
+| 4. [Governing Law And Jurisdiction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-governing-law-and-jurisdiction) | 14. [Agreement Updates](https://tommichael88.github.io/booktomnyc/ServiceAgreement#14-agreement-updates) |
+| 5. [Service Providers Status](https://tommichael88.github.io/booktomnyc/ServiceAgreement#5-service-providers-status) | 15. [Severability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#15-severability) |
+| 6. [Hold Harmless Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#6-hold-harmless-clause) | 16. [Emergency Situations](https://tommichael88.github.io/booktomnyc/ServiceAgreement#16-emergency-situations) |
+| 7. [Limitation Of Liability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#7-limitation-of-liability) | 17. [Timeframes](https://tommichael88.github.io/booktomnyc/ServiceAgreement#17-timeframes) |
+| 8. [Quality Of Work And Guarantee](https://tommichael88.github.io/booktomnyc/ServiceAgreement#8-quality-of-work-and-guarantee) | 18. [Dispute Resolution](https://tommichael88.github.io/booktomnyc/ServiceAgreement#18-dispute-resolution) |
+| 9. [Fees And Payment](https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-fees-and-payment) | 19. [Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) |
+| 10. [Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-agreement-acceptance-and-payment-terms) | 20. [Privacy Policy](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-privacy-policy) |
+|     | 21. [Disclaimer](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-disclaimer) |
+|     |     |
+| *Annex A* **Sections A-C** | *Annex A* **Sections D-F** |
+| A. [Minor Home Repairs](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs) | D. [Electrical Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
+| B. [Wall Mounting](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting) | E. [Furniture Fixes & Assembly](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes-&-assembly) |
+| C. [Computer Tech Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services) | F. [Plumbing Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help) |
 
 ---
 
@@ -60,7 +60,7 @@
 
 **Terms of Agreement**: By affirming this Agreement, the Client acknowledges having read, understood, and agreed to the terms and conditions as detailed in the online document.
 
-By accessing and using the services provided by the Service Provider either through directly contacting Service Provider independent of any third party platform or match-maker referal companies or by scheduling service through [Setmore Appointments](https://booktom.setmore.com), the parties agree to the terms and conditions outlined in the Agreement. The Client affirms that they possess full and comprehensive liability insurance coverage, which they also confirm extends to anyone affected by the service they are requesting of the Service Provider. The Service Provider is not required to verify the aforementioned insurance policy  however the Service Provider operates under the assumption that the Client is fully insured and will not accept responsibility for any work if this is not the case where permitted by law.
+By accessing and using the services provided by the Service Provider either through directly contacting Service Provider independent of any third party platform or match-maker referal companies or by scheduling service through [Setmore Appointments](https://booktom.setmore.com), the parties agree to the terms and conditions outlined in the Agreement. The Client affirms that they possess full and comprehensive liability insurance coverage, which they also confirm extends to anyone affected by the service they are requesting of the Service Provider. The Service Provider is not required to verify the aforementioned insurance policy however the Service Provider operates under the assumption that the Client is fully insured and will not accept responsibility for any work if this is not the case where permitted by law.
 
 ## 2. Definitions
 
@@ -82,7 +82,7 @@ This Agreement follows the laws of the State of New York. Legal actions related 
 
 ## 5. Service Providers Status
 
-The Service Provider is not a licensed contractor or tradesperson (e.g., plumber or electrician) and does not claim to be. The Client should not request work requiring such professional status by law. The Service Provider is not obligated to accept tasks needing specialized skills, licensing, insurance, or permits. For work in New York, the Service Provider follows legal handyman standards. If the Client requests non-standard work, Client assumes responsibility for and  accepts all risks resulting from such work as permitted by law. The Client must confirm work requirements and compliance with the law, failing which, is at the Client's risk and legal responsibility.
+The Service Provider is not a licensed contractor or tradesperson (e.g., plumber or electrician) and does not claim to be. The Client should not request work requiring such professional status by law. The Service Provider is not obligated to accept tasks needing specialized skills, licensing, insurance, or permits. For work in New York, the Service Provider follows legal handyman standards. If the Client requests non-standard work, Client assumes responsibility for and accepts all risks resulting from such work as permitted by law. The Client must confirm work requirements and compliance with the law, failing which, is at the Client's risk and legal responsibility.
 
 ## 6. Hold Harmless Clause
 
@@ -134,28 +134,32 @@ If the Client does not agree to any of the terms of this Agreement, they are obl
 ## 13. Clients Responsibilities
 
 - **13-1**: Confirms their legal age and authority for service decisions.
-
+  
 - **13-2**: Secured necessary permissions from property owners or landlords to perform services.
-* **13-3**: Ensures and acknowledges that the services do not require city or state permits and are not legally restricted to professional tradespeople or licensed contractors.
+  
+
+- **13-3**: Ensures and acknowledges that the services do not require city or state permits and are not legally restricted to professional tradespeople or licensed contractors.
+  
+
 - **13-4**: Will ensure that the Service Provider does not perform renovation work.
-
+  
 - **13-5**: Accepts full responsibility for the Service Provider's work, especially in the realm of plumbing services, limited to cosmetic modifications or minor alterations.
-
+  
 - **13-6**: Ensures they have full comprehensive insurance covering potential property damage, injury, or errors and affirms they will handle any and all claims through such policy.
-
+  
 - **13-7**: Commits to inspecting the Service Provider's work and addressing any discovered errors.
-
+  
 - **13-8**: **Communication and Termination**:
   
   - Immediate Communication: The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
-  
+    
   - Opportunity to Correct: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
-  
-  - Termination: The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the service before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination. 
-  
-  - At-Will Relationship: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties. 
-
-- **13-9**: **Dissatisfaction and Obligations**: 
+    
+  - Termination: The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the service before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
+    
+  - At-Will Relationship: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
+    
+- **13-9**: **Dissatisfaction and Obligations**:
   
   In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. In addition:
   
@@ -191,14 +195,14 @@ When the Client leaves feedback, comments, or reviews ("Client Feedback") either
   
   - **Use and Modification**: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback for marketing or promotional purposes.
   - **Platform Independence**: The Service Provider has the right to use Client reviews, comments or feedback on other websites, platforms, or media channels, whether now known or hereafter invented.
-
 - **19-2**: **Waiver of Confidentiality**: By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
+  
 
 ## 20. Privacy Policy
 
 The Parties agree to the terms and conditions as detailed in the [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
 
-The forthcoming Privacy Policy is related to the services offered through the Service Provider. You may review the terms of the entire and complete [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy) by visiting the link referenced or by requesting the policy via email at booktom@icloud.com 
+The forthcoming Privacy Policy is related to the services offered through the Service Provider. You may review the terms of the entire and complete [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy) by visiting the link referenced or by requesting the policy via email at booktom@icloud.com
 
 ```css-extras
 Privacy Policy
@@ -207,7 +211,8 @@ Privacy Policy
 Introduction
 
     Tom Kongerslev offers handyman and computer repair services in New York City and surrounding areas, including New Jersey. This policy outlines the management of personal information when services are booked with Tom Kongerslev, through booktom.nyc, or via third-party referral sites.
-    Third-Party Websites and Services
+    
+Third-Party Websites and Services
 
     Tom Kongerslev utilizes various third-party websites and services. These include, but are not limited to:
 
@@ -223,30 +228,42 @@ Introduction
     Github
 
     Each of these services operates under its own privacy policy, and Tom Kongerslev does not assume responsibility for their data handling practices.
-    Consent and Usage of Information
+
+
+Consent and Usage of Information
 
     By using Tom Kongerslev’s services, clients explicitly agree to the collection, use, and sharing of personal information as detailed in this policy. This applies to service delivery, appointment management, and marketing purposes, including instances where third-party services are utilized.
-    Media and Feedback Ownership
+    
+
+Media and Feedback Ownership
 
     As per Section 22 of the Service Agreement, Tom Kongerslev owns the rights to any client feedback, comments, or reviews, including the right to use, modify, and republish such content.
     Disclosure of Information
 
+
 Personal data is shared under these conditions:
 
-        - As agreed by clients through the use of services and in any and all communication directly with Tom Kongerslev or indirectly via third parties.
-        - For legal purposes or to protect rights.
-        - To facilitate service provision.
+    - As agreed by clients through the use of services and in any and all communication directly with Tom Kongerslev or indirectly via third parties.
+    - For legal purposes or to protect rights.
+    - To facilitate service provision.
+
 
 Data Security and Breach Disclaimer
 
     Tom Kongerslev implements reasonable measures to protect personal data. However, no method of transmission over the Internet or electronic storage is 100% secure.
-    Limitation on Removal Requests
+
+
+Limitation on Removal Requests
 
     Tom Kongerslev does not control third-party platforms and therefore cannot guarantee the execution of removal or opt-out requests for content accessible via these platforms.
-    Data Retention
+
+
+Data Retention
 
     Personal information is retained only for as long as necessary for service provision, legal compliance, and as consented to by the client.
-    Client Rights
+
+
+Client Rights
 
     Clients have the right to:
 
@@ -256,13 +273,18 @@ Data Security and Breach Disclaimer
 
     Requests should be directed to booktom@icloud.com.
 
+
 Policy Updates
 
     This policy may be updated periodically. Significant changes will be communicated to clients through the website or during the booking process.
-    Contact for Queries
+
+
+Contact for Queries
 
     For questions about this policy, contact booktom@icloud.com.
-    Review of Third-Party Policies
+
+
+Review of Third-Party Policies
 
     Clients are advised to review the privacy policies of any third-party websites and services used.
 
@@ -279,17 +301,14 @@ This Disclaimer section is a crucial part of the Service Agreement between the S
   
   - *Damage to Equipment*: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.
   - *Stolen Property*: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.
-
 - **21-B**: **Client Acknowledgement**
   
   - The Client is responsible for backing up any data on devices submitted for repair.
   - The Client accepts the inherent risks of damage during the repair of faulty or damaged hardware.
-
 - **21-C**: **Efforts to Mitigate Risk**
   
   - The Service Provider will take all reasonable precautions to securely store client property during the repair process.
   - In cases of faulty hardware, the Service Provider will endeavor to prevent further damage during the repair.
-
 - **21-D**: **Agreement**
   
   - By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
@@ -302,89 +321,99 @@ The following details the services provided by the Service Provider under each c
 
 Minor Home Repairs refer to a range of small-scale repair services intended to fix or restore various elements of a home to their original condition. This category encompasses services that do not require significant reconstruction or renovation but are essential for the maintenance and upkeep of a residence.
 
-|     | SERVICE NAME                         | DESCRIPTION                                                 | INCLUDES                              | CLIENT MUST PROVIDE                                      |
-| --- | ------------------------------------ | ----------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------- |
-| A-1 | Door Handles & Locks Installation    | Installation of door knobs and locks on interior doors.     | Installation tools and expertise.     | Door hardware (knobs, locks, etc.)                       |
-| A-2 | Hollow Door Repair                   | Repair of damages to interior hollow doors.                 | Patching materials, paint, and tools. | Access to the damaged door.                              |
-| A-3 | Wall Repair - Patch & Paint          | Repair of minor damages to interior walls.                  | Patching materials, paint, and tools. | Access to the damaged wall area.                         |
-| A-4 | Appliances Hourly Service Rate       | Maintenance, repair, or assessment of household appliances. | Diagnostic tools and expertise.       | Appliance for repair and any specific replacement parts. |
-| A-5 | Furniture Repair Hourly Service Rate | Repair of various types of furniture.                       | Repair tools and materials.           | Furniture piece for repair.                              |
- 
+|     | SERVICE NAME | DESCRIPTION | INCLUDES | CLIENT MUST PROVIDE |
+| --- | --- | --- | --- | --- |
+| A-1 | Door Handles & Locks Installation | Installation of door knobs and locks on interior doors. | Installation tools and expertise. | Door hardware (knobs, locks, etc.) |
+| A-2 | Hollow Door Repair | Repair of damages to interior hollow doors. | Patching materials, paint, and tools. | Access to the damaged door. |
+| A-3 | Wall Repair - Patch & Paint | Repair of minor damages to interior walls. | Patching materials, paint, and tools. | Access to the damaged wall area. |
+| A-4 | Appliances Hourly Service Rate | Maintenance, repair, or assessment of household appliances. | Diagnostic tools and expertise. | Appliance for repair and any specific replacement parts. |
+| A-5 | Furniture Repair Hourly Service Rate | Repair of various types of furniture. | Repair tools and materials. | Furniture piece for repair. |
 
-### B. Wall Mounting
+##
+
+## B. Wall Mounting
 
 Wall Mounting services involve securely attaching various objects to walls, such as televisions, shelves, or artwork, to enhance the living or working space.
 
-|     | SERVICE NAME                                     | DESCRIPTION                                              | INCLUDED                                                    | CLIENT MUST PROVIDE               |
-| --- | ------------------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------- |
-| B-1 | Curtains/Drapes Single Rod Installation          | Installation of curtains or drapes using a single rod.   | Installation tools and expertise.                           | Curtains, drapes, and rod.        |
-| B-2 | Frame/Shelf Mounting Hourly Service Rate         | Mounting of frames, shelves, or similar items on walls.  | Mounting hardware, tools, and expertise.                    | Items to be mounted.              |
-| B-3 | TV Mounting (Under 60”) without cable management | Mounting of TVs up to 60 inches without managing cables. | Basic mounting tools and expertise.                         | TV and specific mounting bracket. |
-| B-4 | TV Mounting (Under 60”) + Concealed Cables       | Mounting of TVs up to 60 inches with cables concealed.   | Mounting tools, cable concealment materials, and expertise. | TV, mounting bracket, and cables. |
+|     | SERVICE NAME | DESCRIPTION | INCLUDED | CLIENT MUST PROVIDE |
+| --- | --- | --- | --- | --- |
+| B-1 | Curtains/Drapes Single Rod Installation | Installation of curtains or drapes using a single rod. | Installation tools and expertise. | Curtains, drapes, and rod. |
+| B-2 | Frame/Shelf Mounting Hourly Service Rate | Mounting of frames, shelves, or similar items on walls. | Mounting hardware, tools, and expertise. | Items to be mounted. |
+| B-3 | TV Mounting (Under 60”) without cable management | Mounting of TVs up to 60 inches without managing cables. | Basic mounting tools and expertise. | TV and specific mounting bracket. |
+| B-4 | TV Mounting (Under 60”) + Concealed Cables | Mounting of TVs up to 60 inches with cables concealed. | Mounting tools, cable concealment materials, and expertise. | TV, mounting bracket, and cables. |
 
+###
 
 ### C. Computer Tech Services
 
 Computer Tech Services cover a range of technical support and repair services related to personal computers. This includes software installation, hardware upgrades, virus removal, and general troubleshooting.
 
-|     | SERVICE NAME                        | DESCRIPTION                                                             | INCLUDED                             | CLIENT MUST PROVIDE                                                                        |
-| --- | ----------------------------------- | ----------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------ |
-| C-1 | PC Diagnostic Service               | Comprehensive diagnosis of PC hardware or software issues.              | Diagnostic software and tools.       | PC and any relevant software licenses or credentials.                                      |
-| C-2 | Data Transfer/Data Back-Up          | Secure transfer or backup of data from one device or medium to another. | Data transfer tools and software.    | Source and destination devices or media.                                                   |
-| C-3 | Part Replacement /Upgrade           | Replacement or upgrade of specific PC hardware components.              | Installation tools and expertise.    | PC and replacement or upgrade parts.                                                       |
-| C-4 | Software Install / Update / Removal | Installation, update, or removal of up to four software applications.   | Installation tools and expertise.    | PC and software licenses or installation files.                                            |
-| C-5 | System Restore                      | Restoration of PC’s operating system to a previous state.               | Restoration tools and software.      | PC and any relevant software licenses or credentials.                                      |
-| C-6 | Virus / Malware Removal             | Identification and removal of malicious software from a PC.             | Antivirus and malware removal tools. | PC Guarantee against future infections, data recovery from ransomware attacks for 30 days. |
+|     | SERVICE NAME | DESCRIPTION | INCLUDED | CLIENT MUST PROVIDE |
+| --- | --- | --- | --- | --- |
+| C-1 | PC Diagnostic Service | Comprehensive diagnosis of PC hardware or software issues. | Diagnostic software and tools. | PC and any relevant software licenses or credentials. |
+| C-2 | Data Transfer/Data Back-Up | Secure transfer or backup of data from one device or medium to another. | Data transfer tools and software. | Source and destination devices or media. |
+| C-3 | Part Replacement /Upgrade | Replacement or upgrade of specific PC hardware components. | Installation tools and expertise. | PC and replacement or upgrade parts. |
+| C-4 | Software Install / Update / Removal | Installation, update, or removal of up to four software applications. | Installation tools and expertise. | PC and software licenses or installation files. |
+| C-5 | System Restore | Restoration of PC’s operating system to a previous state. | Restoration tools and software. | PC and any relevant software licenses or credentials. |
+| C-6 | Virus / Malware Removal | Identification and removal of malicious software from a PC. | Antivirus and malware removal tools. | PC Guarantee against future infections, data recovery from ransomware attacks for 30 days. |
 
+##
 
-### D. Electrical Help
+## D. Electrical Help
 
 Electrical help services are provided under the direct supervision or instruction of the Client. These services involve assisting with minor electrical tasks such as changing light fixtures or replacing outlets. The Service Provider is in a helping role, thereby following direction or instructions from the Client, not hired to lead or make decisions independently.
 
-|     | SERVICE NAME       | DESCRIPTION                                           | INCLUDED                              | CLIENT MUST PROVIDE                                   |
-| --- | ------------------ | ----------------------------------------------------- | ------------------------------------- | ----------------------------------------------------- |
+|     | SERVICE NAME | DESCRIPTION | INCLUDED | CLIENT MUST PROVIDE |
+| --- | --- | --- | --- | --- |
 | D-1 | Light Fixture Swap | Replacement of existing light fixtures with new ones. | Basic electrical tools and expertise. | New light fixture and any specific mounting hardware. |
 
+##
 
-### E. Furniture Fixes & Assembly
+## E. Furniture Fixes & Assembly
 
 Furniture fixes and assembly services encompass the assembly of various 
 types of furniture items. The Service Provider's role is to follow the 
 manufacturer's assembly instructions to ensure the stability and 
 functionality of the furniture. This service includes the use of 
-assembly tools and expertise. 
+assembly tools and expertise.
 
-|     | SERVICE NAME                           | DESCRIPTION                             | INCLUDED                      | CLIENT MUST PROVIDE                                             |
-| --- | -------------------------------------- | --------------------------------------- | ----------------------------- | --------------------------------------------------------------- |
+|     | SERVICE NAME | DESCRIPTION | INCLUDED | CLIENT MUST PROVIDE |
+| --- | --- | --- | --- | --- |
 | E-1 | Furniture Assembly Hourly Service Rate | Assembly of various types of furniture. | Assembly tools and expertise. | Furniture in its original packaging with assembly instructions. |
-| E-2 | Furniture Repair Hourly Service Rate   | Repair of various types of furniture.   | Repair tools and materials.   | Furniture piece for repair.                                     |
+| E-2 | Furniture Repair Hourly Service Rate | Repair of various types of furniture. | Repair tools and materials. | Furniture piece for repair. |
 
+###
 
 ### F. Plumbing Help
 
 Plumbing help services are offered under the direct supervision or instruction of the Client. This means the Service Provider assists with plumbing tasks that the Client has either started or plans to undertake. The Service Provider’s role is to support and assist, not to lead the project or make decisions without the Client’s input or direction.
 
-|     | SERVICE NAME                      | DESCRIPTION                                                                  | INCLUDED                            | CLIENT MUST PROVIDE                             |
-| --- | --------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------- |
-| F-1 | Bidet Accessory Install/Removal   | Installation or removal of bidet attachments on toilets.                     | Installation tools and expertise.   | Bidet attachment and toilet.                    |
-| F-2 | Fixture Swap (Cosmetic)           | Cosmetic replacement of plumbing fixtures like sink faucets or shower heads. | Basic plumbing tools and knowledge. | New fixture and any specific mounting hardware. |
-| F-3 | Leak Under Sink Repair            | Repair of minor leaks occurring under sinks.                                 | Repair tools and replacement parts. | Access to the sink and plumbing.                |
-| F-4 | Unclog Sink/Shower/Toilet (Minor) | Removal of minor clogs from sinks, showers, or toilets.                      | Clog removal tools and chemicals.   | Access to the clogged fixture.                  |
+|     | SERVICE NAME | DESCRIPTION | INCLUDED | CLIENT MUST PROVIDE |
+| --- | --- | --- | --- | --- |
+| F-1 | Bidet Accessory Install/Removal | Installation or removal of bidet attachments on toilets. | Installation tools and expertise. | Bidet attachment and toilet. |
+| F-2 | Fixture Swap (Cosmetic) | Cosmetic replacement of plumbing fixtures like sink faucets or shower heads. | Basic plumbing tools and knowledge. | New fixture and any specific mounting hardware. |
+| F-3 | Leak Under Sink Repair | Repair of minor leaks occurring under sinks. | Repair tools and replacement parts. | Access to the sink and plumbing. |
+| F-4 | Unclog Sink/Shower/Toilet (Minor) | Removal of minor clogs from sinks, showers, or toilets. | Clog removal tools and chemicals. | Access to the clogged fixture. |
 
-***
+---
 
 ```
 LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST
 ```
+
+[Link to Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
+
+<!DOCTYPE html>
 <html>
-<body>
+<head></head>
+  <body>
   <div class="print-icon-container">
     <div>
       <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
       <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" style="color:#6D9F00;text-decoration:none;" class="printfriendly" onclick="window.print();return false;" title="Print Page">
         <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/>
-      </a>
+    <iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe>
+              </a>
     </div>
-  </div>
-  </body>
+</body>
 </html>
