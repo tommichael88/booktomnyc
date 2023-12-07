@@ -1,7 +1,8 @@
 # SERVICE AGREEMENT
-#
 
-> **<u>Legal Disclaimer</u>**: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.* 
+
+>
+###### **<u>Legal Disclaimer</u>**: *The forthcoming "Service Agreement" constitutes a legally binding contract and is not legal advice or guidance. For personalized legal assistance, consult an attorney or legal professional.* 
 ---
 >
 >
