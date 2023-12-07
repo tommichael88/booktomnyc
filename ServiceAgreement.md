@@ -292,6 +292,14 @@ Disclaimer
 
     This document provides an overview of Tom Kongerslev’s data handling practices and is not legal advice.
 ```
+<html>
+<head></head>
+  <body>   
+<iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe>
+            </a>
+    </div>
+</body>
+</html>
 
 ## 21. Disclaimer
 
@@ -401,9 +409,6 @@ Plumbing help services are offered under the direct supervision or instruction o
 LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST
 ```
 
-[Link to Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy)
-
-<!DOCTYPE html>
 <html>
 <head></head>
   <body>
@@ -412,7 +417,6 @@ LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST
       <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
       <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" style="color:#6D9F00;text-decoration:none;" class="printfriendly" onclick="window.print();return false;" title="Print Page">
         <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/>
-    <iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe>
               </a>
     </div>
 </body>
