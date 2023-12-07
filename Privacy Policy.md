@@ -78,6 +78,7 @@ This document provides an overview of Tom Kongerslev's data handling practices a
 LAST UPDATED: Thursday, December 7, 2023 04:42AM EST
 ```
 
+
 <html>
 <head></head>
   <body>
@@ -85,3 +86,5 @@ LAST UPDATED: Thursday, December 7, 2023 04:42AM EST
     <div>
       <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
       <a href="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" style="color:#6D9F00;text-decoration:none;" class="printfriendly" onclick="window.print();return false;" title="Print Page">
+        <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/></a></div></div></body></html>
+
