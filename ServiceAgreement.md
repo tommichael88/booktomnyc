@@ -296,8 +296,6 @@ Disclaimer
 <head></head>
   <body>   
 <iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe>
-            </a>
-    </div>
 </body>
 </html>
 
@@ -419,5 +417,3 @@ LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST
         <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/>
               </a>
     </div>
-</body>
-</html>
