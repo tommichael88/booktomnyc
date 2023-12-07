@@ -294,7 +294,7 @@ Disclaimer
 ```
 <html>
 <head></head>
-<body><iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="800" height="600" frameborder="10" scrolling="auto"></iframe>
+<body><iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy#privacy-policy" width="1000" height="1000" frameborder="5" scrolling="auto"></iframe>
 </body>
 </html>
 
