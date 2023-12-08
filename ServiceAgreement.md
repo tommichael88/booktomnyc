@@ -78,7 +78,7 @@ By accessing and using the services provided by the Service Provider either thro
 
 ## 3. Scope of Services
 
-The Service Provider will provide the Client with the services as mutually agreed upon in writing and/or will have such details available on the Service Provider's website. The detailed scope of each most common service is provided in Annex A.
+The Service Provider will provide the Client with the services as mutually agreed upon in writing and/or will have such details available on the Service Provider's website. The detailed scope of each most common service is provided in [Annex A](https://tommichael88.github.io/booktomnyc/ServiceAgreement#annex-a)
 
 ## 4. Governing Law and Jurisdiction
 
