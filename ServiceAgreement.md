@@ -1,4 +1,4 @@
-# ＳＥＲＶＩＣＥ ＡＧＲＥＥＭＥＮＴ
+# SERVICE AGREEMENT
 
 
 `Legal Disclaimer: The forthcoming "Service Agreement" constitutes a legally binding contract, not legal advice.`
