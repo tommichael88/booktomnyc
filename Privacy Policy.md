@@ -1,13 +1,10 @@
 # Privacy Policy
 
 ## Introduction
-
-Tom Kongerslev offers handyman and computer repair services in New York City and surrounding areas, including New Jersey. This policy outlines the management of personal information when services are booked with Tom Kongerslev, through booktom.nyc, or via third-party referral sites.
+As a client, you are subject to Tom Kongerslev's privacy practices for his handyman and computer repair services in New York City and surrounding areas, including New Jersey, through booktom.nyc or third-party referral sites.
 
 ## Third-Party Websites and Services
-
-Tom Kongerslev utilizes various third-party websites and services. These include, but are not limited to:
-
+Tom Kongerslev utilizes third-party websites and services, including:
 - [Setmore](https://www.setmore.com/#privacy-policy)
 - [Google](https://policies.google.com/privacy?hl=en-US)
 - [PythonAnywhere](https://www.pythonanywhere.com/privacy_v2/)
@@ -19,72 +16,44 @@ Tom Kongerslev utilizes various third-party websites and services. These include
 - [Cloudflare](https://www.cloudflare.com/privacypolicy/)
 - [Github](https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement)
 
-Each of these services operates under its own privacy policy, and Tom Kongerslev does not assume responsibility for their data handling practices.
+Each operates under its own privacy policy, and Tom Kongerslev does not assume responsibility for their data handling practices.
 
 ## Consent and Usage of Information
-
-By using Tom Kongerslev's services, clients explicitly agree to the collection, use, and sharing of personal information as detailed in this policy. This applies to service delivery, appointment management, and marketing purposes, including instances where third-party services are utilized.
+By using Tom Kongerslev's services, you agree to the collection, use, and sharing of personal information as detailed in this policy, for service delivery, appointment management, and marketing purposes.
 
 ## Media and Feedback Ownership
-
-As per [Section 19](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) of the Service Agreement, Tom Kongerslev owns the rights to any client feedback, comments, or reviews, including the right to use, modify, and republish such content.
+Per [Section 19 of the Service Agreement](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership), Tom Kongerslev owns the rights to any client feedback, comments, or reviews.
 
 ## Disclosure of Information
-
-Personal data is shared under these conditions:
-
-- As agreed by clients through the use of services and in any and all communication directly with Tom Kongerslev or indirectly via third parties.
+Your personal data is shared under these conditions:
+- As agreed by you through the use of services and in communication with Tom Kongerslev or indirectly via third parties.
 - For legal purposes or to protect rights.
 - To facilitate service provision.
 
 ## Data Security and Breach Disclaimer
-
-Tom Kongerslev implements reasonable measures to protect personal data. However, no method of transmission over the Internet or electronic storage is 100% secure.
+Tom Kongerslev implements reasonable measures to protect personal data. However, no method is 100% secure.
 
 ## Limitation on Removal Requests
-
-Tom Kongerslev does not control third-party platforms and therefore cannot guarantee the execution of removal or opt-out requests for content accessible via these platforms.
+Tom Kongerslev cannot guarantee the execution of removal or opt-out requests for content on third-party platforms.
 
 ## Data Retention
+Your personal information is retained as necessary for service provision, legal compliance, and as consented.
 
-Personal information is retained only for as long as necessary for service provision, legal compliance, and as consented to by the client.
-## Client Rights
-
-Clients have the right to:
-
-    Request access to their personal data.
-    Correct any inaccuracies in their data.
-    Request deletion of their data.
-
-Requests should be directed to booktom@icloud.com.
+## Your Rights
+You have the right to access, correct, or request deletion of your data. Contact booktom@icloud.com for requests.
 
 ## Policy Updates
-
-This policy may be updated periodically. Significant changes will be communicated to clients through the website or during the booking process.
+This policy may be updated periodically. Significant changes will be communicated through the website or during booking.
 
 ## Contact for Queries
-
-For questions about this policy, contact booktom@icloud.com.
+For questions, contact booktom@icloud.com.
 
 ## Review of Third-Party Policies
-
-Clients are advised to review the privacy policies of any third-party websites and services used.
+You are advised to review third-party privacy policies.
 
 ## Disclaimer
+This document overviews Tom Kongerslev's data handling practices and is not legal advice.
 
-This document provides an overview of Tom Kongerslev's data handling practices and is not legal advice.
-
-
-`LAST UPDATED: Thursday, December 7, 2023 04:42AM EST`
-
-
-<!DOC type html>
-<html>
-<head></head>
-  <body>
-  <div class="print-icon-container">
-    <div>
-      <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
-      <a href="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" style="color:#6D9F00;text-decoration:none;" class="printfriendly" onclick="window.print();return false;" title="Print Page">
-        <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/></a></div></div></body></html>
+---
+`LAST UPDATED: Saturday, December 9, 2023 11:30AM EST`
 
