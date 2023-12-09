@@ -84,3 +84,16 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
 ---
 `LAST UPDATED: Saturday, December 9, 2023 11:30AM EST`
 
+<html>
+  <body>
+    <input value='Print' type='button' onclick='handlePrint()'/>
+    <script type="text/javascript">
+      const handlePrint = () => {
+        var actContents = document.body.innerHTML;
+        document.body.innerHTML = actContents;
+        window.print();
+      }
+    </script>
+  </body>
+</html>
+
