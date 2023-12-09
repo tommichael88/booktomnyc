@@ -304,16 +304,18 @@ Plumbing help services are offered under the direct supervision or instruction o
 
 `LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST`
 
-<!Doc type html>
+<!DOCTYPE html>
 <html>
   <head></head>
-  <body><input value='Print' type='button' onclick='handlePrint()' />
-      <script><script type="text/javascript">
-         const handlePrint = () => {
-            var actContents = document.body.innerHTML;
-            document.body.innerHTML = actContents;
-            window.print();
-         }
-      </script>
-   </body>
+  <body>
+    <input value='Print' type='button' onclick='handlePrint()' />
+    <script type="text/javascript">
+      const handlePrint = () => {
+        var actContents = document.body.innerHTML;
+        document.body.innerHTML = actContents;
+        window.print();
+      }
+    </script>
+  </body>
 </html>
+
