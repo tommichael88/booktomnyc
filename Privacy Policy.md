@@ -81,9 +81,11 @@ You are advised to review third-party privacy policies.
 This document overviews Tom Kongerslev's data handling practices and is not legal advice.
 
 
----
 `LAST UPDATED: Saturday, December 9, 2023 11:30AM EST`
 
+---
+
+<!Doc type html>
 <html>
   <body>
     <input value='Print' type='button' onclick='handlePrint()'/>
