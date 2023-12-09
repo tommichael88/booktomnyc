@@ -1,11 +1,21 @@
 # SERVICE AGREEMENT
 
-  <input value='Print' type='button' onclick='handlePrint()' />
-    
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <input value='Print' type='button' onclick='handlePrint()' />
+    <script type="text/javascript">
+      const handlePrint = () => {
+        var actContents = document.body.innerHTML;
+        document.body.innerHTML = actContents;
+        window.print();
+      }
+    </script>
+  </body>
+</html>
 
 `Legal Disclaimer: The forthcoming "Service Agreement" constitutes a legally binding contract, not legal advice.`
-
-
 >
 >
 >
