@@ -191,6 +191,7 @@ The Parties agree to the terms and conditions as detailed in the [Privacy Policy
 The forthcoming Privacy Policy is related to the services offered through the Service Provider. You may review the terms of the entire and complete [Privacy Policy](https://tommichael88.github.io/booktomnyc/Privacy%20Policy) by visiting the link referenced or by requesting the policy via email at booktom@icloud.com
 
 <html>
+  <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
   <body>
     <iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="380" height="1000" frameborder="8" scrolling="auto" style="border: 4px solid #ff0000;"></iframe>
   </body>
