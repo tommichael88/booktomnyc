@@ -1,11 +1,10 @@
+# Service Agreement 
+
 <html>
   <body>
     <input value='Print' type='button' onclick='handlePrint()' />
   </body>
 </html>
-
-# Service Agreement 
-
                               
 `Legal Disclaimer: The forthcoming "Service Agreement" constitutes a legally binding contract, not legal advice.`
 
