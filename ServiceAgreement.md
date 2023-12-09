@@ -301,10 +301,8 @@ Plumbing help services are offered under the direct supervision or instruction o
 
 
 `LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST`
-<!DOC type html>
-<html>
-<head></head>
-  <body>
+
+
   <div class="print-icon-container">
     <div>
       <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
