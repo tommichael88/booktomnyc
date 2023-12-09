@@ -74,11 +74,11 @@ Clients are advised to review the privacy policies of any third-party websites a
 
 This document provides an overview of Tom Kongerslev's data handling practices and is not legal advice.
 
-```
-LAST UPDATED: Thursday, December 7, 2023 04:42AM EST
-```
+
+`LAST UPDATED: Thursday, December 7, 2023 04:42AM EST`
 
 
+<!DOC type html>
 <html>
 <head></head>
   <body>
