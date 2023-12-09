@@ -1,4 +1,4 @@
-# SERVICE AGREEMENT
+# Service Agreement
 ---
 <html>
   <body>
