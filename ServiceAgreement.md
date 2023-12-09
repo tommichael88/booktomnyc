@@ -196,7 +196,7 @@ The forthcoming Privacy Policy is related to the services offered through the Se
 <html>
   <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
   <body>
-    <iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="380" height="1000" frameborder="8" scrolling="auto" style="border: 4px solid #ff0000;"></iframe>
+    <iframe src="https://tommichael88.github.io/booktomnyc/Privacy%20Policy" width="380" height="1000" frameborder="8" scrolling="auto" style="border: 4px solid #008080;"></iframe>
   </body>
 </html>
 
