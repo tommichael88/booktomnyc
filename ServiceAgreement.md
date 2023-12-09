@@ -1,10 +1,14 @@
-# Service Agreement
----
+# Service Agreement 
+
                               
 `Legal Disclaimer: The forthcoming "Service Agreement" constitutes a legally binding contract, not legal advice.`
->
->
->
+
+<html>
+  <body>
+    <input value='Print' type='button' onclick='handlePrint()' />
+  </body>
+</html>
+
 >| **SERVICE PROVIDER** |
 >| --- |
 >| **Name:** Tom Kongerslev |
