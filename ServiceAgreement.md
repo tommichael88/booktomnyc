@@ -1,5 +1,7 @@
 # SERVICE AGREEMENT
 
+  <input value='Print' type='button' onclick='handlePrint()' />
+    
 
 `Legal Disclaimer: The forthcoming "Service Agreement" constitutes a legally binding contract, not legal advice.`
 
@@ -302,10 +304,16 @@ Plumbing help services are offered under the direct supervision or instruction o
 
 `LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST`
 
-<!DOC type html>
-<body>
-  <div class="print-icon-container">
-    <div>
-      <printfriendly-options style="display:none;" data-content-features="disableClickToDel=1;hideImages=0;imageDisplayStyle=block;disablePDF=1;disableEmail=1;disablePrint=0;encodeImages=0;showHiddenContent=0;"></printfriendly-options>
-      <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" style="color:#6D9F00;text-decoration:none;" class="printfriendly" onclick="window.print();return false;" title="Print Page">
-        <img style="border:none;-webkit-box-shadow:none;box-shadow:none;" src="https://cdn.printfriendly.com/buttons/new/print-energy-blue.svg" alt="Print Page"/></a></div></div></body></html>
+<!Doc type html>
+<html>
+  <head></head>
+  <body><input value='Print' type='button' onclick='handlePrint()' />
+      <script><script type="text/javascript">
+         const handlePrint = () => {
+            var actContents = document.body.innerHTML;
+            document.body.innerHTML = actContents;
+            window.print();
+         }
+      </script>
+   </body>
+</html>
