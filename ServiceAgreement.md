@@ -1,4 +1,5 @@
 # Service Agreement 
+---
 
 <html>
   <body>
@@ -6,22 +7,22 @@
   </body>
 </html>
                             
-`By entering into the 'Service Agreement,' you are agreeing to be bound by its terms. This document is not legal advice.`
+`By entering into the forthcoming 'Service Agreement,' you are agreeing to be bound by its terms. The Service Agreement is not legal advice.`
 
->| **SERVICE PROVIDER** |
->| --- |
->| **Name:** Tom Kongerslev |
->| **Email:** booktom@icloud.com |
->| **Phone:** [929-256-3252](TEL:+19292563252) |
->| **Websites:** [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
->
->| **CLIENT** |
->| --- |
->| Details provided during booking process |
->
->| **DATE** |
->| --- |
->| Effective immediately upon booking |
+| **SERVICE PROVIDER** |
+| --- |
+| **Name:** Tom Kongerslev |
+| **Email:** booktom@icloud.com |
+| **Phone:** [929-256-3252](TEL:+19292563252) |
+| **Websites:** [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
+
+| **CLIENT** |
+| --- |
+| Details provided during booking process |
+
+| **DATE** |
+| --- |
+| Effective immediately upon booking |
 
 ---
 
@@ -303,7 +304,7 @@ Plumbing help services are offered under the direct supervision or instruction o
 ---
 
 
-`LAST UPDATED: Sunday, December 10, 2023 04:30AM EST`
+`LAST UPDATED: Sunday, December 10, 2023 04:35AM EST`
 
 --- 
 
