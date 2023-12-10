@@ -149,12 +149,12 @@ If the Client does not agree to any of the terms of this Agreement, they are obl
 - **13-5. Responsibility for Work:** The Client accepts full responsibility for the work performed by the Service Provider, particularly regarding plumbing services limited to cosmetic modifications or minor alterations.
 - **13-6. Comprehensive Insurance:** The Client attests that they maintain a comprehensive insurance policy covering all potential property damage, injury, or errors arising from the services rendered. The Client further affirms they will handle any and all claims through this insurance policy.
 - **13-7. Inspection and Error Correction:** The Client is committed to inspecting the Service Provider's work upon completion and addressing any discovered errors promptly.
-- **13.8. Communication and Termination:**
-  - **Immediate Communication:** The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
-  - **Opportunity to Correct:** Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
-  - **Termination:** The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the service before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
-  - **At-Will Relationship:** Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
-- **13.9. Dissatisfaction and Obligations:** In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. In addition:
+- **13-8. Communication and Termination:**
+  - *Immediate Communication:* The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
+  - *Opportunity to Correct:* Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
+  - *Termination:* The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the service before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
+  - *At-Will Relationship:* Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
+- **13-9. Dissatisfaction and Obligations:** In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. In addition:
   - The Client's dissatisfaction or any problems arising from the services shall not absolve the Client of their obligations under this Agreement. The Client is still responsible for fulfilling all their duties and commitments as outlined in Sections 13-1 through 13-8, regardless of any disputes or concerns related to the services rendered. Failure to meet these responsibilities shall not release the Client from any liability or obligations under this Agreement.
 
 ## 14. Agreement Updates
@@ -183,10 +183,10 @@ The Service Provider will strive to complete services within agreed timeframes a
 
 When the Client leaves feedback, comments, or reviews ("Client Feedback") either in response to a solicitation by the Service Provider or unsolicited but in a publicly accessible manner, the Service Provider shall own 100% of the rights to the written text of such Client Feedback in its entirety.
 
-- **19-1**: **Rights and Permissions**
-          - **Use and Modification**: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback (without changing any of the specific words or statements) for marketing or promotional purposes.
-          - **Platform Independence**: The Service Provider has the right to use Client reviews, comments or feedback on other websites, platforms, or media channels, whether now known or hereafter invented.
-- **19-2**: **Waiver of Confidentiality**: By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
+- **19-1. Rights and Permissions**
+  - *Use and Modification*: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback (without changing any of the specific words or statements) for marketing or promotional purposes.
+  - *Platform Independence*: The Service Provider has the right to use Client reviews, comments or feedback on other websites, platforms, or media channels, whether now known or hereafter invented.
+- **19-2. Waiver of Confidentiality**: By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.
   
 
 ## 20. Privacy Policy
@@ -205,18 +205,18 @@ The forthcoming Privacy Policy is related to the services offered through the Se
 
 ## 21. Disclaimer
 
-This Disclaimer section is a crucial part of the Service Agreement between the Service Provider (Tom Kongerslev) and the Client. It outlines the limitations of liability and responsibilities in the event of certain outcomes during the repair or service process.
-- **21-A**: **Limitations of Liability**
-            - *Damage to Equipment*: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.
-            - *Stolen Property*: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.
-- **21-B**: **Client Acknowledgement**
-            - The Client is responsible for backing up any data on devices submitted for repair.
-            - The Client accepts the inherent risks of damage during the repair of faulty or damaged hardware.
-- **21-C**: **Efforts to Mitigate Risk**
-            - The Service Provider will take all reasonable precautions to securely store client property during the repair process.
-            - In cases of faulty hardware, the Service Provider will endeavor to prevent further damage during the repair.
-- **21-D**: **Agreement**
-            - By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
+This Disclaimer section is a crucial part of the Service Agreement between the Service Provider and the Client. It outlines the limitations of liability and responsibilities in the event of certain outcomes during the repair or service process.
+- **21-A Limitations of Liability:**
+  - *Damage to Equipment*: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.
+  - *Stolen Property*: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.
+- **21-B Client Acknowledgement:**
+  - The Client is responsible for backing up any data on devices submitted for repair.
+  - The Client accepts the inherent risks of damage during the repair of faulty or damaged hardware.
+- **21-C Efforts to Mitigate Risk:**
+  - The Service Provider will take all reasonable precautions to securely store client property during the repair process.
+  - In cases of faulty hardware, the Service Provider will endeavor to prevent further damage during the repair.
+- **21-D Agreement:**
+  - By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.
 
 
 
@@ -305,7 +305,7 @@ Plumbing help services are offered under the direct supervision or instruction o
 ---
 
 
-`LAST UPDATED: Sunday, December 10, 2023 05:20AM EST`
+`LAST UPDATED: Sunday, December 10, 2023 05:40AM EST`
 
 --- 
 
