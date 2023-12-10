@@ -5,24 +5,25 @@
     <input value='Print' type='button' onclick='handlePrint()' />
   </body>
 </html>
-                              
+                            
 `By entering into the 'Service Agreement,' you are agreeing to be bound by its terms. This document is not legal advice. You may retain a copy for your records. If you have any questons contact an attorney. If you do not agree to all of the terms of the Service Agreement, do not schedule service.`
 
+---
 | **SERVICE PROVIDER** |
 | --- |
 | **Name:** Tom Kongerslev |
 | **Email:** booktom@icloud.com |
 | **Phone:** [929-256-3252](TEL:+19292563252) |
 | **Websites:** [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
->
+
 | **CLIENT** |
 | --- |
 | Details provided during booking process |
->
+
 | **DATE** |
 | --- |
 | Effective immediately upon booking |
->
+
 ---
 >
 >### Table of Contents
