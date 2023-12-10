@@ -9,10 +9,6 @@
                             
 `By entering into the forthcoming 'Service Agreement,' you are agreeing to be bound by its terms. The Service Agreement is not legal advice.`
 
-<html>
-  <body>
-<div style="text-align: center;"></div></body></html>
-
 | **SERVICE PROVIDER** |
 | --- |
 | **Name:** Tom Kongerslev |
@@ -145,20 +141,20 @@ If the Client does not agree to any of the terms of this Agreement, they are obl
 
 ## 13. Clients Responsibilities
 
-- **13-1**: Confirms their legal age and authority for service decisions.
-- **13-2**: Secured necessary permissions from property owners or landlords to perform services.
-- **13-3**: Ensures and acknowledges that the services do not require city or state permits and are not legally restricted to professional tradespeople or licensed contractors.
-- **13-4**: Will ensure that the Service Provider does not perform renovation work.
-- **13-5**: Accepts full responsibility for the Service Provider's work, especially in the realm of plumbing services, limited to cosmetic modifications or minor alterations.
-- **13-6**: Ensures they have full comprehensive insurance covering potential property damage, injury, or errors and affirms they will handle any and all claims through such policy.
-- **13-7**: Commits to inspecting the Service Provider's work and addressing any discovered errors.
-- **13-8**: **Communication and Termination**:
-          - Immediate Communication: The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
-          - Opportunity to Correct: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.  
-          - Termination: The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the service before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
-          - At-Will Relationship: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
-- **13-9**: **Dissatisfaction and Obligations**: In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. In addition:
-          - The Client's dissatisfaction or any problems arising from the services shall not absolve the Client of their obligations under this Agreement. The Client is still responsible for fulfilling all their duties and commitments as outlined in Sections 13-1 through 13-8, regardless of any disputes or concerns related to the services rendered. Failure to meet these responsibilities shall not release the Client from any liability or obligations under this Agreement.
+- **13-1. Legal Age and Authority:** The Client confirms they are of legal age and possess the authority to make decisions regarding the services outlined in this agreement.
+- **13-2. Property Permissions:** The Client has secured all necessary permissions from property owners or landlords to perform the requested services on the designated property.
+- **13-3. Permits and Restrictions:** The Client acknowledges that the requested services do not require city or state permits and are not legally restricted to professional tradespeople or licensed contractors.
+- **13-4. No Renovation Work:** The Client explicitly prohibits the Service Provider from undertaking any renovation work as defined in Appendix A.
+- **13-5. Responsibility for Work:** The Client accepts full responsibility for the work performed by the Service Provider, particularly regarding plumbing services limited to cosmetic modifications or minor alterations.
+- **13-6. Comprehensive Insurance:** The Client attests that they maintain a comprehensive insurance policy covering all potential property damage, injury, or errors arising from the services rendered. The Client further affirms they will handle any and all claims through this insurance policy.
+- **13-7. Inspection and Error Correction:** The Client is committed to inspecting the Service Provider's work upon completion and addressing any discovered errors promptly.
+- **13.8. Communication and Termination:**
+  - **Immediate Communication:** The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.
+  - **Opportunity to Correct:** Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.
+  - **Termination:** The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the service before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination.
+  - **At-Will Relationship:** Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties.
+- **13.9. Dissatisfaction and Obligations:** In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. In addition:
+  - The Client's dissatisfaction or any problems arising from the services shall not absolve the Client of their obligations under this Agreement. The Client is still responsible for fulfilling all their duties and commitments as outlined in Sections 13-1 through 13-8, regardless of any disputes or concerns related to the services rendered. Failure to meet these responsibilities shall not release the Client from any liability or obligations under this Agreement.
 
 ## 14. Agreement Updates
 
@@ -308,7 +304,7 @@ Plumbing help services are offered under the direct supervision or instruction o
 ---
 
 
-`LAST UPDATED: Sunday, December 10, 2023 04:40AM EST`
+`LAST UPDATED: Sunday, December 10, 2023 05:20AM EST`
 
 --- 
 
