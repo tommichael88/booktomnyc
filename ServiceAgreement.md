@@ -9,6 +9,10 @@
                             
 `By entering into the forthcoming 'Service Agreement,' you are agreeing to be bound by its terms. The Service Agreement is not legal advice.`
 
+<html>
+  <body>
+<div style="text-align: center;"></div></body></html>
+
 | **SERVICE PROVIDER** |
 | --- |
 | **Name:** Tom Kongerslev |
