@@ -6,22 +6,22 @@
   </body>
 </html>
                               
-`Legal Disclaimer: The forthcoming "Service Agreement" constitutes a legally binding contract, not legal advice.`
+`By entering into the 'Service Agreement,' you are agreeing to be bound by its terms. This document is not legal advice. You may retain a copy for your records. If you have any questons contact an attorney. If you do not agree to all of the terms of this Agreement, you should not schedule service.`
 
->| **SERVICE PROVIDER** |
->| --- |
->| **Name:** Tom Kongerslev |
->| **Email:** booktom@icloud.com |
->| **Phone:** [929-256-3252](TEL:+19292563252) |
->| **Websites:** [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
+| **SERVICE PROVIDER** |
+| --- |
+| **Name:** Tom Kongerslev |
+| **Email:** booktom@icloud.com |
+| **Phone:** [929-256-3252](TEL:+19292563252) |
+| **Websites:** [booktom.nyc](https://booktom.nyc) / [booktom.setmore.com](https://booktom.setmore.com) |
 >
->| **CLIENT** |
->| --- |
->| Details provided during booking process |
+| **CLIENT** |
+| --- |
+| Details provided during booking process |
 >
->| **DATE** |
->| --- |
->| Effective immediately upon booking |
+| **DATE** |
+| --- |
+| Effective immediately upon booking |
 >
 ---
 >
@@ -50,6 +50,8 @@
 ---
 
 ## 1. Introduction
+
+By entering into the 'Service Agreement,' you are agreeing to be bound by its terms. This document is not legal advice. You may retain a copy for your records. If you have any questons contact an attorney. If you do not agree to all of the terms of this Agreement, you should not schedule service.
 
 **The Service Agreement is not valid for services booked through third-party referral platforms (sometimes known as 'matchmaker' services) for which the Parties are bound by such third-party referral platform's terms of service or contract.**
 
@@ -301,7 +303,7 @@ Plumbing help services are offered under the direct supervision or instruction o
 ---
 
 
-`LAST UPDATED: Wednesday, December 6, 2023 08:30AM EST`
+`LAST UPDATED: Sunday, December 10, 2023 04:20AM EST`
 
 --- 
 
