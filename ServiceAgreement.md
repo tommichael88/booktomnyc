@@ -8,7 +8,7 @@
                             
 `By entering into the 'Service Agreement,' you are agreeing to be bound by its terms. This document is not legal advice. You may retain a copy for your records. If you have any questons contact an attorney. If you do not agree to all of the terms of the Service Agreement, do not schedule service.`
 
----
+
 | **SERVICE PROVIDER** |
 | --- |
 | **Name:** Tom Kongerslev |
@@ -25,7 +25,7 @@
 | Effective immediately upon booking |
 
 ---
->
+
 >### Table of Contents
 >
 > 
