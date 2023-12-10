@@ -26,28 +26,29 @@
 
 ---
 
->### Table of Contents
+>### **Table of Contents**
 >
-> 
->| Sections 1-10 | Sections 11-21 |
->| --- | --- |
->| 1. [Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction) | 11. [Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-payment-as-acceptance-of-terms) |
->| 2. [Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions) | 12. [Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-refusal-to-pay) |
->| 3. [Scope Of Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services) | 13. [Clients Responsibilities](https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-client-responsibilities) |
+>
+>| Sections 1-10                                     | Sections 11-21                                    |
+>| -------------------------------------------------- | ------------------------------------------------- |
+>| 1. [Introduction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction)                    | 11. [Payment As Acceptance Of Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-payment-as-acceptance-of-terms) |
+>| 2. [Definitions](https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions)                      | 12. [Refusal To Pay](https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-refusal-to-pay) |
+>| 3. [Scope Of Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services)          | 13. [Clients Responsibilities](https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-client-responsibilities) |
 >| 4. [Governing Law And Jurisdiction](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-governing-law-and-jurisdiction) | 14. [Agreement Updates](https://tommichael88.github.io/booktomnyc/ServiceAgreement#14-agreement-updates) |
 >| 5. [Service Providers Status](https://tommichael88.github.io/booktomnyc/ServiceAgreement#5-service-providers-status) | 15. [Severability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#15-severability) |
->| 6. [Hold Harmless Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#6-hold-harmless-clause) | 16. [Emergency Situations](https://tommichael88.github.io/booktomnyc/ServiceAgreement#16-emergency-situations) |
+>| 6. [Hold Harmless Clause](https://tommichael88.github.io/booktomnyc/ServiceAgreement#6-hold-harmless-clause)   | 16. [Emergency Situations](https://tommichael88.github.io/booktomnyc/ServiceAgreement#16-emergency-situations) |
 >| 7. [Limitation Of Liability](https://tommichael88.github.io/booktomnyc/ServiceAgreement#7-limitation-of-liability) | 17. [Timeframes](https://tommichael88.github.io/booktomnyc/ServiceAgreement#17-timeframes) |
 >| 8. [Quality Of Work And Guarantee](https://tommichael88.github.io/booktomnyc/ServiceAgreement#8-quality-of-work-and-guarantee) | 18. [Dispute Resolution](https://tommichael88.github.io/booktomnyc/ServiceAgreement#18-dispute-resolution) |
->| 9. [Fees And Payment](https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-fees-and-payment) | 19. [Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) |
+>| 9. [Fees And Payment](https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-fees-and-payment)            | 19. [Media Policy and Client Feedback Ownership](https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership) |
 >| 10. [Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-agreement-acceptance-and-payment-terms) | 20. [Privacy Policy](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-privacy-policy) |
->|     | 21. [Disclaimer](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-disclaimer) |
->|     |     |
->| *Annex A* **Sections A-C** | *Annex A* **Sections D-F** |
->| A. [Minor Home Repairs](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs) | D. [Electrical Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
->| B. [Wall Mounting](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting) | E. [Furniture Fixes & Assembly](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes-&-assembly) |
->| C. [Computer Tech Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services) | F. [Plumbing Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help) |
+>|                                                  | 21. [Disclaimer](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-disclaimer) |
 >
+>|*Annex A* **Sections A-C**                          | *Annex A* **Sections D-F**                          |
+>| -------------------------------------------------- | ------------------------------------------------- |
+>| A. [Minor Home Repairs](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs)       | D. [Electrical Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
+>| B. [Wall Mounting](https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting)                | E. [Furniture Fixes & Assembly](https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes-&-assembly) |
+>| C. [Computer Tech Services](https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services) | F. [Plumbing Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help) |
+
 ---
 
 ## 1. Introduction
