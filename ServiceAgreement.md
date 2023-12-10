@@ -43,6 +43,7 @@
 >| 10. [Agreement Acceptance And Payment Terms](https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-agreement-acceptance-and-payment-terms) | 20. [Privacy Policy](https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-privacy-policy) |
 >|                                                  | 21. [Disclaimer](https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-disclaimer) |
 >
+>
 >|*Annex A* **Sections A-C**                          | *Annex A* **Sections D-F**                          |
 >| -------------------------------------------------- | ------------------------------------------------- |
 >| A. [Minor Home Repairs](https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs)       | D. [Electrical Help](https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help) |
