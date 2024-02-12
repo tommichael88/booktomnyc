@@ -1,3 +1,5 @@
+# Scope of Work
+
 | Service Request Category      | Service                                       | Scope of Work                                                                                                 |
 |-------------------------------|-----------------------------------------------|----------------------------------------------------------------------------------------------------------------|
 | **Minor Home Repairs**        | Door Handles & Locks Installation             | Inspection of the door and hardware provided by the client. Installation of door knob and lock. Testing for proper function and security. |
@@ -9,14 +11,14 @@
 |                               | Frame/Shelf Mounting Hourly Service Rate      | Assessment of wall type and condition. Secure mounting of frames or shelves. Ensuring level and stable installation. |
 |                               | TV Mounting (Under 60") without cable management | Assessment of wall suitability. Secure mounting of TV bracket and TV. Connection of TV to power and input sources. |
 |                               | TV Mounting (Under 60") + Concealed Cables    | Assessment of wall suitability. Secure mounting of TV bracket and TV. Concealment of cables for a clean appearance. |
-| **Computer Tech Services**    | ⭐ PC Diagnostic Service ⭐                    | Comprehensive hardware and software diagnostic tests. Identification of issues and recommendation for solutions. |
+| **Computer Tech Services**    | PC Diagnostic Service                         | Comprehensive hardware and software diagnostic tests. Identification of issues and recommendation for solutions. |
 |                               | Data Transfer / Data Back-Up                  | Backup of existing data to a secure location. Transfer of data to a new device or storage medium. |
 |                               | Part Replacement/Upgrade                      | Identification of faulty or outdated hardware parts. Replacement or upgrade with client-provided or expensed parts. |
 |                               | Software Install/Update/Removal (4)           | Installation, updating, or removal of up to four software applications. Verification of software functionality post-installation or removal. |
 |                               | System Restore                                | Restoration of PC to an earlier version of Windows. Verification of system functionality post-restoration. |
 |                               | Virus/Malware Removal                         | Identification and removal of malicious or bothersome programs. Preservation of the operating system and essential files. |
 | **Electrical Help**           | Light Fixture Swap                            | Assessment of existing light fixture. Replacement with a new light fixture. Testing for proper function and safety. |
-| **Furniture Fixes & Assembly**| Furniture Assembly Hourly Service Rate        | Evaluation of furniture assembly instructions. Assembly of small furniture units. Verification of stability and function. |
+| **Furniture Fixes Assembly**  | Furniture Assembly Hourly Service Rate        | Evaluation of furniture assembly instructions. Assembly of small furniture units. Verification of stability and function. |
 |                               | Furniture Repair Hourly Service Rate          | Evaluation of furniture damage. Repair procedures, including re-gluing, re-staining, or re-upholstering as needed. |
 | **Plumbing Help**             | Bidet Accessory Install/Removal               | Assessment of toilet compatibility. Installation or removal of bidet attachment. Testing for proper function and no leaks. |
 |                               | Fixture Swap (Cosmetic)                       | Identification of existing fixtures. Replacement with new sink faucet, shower head, or other cosmetic fixtures. Testing for proper function and no leaks. |
