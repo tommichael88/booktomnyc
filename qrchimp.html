@@ -45,7 +45,7 @@
       /* Adjust spacing between the line and the text */
     }
     
-    .qrc_button {
+    .qrc_button.active {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -158,8 +158,8 @@
 
 .qrc_button.disabled {
     background-color: transparent; /* Change background color to transparent for the inactive state */
-    cursor: default; /* Use default cursor for inactive state */
-    color: #ccc; /* Change text color to light grey for inactive state */
+    cursor: "no pointer events"; /* Use default cursor for inactive state */
+    color: transparent; /* Change text color to light grey for inactive state */
     display: flex; /* Use flex display */
     justify-content: center; /* Center content horizontally */
     align-items: center; /* Center content vertically */
@@ -174,15 +174,12 @@
 
 
 .qrc_button.active {
-    background-color: #ff3333; /* Change background color to red when active */
-    color: #ffffff; /* Change text color to white */
+   background-color: #ff3333; /* Change background color to red when active */
+   color: #ffffff; /* Change text color to white */
 }
 
 
-.qrc_button:not(.disabled):hover {
-    background-color: #454545ff;
-    color: #ffffff;
-}
+
 
 /* Additional styles for the button text */
 #buttonText {
@@ -298,7 +295,7 @@
 <div class="container">
     <form id="bookingForm" action="https://booktom.setmore.com" method="GET">
       <textarea id="taskDescription" class="input-box" name="task_description" rows="6" placeholder="Describe your task or project details..." oninput="checkInput()"></textarea>
-      <button type="submit" id="submitButton" class="qrc_button.disabled" style="font-size: 20px; padding: 10px;" onclick="submitForm()" disabled>
+      <button type="submit" id="submitButton" class="qrc_button" style="font-size: 20px; padding: 10px;" onclick="submitForm()">
   <span id="buttonText" class="button-text inactive"><span style="white-space: nowrap; overflow: hidden; text-overflow: visible;">★ 𝗕𝗢𝗢𝗞 𝗛𝗘𝗥𝗘 ★ </span>
 </button>
   </form>
@@ -358,51 +355,54 @@
                 <script type="text/javascript" src="//cdn0070.qrcodechimp.com/assets/js/lightbox-plus-jquery.js?v=1706532076c"></script>
                 <script>
 function checkInput() {
-    var taskDescription = document.getElementById("taskDescription").value.trim();
-    var submitButton = document.getElementById("submitButton");
-    var buttonText = document.getElementById("buttonText");
-    if (taskDescription.length > 0) {
-        submitButton.disabled = false;
-        buttonText.textContent = "★ BOOK HERE ★";
-        buttonText.classList.remove("inactive");
-        buttonText.classList.add("active"); // Add active class
-        submitButton.classList.remove("disabled"); // Remove disabled class
-    } else {
-        submitButton.disabled = true;
-        buttonText.textContent = "";
-        buttonText.classList.remove("active"); // Remove active class
-        buttonText.classList.add("inactive");
-        submitButton.classList.add("disabled"); // Add disabled class
-    }
+   var taskDescription = document.getElementById("taskDescription").value.trim();
+   var submitButton = document.getElementById("submitButton");
+   var buttonText = document.getElementById("buttonText");
+
+   if (taskDescription.length > 0) {
+       buttonText.textContent = "★ BOOK HERE ★";
+       submitButton.disabled = false;
+       buttonText.classList.remove("inactive");
+       buttonText.classList.add("active"); // Add active class
+       submitButton.classList.remove("disabled"); // Remove disabled class
+       submitButton.classList.add("active"); // Add active class to the button
+       
+   } else {
+       submitButton.disabled = true;
+       buttonText.textContent = "";
+       buttonText.classList.remove("active"); 
+       buttonText.classList.add("inactive");
+       submitButton.classList.remove("active"); 
+       submitButton.classList.add("disabled"); 
+   }
 }
 
-    function submitForm() {
-      document.getElementById("bookingForm").submit();
-    }
+function submitForm() {
+   document.getElementById("bookingForm").submit();
+}
 
-    // Call checkInput() initially to set the button state
-    checkInput();
+// Call checkInput() initially to set the button state
+checkInput();
 
+// Wait for the DOM content to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+   // Get the loader element
+   var loader = document.querySelector('.qr_page_loader');
+   // Hide the loader once the DOM content has loaded
+   loader.style.display = 'none';
+});
 
-
-                    // Wait for the DOM content to be fully loaded
-                    document.addEventListener('DOMContentLoaded', function() {
-                        // Get the loader element
-                        var loader = document.querySelector('.qr_page_loader');
-                        // Hide the loader once the DOM content has loaded
-                        loader.style.display = 'none';
-                    });
-                    // Add event listener for the button click
-                    document.getElementById("fabButton").addEventListener("click", function() {
-                        // Replace the URL with the one that corresponds to the Contacts section
-                        // Assuming the Contacts section is identified by an anchor tag with id="contacts"
-                        var contactsSection = document.getElementById("contacts");
-                        if (contactsSection) {
-                            contactsSection.scrollIntoView({
-                                behavior: "smooth"
-                            });
-                        }
-                    });
-                </script>
+// Add event listener for the button click
+document.getElementById("fabButton").addEventListener("click", function() {
+   // Replace the URL with the one that corresponds to the Contacts section
+   // Assuming the Contacts section is identified by an anchor tag with id="contacts"
+   var contactsSection = document.getElementById("contacts");
+   if (contactsSection) {
+       contactsSection.scrollIntoView({
+           behavior: "smooth"
+       });
+   }
+});
+</script>
     </body>
 </html>
