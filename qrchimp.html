@@ -156,38 +156,54 @@
 }
 
 
-
-
 .qrc_button.disabled {
-    background-color: #fff; /* Change background color to white for the inactive state */
+    background-color: transparent; /* Change background color to transparent for the inactive state */
     cursor: default; /* Use default cursor for inactive state */
     color: #ccc; /* Change text color to light grey for inactive state */
+    display: flex; /* Use flex display */
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
 }
+
+.qrc_button.disabled:hover {
+    background-color: transparent; /* No hover color change for disabled button */
+    color: #ccc; /* Text color remains light grey */
+}
+
+
+.qrc_button.active {
+    background-color: #ff3333; /* Change background color to red when active */
+    color: #ffffff; /* Change text color to white */
+}
+
 
 .qrc_button:not(.disabled):hover {
     background-color: #454545ff;
     color: #ffffff;
 }
 
-
-/* Adjust font size and style for the button text */
+/* Additional styles for the button text */
 #buttonText {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 20px;
+    display: flex; /* Use flex display */
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
 }
 
 /* Additional styles for the inactive state */
 #buttonText.inactive {
-  font-size: 16px;
-  color: #666; /* Adjust color for inactive state */
-  opacity: 0.6; /* Reduce opacity for visual indication */
+    color: #666; /* Adjust color for inactive state */
+    opacity: 0.6; /* Reduce opacity for visual indication */
 }
 
 /* Decrease opacity of the FAB on hover */
 .fab:hover {
-  opacity: 0.8;
+    opacity: 0.8;
 }
 
     {
@@ -280,11 +296,11 @@
                       </p>
                     </div>
 <div class="container">
-  <form id="bookingForm" action="https://booktom.setmore.com" method="GET">
-    <textarea id="taskDescription" class="input-box" name="task_description" rows="6" placeholder="Describe your task or project details..." oninput="checkInput()"></textarea>
-    <button type="submit" id="submitButton" class="qrc_button disabled" style="font-size: 20px; padding: 10px;" onclick="submitForm()" disabled>
-      <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">★ 𝗕𝗢𝗢𝗞 𝗛𝗘𝗥𝗘 ★ </span>
-    </button>
+    <form id="bookingForm" action="https://booktom.setmore.com" method="GET">
+      <textarea id="taskDescription" class="input-box" name="task_description" rows="6" placeholder="Describe your task or project details..." oninput="checkInput()"></textarea>
+      <button type="submit" id="submitButton" class="qrc_button.disabled" style="font-size: 20px; padding: 10px;" onclick="submitForm()" disabled>
+  <span id="buttonText" class="button-text inactive"><span style="white-space: nowrap; overflow: hidden; text-overflow: visible;">★ 𝗕𝗢𝗢𝗞 𝗛𝗘𝗥𝗘 ★ </span>
+</button>
   </form>
 </div>
 </div>
@@ -341,7 +357,7 @@
                 <script type="text/javascript" src="//cdn0070.qrcodechimp.com/view/common/js/fileSaver.js?v=1706532076c"></script>
                 <script type="text/javascript" src="//cdn0070.qrcodechimp.com/assets/js/lightbox-plus-jquery.js?v=1706532076c"></script>
                 <script>
-                function checkInput() {
+function checkInput() {
     var taskDescription = document.getElementById("taskDescription").value.trim();
     var submitButton = document.getElementById("submitButton");
     var buttonText = document.getElementById("buttonText");
@@ -349,19 +365,23 @@
         submitButton.disabled = false;
         buttonText.textContent = "★ BOOK HERE ★";
         buttonText.classList.remove("inactive");
+        buttonText.classList.add("active"); // Add active class
+        submitButton.classList.remove("disabled"); // Remove disabled class
     } else {
         submitButton.disabled = true;
-        buttonText.textContent = "BOOK HERE";
+        buttonText.textContent = "";
+        buttonText.classList.remove("active"); // Remove active class
         buttonText.classList.add("inactive");
+        submitButton.classList.add("disabled"); // Add disabled class
     }
 }
 
-function submitForm() {
-    document.getElementById("bookingForm").submit();
-}
+    function submitForm() {
+      document.getElementById("bookingForm").submit();
+    }
 
-// Call checkInput() initially to set the button state
-checkInput();
+    // Call checkInput() initially to set the button state
+    checkInput();
 
 
 
