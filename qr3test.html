@@ -183,8 +183,6 @@
 }
 
 
-
-
 /* Additional styles for the button text */
 #buttonText {
    white-space: nowrap;
@@ -299,7 +297,11 @@
             <span><label><input type="checkbox" name="services" value="Minor Home Repairs" onchange="checkService()"> Minor Home Repairs&nbsp;&nbsp;</label></span><span><label><input type="checkbox" name="services" value="Furniture Fixes & Assembly" onchange="checkService()">Furniture Fixes & Assembly&nbsp;&nbsp;</label></span><br><span><label><input type="checkbox" name="services" value="Wall Mounting" onchange="checkService()"> Wall Mounting&nbsp;&nbsp;</label></span>
             <span><label><input type="checkbox" name="services" value="Electrical Help" onchange="checkService()">Electrical Help&nbsp;&nbsp;</label><br>
             <span><label><input type="checkbox" name="services" value="Plumbing Help" onchange="checkService()"> Plumbing Help&nbsp;&nbsp;</label></span>
-            <span><label><input type="checkbox" name="services" value="Computer Tech Services" onchange="checkService()">Computer Tech Services&nbsp;&nbsp;</label></p></span></div><span><div id="chevron" style="color: red; transform: rotate(0deg); transition: transform 0.3s ease-in-out;">&nbsp;&nbsp;<b>&gt;</b> <i><font><font color="gray" font size="smaller">Check All That Apply</i></div></font></span><br>
+            <span><label><input type="checkbox" name="services" value="Computer Tech Services" onchange="checkService()">Computer Tech Services&nbsp;&nbsp;</label></p></span></div><i><font color="gray" font size="smaller">Check All That Apply<br>&nbsp;</font></i>
+</div>
+            <div id="chevron" style="color: red; transform: rotate(0deg); transition: transform 0.3s ease-in-out;">
+    <span id="chevronArrow" style="display: inline-block; transition: transform 0.3s ease-in-out;"><img src="https://github.com/tommichael88/booktomnyc/blob/main/images/724805.png?raw=true" style="width: 15px; height: auto; padding: 1px;" alt="Right chevron indicator arrow"></span>
+    
 </div>
         <!-- Text input and BOOK NOW button, initially hidden -->
         <div id="bookingDetails" style="display: none;">
@@ -347,69 +349,74 @@
                <script type="text/javascript" src="//cdn0070.qrcodechimp.com/assets/js/html2canvas.min.js?v=1706532076c"></script>
                <script type="text/javascript" src="//cdn0070.qrcodechimp.com/view/common/js/fileSaver.js?v=1706532076c"></script>
                <script type="text/javascript" src="//cdn0070.qrcodechimp.com/assets/js/lightbox-plus-jquery.js?v=1706532076c"></script>
+<script>function checkService() {
+    var checkboxes = document.querySelectorAll('input[name="services"]:checked');
+    var bookingDetails = document.getElementById('bookingDetails');
+    var chevronArrow = document.getElementById('chevronArrow'); // Get the Chevron arrow element
+
+    if (checkboxes.length > 0) {
+        bookingDetails.style.display = 'block'; // Show the text input and button
+        chevronArrow.style.transform = 'rotate(90deg)'; // Rotate Chevron arrow to point down
+    } else {
+        bookingDetails.style.display = 'none'; // Hide the text input and button
+        chevronArrow.style.transform = 'rotate(0deg)'; // Rotate Chevron arrow back to original position
+    }
+
+    // Call checkInput to update the button state based on current textarea content
+    checkInput();
+}
+</script>
 <script>
 function checkInput() {
-    var taskDescription = document.getElementById("taskDescription").value.trim();
+    var taskDescription = document.getElementById("taskDescription");
+    var inputValue = taskDescription.value.trim();
     var submitButton = document.getElementById("submitButton");
     var buttonText = document.getElementById("buttonText");
     var chevron = document.getElementById('chevron'); // Target the chevron element
-    var checkAllText = document.querySelector('.check-all-text'); // Assume you have a class for the "Check All That Apply" text
+    // Assuming you have a way to target the "Check All That Apply" text, e.g., an ID or class
+    var checkAllText = document.getElementById('chevronText'); // Update this selector as needed
 
-    if (taskDescription.length > 0) {
+    if (inputValue.length > 0) {
         // Text entered, update button text, enable the button, and hide chevron and text
-        buttonText.innerHTML = "★&nbsp;<b>BOOK<b/>&nbsp;HERE&nbsp;★"; // Change button text with stars
+        // Also, change input box border to red
+        taskDescription.style.border = "2px solid red"; // Update border color to red
+        buttonText.innerHTML = "★&nbsp;<b>BOOK</b>&nbsp;HERE&nbsp;★"; // Corrected closing tag for <b>
         submitButton.disabled = false; // Enable the button
         buttonText.classList.remove("inactive");
         buttonText.classList.add("active"); // Add active class
         submitButton.classList.remove("disabled"); // Remove disabled class if present
         submitButton.classList.add("active"); // Add active class to the button
-
-        // Hide chevron and "Check All That Apply" text
         chevron.style.display = 'none';
-        checkAllText.style.display = 'none'; // Make sure you have a way to target this text
+        checkAllText.style.display = 'none'; // Adjust based on actual implementation
     } else {
-        // No text entered, revert button text, disable the button, and show chevron and text
+        // No text entered, revert button text, disable the button, show chevron and text
+        // Also, revert input box border to original style
+        taskDescription.style.border = ""; // Revert border color to default or you can specify it
         buttonText.innerHTML = "&nbsp;"; // Change button text without stars
         submitButton.disabled = true; // Disable the button
         buttonText.classList.remove("active");
         buttonText.classList.add("inactive"); // Add inactive class
         submitButton.classList.remove("active");
         submitButton.classList.add("disabled"); // Add disabled class to the button
-
-        // Show chevron and "Check All That Apply" text
         chevron.style.display = ''; // Or use 'block' depending on your layout
-        checkAllText.style.display = ''; // Or use 'block' depending on your layout
+        checkAllText.style.display = ''; // Adjust based on actual implementation
     }
 }
-
-document.getElementById("taskDescription").addEventListener("input", checkInput);
-document.addEventListener("DOMContentLoaded", checkInput);
-</script>
-
-
-// Ensure the checkInput function is called every time the input changes
-document.getElementById("taskDescription").addEventListener("input", checkInput);
-
-// Initialize the button state correctly on page load
-document.addEventListener("DOMContentLoaded", checkInput);
 </script>
 <script>
-function checkService() {
-    var checkboxes = document.querySelectorAll('input[name="services"]:checked');
-    var bookingDetails = document.getElementById('bookingDetails');
-    var chevron = document.getElementById('chevron'); // Get the Chevron element
 
-    if (checkboxes.length > 0) {
-        bookingDetails.style.display = 'block'; // Show the text input and button
-        chevron.style.transform = 'rotate(90deg)'; // Rotate Chevron to point down
+function checkInput() {
+    var taskDescription = document.getElementById("taskDescription");
+    var inputValue = taskDescription.value.trim();
+
+    if (inputValue.length > 0) {
+        taskDescription.style.border = "2px solid red"; // Change border to red when input is detected
     } else {
-        bookingDetails.style.display = 'none'; // Hide the text input and button
-        chevron.style.transform = 'rotate(0deg)'; // Rotate Chevron back to original position
+        taskDescription.style.border = "1px solid #ccc"; // Revert to original border if input is cleared
     }
-
-    // Call checkInput to update the button state based on current textarea content
-    checkInput();
 }
+
+document.getElementById("taskDescription").addEventListener("input", checkInput);
 
 
 
@@ -462,7 +469,10 @@ function sendMessage() {
             button.classList.add('inactive');
         }
     }
+    
+    
 </script>
+
 
    </body>
 </html>
