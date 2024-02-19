@@ -689,6 +689,31 @@
                     <script type="text/javascript" src="//cdn0070.qrcodechimp.com/view/common/js/fileSaver.js?v=1706532076c"></script>
                     <script type="text/javascript" src="//cdn0070.qrcodechimp.com/assets/js/lightbox-plus-jquery.js?v=1706532076c"></script>
                     <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            // This will apply to all checkboxes, assuming checkService() handles visibility of other elements.
+                            var customCheckboxes = document.querySelectorAll('.custom-checkbox');
+                            customCheckboxes.forEach(function(box) {
+                                box.addEventListener('click', function() {
+                                    var checkbox = this.querySelector('input[type="checkbox"]');
+                                    checkbox.checked = !checkbox.checked; // Toggle the state of the checkbox
+                                    checkService(); // Call the checkService function to handle any additional logic
+                                });
+                            });
+                            // Prevent double toggling when the label or checkbox is clicked directly
+                            var labels = document.querySelectorAll('.custom-checkbox label');
+                            labels.forEach(function(label) {
+                                label.addEventListener('click', function(e) {
+                                    e.stopPropagation(); // Stop the click from reaching the custom-checkbox div
+                                });
+                            });
+                            var checkboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
+                            checkboxes.forEach(function(checkbox) {
+                                checkbox.addEventListener('click', function(e) {
+                                    e.stopPropagation(); // Stop the click from reaching the custom-checkbox div
+                                });
+                            });
+                        });
+
                         function checkService() {
                             var checkboxes = document.querySelectorAll('input[name="services"]:checked');
                             var bookingDetails = document.getElementById('bookingDetails');
