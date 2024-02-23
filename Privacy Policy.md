@@ -73,7 +73,7 @@ For questions, contact booktom@icloud.com.
 
 ## Review of Third-Party Policies
 
-You are advised to review third-party privacy policies.
+Tom Kongerslev is bound by third party service platforms and by extension Your personal may also be handled in accordance with their respective policies. If You use any such third parties or are the rceipient of services via these parties by extension or otherwise You and/or any private data you submit or have shared is also subject to privacy policies and data handing practices by such parties. You are encouraged to review such policies and may contact such parties to request removal. Tom Kongerslev is not responsible for any third party data handling practices or policies regarding your private information.
 
 
 ## Disclaimer
