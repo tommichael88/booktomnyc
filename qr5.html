@@ -23,9 +23,9 @@
                 --qrc-text-secondary: #353535ff;
                 --qrc-profile-primary: #050000ff;
                 --qrc-profile-secondary: #2b2b2bff;
-                --qrc-card-bg: rgba(254, 254, 254, 0.99);
+                --qrc-card-bg: rgba(254, 254, 254, .95);
                 --qrc-border-radius: 10px;
-                --qrc-box-shadow: 1px 25px 25px 1px #121212c7;
+                --qrc-box-shadow: 1px 25px 25px 1px #ffffff
             }
 
             * {
@@ -469,7 +469,7 @@
 
             /* Container Styles */
             .highlight-box {
-                back
+                background-color: ;
                 
                 /* Example: Change background color */
             }
@@ -578,6 +578,20 @@
         text-decoration: underline; /* Optional: adds underline on hover for better UI */
         color: #ccc; /* Optional: changes color on hover for visual feedback */
     }
+    
+    .faint-button {
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+    color: #666;
+    padding: 5px 10px;
+    margin: 2px;
+    font-size: small;
+    cursor: pointer;
+}
+
+.faint-button:hover {
+    background-color: #e9e9e9;
+}
         </style>
     </head>
     <body>
@@ -696,12 +710,16 @@
                                     </label>
                                 </div>
                             </div>
-                        </form>
-                        <br>
+                        </form><ul></ul>
                         <div style="display: flex; justify-content: space-between; align-items: center; color: gray; font-size: smaller;"> Check All That Apply <br>
                             <br>
-                        </div>
+                      
                     </div>
+                    <div id="additionalOptions" style="display: none; text-align: center; margin-top: 10px;">
+    <button type="button" id="wallRepairButton" class="faint-button" style="display: none;">+ Wall Repair</button>
+    <!-- Add other buttons here -->
+</div>
+
                     <div style="font-size: 12px;">
                         <div style="flex-direction: column; align-items: center; justify-content: center; padding: 2px;">
                             <div id="chevron" style="color: red; transform: rotate(0deg); transition: transform 0.3s ease-in-out 0s; display: block;">
@@ -712,7 +730,7 @@
                         </div>
                     </div>
                     <div id="bookingDetails" style="display: none; position: relative;">
-                        <textarea id="taskDescription" class="input-box" name="task_description" rows="4" placeholder="🤖 Type your task or project details." style="border: 2px solid red;"></textarea>
+                        <textarea id="taskDescription" class="input-box" name="task_description" rows="4" placeholder="🤖 Describe your task or project here." style="border: 2px solid red;"></textarea>
                         <button type="submit" id="submitButton" class="qrc_button" style="display: none;">
                             <span id="buttonText" class="button-text">&nbsp;&nbsp;★&nbsp;𝗕𝗢𝗢𝗞 𝗛𝗘𝗥𝗘&nbsp;★&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞 ⮞ </span>
                         </button>
@@ -761,82 +779,230 @@
                             <script type="text/javascript" src="//cdn0070.qrcodechimp.com/assets/js/html2canvas.min.js?v=1706532076c"></script>
                             <script type="text/javascript" src="//cdn0070.qrcodechimp.com/view/common/js/fileSaver.js?v=1706532076c"></script>
                             <script type="text/javascript" src="//cdn0070.qrcodechimp.com/assets/js/lightbox-plus-jquery.js?v=1706532076c"></script>
-                            <script>
-                                document.addEventListener("DOMContentLoaded", function() {
-                                    // This will apply to all checkboxes, assuming checkService() handles visibility of other elements.
-                                    var customCheckboxes = document.querySelectorAll('.custom-checkbox');
-                                    customCheckboxes.forEach(function(box) {
-                                        box.addEventListener('click', function() {
-                                            var checkbox = this.querySelector('input[type="checkbox"]');
-                                            checkbox.checked = !checkbox.checked; // Toggle the state of the checkbox
-                                            checkService(); // Call the checkService function to handle any additional logic
-                                        });
-                                    });
-                                    // Prevent double toggling when the label or checkbox is clicked directly
-                                    var labels = document.querySelectorAll('.custom-checkbox label');
-                                    labels.forEach(function(label) {
-                                        label.addEventListener('click', function(e) {
-                                            e.stopPropagation(); // Stop the click from reaching the custom-checkbox div
-                                        });
-                                    });
-                                    var checkboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
-                                    checkboxes.forEach(function(checkbox) {
-                                        checkbox.addEventListener('click', function(e) {
-                                            e.stopPropagation(); // Stop the click from reaching the custom-checkbox div
-                                        });
-                                    });
-                                });
+<script type="text/javascript">
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll('input[name="categories"]').forEach(function(checkbox) {
+        checkbox.addEventListener('change', checkService);
+    });
+    document.getElementById("taskDescription").addEventListener("input", checkTextInput);
+    checkService(); // Initialize UI elements based on current state
+});
 
-                                function checkService() {
-                                    var checkboxes = document.querySelectorAll('input[name="services"]:checked');
-                                    var bookingDetails = document.getElementById('bookingDetails');
-                                    var chevron = document.getElementById('chevron');
-                                    if (checkboxes.length > 0) {
-                                        bookingDetails.style.display = 'block';
-                                        chevron.style.transform = 'rotate(180deg)';
-                                    } else {
-                                        bookingDetails.style.display = 'none';
-                                        chevron.style.transform = 'rotate(0deg)';
-                                    }
-                                    checkTextInput(); // Adjust visibility based on text input
-                                }
+var categories = {
+    "minorHomeRepairs": {
+        services: ["service1", "service2", "service3", "service4", "service5"],
+        buttonText: ['+ Minor Home Repairs', '- Minor Home Repairs'],
+        buttonId: "minorHomeRepairsButton"
+    },
+    "wallMounting": {
+        services: ["service6", "service7", "service8", "service9", "service10"],
+        buttonText: ['+ Wall Mounting', '- Wall Mounting'],
+        buttonId: "wallMountingButton"
+    },
+    "computerTechServices": {
+        services: ["service11", "service12", "service13", "service14", "service15", "service16"],
+        buttonText: ['+ Computer Tech Services', '- Computer Tech Services'],
+        buttonId: "computerTechServicesButton"
+    },
+    "electricalHelp": {
+        services: ["service17"],
+        buttonText: ['+ Electrical Help', '- Electrical Help'],
+        buttonId: "electricalHelpButton"
+    },
+    "furnitureFixesAssembly": {
+        services: ["service18", "service19"],
+        buttonText: ['+ Furniture Fixes & Assembly', '- Furniture Fixes & Assembly'],
+        buttonId: "furnitureFixesAssemblyButton"
+    },
+    "plumbingHelp": {
+        services: ["service20", "service21", "service22", "service23"],
+        buttonText: ['+ Plumbing Help', '- Plumbing Help'],
+        buttonId: "plumbingHelpButton"
+    }
 
-                                function checkTextInput() {
-                                    var taskDescription = document.getElementById("taskDescription");
-                                    var inputValue = taskDescription.value.trim();
-                                    var chevron = document.getElementById('chevron');
-                                    var instantEstimatesButton = document.getElementById('instantEstimatesButton');
-                                    var submitButton = document.getElementById("submitButton");
-                                    var buttonText = document.getElementById("buttonText");
-                                    if (inputValue.length > 0) {
-                                        taskDescription.style.border = "1px solid #454545";
-                                        instantEstimatesButton.style.display = 'block';
-                                        submitButton.style.display = 'block';
-                                        chevron.style.display = 'none'; // Hide chevron when text is being typed
-                                        buttonText.style.color = '#ffffff'; // Ensure text is white
-                                    } else {
-                                        taskDescription.style.border = "2px solid red";
-                                        instantEstimatesButton.style.display = 'none';
-                                        submitButton.style.display = 'none';
-                                        chevron.style.display = 'block'; // Show chevron when no text is entered
-                                    }
-                                }
-                                document.addEventListener("DOMContentLoaded", function() {
-                                    document.querySelectorAll('input[name="services"]').forEach(function(checkbox) {
-                                        checkbox.addEventListener('change', checkService);
-                                    });
-                                    document.getElementById("taskDescription").addEventListener("input", checkTextInput);
-                                    // Initialize UI elements
-                                    checkService();
-                                });
-                                document.getElementById('bookingForm').addEventListener('submit', function(e) {
-                                    e.preventDefault(); // Prevent the default form submission
-                                    var services = document.querySelector('input[name="services"]:checked').value;
-                                    var jobDetails = document.getElementById('taskDescription').value; // Assuming 'taskDescription' is your input ID
-                                    // Replace 'correct_parameter_name' with the parameter recognized by Setmore for job details
-                                    var url = `https://booktom.setmore.com/?services=${encodeURIComponent(services)}&correct_parameter_name=${encodeURIComponent(jobDetails)}`;
-                                    window.location.href = url; // Redirect the user to Setmore with the processed URL
-                                });
-                            </script>
+    var serviceActions = {
+    "service1": {
+        buttonText: ['+ Wall Repair', '- Wall Repair'],
+        text: "Help me repair a hole in my drywall",
+        buttonId: "wallRepairButton"
+    },
+    "service2": {
+        buttonText: ['+ Door Handles & Locks Installation', '- Door Handles & Locks Installation'],
+        text: "Install new door handles or locks for me",
+        buttonId: "doorHandlesLocksButton"
+    },
+    "service3": {
+        buttonText: ['+ Hollow Door Repair', '- Hollow Door Repair'],
+        text: "Repair a hollow door with damages",
+        buttonId: "hollowDoorRepairButton"
+    },
+    "service4": {
+        buttonText: ['+ Appliances Repair', '- Appliances Repair'],
+        text: "Fix my broken appliance",
+        buttonId: "appliancesRepairButton"
+    },
+    "service5": {
+        buttonText: ['+ Furniture Repair', '- Furniture Repair'],
+        text: "Repair a piece of furniture that is damaged",
+        buttonId: "furnitureRepairButton"
+    },
+    "service6": {
+        buttonText: ['+ Curtains/Drapes', '- Curtains/Drapes'],
+        text: "Help with hanging curtains or drapes to beautify my windows",
+        buttonId: "curtainsDrapesButton"
+    },
+    "service7": {
+        buttonText: ['+ Frames', '- Frames'],
+        text: "Assist in mounting frames to preserve and display my precious moments",
+        buttonId: "framesButton"
+    },
+    "service8": {
+        buttonText: ['+ Shelves', '- Shelves'],
+        text: "Need sturdy shelves installed for extra storage space",
+        buttonId: "shelvesButton"
+    },
+    "service9": {
+        buttonText: ['+ TV Mounting', '- TV Mounting'],
+        text: "Mount my TV for a better viewing angle",
+        buttonId: "tvMountingButton"
+    },
+    "service10": {
+        buttonText: ['+ TV Mounting + Concealed Cables', '- TV Mounting + Concealed Cables'],
+        text: "I need to mount a TV and want the cables hidden or less visible",
+        buttonId: "tvMountingConcealedCablesButton"
+    },
+    "service11": {
+        buttonText: ['+ PC Diagnostic Service', '- PC Diagnostic Service'],
+        text: "Evaluate my PC to identify any issues or needed upgrades",
+        buttonId: "pcDiagnosticServiceButton"
+    },
+    "service12": {
+        buttonText: ['+ Data Transfer / Data Back-Up', '- Data Transfer / Data Back-Up'],
+        text: "Secure my data with a reliable backup or transfer it safely",
+        buttonId: "dataTransferBackUpButton"
+    },
+    "service13": {
+        buttonText: ['+ Part Replacement/Upgrade', '- Part Replacement/Upgrade'],
+        text: "Replace or upgrade parts to boost my computer's performance",
+        buttonId: "partReplacementUpgradeButton"
+    },
+    "service14": {
+        buttonText: ['+ Software Install', '- Software Install'],
+        text: "Install essential software for my work, study, or entertainment",
+        buttonId: "softwareInstallButton"
+    },
+    "service15": {
+        buttonText: ['+ System Restore', '- System Restore'],
+        text: "Restore my system to its optimal state or a previous point in time",
+        buttonId: "systemRestoreButton"
+    },
+    "service16": {
+        buttonText: ['+ Virus/Malware Removal', '- Virus/Malware Removal'],
+        text: "Remove harmful viruses or malware to protect my personal data",
+        buttonId: "virusMalwareRemovalButton"
+    },
+    "service17": {
+        buttonText: ['+ Light Fixture Swap', '- Light Fixture Swap'],
+        text: "I want to change the light fixture to refresh my room's ambiance",
+        buttonId: "lightFixtureSwapButton"
+    },
+    "service18": {
+        buttonText: ['+ Furniture Assembly', '- Furniture Assembly'],
+        text: "Assemble my new furniture quickly and correctly",
+        buttonId: "furnitureAssemblyButton"
+    },
+    "service19": {
+        buttonText: ['+ Furniture Repair', '- Furniture Repair'],
+        text: "Repair of various types of furniture to restore their beauty and function",
+        buttonId: "furnitureRepairButton"
+    },
+    "service20": {
+        buttonText: ['+ Bidet Accessory Install', '- Bidet Accessory Install'],
+        text: "Help me install a bidet accessory for an enhanced bathroom experience",
+        buttonId: "bidetAccessoryInstallButton"
+    },
+    "service21": {
+        buttonText: ['+ Swap Faucet Handles', '- Swap Faucet Handles'],
+        text: "Swap out the faucet handles for a fresh look in my bathroom",
+        buttonId: "swapFaucetHandlesButton"
+    },
+    "service22": {
+        buttonText: ['+ Leak Under Sink', '- Leak Under Sink'],
+        text: "Help me stop a minor sink leak before it becomes a bigger problem",
+        buttonId: "leakUnderSinkButton"
+    },
+    "service23": {
+        buttonText: ['+ Unclog Sink', '- Unclog Sink'],
+        text: "Help with unclogging my sink to ensure smooth water flow",
+        buttonId: "unclogSinkButton"
+    }
+};
+
+function checkService() {
+    var checkboxes = document.querySelectorAll('input[name="categories"]:checked');
+    var bookingDetails = document.getElementById('bookingDetails');
+    var chevron = document.getElementById('chevron');
+    var additionalOptions = document.getElementById('additionalOptions');
+
+    var anyChecked = checkboxes.length > 0;
+    bookingDetails.style.display = anyChecked ? 'block' : 'none';
+    chevron.style.transform = anyChecked ? 'rotate(180deg)' : 'rotate(0deg)';
+    additionalOptions.style.display = anyChecked ? 'block' : 'none';
+
+    additionalOptions.innerHTML = ''; // Clear existing buttons
+
+    checkboxes.forEach(function(checkbox) {
+        var categoryServices = categories[checkbox.value].services;
+        categoryServices.forEach(function(serviceId) {
+            var action = serviceActions[serviceId];
+            if (action) {
+                var button = document.createElement('button');
+                button.id = action.buttonId;
+                button.textContent = action.buttonText[0]; // '+ Option'
+                button.style.display = 'inline-block';
+                button.classList.add('serviceButton'); // Assuming a CSS class for styling
+                button.addEventListener('click', function() {
+                    toggleServiceText(action.buttonId);
+                });
+                additionalOptions.appendChild(button);
+            }
+        });
+    });
+}
+
+function toggleServiceText(buttonId) {
+    var action = serviceActions[Object.keys(serviceActions).find(key => serviceActions[key].buttonId === buttonId)];
+    var button = document.getElementById(buttonId);
+    var taskDescription = document.getElementById("taskDescription");
+
+    if (button.classList.contains('active')) {
+        removeServiceText(action.text, buttonId);
+        button.textContent = action.buttonText[0]; // '+ Option'
+    } else {
+        taskDescription.value += "\n" + action.text; // Ensure text is added on a new line
+        button.textContent = action.buttonText[1]; // '- Option'
+    }
+    button.classList.toggle('active');
+}
+
+function removeServiceText(text, buttonId) {
+    var taskDescription = document.getElementById("taskDescription");
+    taskDescription.value = taskDescription.value.replace("\n" + text, "").trim(); // Remove text and trim
+}
+
+function checkTextInput() {
+    var taskDescription = document.getElementById("taskDescription");
+    var inputValue = taskDescription.value.trim();
+    var instantEstimatesButton = document.getElementById('instantEstimatesButton');
+    var submitButton = document.getElementById("submitButton");
+    var chevron = document.getElementById('chevron');
+
+    taskDescription.style.border = inputValue.length > 0 ? "1px solid #454545" : "2px solid red";
+    instantEstimatesButton.style.display = inputValue.length > 0 ? 'block' : 'none';
+    submitButton.style.display = inputValue.length > 0 ? 'block' : 'none';
+    chevron.style.display = inputValue.length > 0 ? 'none' : 'block';
+}
+</script>
+
     </body>
 </html>
