@@ -615,7 +615,235 @@
                                                 <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/tom_handy_new.png?raw=true" alt="Toms Handy logo" style="width: 40px; height: auto;">
                                                 <div class="section qrc_heading_text"></div>
                                                 </span>
-                                                <span>
+                                                <span><script type="text/javascript">
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll('input[name="categories"]').forEach(function(checkbox) {
+        checkbox.addEventListener('change', checkService);
+    });
+    document.getElementById("taskDescription").addEventListener("input", checkTextInput);
+    checkService(); // Initialize UI elements based on current state
+});
+
+var categories = {
+    "minorHomeRepairs": {
+        services: ["service1", "service2", "service3", "service4", "service5"],
+        buttonText: ['+ Minor Home Repairs', '- Minor Home Repairs'],
+        buttonId: "minorHomeRepairsButton"
+    },
+    "wallMounting": {
+        services: ["service6", "service7", "service8", "service9", "service10"],
+        buttonText: ['+ Wall Mounting', '- Wall Mounting'],
+        buttonId: "wallMountingButton"
+    },
+    "computerTechServices": {
+        services: ["service11", "service12", "service13", "service14", "service15", "service16"],
+        buttonText: ['+ Computer Tech Services', '- Computer Tech Services'],
+        buttonId: "computerTechServicesButton"
+    },
+    "electricalHelp": {
+        services: ["service17"],
+        buttonText: ['+ Electrical Help', '- Electrical Help'],
+        buttonId: "electricalHelpButton"
+    },
+    "furnitureFixesAssembly": {
+        services: ["service18", "service19"],
+        buttonText: ['+ Furniture Fixes & Assembly', '- Furniture Fixes & Assembly'],
+        buttonId: "furnitureFixesAssemblyButton"
+    },
+    "plumbingHelp": {
+        services: ["service20", "service21", "service22", "service23"],
+        buttonText: ['+ Plumbing Help', '- Plumbing Help'],
+        buttonId: "plumbingHelpButton"
+    }
+};
+
+var serviceActions = {
+    "service1": {
+        buttonText: ['+ Wall Repair', '- Wall Repair'],
+        text: "Help me repair a hole in my drywall",
+        buttonId: "wallRepairButton"
+    },
+    "service2": {
+        buttonText: ['+ Door Handles & Locks Installation', '- Door Handles & Locks Installation'],
+        text: "Install new door handles or locks for me",
+        buttonId: "doorHandlesLocksButton"
+    },
+    "service3": {
+        buttonText: ['+ Hollow Door Repair', '- Hollow Door Repair'],
+        text: "Repair a hollow door with damages",
+        buttonId: "hollowDoorRepairButton"
+    },
+    "service4": {
+        buttonText: ['+ Appliances Repair', '- Appliances Repair'],
+        text: "Fix my broken appliance",
+        buttonId: "appliancesRepairButton"
+    },
+    "service5": {
+        buttonText: ['+ Furniture Repair', '- Furniture Repair'],
+        text: "Repair a piece of furniture that is damaged",
+        buttonId: "furnitureRepairButton"
+    },
+    "service6": {
+        buttonText: ['+ Curtains/Drapes', '- Curtains/Drapes'],
+        text: "Hanging curtains or drapes to beautify my windows",
+        buttonId: "curtainsDrapesButton"
+    },
+    "service7": {
+        buttonText: ['+ Frames', '- Frames'],
+        text: "Assist in mounting frames",
+        buttonId: "framesButton"
+    },
+    "service8": {
+        buttonText: ['+ Shelves', '- Shelves'],
+        text: "Need sturdy shelves installed",
+        buttonId: "shelvesButton"
+    },
+    "service9": {
+        buttonText: ['+ TV Mounting', '- TV Mounting'],
+        text: "Mount my TV",
+        buttonId: "tvMountingButton"
+    },
+    "service10": {
+        buttonText: ['+ TV Mounting + Concealed Cables', '- TV Mounting + Concealed Cables'],
+        text: "I need to mount a TV and want the cables hidden or less visible",
+        buttonId: "tvMountingConcealedCablesButton"
+    },
+    "service11": {
+        buttonText: ['+ PC Diagnostic Service', '- PC Diagnostic Service'],
+        text: "My computer is running really slow",
+        buttonId: "pcDiagnosticServiceButton"
+    },
+    "service12": {
+        buttonText: ['+ Data Transfer / Data Back-Up', '- Data Transfer / Data Back-Up'],
+        text: "I need to backup my data",
+        buttonId: "dataTransferBackUpButton"
+    },
+    "service13": {
+        buttonText: ['+ Part Replacement/Upgrade', '- Part Replacement/Upgrade'],
+        text: "Install a new part I bought",
+        buttonId: "partReplacementUpgradeButton"
+    },
+    "service14": {
+        buttonText: ['+ Software Installation', '- Software Installation'],
+        text: "Install a software",
+        buttonId: "softwareInstallationButton"
+    },
+    "service15": {
+        buttonText: ['+ Printer Setup', '- Printer Setup'],
+        text: "Help me setup my printer",
+        buttonId: "printerSetupButton"
+    },
+    "service16": {
+        buttonText: ['+ Email Setup', '- Email Setup'],
+        text: "Setup my email",
+        buttonId: "emailSetupButton"
+    },
+    "service17": {
+        buttonText: ['+ Light Fixture Installation', '- Light Fixture Installation'],
+        text: "Install a new light fixture for me",
+        buttonId: "lightFixtureInstallationButton"
+    },
+    "service18": {
+        buttonText: ['+ Furniture Assembly', '- Furniture Assembly'],
+        text: "Assemble my new furniture",
+        buttonId: "furnitureAssemblyButton"
+    },
+    "service19": {
+        buttonText: ['+ Furniture Repair', '- Furniture Repair'],
+        text: "Repair a piece of furniture that's broken",
+        buttonId: "furnitureRepairButton2" // Changed to ensure uniqueness
+    },
+    "service20": {
+        buttonText: ['+ Leaky Faucets', '- Leaky Faucets'],
+        text: "Fix a leaky faucet",
+        buttonId: "leakyFaucetsButton"
+    },
+    "service21": {
+        buttonText: ['+ Running Toilet', '- Running Toilet'],
+        text: "My toilet won't stop running",
+        buttonId: "runningToiletButton"
+    },
+    "service22": {
+        buttonText: ['+ Installing New Fixtures', '- Installing New Fixtures'],
+        text: "Install new fixtures in my bathroom",
+        buttonId: "installingNewFixturesButton"
+    },
+    "service23": {
+        buttonText: ['+ Unclog Sink', '- Unclog Sink'],
+        text: "My sink is clogged",
+        buttonId: "unclogSinkButton"
+    }
+};
+
+function checkService() {
+    let selectedCategories = document.querySelectorAll('input[name="categories"]:checked');
+    let serviceButtons = document.querySelectorAll('.serviceButton');
+    // Reset visibility for all services
+    serviceButtons.forEach(button => button.style.display = 'none');
+    // Loop through selected categories
+    selectedCategories.forEach(cat => {
+        let category = categories[cat.value];
+        if (category) {
+            category.services.forEach(serviceId => {
+                let service = serviceActions[serviceId];
+                if (service) {
+                    let button = document.getElementById(service.buttonId);
+                    if (button) {
+                        button.style.display = 'block';
+                        button.innerText = service.buttonText[0]; // Default to show '+'
+                        button.onclick = function() {
+                            toggleServiceText(serviceId);
+                        };
+                    }
+                }
+            });
+        }
+    });
+}
+
+function toggleServiceText(serviceId) {
+    let service = serviceActions[serviceId];
+    if (service) {
+        let button = document.getElementById(service.buttonId);
+        if (button) {
+            let isExpanded = button.innerText === service.buttonText[1];
+            button.innerText = isExpanded ? service.buttonText[0] : service.buttonText[1];
+            if (isExpanded) {
+                removeServiceText(serviceId);
+            } else {
+                let textDiv = document.createElement('div');
+                textDiv.id = service.buttonId + 'Text';
+                textDiv.innerHTML = service.text;
+                button.parentNode.insertBefore(textDiv, button.nextSibling);
+            }
+        }
+    }
+}
+
+function removeServiceText(serviceId) {
+    let service = serviceActions[serviceId];
+    if (service) {
+        let textDiv = document.getElementById(service.buttonId + 'Text');
+        if (textDiv) {
+            textDiv.parentNode.removeChild(textDiv);
+        }
+    }
+}
+
+function checkTextInput() {
+    let inputVal = document.getElementById("taskDescription").value;
+    if (inputVal.length > 0) {
+        document.getElementById("bookingDetails").style.display = 'block';
+        document.getElementById("chevron").style.display = 'block';
+        document.getElementById("additionalOptions").style.display = 'none';
+    } else {
+        document.getElementById("bookingDetails").style.display = 'none';
+        document.getElementById("chevron").style.display = 'none';
+        document.getElementById("additionalOptions").style.display = 'block';
+    }
+}
+</script>
+
                                                     <p>
                                                         <b>ＴＯＭ</b>
                                                         <br> KONGERSLEV </font>
@@ -819,8 +1047,9 @@ var categories = {
         buttonText: ['+ Plumbing Help', '- Plumbing Help'],
         buttonId: "plumbingHelpButton"
     }
+};
 
-    var serviceActions = {
+var serviceActions = {
     "service1": {
         buttonText: ['+ Wall Repair', '- Wall Repair'],
         text: "Help me repair a hole in my drywall",
@@ -848,22 +1077,22 @@ var categories = {
     },
     "service6": {
         buttonText: ['+ Curtains/Drapes', '- Curtains/Drapes'],
-        text: "Help with hanging curtains or drapes to beautify my windows",
+        text: "Hanging curtains or drapes to beautify my windows",
         buttonId: "curtainsDrapesButton"
     },
     "service7": {
         buttonText: ['+ Frames', '- Frames'],
-        text: "Assist in mounting frames to preserve and display my precious moments",
+        text: "Assist in mounting frames",
         buttonId: "framesButton"
     },
     "service8": {
         buttonText: ['+ Shelves', '- Shelves'],
-        text: "Need sturdy shelves installed for extra storage space",
+        text: "Need sturdy shelves installed",
         buttonId: "shelvesButton"
     },
     "service9": {
         buttonText: ['+ TV Mounting', '- TV Mounting'],
-        text: "Mount my TV for a better viewing angle",
+        text: "Mount my TV",
         buttonId: "tvMountingButton"
     },
     "service10": {
@@ -873,136 +1102,140 @@ var categories = {
     },
     "service11": {
         buttonText: ['+ PC Diagnostic Service', '- PC Diagnostic Service'],
-        text: "Evaluate my PC to identify any issues or needed upgrades",
+        text: "My computer is running really slow",
         buttonId: "pcDiagnosticServiceButton"
     },
     "service12": {
         buttonText: ['+ Data Transfer / Data Back-Up', '- Data Transfer / Data Back-Up'],
-        text: "Secure my data with a reliable backup or transfer it safely",
+        text: "I need to backup my data",
         buttonId: "dataTransferBackUpButton"
     },
     "service13": {
         buttonText: ['+ Part Replacement/Upgrade', '- Part Replacement/Upgrade'],
-        text: "Replace or upgrade parts to boost my computer's performance",
+        text: "Install a new part I bought",
         buttonId: "partReplacementUpgradeButton"
     },
     "service14": {
-        buttonText: ['+ Software Install', '- Software Install'],
-        text: "Install essential software for my work, study, or entertainment",
-        buttonId: "softwareInstallButton"
+        buttonText: ['+ Software Installation', '- Software Installation'],
+        text: "Install a software",
+        buttonId: "softwareInstallationButton"
     },
     "service15": {
-        buttonText: ['+ System Restore', '- System Restore'],
-        text: "Restore my system to its optimal state or a previous point in time",
-        buttonId: "systemRestoreButton"
+        buttonText: ['+ Printer Setup', '- Printer Setup'],
+        text: "Help me setup my printer",
+        buttonId: "printerSetupButton"
     },
     "service16": {
-        buttonText: ['+ Virus/Malware Removal', '- Virus/Malware Removal'],
-        text: "Remove harmful viruses or malware to protect my personal data",
-        buttonId: "virusMalwareRemovalButton"
+        buttonText: ['+ Email Setup', '- Email Setup'],
+        text: "Setup my email",
+        buttonId: "emailSetupButton"
     },
     "service17": {
-        buttonText: ['+ Light Fixture Swap', '- Light Fixture Swap'],
-        text: "I want to change the light fixture to refresh my room's ambiance",
-        buttonId: "lightFixtureSwapButton"
+        buttonText: ['+ Light Fixture Installation', '- Light Fixture Installation'],
+        text: "Install a new light fixture for me",
+        buttonId: "lightFixtureInstallationButton"
     },
     "service18": {
         buttonText: ['+ Furniture Assembly', '- Furniture Assembly'],
-        text: "Assemble my new furniture quickly and correctly",
+        text: "Assemble my new furniture",
         buttonId: "furnitureAssemblyButton"
     },
     "service19": {
         buttonText: ['+ Furniture Repair', '- Furniture Repair'],
-        text: "Repair of various types of furniture to restore their beauty and function",
-        buttonId: "furnitureRepairButton"
+        text: "Repair a piece of furniture that's broken",
+        buttonId: "furnitureRepairButton2" // Changed to ensure uniqueness
     },
     "service20": {
-        buttonText: ['+ Bidet Accessory Install', '- Bidet Accessory Install'],
-        text: "Help me install a bidet accessory for an enhanced bathroom experience",
-        buttonId: "bidetAccessoryInstallButton"
+        buttonText: ['+ Leaky Faucets', '- Leaky Faucets'],
+        text: "Fix a leaky faucet",
+        buttonId: "leakyFaucetsButton"
     },
     "service21": {
-        buttonText: ['+ Swap Faucet Handles', '- Swap Faucet Handles'],
-        text: "Swap out the faucet handles for a fresh look in my bathroom",
-        buttonId: "swapFaucetHandlesButton"
+        buttonText: ['+ Running Toilet', '- Running Toilet'],
+        text: "My toilet won't stop running",
+        buttonId: "runningToiletButton"
     },
     "service22": {
-        buttonText: ['+ Leak Under Sink', '- Leak Under Sink'],
-        text: "Help me stop a minor sink leak before it becomes a bigger problem",
-        buttonId: "leakUnderSinkButton"
+        buttonText: ['+ Installing New Fixtures', '- Installing New Fixtures'],
+        text: "Install new fixtures in my bathroom",
+        buttonId: "installingNewFixturesButton"
     },
     "service23": {
         buttonText: ['+ Unclog Sink', '- Unclog Sink'],
-        text: "Help with unclogging my sink to ensure smooth water flow",
+        text: "My sink is clogged",
         buttonId: "unclogSinkButton"
     }
 };
 
 function checkService() {
-    var checkboxes = document.querySelectorAll('input[name="categories"]:checked');
-    var bookingDetails = document.getElementById('bookingDetails');
-    var chevron = document.getElementById('chevron');
-    var additionalOptions = document.getElementById('additionalOptions');
-
-    var anyChecked = checkboxes.length > 0;
-    bookingDetails.style.display = anyChecked ? 'block' : 'none';
-    chevron.style.transform = anyChecked ? 'rotate(180deg)' : 'rotate(0deg)';
-    additionalOptions.style.display = anyChecked ? 'block' : 'none';
-
-    additionalOptions.innerHTML = ''; // Clear existing buttons
-
-    checkboxes.forEach(function(checkbox) {
-        var categoryServices = categories[checkbox.value].services;
-        categoryServices.forEach(function(serviceId) {
-            var action = serviceActions[serviceId];
-            if (action) {
-                var button = document.createElement('button');
-                button.id = action.buttonId;
-                button.textContent = action.buttonText[0]; // '+ Option'
-                button.style.display = 'inline-block';
-                button.classList.add('serviceButton'); // Assuming a CSS class for styling
-                button.addEventListener('click', function() {
-                    toggleServiceText(action.buttonId);
-                });
-                additionalOptions.appendChild(button);
-            }
-        });
+    let selectedCategories = document.querySelectorAll('input[name="categories"]:checked');
+    let serviceButtons = document.querySelectorAll('.serviceButton');
+    // Reset visibility for all services
+    serviceButtons.forEach(button => button.style.display = 'none');
+    // Loop through selected categories
+    selectedCategories.forEach(cat => {
+        let category = categories[cat.value];
+        if (category) {
+            category.services.forEach(serviceId => {
+                let service = serviceActions[serviceId];
+                if (service) {
+                    let button = document.getElementById(service.buttonId);
+                    if (button) {
+                        button.style.display = 'block';
+                        button.innerText = service.buttonText[0]; // Default to show '+'
+                        button.onclick = function() {
+                            toggleServiceText(serviceId);
+                        };
+                    }
+                }
+            });
+        }
     });
 }
 
-function toggleServiceText(buttonId) {
-    var action = serviceActions[Object.keys(serviceActions).find(key => serviceActions[key].buttonId === buttonId)];
-    var button = document.getElementById(buttonId);
-    var taskDescription = document.getElementById("taskDescription");
-
-    if (button.classList.contains('active')) {
-        removeServiceText(action.text, buttonId);
-        button.textContent = action.buttonText[0]; // '+ Option'
-    } else {
-        taskDescription.value += "\n" + action.text; // Ensure text is added on a new line
-        button.textContent = action.buttonText[1]; // '- Option'
+function toggleServiceText(serviceId) {
+    let service = serviceActions[serviceId];
+    if (service) {
+        let button = document.getElementById(service.buttonId);
+        if (button) {
+            let isExpanded = button.innerText === service.buttonText[1];
+            button.innerText = isExpanded ? service.buttonText[0] : service.buttonText[1];
+            if (isExpanded) {
+                removeServiceText(serviceId);
+            } else {
+                let textDiv = document.createElement('div');
+                textDiv.id = service.buttonId + 'Text';
+                textDiv.innerHTML = service.text;
+                button.parentNode.insertBefore(textDiv, button.nextSibling);
+            }
+        }
     }
-    button.classList.toggle('active');
 }
 
-function removeServiceText(text, buttonId) {
-    var taskDescription = document.getElementById("taskDescription");
-    taskDescription.value = taskDescription.value.replace("\n" + text, "").trim(); // Remove text and trim
+function removeServiceText(serviceId) {
+    let service = serviceActions[serviceId];
+    if (service) {
+        let textDiv = document.getElementById(service.buttonId + 'Text');
+        if (textDiv) {
+            textDiv.parentNode.removeChild(textDiv);
+        }
+    }
 }
 
 function checkTextInput() {
-    var taskDescription = document.getElementById("taskDescription");
-    var inputValue = taskDescription.value.trim();
-    var instantEstimatesButton = document.getElementById('instantEstimatesButton');
-    var submitButton = document.getElementById("submitButton");
-    var chevron = document.getElementById('chevron');
-
-    taskDescription.style.border = inputValue.length > 0 ? "1px solid #454545" : "2px solid red";
-    instantEstimatesButton.style.display = inputValue.length > 0 ? 'block' : 'none';
-    submitButton.style.display = inputValue.length > 0 ? 'block' : 'none';
-    chevron.style.display = inputValue.length > 0 ? 'none' : 'block';
+    let inputVal = document.getElementById("taskDescription").value;
+    if (inputVal.length > 0) {
+        document.getElementById("bookingDetails").style.display = 'block';
+        document.getElementById("chevron").style.display = 'block';
+        document.getElementById("additionalOptions").style.display = 'none';
+    } else {
+        document.getElementById("bookingDetails").style.display = 'none';
+        document.getElementById("chevron").style.display = 'none';
+        document.getElementById("additionalOptions").style.display = 'block';
+    }
 }
 </script>
+
 
     </body>
 </html>
