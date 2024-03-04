@@ -1,6 +1,5 @@
 # Privacy Policy
 
-
 ## Introduction
 
 As a Client, you are subject to Tom Kongerslev's privacy practices for his handyman and computer repair services in New York City and surrounding areas, including New Jersey, through booktom.nyc or third-party referral sites.
@@ -87,8 +86,11 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
     <p id="last-updated"><b>LAST UPDATED</b>: </p>
     <hr>
     <br>
-    <input value="Print Privacy Policy" type="button" onclick="handlePrint()"/>
-
+<h4 style="color: #454545;">
+    <button type="button" onclick="handlePrint()" aria-label="Print" style="cursor: pointer;">
+        🖨 Print Privacy Policy
+    </button>
+</h4>
     <script type="text/javascript">
         function formatDate(date) {
             const options = {
