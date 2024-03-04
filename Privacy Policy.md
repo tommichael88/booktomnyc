@@ -88,6 +88,7 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
     <hr>
     <br>
     <input value="Print Privacy Policy" type="button" onclick="handlePrint()"/>
+
     <script type="text/javascript">
         function formatDate(date) {
             const options = {
