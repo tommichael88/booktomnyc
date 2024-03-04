@@ -82,50 +82,48 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
 
 <html>
   <head></head>
-  <body>
-<hr>
-<p id="last-updated"><b>LAST UPDATED</b>: </p>
-<hr>
-<br>
-<script>
-    function formatDate(date) {
-        const options = {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZoneName: 'short',
-            hour12: false
-        };
-        return new Date(date).toLocaleDateString('en-US', options);
-    }
-    function updateLastUpdatedDate() {
-        const lastUpdatedElement = document.getElementById('last-updated');
-        const lastModifiedDate = formatDate(document.lastModified);
-        lastUpdatedElement.innerHTML += lastModifiedDate;
-    }
-    // Call the function when the page loads
-    window.onload = updateLastUpdatedDate;
-
-    function handlePrint() {
-  // Print the parent document
-  window.print();
-  // Then send a message to the iframe to trigger its print function
-  var iframe = document.getElementById("yourIframeId");
-  if (iframe) {
-    iframe.contentWindow.postMessage('print', 'https://tommichael88.github.io');
-  }
-}
-</script>
-
-  <input value="Print Privacy Policy" type="button" onclick="handlePrivacyPolicyPrint()">
+  <body>    
+    <hr>
+    <p id="last-updated"><b>LAST UPDATED</b>: </p>
+    <hr>
+    <br>
+    <input value="Print Privacy Policy" type="button" onclick="handlePrint()"/>
     <script type="text/javascript">
-      const handlePrint = () => {
-        var actContents = document.body.innerHTML;
-        document.body.innerHTML = actContents;
-        window.print();
-      }
-    </script></body></html>
+        function formatDate(date) {
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZoneName: 'short',
+                hour12: false
+            };
+            return new Date(date).toLocaleDateString('en-US', options);
+        }
+
+        function updateLastUpdatedDate() {
+            const lastUpdatedElement = document.getElementById('last-updated');
+            const lastModifiedDate = formatDate(document.lastModified);
+            lastUpdatedElement.innerHTML += lastModifiedDate;
+        }
+
+        // Direct print function for the Privacy Policy page
+        function handlePrint() {
+            window.print();
+        }
+
+        // Listen for print command from the Service Agreement page
+        window.addEventListener("message", (event) => {
+            if (event.data === "print") {
+                window.print();
+            }
+        }, false);
+
+        // Call the updateLastUpdatedDate function when the page loads
+        window.onload = updateLastUpdatedDate;
+    </script>
+</body>
+</html>
 
