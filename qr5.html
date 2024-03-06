@@ -782,7 +782,9 @@ body {
             checkService();
         });
 
-// Define theme settings with messages, delay, and other settings
+<script>
+// Assuming 'theme' object is already defined or initializing it if not
+var theme = theme || {};
 theme.settings = {
   customScript: "",
   dbtfyInactiveTabFirstMessage: "🧰 BOOKTOM.NYC",
@@ -791,46 +793,60 @@ theme.settings = {
   faviconImage: "https://github.com/tommichael88/booktomnyc/blob/main/images/tom_handy_new.png?raw=true",
 };
 
-// (Optionally) Define theme.decodeString if necessary
+// Define theme.decodeString if necessary
 theme.decodeString = function(input) {
-  // Implementation of decoding (if needed)
-  return input; // This is a placeholder. Replace with actual decoding logic if required.
+  // Placeholder for actual decoding logic if required.
+  return input;
 };
 
 // The function for handling inactive tab message logic
 (function() {
-  /* start-dbtfy-inactive-tab-message */
   function themeInactiveTabMessage() {
     function InactiveTabMessage() {
-      const e = document.title,
-      t = theme.settings.dbtfyInactiveTabFirstMessage,
-      n = theme.settings.dbtfyInactiveTabSecondMessage ? theme.settings.dbtfyInactiveTabSecondMessage : e,
-      a = theme.decodeString(t),
-      i = theme.decodeString(n),
-      d = !!theme.settings.dbtfyInactiveTabSecondMessage,
-      s = 1e3 * theme.settings.dbtfyInactiveTabDelay;
-      let c = !1,
-      o = "";
-      a && document.addEventListener("visibilitychange", function(t) {
-        document.dispatchEvent(new CustomEvent("tabChanged", {detail: {isTabChanged: document.hidden}})),
-        !document.hidden ? (clearInterval(o), document.title = e) : d ? o = setInterval(function() {
-          document.title = c ? i : a, c = !c
-        }, s) : document.title = a
-      })
+      const originalTitle = document.title,
+      firstMessage = theme.settings.dbtfyInactiveTabFirstMessage,
+      secondMessage = theme.settings.dbtfyInactiveTabSecondMessage ? theme.settings.dbtfyInactiveTabSecondMessage : originalTitle,
+      decodedFirstMessage = theme.decodeString(firstMessage),
+      decodedSecondMessage = theme.decodeString(secondMessage),
+      hasSecondMessage = !!theme.settings.dbtfyInactiveTabSecondMessage,
+      switchDelay = 1e3 * theme.settings.dbtfyInactiveTabDelay;
+      let isToggling = false,
+      toggleInterval = "";
+      if(decodedFirstMessage) {
+        document.addEventListener("visibilitychange", function() {
+          document.dispatchEvent(new CustomEvent("tabChanged", {detail: {isTabChanged: document.hidden}}));
+          if(!document.hidden) {
+            clearInterval(toggleInterval);
+            document.title = originalTitle;
+          } else if(hasSecondMessage) {
+            toggleInterval = setInterval(function() {
+              document.title = isToggling ? decodedSecondMessage : decodedFirstMessage;
+              isToggling = !isToggling;
+            }, switchDelay);
+          } else {
+            document.title = decodedFirstMessage;
+          }
+        });
+      }
     }
     InactiveTabMessage();
   }
-  /* end-dbtfy-inactive-tab-message */
 
-  var sections = dbtfy_inactive_tab_message: {
-    init: themeInactiveTabMessage,
-    destroy: () => {}
-  }
-  
+  // Correctly define the sections variable
+  var sections = {
+    dbtfy_inactive_tab_message: {
+      init: themeInactiveTabMessage,
+      destroy: () => {}
+    }
+  };
+
   // Initialize the themeInactiveTabMessage
-  sections.init();
+  sections.dbtfy_inactive_tab_message.init();
+  
+  // Optional: marking the addon as enabled
+  theme.addons = theme.addons || {};
+  theme.addons.dbtfy_inactive_tab_message = true;
 })();
-
-    </script>
+</script>
 </body>
 </html>
