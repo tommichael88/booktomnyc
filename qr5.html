@@ -17,29 +17,43 @@
         <link rel="stylesheet" href="https://github.com/tommichael88/booktomnyc/blob/fe05af8c0b5fb1af8c162dc691f59498699ab701/External/lightbox.css">
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap" rel="stylesheet">
         <script type="text/javascript">window.hasMobileFirstExtension = true;</script>
-        <script>
-    // Function to capture job details and redirect to Setmore with the details appended to the URL
-    function submitJobDetails() {
-        // Get the value of the job details text area
-        var jobDetails = document.getElementById('taskDescription').value;
-        
-        // Encode the job details to be URL-friendly
-        var encodedJobDetails = encodeURIComponent(jobDetails);
-        
-        // Construct the Setmore booking URL with the job details appended as a query parameter
-        var bookingUrl = "https://booktom.setmore.com?jobDetails=" + encodedJobDetails;
-        
-        // Redirect the user to the Setmore booking URL
-        window.location.href = bookingUrl;
+       <script>
+       function submitJobDetails() {
+    // Get the value of the job details text area
+    var jobDetails = document.getElementById('taskDescription').value;
+    
+    // Encode the job details to be URL-friendly
+    var encodedJobDetails = encodeURIComponent(jobDetails);
+    
+    // Initialize an array to hold the service IDs
+    var serviceIds = [];
+    
+    // Get all checked services and their IDs
+    document.querySelectorAll('input[type="checkbox"][name="services"]:checked').forEach(function(checkbox) {
+        var serviceId = checkbox.getAttribute('data-service-id');
+        if (serviceId) {
+            serviceIds.push(serviceId);
+        }
+    });
+    
+    // Construct the Setmore booking URL with the job details and service IDs as query parameters
+    var bookingUrl = "https://booktom.setmore.com";
+    if (serviceIds.length > 0) {
+        // If there are selected services, add the first service ID to the URL
+        // and append the job details to it
+        bookingUrl += "/scheduleappointment/" + serviceIds[0] + "?jobDetails=" + encodedJobDetails;
+        // If there are additional services, append them as additional query parameters
+        // This example assumes you want to handle one service; modify as needed for handling multiple services
+    } else {
+        // If no services are selected, just append the job details to the base URL
+        bookingUrl += "?jobDetails=" + encodedJobDetails;
     }
     
-    // Add an event listener to the "BOOK HERE" button to call submitJobDetails function when clicked
-    document.getElementById('submitButton').addEventListener('click', function(event) {
-        event.preventDefault(); // Prevent the default form submission
-        submitJobDetails();
-    });
-</script>
+    // Redirect the user to the Setmore booking URL
+    window.location.href = bookingUrl;
+}
 
+</script>
         <style>
             :root {
                 --primary-color: red;
@@ -342,52 +356,53 @@
                         <h4><form>
                             <div id="servicesChecklist">
                                 <div class="custom-checkbox">
-                                    <input type="checkbox" id="service1" name="services" value="Minor Home Repairs" onchange="checkService()">
-                                    <span class="checkmark"></span>
-                                    <label for="service1">
-                                        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/mhr_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Minor Home Repairs icon">
-                                        <b>Minor Home Repairs</b>
-                                    </label>
-                                </div>
-                                <div class="custom-checkbox">
-                                    <input type="checkbox" id="service2" name="services" value="Furniture Fixes &amp; Assembly" onchange="checkService()">
-                                    <span class="checkmark"></span>
-                                    <label for="service2">
-                                        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/furniture_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Furniture Fixes &amp; Assembly icon">
-                                        <b>Furniture</b>
-                                    </label>
-                                </div>
-                                <div class="custom-checkbox">
-                                    <input type="checkbox" id="service3" name="services" value="Wall Mounting" onchange="checkService()">
-                                    <span class="checkmark"></span>
-                                    <label for="service3">
-                                        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/wall_mounting_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Wall Mounting icon">
-                                        <b>Wall Mounting</b>
-                                    </label>
-                                </div>
-                                <div class="custom-checkbox">
-                                    <input type="checkbox" id="service4" name="services" value="Electrical Help" onchange="checkService()">
-                                    <span class="checkmark"></span>
-                                    <label for="service4">
-                                        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/electrical_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Electrical Help icon">
-                                        <b>Electrical Help</b>
-                                    </label>
-                                </div>
-                                <div class="custom-checkbox">
-                                    <input type="checkbox" id="service5" name="services" value="Plumbing Help" onchange="checkService()">
-                                    <span class="checkmark"></span>
-                                    <label for="service5">
-                                        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/plumbing_emoji.png?raw=true" style="width: 18px; height: auto;" alt="Plumbing Help icon">
-                                        <b>Plumbing Help</b>
-                                    </label>
-                                </div>
-                                <div class="custom-checkbox">
-                                    <input type="checkbox" id="service6" name="services" value="Computer Tech Services" onchange="checkService()">
-                                    <span class="checkmark"></span>
-                                    <label for="service6">
-                                        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/comp_tech_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Computer Tech Services icon">
-                                        <b>Computer Repairs</b>
-                                    </label>
+    <input type="checkbox" id="service1" name="services" value="Minor Home Repairs" onchange="checkService()" data-setmore-url="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/6d028f9f-4ba7-4c66-a4c3-4cd15ee37159?source=easyshare">
+    <span class="checkmark"></span>
+    <label for="service1">
+        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/mhr_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Minor Home Repairs icon">
+        <b>Minor Home Repairs</b>
+    </label>
+</div>
+<div class="custom-checkbox">
+    <input type="checkbox" id="service2" name="services" value="Furniture Fixes & Assembly" onchange="checkService()" data-setmore-url="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/e9a8281d-d940-4672-994d-fc847e9ae87c?source=easyshare">
+    <span class="checkmark"></span>
+    <label for="service2">
+        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/furniture_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Furniture Fixes & Assembly icon">
+        <b>Furniture Fixes & Assembly</b>
+    </label>
+</div>
+<div class="custom-checkbox">
+    <input type="checkbox" id="service3" name="services" value="Wall Mounting" onchange="checkService()" data-setmore-url="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/70f9cde5-a69e-4df9-9df9-9327fa46f91d?source=easyshare">
+    <span class="checkmark"></span>
+    <label for="service3">
+        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/wall_mounting_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Wall Mounting icon">
+        <b>Wall Mounting</b>
+    </label>
+</div>
+<div class="custom-checkbox">
+    <input type="checkbox" id="service4" name="services" value="Electrical Help" onchange="checkService()" data-setmore-url="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/d1d4439b-e925-4f95-8887-68b9a6293c63?source=easyshare">
+    <span class="checkmark"></span>
+    <label for="service4">
+        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/electrical_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Electrical Help icon">
+        <b>Electrical Help</b>
+    </label>
+</div>
+<div class="custom-checkbox">
+    <input type="checkbox" id="service5" name="services" value="Plumbing Help" onchange="checkService()" data-setmore-url="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/abf3610d-f11d-4c88-8fe0-202e9f083815?source=easyshare">
+    <span class="checkmark"></span>
+    <label for="service5">
+        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/plumbing_emoji.png?raw=true" style="width: 18px; height: auto;" alt="Plumbing Help icon">
+        <b>Plumbing Help</b>
+    </label>
+</div>
+<div class="custom-checkbox">
+    <input type="checkbox" id="service6" name="services" value="Computer Tech Services" onchange="checkService()" data-setmore-url="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/37ee94a2-aabf-4235-99a8-4d12b16e26f5?source=easyshare">
+    <span class="checkmark"></span>
+    <label for="service6">
+        <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/service%20emojis/comp_tech_emoji.png?raw=true" style="width: 20px; height: auto;" alt="Computer Tech Services icon">
+        <b>Computer Tech Services</b>
+    </label>
+</div>
                                 </div></h4>
                             </div>
                             <br>
