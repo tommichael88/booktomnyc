@@ -1,3 +1,4 @@
+<!DOCTYPE markdown>
 # Scope of Work
 
 | Service Request Category      | Service                                       | Scope of Work                                                                                                 |
