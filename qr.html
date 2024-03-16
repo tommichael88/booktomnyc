@@ -367,13 +367,15 @@
                                                         </span>
                                                     </div>
                                                 </div>
-                                                <div id="bookingDetails" style="display: block; position: relative;">
-                                                    <textarea id="taskDescription" class="input-box" name="" rows="4" placeholder="🤖 Please type your task or project details here" style="border: 2px solid red;"></textarea>
-                                                    <button type="submit" id="submitButton" class="qrc_button" style="display: block;">
-                                                        <i class="far fa-chevron-right"></i>
-                                                        <center>
-                                                            <span id="buttonText" class="button-text">
-                                                                <b>BOOK HERE ★ &nbsp;</b>ᶜᵒⁿᵗⁱⁿᵘᵉ&nbsp;></div></div></span></button></center>
+                                              <div id="bookingDetails" style="display: block; position: relative;">
+    <textarea id="taskDescription" class="input-box" name="" rows="4" placeholder="🤖 Please type your task or project details here" style="border: 2px solid red;"></textarea>
+    <!-- Suggestions container -->
+    <div id="suggestionsContainer" style="margin-top: 10px;"></div>
+    <button type="submit" id="submitButton" class="qrc_button" style="display: block;">
+        <center><span id="buttonText" class="button-text"><b>BOOK HERE ★ &nbsp;</b>ᶜᵒⁿᵗⁱⁿᵘᵉ&nbsp;></span></center>
+    </button>
+</div>
+</center>
                                                 </div>
                                             </div>
                                         </div>
@@ -382,7 +384,7 @@
                             </li>
                             <!--<span><div style="width:100%; height:100vh;"><iframe src="https://booktom.setmore.com" style="border:none;" scrolling="auto" width="100%" height="100%"></iframe></div></span>-->
                             <!-- Client Portal Section -->
-                            <li></li>
+                           
                             <div>
                                 <div class="invoice-box">
                                     <div class="qrc_heading ">
@@ -414,49 +416,93 @@
             <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" class="small-font">&nbsp;Service Agreement&nbsp;</a></center>
         </div><br></font></div></span></div>
     </footer>
-    <script>
-                                document.addEventListener("DOMContentLoaded", function() {
-                                    const checkboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
-                                    const chevron = document.getElementById('chevronArrow');
-                                    const bookingDetails = document.getElementById('bookingDetails');
-                                    const submitButton = document.getElementById('submitButton');
-                                    const taskDescription = document.getElementById('taskDescription');
-                                    // Ffunction to check any checkbox's state and adjust UI accordingly
-                                    function checkService() {
-                                        let isChecked = false;
-                                        checkboxes.forEach(checkbox => {
-                                            if (checkbox.checked) {
-                                                isChecked = true;
-                                            }
-                                        });
-                                        // Adjust chevron direction and section visibility
-                                        if (isChecked) {
-                                            chevron.style.transform = "rotate(90deg)"; // Chevron up
-                                            bookingDetails.style.display = "block";
-                                            submitButton.style.display = "block";
-                                        } else {
-                                            chevron.style.transform = "rotate(-90deg)"; // Chevron down
-                                            bookingDetails.style.display = "none";
-                                            submitButton.style.display = "none";
-                                        }
-                                    }
-                                    // Initial check to set correct state on page load
-                                    checkService();
-                                    // Attach change event listeners to checkboxes
-                                    checkboxes.forEach(checkbox => {
-                                        checkbox.addEventListener('change', checkService);
-                                    });
-                                    // Toggle the visibility of the submit button based on text input
-                                    taskDescription.addEventListener('input', function() {
-                                        if (taskDescription.value.trim().length > 0) {
-                                            submitButton.style.display = "block";
-                                        } else {
-                                            submitButton.style.display = "none";
-                                        }
-                                    });
-                                });
-                            </script>
-                            <script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const serviceCheckboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
+    const suggestionsContainer = document.getElementById('suggestionsContainer');
+    const taskDescription = document.getElementById('taskDescription');
+    const chevron = document.getElementById('chevronArrow'); // Ensure this ID matches your chevron element
+    const bookingDetails = document.getElementById('bookingDetails'); // Container that should show/hide
+
+    // Updated mapping of categories to their services
+    const categoryToServices = {
+        "service1": [
+            "Appliances Hourly Service Rate",
+            "Door Handles & Locks Installation",
+            "Furniture Repair Hourly Service Rate",
+            "Hollow Door Repair",
+            "Wall Repair - Patch & Paint",
+            "Curtains/Drapes w. Single Rod Installation"
+        ],
+        "service3": [
+            "Frame/Shelf Mounting Hourly Service Rate",
+            "TV Mounting (Under 60\") + Concealed Cables",
+            "TV Mounting (Under 60\") without cable management"
+        ],
+        "service6": [
+            "Data Transfer / Data Back-Up",
+            "Part Replacement/Upgrade",
+            "PC Diagnostic Service",
+            "Software Install/Update/Removal (4)",
+            "System Restore",
+            "Virus/Malware Removal"
+        ],
+        "service4": ["Light Fixture Swap"],
+        "service5": [
+            "Furniture Assembly Hourly Service Rate",
+            "Furniture Repair Hourly Service Rate"
+        ],
+        "service5": [
+            "Bidet Accessory Install/Removal",
+            "Fixture Swap (Cosmetic)",
+            "Leak Under Sink Repair",
+            "Unclog Sink/Shower/Toilet (Minor)"
+        ]
+    };
+
+    function updateSuggestions() {
+        suggestionsContainer.innerHTML = ''; // Clear current suggestions
+        let anyChecked = false; // Track if any checkbox is checked
+
+        serviceCheckboxes.forEach((checkbox) => {
+            if (checkbox.checked) {
+                anyChecked = true;
+                const services = categoryToServices[checkbox.id] || [];
+                services.forEach(service => {
+                    const suggestionButton = document.createElement('button');
+                    suggestionButton.textContent = service; // Use service name as button text
+                    suggestionButton.className = 'suggestion-btn'; // Add class for styling
+                    suggestionButton.style.opacity = '0.5'; // Make button faint
+                    suggestionButton.type = 'button'; // Prevent form submission
+
+                    suggestionButton.addEventListener('click', function() {
+                        taskDescription.value += this.textContent + '; ';
+                    });
+
+                    suggestionsContainer.appendChild(suggestionButton);
+                });
+            }
+        });
+
+        // Toggle booking details and chevron based on if any checkbox is checked
+        toggleBookingDetails(anyChecked);
+    }
+
+    function toggleBookingDetails(show) {
+        bookingDetails.style.display = show ? 'block' : 'none';
+        chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
+    }
+
+    serviceCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', updateSuggestions);
+    });
+
+    // Initial call to set up UI based on current checkbox state
+    updateSuggestions();
+});
+</script>
+                         <script>
                                 (function() {
                                     var originalTitle = document.title;
                                     var messageOne = "Tom's 🧰 HandyTech";
@@ -479,147 +525,6 @@
                                         }
                                     });
                                 })();
-                            </script>
-                            <script>
-                                const serviceActions = {
-                                        "service1": {
-                                            buttonText: ['+ Wall Repair', '- Wall Repair'],
-                                            text: "Help me repair a hole in my drywall",
-                                            buttonId: "wallRepairButton",
-                                            displayToggle: true
-                                        },
-                                        "service2": {
-                                            buttonText: ['+ Door Handles & Locks Installation', '- Door Handles & Locks Installation'],
-                                            text: "Install new door handles or locks for me",
-                                            buttonId: "doorHandlesLocksButton",
-                                            displayToggle: true
-                                        },
-                                        "service3": {
-                                            buttonText: ['+ Hollow Door Repair', '- Hollow Door Repair'],
-                                            text: "Repair a hollow door with damages",
-                                            buttonId: "hollowDoorRepairButton",
-                                            displayToggle: true
-                                        },
-                                        "service4": {
-                                            buttonText: ['+ Appliances Repair', '- Appliances Repair'],
-                                            text: "Fix my broken appliance",
-                                            buttonId: "appliancesRepairButton",
-                                            displayToggle: true
-                                        },
-                                        "service5": {
-                                            buttonText: ['+ Furniture Repair', '- Furniture Repair'],
-                                            text: "Repair a piece of furniture that is damaged",
-                                            buttonId: "furnitureRepairButton",
-                                            displayToggle: true
-                                        },
-                                        "service6": {
-                                            buttonText: ['+ Curtains/Drapes', '- Curtains/Drapes'],
-                                            text: "Hanging curtains or drapes to beautify my windows",
-                                            buttonId: "curtainsDrapesButton",
-                                            displayToggle: true
-                                        },
-                                        "service7": {
-                                            buttonText: ['+ Frames', '- Frames'],
-                                            text: "Assist in mounting frames",
-                                            buttonId: "framesButton",
-                                            displayToggle: true
-                                        },
-                                        "service8": {
-                                            buttonText: ['+ Shelves', '- Shelves'],
-                                            text: "Need sturdy shelves installed",
-                                            buttonId: "shelvesButton",
-                                            displayToggle: true
-                                        },
-                                        "service9": {
-                                            buttonText: ['+ TV Mounting', '- TV Mounting'],
-                                            text: "Mount my TV",
-                                            buttonId: "tvMountingButton",
-                                            displayToggle: true
-                                        },
-                                        "service10": {
-                                            buttonText: ['+ TV Mounting + Concealed Cables', '- TV Mounting + Concealed Cables'],
-                                            text: "I need to mount a TV and want the cables hidden or less visible",
-                                            buttonId: "tvMountingConcealedCablesButton",
-                                            displayToggle: true
-                                        },
-                                        "service11": {
-                                            buttonText: ['+ PC Diagnostic Service', '- PC Diagnostic Service'],
-                                            text: "My computer is running really slow",
-                                            buttonId: "pcDiagnosticServiceButton",
-                                            displayToggle: true
-                                        },
-                                        "service12": {
-                                            buttonText: ['+ Data Transfer / Data Back-Up', '- Data Transfer / Data Back-Up'],
-                                            text: "I need to backup my data",
-                                            buttonId: "dataTransferBackUpButton",
-                                            displayToggle: true
-                                        },
-                                        "service13": {
-                                            buttonText: ['+ Part Replacement/Upgrade', '- Part Replacement/Upgrade'],
-                                            text: "Install a new part I bought",
-                                            buttonId: "partReplacementUpgradeButton",
-                                            displayToggle: true
-                                        },
-                                        "service14": {
-                                            buttonText: ['+ Software Installation', '- Software Installation'],
-                                            text: "Install a software",
-                                            buttonId: "softwareInstallationButton",
-                                            displayToggle: true
-                                        },
-                                        "service15": {
-                                            buttonText: ['+ Printer Setup', '- Printer Setup'],
-                                            text: "Help me setup my printer",
-                                            buttonId: "printerSetupButton",
-                                            displayToggle: true
-                                        },
-                                        "service16": {
-                                            buttonText: ['+ Email Setup', '- Email Setup'],
-                                            text: "Setup my email",
-                                            buttonId: "emailSetupButton",
-                                            displayToggle: true
-                                        },
-                                        "service17": {
-                                            buttonText: ['+ Light Fixture Installation', '- Light Fixture Installation'],
-                                            text: "Install a new light fixture for me",
-                                            buttonId: "lightFixtureInstallationButton",
-                                            displayToggle: true
-                                        },
-                                        "service18": {
-                                            buttonText: ['+ Furniture Assembly', '- Furniture Assembly'],
-                                            text: "Assemble my new furniture",
-                                            buttonId: "furnitureAssemblyButton",
-                                            displayToggle: true
-                                        },
-                                        "service19": {
-                                            buttonText: ['+ Furniture Repair', '- Furniture Repair'],
-                                            text: "Repair a piece of furniture",
-                                            buttonId: "furnitureRepairButton2", // Ensure this comma is present
-                                            displayToggle: true
-                                        },
-                                        "service20": {
-                                            buttonText: ['+ Leaky Faucets', '- Leaky Faucets'],
-                                            text: "Fix a leaky faucet",
-                                            buttonId: "leakyFaucetsButton",
-                                            displayToggle: true
-                                        },
-                                        "service21": {
-                                            buttonText: ['+ Running Toilet', '- Running Toilet'],
-                                            text: "My toilet won't stop running",
-                                            buttonId: "runningToiletButton",
-                                            displayToggle: true
-                                        },
-                                        "service22": {
-                                            buttonText: ['+ Installing Fixtures', '- Installing Fixtures'],
-                                            text: "Install new fixtures in my bathroom",
-                                            buttonId: "installingNewFixturesButton",
-                                            displayToggle: true
-                                        },
-                                        "service23": {
-                                            buttonText: ['+ Unclog Sink', '- Unclog Sink'],
-                                            text: "My sink is clogged",
-                                            buttonId: "unclogSinkButton",
-                                            displayToggle: true
-                                        };
                             </script>
                     </body>
                     </html>
