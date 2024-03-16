@@ -166,16 +166,16 @@
 
             .input-box {
                 width: 100%;
-                padding: 10px;
-                border: 1px solid #ccc;
+                padding: 4px;
+                border: 2px solid #cccc;
                 border-radius: 5px;
-                margin-bottom: 20px;
+                margin-bottom: 30px;
                 box-sizing: border-box;
                 color: #333;
             }
 
             .input-box::placeholder {
-                color: #lightgrey;
+                color: silver;
             }
 
             .invoice-box {
@@ -394,7 +394,7 @@
                                             <div id="suggestionsContainer" style="margin-top: 10px" "display: block;"></div>
                                             <br>
                                         <div id="bookingDetails" style="display: block; position: relative;">
-                                            <textarea id="taskDescription" class="input-box" name="" rows="4" placeholder="🤖 Type your task details here. You can also tap the service suggestions above to make it easier" style="border: 2px solid red;"></textarea>
+                                            <textarea id="taskDescription" class="input-box" name="" rows="6" placeholder="🤖 Type your task details here. Tap the suggestions above to make it easier" style="border: 2px solid red;"></textarea>
                                             <button type="submit" id="submitButton" class="qrc_button" style="display: block;">
                                                 <center>
                                                     <span id="buttonText" class="button-text">
@@ -455,65 +455,85 @@
             </div>
         </footer>
         <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                const serviceCheckboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
-                const suggestionsContainer = document.getElementById('suggestionsContainer');
-                const taskDescription = document.getElementById('taskDescription');
-                const chevron = document.getElementById('chevronArrow'); // Ensure this ID matches your chevron element
-                const bookingDetails = document.getElementById('bookingDetails'); // Container that should show/hide
-                // Updated mapping of categories to their services
-                const categoryToServices = {
-                    "service1": ["Appliances Hourly Service Rate", "Door Handles & Locks Installation", "Furniture Repair Hourly Service Rate", "Hollow Door Repair", "Wall Repair - Patch & Paint"],
-                    "service3": ["Frame/Shelf Mounting Hourly Service Rate", "TV Mounting (Under 60\") + Concealed Cables", "TV Mounting (Under 60\") without cable management", "Curtains/Drapes w. Single Rod Installation"],
-                    "service6": ["Data Transfer / Data Back-Up", "Part Replacement/Upgrade", "PC Diagnostic Service", "Software Install/Update/Removal (4)", "System Restore", "Virus/Malware Removal"],
-                    "service4": ["Light Fixture Swap"],
-                    "service2": ["Furniture Assembly Hourly Service Rate", "Furniture Repair Hourly Service Rate"],
-                    "service5": ["Bidet Accessory Install/Removal", "Fixture Swap (Cosmetic)", "Leak Under Sink Repair", "Unclog Sink/Shower/Toilet (Minor)"]
-                };
+document.addEventListener("DOMContentLoaded", function() {
+    const serviceCheckboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
+    const suggestionsContainer = document.getElementById('suggestionsContainer');
+    const taskDescription = document.getElementById('taskDescription');
+    const submitButton = document.getElementById('submitButton'); // Make sure this matches the ID of your "Book Here" button
+    const chevron = document.getElementById('chevronArrow');
+    const bookingDetails = document.getElementById('bookingDetails');
 
-                function updateSuggestions() {
-                    suggestionsContainer.innerHTML = ''; // Clear current suggestions
-                    let anyChecked = false; // Track if any checkbox is checked
-                    serviceCheckboxes.forEach((checkbox) => {
-                        if (checkbox.checked) {
-                            anyChecked = true;
-                            const services = categoryToServices[checkbox.id] || [];
-                            services.forEach(service => {
-                                const suggestionButton = document.createElement('button');
-                                suggestionButton.textContent = service; // Use service name as button text
-                                suggestionButton.className = 'suggestion-btn'; // Add class for styling
-                                suggestionButton.style.opacity = '0.5'; // Make button faint
-                                suggestionButton.type = 'button'; // Prevent form submission
-                                suggestionButton.addEventListener('click', function() {
-                                    taskDescription.value += this.textContent + '; ';
-                                });
-                                suggestionsContainer.appendChild(suggestionButton);
-                            });
-                        }
-                    });
-                    // Toggle booking details and chevron based on if any checkbox is checked
-                    toggleBookingDetails(anyChecked);
-                }
+    const categoryToServices = {
+        "service1": ["Appliances Hourly Service Rate", "Door Handles & Locks Installation", "Furniture Repair Hourly Service Rate", "Hollow Door Repair", "Wall Repair - Patch & Paint"],
+        "service3": ["Frame/Shelf Mounting Hourly Service Rate", "TV Mounting (Under 60\") + Concealed Cables", "TV Mounting (Under 60\") without cable management", "Curtains/Drapes w. Single Rod Installation"],
+        "service6": ["Data Transfer / Data Back-Up", "Part Replacement/Upgrade", "PC Diagnostic Service", "Software Install/Update/Removal (4)", "System Restore", "Virus/Malware Removal"],
+        "service4": ["Light Fixture Swap"],
+        "service2": ["Furniture Assembly Hourly Service Rate", "Furniture Repair Hourly Service Rate"],
+        "service5": ["Bidet Accessory Install/Removal", "Fixture Swap (Cosmetic)", "Leak Under Sink Repair", "Unclog Sink/Shower/Toilet (Minor)"]
+    };
 
-                function toggleBookingDetails(show) {
-    bookingDetails.style.display = show ? 'block' : 'none';
-    chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
-
-    // If booking details are shown, scroll to and set focus on the taskDescription input box
-    if(show) {
-        taskDescription.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        taskDescription.focus();
+    function updateTextInputState() {
+        if (taskDescription.value.trim() !== '') {
+            taskDescription.style.borderColor = 'red'; // Change border color to red if input is not empty
+            submitButton.style.display = 'block'; // Show the submit button
+        } else {
+            taskDescription.style.borderColor = ''; // Revert border color to default if input is empty
+            submitButton.style.display = 'none'; // Hide the submit button
+        }
     }
-}
 
+    taskDescription.addEventListener('input', updateTextInputState); // Call when text is typed
 
-                serviceCheckboxes.forEach((checkbox) => {
-                    checkbox.addEventListener('change', updateSuggestions);
+    function updateSuggestions() {
+        suggestionsContainer.innerHTML = ''; // Clear current suggestions
+        let anyChecked = false; // Track if any checkbox is checked
+        serviceCheckboxes.forEach((checkbox) => {
+            if (checkbox.checked) {
+                anyChecked = true;
+                const services = categoryToServices[checkbox.id] || [];
+                services.forEach(service => {
+                    const suggestionButton = document.createElement('button');
+                    suggestionButton.textContent = service; // Use service name as button text
+                    suggestionButton.className = 'suggestion-btn'; // Add class for styling
+                    suggestionButton.style.opacity = '0.5'; // Make button faint
+                    suggestionButton.type = 'button'; // Prevent form submission
+
+                    suggestionButton.addEventListener('click', function() {
+                        taskDescription.value += this.textContent + '; ';
+                        updateTextInputState(); // Call to update text input box state
+                    });
+
+                    suggestionsContainer.appendChild(suggestionButton);
                 });
-                // Initial call to set up UI based on current checkbox state
-                updateSuggestions();
-            });
-        </script>
+            }
+        });
+
+        toggleBookingDetails(anyChecked);
+    }
+
+    function toggleBookingDetails(show) {
+        bookingDetails.style.display = show ? 'block' : 'none';
+        chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
+        
+        // Scroll to and focus on the taskDescription input box when shown
+        if(show) {
+            taskDescription.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            taskDescription.focus();
+        }
+        
+        updateTextInputState(); // Also call this here to ensure state is updated when toggling
+    }
+
+    serviceCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', updateSuggestions);
+    });
+
+    // Initial setup calls
+    updateSuggestions();
+    updateTextInputState(); // Ensure initial state is set correctly
+});
+</script>
+
         <script>
             (function() {
                 var originalTitle = document.title;
