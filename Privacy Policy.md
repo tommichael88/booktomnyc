@@ -81,10 +81,8 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
 
 
  
-<!DOCTYPE html>
+
 <html>
-<head>
-</head>
 <body>
   <h4 style="color: #454545;">
     <button type="button" onclick="handlePrint()" aria-label="Print" style="cursor: pointer;">
