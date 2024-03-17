@@ -1,6 +1,4 @@
-
-
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -165,12 +163,40 @@
                 text-decoration: underline;
                 text-decoration-color: red;
             }
+
             #suggestionsContainer {
-    margin-top: 30px; 
-    display: flex; 
-    flex-direction: flex; /* Stack items vertically */
-    flex-wrap: column; /* Optional: Allow wrapping for narrow widths */
-} 
+                margin-top: 30px;
+                display: flex;
+                flex-direction: flex;
+                /* Stack items vertically */
+                flex-wrap: column;
+                /* Optional: Allow wrapping for narrow widths */
+            }
+
+            /* Styles for the dropdown container and label */
+            .dropdown-container {
+                margin-top: 15px;
+                /* Spacing above the dropdown */
+                padding: 5px;
+                /* Padding around the label and dropdown */
+                background-color: #f9f9f9;
+                /* Light background for the dropdown area */
+                border-radius: 5px;
+                /* Rounded corners for the container */
+                display: flex;
+                /* Use flex layout */
+                align-items: center;
+                /* Center items vertically */
+                justify-content: start;
+                /* Align items to the start of the container */
+            }
+
+            .dropdown-label {
+                margin-right: 10px;
+                /* Spacing between label and dropdown */
+                font-weight: bold;
+                /* Make label text bold */
+            }
 
             .input-box {
                 width: 100%;
@@ -398,9 +424,9 @@
                                                 </span>
                                             </div>
                                         </div>
-                                            <!-- Suggestions container with horizontal scrolling on overflow -->
-<div id="suggestionsContainer" style="margin-top: 30px; display: flex; overflow-x: auto; white-space: wrap;"></div>
-                                            <br>
+                                        <!-- Suggestions container with horizontal scrolling on overflow -->
+                                        <div id="suggestionsContainer" style="margin-top: 30px; display: flex; overflow-x: auto; white-space: wrap;"></div>
+                                        <br>
                                         <div id="bookingDetails" style="display: block; position: relative;">
                                             <textarea id="taskDescription" class="input-box" name="" rows="6" placeholder="🤖 Type your task details here. Tap the suggestions above to make it easier" style="border: 2px solid red;"></textarea>
                                             <button type="submit" id="submitButton" class="qrc_button" style="display: block;">
@@ -435,8 +461,7 @@
                                 <br>
                                 <div>
                                     <span id="buttonText" class="button-text">
-                                            <a rel="nofollow noopener noreferrer" href="https://invoice.zoho.com/portal/booktomnyc" class="qrc_button" target="_blank"> 🔐 𝗖𝗟𝗜𝗘𝗡𝗧 𝗟𝗢𝗚𝗜𝗡
-                                        </a>
+                                        <a rel="nofollow noopener noreferrer" href="https://invoice.zoho.com/portal/booktomnyc" class="qrc_button" target="_blank"> 🔐 𝗖𝗟𝗜𝗘𝗡𝗧 𝗟𝗢𝗚𝗜𝗡 </a>
                             </font>
                         </div>
                     </div>
@@ -449,7 +474,7 @@
             <br>
         </div>
         <footer>
-        <br>
+            <br>
             <font color="silver">
                 <span>
                     <div class="footer-content">
@@ -463,123 +488,159 @@
             </span>
             </div>
         </footer>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const serviceCheckboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
-    const suggestionsContainer = document.getElementById('suggestionsContainer');
-    const taskDescription = document.getElementById('taskDescription');
-    const submitButton = document.getElementById('submitButton');
-    const chevron = document.getElementById('chevronArrow');
-    const bookingDetails = document.getElementById('bookingDetails');
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const serviceCheckboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
+                const suggestionsContainer = document.getElementById('suggestionsContainer');
+                const taskDescription = document.getElementById('taskDescription');
+                const submitButton = document.getElementById('submitButton');
+                const chevron = document.getElementById('chevronArrow');
+                const bookingDetails = document.getElementById('bookingDetails');
+                let checkedCategories = []; // Array to keep track of checked categories in order
+                const categoryToServices = {
+                    "service1": ["Appliances Hourly Service Rate", "Door Handles & Locks Installation", "Furniture Repair Hourly Service Rate", "Hollow Door Repair", "Wall Repair - Patch & Paint"],
+                    "service3": ["Frame/Shelf Mounting Hourly Service Rate", "TV Mounting (Under 60\") + Concealed Cables", "TV Mounting (Under 60\") without cable management", "Curtains/Drapes w. Single Rod Installation"],
+                    "service6": ["Data Transfer / Data Back-Up", "Part Replacement/Upgrade", "PC Diagnostic Service", "Software Install/Update/Removal (4)", "System Restore", "Virus/Malware Removal"],
+                    "service4": ["Light Fixture Swap"],
+                    "service2": ["Furniture Assembly Hourly Service Rate", "Furniture Repair Hourly Service Rate"],
+                    "service5": ["Bidet Accessory Install/Removal", "Fixture Swap (Cosmetic)", "Leak Under Sink Repair", "Unclog Sink/Shower/Toilet (Minor)"]
+                };
+                const targetedSuggestions = {
+                    "Wall Repair - Patch & Paint": ["Damage larger than a baseball", "Damage smaller than a baseball"],
+                    "Light Fixture Swap": ["Please Bring a Ladder", "You May Use My Ladder", "No Ladder Necessary"]
+                };
+                const dropdownOptionsForFurnitureAssembly = {
+                    "Furniture Assembly Hourly Service Rate": ["Option 1: Small Item", "Option 2: Medium Item", "Option 3: Large Item"]
+                };
 
-    let checkedCategories = []; // Array to keep track of checked categories in order
-
-
-    const categoryToServices = {
-        "service1": ["Appliances Hourly Service Rate", "Door Handles & Locks Installation", "Furniture Repair Hourly Service Rate", "Hollow Door Repair", "Wall Repair - Patch & Paint"],
-        "service3": ["Frame/Shelf Mounting Hourly Service Rate", "TV Mounting (Under 60\") + Concealed Cables", "TV Mounting (Under 60\") without cable management", "Curtains/Drapes w. Single Rod Installation"],
-        "service6": ["Data Transfer / Data Back-Up", "Part Replacement/Upgrade", "PC Diagnostic Service", "Software Install/Update/Removal (4)", "System Restore", "Virus/Malware Removal"],
-        "service4": ["Light Fixture Swap"],
-        "service2": ["Furniture Assembly Hourly Service Rate", "Furniture Repair Hourly Service Rate"],
-        "service5": ["Bidet Accessory Install/Removal", "Fixture Swap (Cosmetic)", "Leak Under Sink Repair", "Unclog Sink/Shower/Toilet (Minor)"]
-    };
-
-   const targetedSuggestions = {
-    "Wall Repair - Patch & Paint": [
-        "Damage larger than a baseball",
-        "Damage smaller than a baseball"
-    ],
-    "Light Fixture Swap": [
-        "Ladder Needed - Please Bring",
-        "You May Use My Ladder",
-        "No Ladder Necessary"
-    ]
-};
-
-
-
-    function updateTextInputAppearance() {
-        // Update the appearance of the text input based on content
-        taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
-        submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
-    }
-
-    function appendServiceToTextInput(service) {
-        // Append service to text input, avoiding duplicates
-        if (!taskDescription.value.includes(service)) {
-            taskDescription.value += (taskDescription.value ? "; " : "") + service;
-            updateTextInputAppearance();
-        }
-    }
-
-    function toggleBookingDetails(show) {
-        // Show or hide booking details and adjust chevron
-        bookingDetails.style.display = show ? 'block' : 'none';
-        chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
-    }
-
-    function isAnyCategoryChecked() {
-        return checkedCategories.length > 0;
-    }
-
-    function showSuggestions(specificService = '') {
-        suggestionsContainer.innerHTML = '';
-        let servicesToShow = [];
-
-        if (specificService && targetedSuggestions[specificService]) {
-            servicesToShow = targetedSuggestions[specificService];
-        } else {
-            checkedCategories.slice().reverse().forEach(categoryId => {
-                if (categoryToServices[categoryId]) {
-                    servicesToShow = servicesToShow.concat(categoryToServices[categoryId]);
+                function createSuggestionButton(service, specificService) {
+                    const button = document.createElement('button');
+                    button.textContent = service;
+                    button.className = 'suggestion-btn';
+                    button.setAttribute('data-service', service); // Add data attribute to identify the service
+                    button.onclick = () => {
+                        // Check if the service should trigger a dropdown
+                        if (dropdownOptionsForFurnitureAssembly[service]) {
+                            showDropdown(service);
+                        } else {
+                            appendServiceToTextInput(service);
+                            if (!specificService || specificService && targetedSuggestions[service]) {
+                                showSuggestions(service);
+                            } else {
+                                showSuggestions();
+                            }
+                        }
+                    };
+                    return button;
                 }
-            });
-        }
 
-        servicesToShow.forEach(service => {
-            const button = createSuggestionButton(service, specificService);
-            suggestionsContainer.appendChild(button);
-        });
+                function updateTextInputAppearance() {
+                    // Update the appearance of the text input based on content
+                    taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
+                    submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
+                }
 
-        toggleBookingDetails(isAnyCategoryChecked() || specificService);
-    }
+                function appendServiceToTextInput(service) {
+                    // Append service to text input, avoiding duplicates
+                    if (!taskDescription.value.includes(service)) {
+                        taskDescription.value += (taskDescription.value ? "; " : "") + service;
+                        updateTextInputAppearance();
+                    }
+                }
 
-    function createSuggestionButton(service, specificService) {
-        const button = document.createElement('button');
-        button.textContent = service;
-        button.className = 'suggestion-btn';
-        button.onclick = () => {
-            appendServiceToTextInput(service);
-            if (!specificService || specificService && targetedSuggestions[service]) {
-                showSuggestions(service);
-            } else {
+                function toggleBookingDetails(show) {
+                    // Show or hide booking details and adjust chevron
+                    bookingDetails.style.display = show ? 'block' : 'none';
+                    chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
+                }
+
+                function isAnyCategoryChecked() {
+                    return checkedCategories.length > 0;
+                }
+
+                function showSuggestions(specificService = '') {
+                    suggestionsContainer.innerHTML = '';
+                    let servicesToShow = [];
+                    if (specificService && targetedSuggestions[specificService]) {
+                        servicesToShow = targetedSuggestions[specificService];
+                    } else {
+                        checkedCategories.slice().reverse().forEach(categoryId => {
+                            if (categoryToServices[categoryId]) {
+                                servicesToShow = servicesToShow.concat(categoryToServices[categoryId]);
+                            }
+                        });
+                    }
+                    servicesToShow.forEach(service => {
+                        const button = createSuggestionButton(service, specificService);
+                        suggestionsContainer.appendChild(button);
+                    });
+                    toggleBookingDetails(isAnyCategoryChecked() || specificService);
+                }
+
+                function updateCheckedCategories(checkbox) {
+                    const index = checkedCategories.indexOf(checkbox.id);
+                    if (checkbox.checked && index === -1) {
+                        checkedCategories.push(checkbox.id); // Add if checked
+                    } else if (!checkbox.checked && index !== -1) {
+                        checkedCategories.splice(index, 1); // Remove if unchecked
+                    }
+                }
+
+                function showDropdown(service) {
+                    // Ensuring any existing dropdown is removed before creating a new one
+                    let existingDropdown = document.getElementById('dropdownContainer');
+                    if (existingDropdown) {
+                        existingDropdown.remove();
+                    }
+                    // Create a container for the dropdown
+                    let dropdownContainer = document.createElement('div');
+                    dropdownContainer.id = 'dropdownContainer';
+                    dropdownContainer.className = 'dropdown-container'; // Add class for styling
+                    // Create a label for the dropdown
+                    let dropdownLabel = document.createElement('label');
+                    dropdownLabel.textContent = 'Select Furniture Options:';
+                    dropdownLabel.className = 'dropdown-label'; // Add class for styling
+                    dropdownContainer.appendChild(dropdownLabel);
+                    // Create a new dropdown element
+                    let dropdown = document.createElement('select');
+                    dropdown.id = 'dynamicDropdown';
+                    dropdown.className = 'dynamic-dropdown'; // Assign a class for styling
+                    dropdownContainer.appendChild(dropdown);
+                    // Adding a default "Select an option" choice
+                    let defaultOption = document.createElement('option');
+                    defaultOption.textContent = "Select an option";
+                    defaultOption.disabled = true;
+                    defaultOption.selected = true;
+                    dropdown.appendChild(defaultOption);
+                    // Populate dropdown with options for the service
+                    let options = dropdownOptionsForFurnitureAssembly[service];
+                    options.forEach(option => {
+                        let optionElement = document.createElement('option');
+                        optionElement.textContent = option;
+                        optionElement.value = option;
+                        dropdown.appendChild(optionElement);
+                    });
+                    // Event listener for when an option is selected
+                    dropdown.addEventListener('change', function() {
+                        if (this.value) {
+                            taskDescription.value += (taskDescription.value ? "; " : "") + this.value;
+                            dropdownContainer.remove(); // Optionally remove the dropdown container after selection
+                        }
+                    });
+                    // Insert the dropdown container before the task description textarea
+                    taskDescription.before(dropdownContainer);
+                }
+                serviceCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        updateCheckedCategories(checkbox);
+                        showSuggestions();
+                    });
+                });
+                // Initial setup calls
                 showSuggestions();
-            }
-        };
-        return button;
-    }
-
-    function updateCheckedCategories(checkbox) {
-        const index = checkedCategories.indexOf(checkbox.id);
-        if (checkbox.checked && index === -1) {
-            checkedCategories.push(checkbox.id); // Add if checked
-        } else if (!checkbox.checked && index !== -1) {
-            checkedCategories.splice(index, 1); // Remove if unchecked
-        }
-    }
-
-    serviceCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', () => {
-            updateCheckedCategories(checkbox);
-            showSuggestions();
-        });
-    });
-
-    // Initial setup calls
-    showSuggestions();
-    updateTextInputAppearance();
-});
-</script>
+                updateTextInputAppearance();
+            });
+        </script>
         <script>
             (function() {
                 var originalTitle = document.title;
