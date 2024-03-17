@@ -81,10 +81,7 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
 
 
  
-<!DOCTYPE html>
-<head></head>
-<html>
-<body>
+<html><body>
   <h4 style="color: #454545;">
     <button type="button" onclick="handlePrint()" aria-label="Print" style="cursor: pointer;">
         🖨 Print Privacy Policy
@@ -93,7 +90,7 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
     <p id="last-updated"><b>LAST UPDATED</b>: </p>
     <hr>
     <br>
-  <script type="text/javascript">
+<script type="text/javascript">
     function formatDate(date) {
       const options = {
         weekday: 'long',
@@ -127,8 +124,6 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
     // Call for initial update
     updateLastUpdatedDate(); 
 
-  </script>
-<script>
         // Direct print function for the Privacy Policy page
         function handlePrint() {
             window.print();
@@ -143,7 +138,5 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
 
         // Call the updateLastUpdatedDate function when the page loads
         window.onload = updateLastUpdatedDate;
-</script>
-</body>
-</html>
+</script></body></html>
 
