@@ -198,6 +198,78 @@
                 /* Make label text bold */
             }
 
+            .zoom-btn {
+                font-size: 16px;
+                padding: 10px 20px;
+                background-color: #f00e0e;
+                color: white;
+                border: none;
+                cursor: pointer;
+                border-radius: 5px;
+                transition: background-color 0.3s ease;
+                position: fixed;
+                /* Position it at the bottom right corner */
+                bottom: 20px;
+                right: 20px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            }
+
+            .zoom-btn:hover {
+                background-color: #0056b3;
+            }
+
+            .zoom-btn:focus {
+                outline: none;
+            }
+
+            /* The Modal (background) */
+            .modal {
+                display: none;
+                /* Hidden by default */
+                position: fixed;
+                /* Stay in place */
+                z-index: 1;
+                /* Sit on top */
+                left: 0;
+                top: 0;
+                width: 100%;
+                /* Full width */
+                height: 100%;
+                /* Full height */
+                overflow: auto;
+                /* Enable scroll if needed */
+                background-color: rgb(0, 0, 0);
+                /* Fallback color */
+                background-color: rgba(0, 0, 0, 0.4);
+                /* Black w/ opacity */
+            }
+
+            /* Modal Content/Box */
+            .modal-content {
+                background-color: #fefefe;
+                margin: 15% auto;
+                /* 15% from the top and centered */
+                padding: 20px;
+                border: 1px solid #888;
+                width: 80%;
+                /* Could be more or less, depending on screen size */
+            }
+
+            /* The Close Button */
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+
+            .close:hover,
+            .close:focus {
+                color: black;
+                text-decoration: none;
+                cursor: pointer;
+            }
+
             .input-box {
                 width: 100%;
                 padding: 4px;
@@ -429,11 +501,10 @@
                                         <br>
                                         <div id="bookingDetails" style="display: block; position: relative;">
                                             <textarea id="taskDescription" class="input-box" name="" rows="6" placeholder="🤖 Type your task details here. Tap the suggestions above to make it easier" style="border: 2px solid red;"></textarea>
+                                            <button id="zoomButton" class="zoom-btn">&#128269;</button>
                                             <button type="submit" id="submitButton" class="qrc_button" style="display: block;">
-                                                <center>
-                                                    <span id="buttonText" class="button-text">
-                                                        <b>BOOK HERE ★ &nbsp;</b>ᶜᵒⁿᵗⁱⁿᵘᵉ&nbsp;> </span>
-                                                </center>
+                                                <span id="buttonText" class="button-text">
+                                                    <b>BOOK HERE ★ &nbsp;</b>ᶜᵒⁿᵗⁱⁿᵘᵉ&nbsp;> </span>
                                             </button>
                                         </div>
                                         </center>
@@ -442,6 +513,46 @@
                     </div>
                 </div>
                 </span>
+                <!-- The Modal -->
+                <li>
+                    <div id="taskModal" class="modal">
+                        <!-- Modal content -->
+                        <div class="modal-content">
+                            <span class="close">OK ☑️</span>
+                            <h3>🤖 Type your task details</h3>
+                            <textarea id="modalTaskDescription" class="input-box" rows="6" style="border: 2px solid red; max-height: 700rem auto; max-width: 700rem auto;"></textarea>>
+                        </div>
+                    </div>
+                    <script>
+                        // Get the modal
+                        var modal = document.getElementById("taskModal");
+                        // Get the button that opens the modal
+                        var zoomBtn = document.getElementById("zoomButton");
+                        // Get the 
+                        < span > element that closes the modal
+                        var closeSpan = modal.getElementsByClassName("close")[0];
+                        // Get the original and modal text input elements
+                        var originalTextInput = document.getElementById("taskDescription");
+                        var modalTextInput = document.getElementById("modalTaskDescription");
+                        // When the user clicks the zoom button, open the modal and transfer content
+                        zoomBtn.onclick = function() {
+                                modal.style.display = "block";
+                                modalTextInput.value = originalTextInput.value; // Transfer text to modal input
+                            }
+                            // When the user clicks on 
+                            < span > (x), close the modal and transfer content back
+                        closeSpan.onclick = function() {
+                            modal.style.display = "none";
+                            originalTextInput.value = modalTextInput.value; // Transfer updated text back to original input
+                        }
+                        // When the user clicks anywhere outside of the modal, close it and transfer content back
+                        window.onclick = function(event) {
+                            if (event.target == modal) {
+                                modal.style.display = "none";
+                                originalTextInput.value = modalTextInput.value; // Transfer updated text back to original input
+                            }
+                        }
+                    </script>
                 </li>
                 <!--<span><div style="width:100%; height:100vh;"><iframe src="https://booktom.setmore.com" style="border:none;" scrolling="auto" width="100%" height="100%"></iframe></div></span>-->
                 <!-- Client Portal Section -->
@@ -534,12 +645,6 @@
                     return button;
                 }
 
-                function updateTextInputAppearance() {
-                    // Update the appearance of the text input based on content
-                    taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
-                    submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
-                }
-
                 function appendServiceToTextInput(service) {
                     // Append service to text input, avoiding duplicates
                     if (!taskDescription.value.includes(service)) {
@@ -556,6 +661,12 @@
 
                 function isAnyCategoryChecked() {
                     return checkedCategories.length > 0;
+                }
+
+                function updateTextInputAppearance() {
+                    // Update the appearance of the text input based on content
+                    taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
+                    submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
                 }
 
                 function showSuggestions(specificService = '') {
