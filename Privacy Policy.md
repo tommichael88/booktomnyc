@@ -81,7 +81,8 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
 
 
  
-
+<!DOCTYPE html>
+<head></head>
 <html>
 <body>
   <h4 style="color: #454545;">
