@@ -79,39 +79,57 @@ Tom Kongerslev is bound by third party service platforms and by extension Your p
 
 This document overviews Tom Kongerslev's data handling practices and is not legal advice.
 
+
+ 
+<!DOCTYPE html>
 <html>
-  <head></head>
-  <body>    
+<head>
+</head>
+<body>
+  <h4 style="color: #454545;">
+    <button type="button" onclick="handlePrint()" aria-label="Print" style="cursor: pointer;">
+        🖨 Print Privacy Policy
+    </button>
     <hr>
     <p id="last-updated"><b>LAST UPDATED</b>: </p>
     <hr>
     <br>
-<h4 style="color: #454545;">
-    <button type="button" onclick="handlePrint()" aria-label="Print" style="cursor: pointer;">
-        🖨 Print Privacy Policy
-    </button>
-</h4>
-    <script type="text/javascript">
-        function formatDate(date) {
-            const options = {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZoneName: 'short',
-                hour12: false
-            };
-            return new Date(date).toLocaleDateString('en-US', options);
-        }
+  <script type="text/javascript">
+    function formatDate(date) {
+      const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short',
+        hour12: false
+      };
+      return new Date(date).toLocaleDateString('en-US', options);
+    }
 
-        function updateLastUpdatedDate() {
-            const lastUpdatedElement = document.getElementById('last-updated');
-            const lastModifiedDate = formatDate(document.lastModified);
-            lastUpdatedElement.innerHTML += lastModifiedDate;
-        }
+    function updateLastUpdatedDate() {
+      const lastUpdatedElement = document.getElementById('last-updated');
+      const lastModifiedDate = formatDate(document.lastModified);
+      lastUpdatedElement.innerHTML = "Last Updated: " + lastModifiedDate; 
+    }
 
+    // MutationObserver setup
+    const targetNode = document.body; // Watch the entire body for changes
+    const config = { attributes: true, childList: true, subtree: true };
+
+    const observer = new MutationObserver(function(mutationsList) {
+      updateLastUpdatedDate();
+    });
+
+    observer.observe(targetNode, config);
+
+    // Call for initial update
+    updateLastUpdatedDate(); 
+
+  </script>
+<script>
         // Direct print function for the Privacy Policy page
         function handlePrint() {
             window.print();
@@ -126,7 +144,7 @@ This document overviews Tom Kongerslev's data handling practices and is not lega
 
         // Call the updateLastUpdatedDate function when the page loads
         window.onload = updateLastUpdatedDate;
-    </script>
+</script>
 </body>
 </html>
 
