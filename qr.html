@@ -142,8 +142,8 @@
 
             /* When the checkbox is checked, change background and border color */
             .custom-checkbox input[type="checkbox"]:checked+.checkmark {
-                background-color: #991000;
-                border-color: #991000;
+                background-color: red;
+                border-color: red;
             }
 
             /* White checkmark */
@@ -211,7 +211,7 @@
             }
             .zoom-btn {
     font-size: 16px;
-    padding: 10px 20px;
+    padding: 10px 10px;
     background-color: red;
     color: white;
     border: none;
@@ -274,15 +274,17 @@
             .input-box {
                 width: 100%;
                 padding: 4px;
-                border: 2px solid #cccc;
+                border: 2px solid red;
                 border-radius: 5px;
-                margin-bottom: 30px;
+                margin-bottom: 5px;
                 box-sizing: border-box;
-                color: #333;
+                color: #454545;
+                ;
             }
 
             .input-box::placeholder {
-                color: silver;
+                color: grey;
+                text-decoration: bold;
             }
 
             .invoice-box {
@@ -290,7 +292,7 @@
                 padding: 4px;
                 max-width: 600px;
                 /* Adjust based on your layout */
-                background-color: #ffffff;
+                background-color: #FFFFFF;
                 /* Light background color */
                 border: 2px solid #ccc;
                 /* Grey border */
@@ -300,6 +302,13 @@
                 /* Utilize existing root variable for box-shadow */
                 color: var(--text-color);
                 /* Utilize existing root variable for text color */
+            }
+            
+            .dropdown-container {
+            background-color: #454545;
+            color: white;
+            display: flex;
+            
             }
 
             @media (max-width: 768px) {
@@ -362,6 +371,9 @@
             #bookHereButton {
                 display: inline-block;
             }
+            
+           
+
         </style>
         <script type="text/javascript">
             window.hasMobileFirstExtension = true;
@@ -499,7 +511,7 @@
                                         <div id="suggestionsContainer" style="margin-top: 30px; display: flex; overflow-x: auto; white-space: wrap;"></div>
                                         <br>
                                         <div id="bookingDetails" style="display: block; position: relative;">
-<textarea id="taskDescription" class="input-box" name="" rows="6" placeholder="🤖 Type your task details here. Tap the suggestions above to make it easier" style="border: 2px solid red;"></textarea><button id="zoomButton" class="zoom-btn">&#128269;</button><button type="submit" id="submitButton" class="qrc_button" style="display: block;">
+<textarea id="taskDescription" class="input-box" name="" rows="6" placeholder="🤖 Type your task details here. Tap the suggestions above to input text quickly. Use the magnifying icon to enlarge text" style="border: 2px solid red;"></textarea><button id="zoomButton" class="zoom-btn">&#128269;</button><button type="submit" id="submitButton" class="qrc_button" style="display: block;">
     <span id="buttonText" class="button-text"><b>BOOK HERE ★ &nbsp;</b>ᶜᵒⁿᵗⁱⁿᵘᵉ&nbsp;></span>
 </button>
                                         </div>
@@ -631,13 +643,6 @@ window.onclick = function(event) {
         "Deadbolt Replacement",
         "Knob Handle Installation"
     ],
-    "Furniture Assembly Hourly Service Rate": [
-        "Chair Assembly",
-        "Couch Assembly",
-        "Bed Frame Assembly",
-        "Table Assembly",
-        "Shelf Assembly"
-    ],
     "TV Mounting (Under 60\") + Concealed Cables": [
         "TV Size Under 20 inches",
         "TV Size 32 inches",
@@ -703,12 +708,38 @@ window.onclick = function(event) {
         "Operating System Rollback",
         "Data Recovery",
         "System Backup Restoration"
-    ]
+    ],
+    "Furniture Assembly Hourly Rate": [
+        "IKEA",
+        "NOT IKEA"
+        ],
 };
 
                 const dropdownOptionsForFurnitureAssembly = {
-                    "Furniture Assembly Hourly Service Rate": ["Option 1: Small Item", "Option 2: Medium Item", "Option 3: Large Item"]
-                };
+    "Furniture Assembly Hourly Service Rate": [
+        "Shoe rack",
+        "Side table",
+        "Lamp table",
+        "Laundry hamper",
+        "Footstool",
+        "Dining table (extendable)",
+        "Coffee table",
+        "TV stand",
+        "Console table",
+        "Desk (small/medium)",
+        "Desk (large)",
+        "Bookcase (small/medium)",
+        "Bookcase (large)",
+        "Chest of drawers (small/medium)",
+        "Chest of drawers (large 6+ Drawers)",
+        "Wardrobe (small/medium)",
+        "Wardrobe (large)",
+        "Bed frame",
+        "Sofa bed",
+        "Kitchen cabinets" ,
+        "OTHER/NOT LISTED"
+    ] 
+};
 
                 function createSuggestionButton(service, specificService) {
                     const button = document.createElement('button');
@@ -744,6 +775,7 @@ window.onclick = function(event) {
                     // Show or hide booking details and adjust chevron
                     bookingDetails.style.display = show ? 'block' : 'none';
                     chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
+                    
                 }
 
                 function isAnyCategoryChecked() {
@@ -796,7 +828,7 @@ window.onclick = function(event) {
                     dropdownContainer.className = 'dropdown-container'; // Add class for styling
                     // Create a label for the dropdown
                     let dropdownLabel = document.createElement('label');
-                    dropdownLabel.textContent = 'Select Furniture Options:';
+                    dropdownLabel.textContent = 'Select Furniture Type:';
                     dropdownLabel.className = 'dropdown-label'; // Add class for styling
                     dropdownContainer.appendChild(dropdownLabel);
                     // Create a new dropdown element
@@ -839,52 +871,50 @@ window.onclick = function(event) {
                 updateTextInputAppearance();
             });
         </script>
-    
-        <script>
-(function() {
-    var originalTitle = document.title;
-    var messageOne = "Tom's 🧰 HandyTech";
-    var messageTwo = "📏BookTOM.NYC🪚";
- 
-    // Array of messages to randomly pick from
-    var messages = [
-        "Wall🧱Mounting🖼️",
-        "Minor🏠Home🛠️Repairs",
-        "Plumbing💧help",
-        "Electrical💡help",
-        "Computer💻Repairs",
-        "Furniture🪑Fixes"
-    ];
+    <script>
+      (function() {
+  const originalTitle = document.title;
+  const messageOne = "Tom's 🧰 HandyTech";
+  const messageTwo = "📏BookTOM.NYC🪚";
 
-    var isOriginalTitle = true;
-    var interval;
+  // Array of messages to randomly pick from
+  const messages = [
+    "Wall🧱Mounting🖼️",
+    "Minor🏠Home🛠️Repairs",
+    "Plumbing💧help",
+    "Electrical💡help",
+    "Computer💻Repairs",
+    "Furniture🪑Fixes"
+  ];
 
-    function toggleTitle() {
-        if (isOriginalTitle) {
-            document.title = messageOne;
-        } else if (!isOriginalTitle) { // Check for the next non-original state
-            document.title = messageTwo;
-        } else {
-            // Randomly select a message from the 'messages' array
-            var randomIndex = Math.floor(Math.random() * messages.length);
-            document.title = messages[randomIndex];
-        }
+  let currentTitleIndex = 0; // Start with index 0
+  let interval;
 
-        isOriginalTitle = !isOriginalTitle; // Toggle
+  function toggleTitle() {
+    currentTitleIndex = (currentTitleIndex + 1) % 3; // Cycle through 0, 1, 2
+
+    if (currentTitleIndex === 0) {
+      document.title = messageOne;
+    } else if (currentTitleIndex === 1) {
+      document.title = messageTwo;
+    } else { // messageThree logic
+      const randomIndex = Math.floor(Math.random() * messages.length);
+      document.title = messages[randomIndex];
     }
+  }
 
-    document.addEventListener("visibilitychange", function() {
-        if (document.hidden) {
-            // Immediately toggle once and then start interval
-            toggleTitle(); 
-            interval = setInterval(toggleTitle, 2000); // Adjust time as needed 
-        } else {
-            clearInterval(interval); // Clear the interval when tab is active again
-            document.title = originalTitle; // Restore original title
-        }
-    });
+  document.addEventListener("visibilitychange", function() {
+    if (document.hidden) {
+      // Immediately toggle once and then start interval
+      toggleTitle(); 
+      interval = setInterval(toggleTitle, 2000); // Adjust time as needed 
+    } else {
+      clearInterval(interval); // Clear the interval when tab is active again
+      document.title = originalTitle; // Restore original title
+    }
+  });
 })();
-</script>
+
 
     </body>
 </html>
