@@ -212,7 +212,7 @@
             .zoom-btn {
     font-size: 16px;
     padding: 10px 20px;
-    background-color: #f00e0e;
+    background-color: red;
     color: white;
     border: none;
     cursor: pointer;
@@ -321,8 +321,10 @@
 
             /* Chevron initial state */
             .chevron {
+                  color: #991000;
                 transform: rotate(-90deg);
                 /* Left facing */
+              
             }
 
             /* Floating Action Button (FAB) */
@@ -380,7 +382,7 @@
                             <li>
                                 <img class="img-fluid" style="pointer-events: none;" src="https://github.com/tommichael88/booktomnyc/blob/main/images/invoicelogo_tomkongerslev_nobg__.png?raw=true">
                                 </l>
-                                <div style="text-align: center; background-color: #990000; color: #F5F5F5F5; font-size: 12px; padding: 1px;">
+                                <div style="text-align: center; background-color: #991000; color: #F5F5F5F5; font-size: 12px; padding: 1px;">
                                     <spann>
                                         <div class="highlight-box" style="display: flex; align-items: center; justify-content: center; padding: 1px;"> 
   <div style="flex: 1;"> 
@@ -488,7 +490,7 @@
                                     <br>
                                     <div style="font-size: 2vw;">
                                         <div style="flex-direction: column; align-items: center; justify-content: center; padding: 2px;">
-                                            <div id="chevron" style="color: red; transform: rotate(-0deg); transition: transform 0.6s ease-in-out 0.2s; display: block;">
+                                            <div id="chevron" style="color: #991000; transform: rotate(-0deg); transition: transform 0.6s ease-in-out 0.2s; display: block;">
                                                 <span id="chevronArrow" style="display: inline-block; transition: transform 0.6s ease-in-out 0s; transform: rotate(90deg);">&nbsp;&nbsp; <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/724805.png?raw=true" style="width: 15px; height: auto;" alt="Chevron">
                                                 </span>
                                             </div>
@@ -839,35 +841,50 @@ window.onclick = function(event) {
         </script>
     
         <script>
-            (function() {
-                var originalTitle = document.title;
-                var messageOne = "Tom's 🧰 HandyTech";
-                var messageTwo = "📏BookTOM.NYC🪚";
-                var messageThree = "Wall🧱Mounting🖼️";
-                var messageFour = "Minor🏠Home🛠️Repairs";
-                var messageFive = "Plumbing💧help";
-                var messageSix = "Electrical💡help";
-                var messageSeven = "Computer💻Repairs";
-                var messageEight = "Furniture🪑Fixes";
-                
-                var isOriginalTitle = true;
-                var interval;
+(function() {
+    var originalTitle = document.title;
+    var messageOne = "Tom's 🧰 HandyTech";
+    var messageTwo = "📏BookTOM.NYC🪚";
+ 
+    // Array of messages to randomly pick from
+    var messages = [
+        "Wall🧱Mounting🖼️",
+        "Minor🏠Home🛠️Repairs",
+        "Plumbing💧help",
+        "Electrical💡help",
+        "Computer💻Repairs",
+        "Furniture🪑Fixes"
+    ];
 
-                function toggleTitle() {
-                    document.title = isOriginalTitle ? messageOne : messageTwo;
-                    isOriginalTitle = !isOriginalTitle;
-                }
-                document.addEventListener("visibilitychange", function() {
-                    if (document.hidden) {
-                        // Immediately toggle once and then start interval
-                        toggleTitle();
-                        interval = setInterval(toggleTitle, 2000); // Adjust time as needed
-                    } else {
-                        clearInterval(interval); // Clear the interval when tab is active again
-                        document.title = originalTitle; // Restore original title
-                    }
-                });
-            })();
-        </script>
+    var isOriginalTitle = true;
+    var interval;
+
+    function toggleTitle() {
+        if (isOriginalTitle) {
+            document.title = messageOne;
+        } else if (!isOriginalTitle) { // Check for the next non-original state
+            document.title = messageTwo;
+        } else {
+            // Randomly select a message from the 'messages' array
+            var randomIndex = Math.floor(Math.random() * messages.length);
+            document.title = messages[randomIndex];
+        }
+
+        isOriginalTitle = !isOriginalTitle; // Toggle
+    }
+
+    document.addEventListener("visibilitychange", function() {
+        if (document.hidden) {
+            // Immediately toggle once and then start interval
+            toggleTitle(); 
+            interval = setInterval(toggleTitle, 2000); // Adjust time as needed 
+        } else {
+            clearInterval(interval); // Clear the interval when tab is active again
+            document.title = originalTitle; // Restore original title
+        }
+    });
+})();
+</script>
+
     </body>
 </html>
