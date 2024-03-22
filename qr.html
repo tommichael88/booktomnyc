@@ -955,13 +955,34 @@
            }
 
            function updateCheckedCategories(checkbox) {
-               const index = checkedCategories.indexOf(checkbox.id);
-               if (checkbox.checked && index === -1) {
-                   checkedCategories.push(checkbox.id); // Add if checked
-               } else if (!checkbox.checked && index !== -1) {
-                   checkedCategories.splice(index, 1); // Remove if unchecked
-               }
-           }
+    const index = checkedCategories.indexOf(checkbox.id);
+    if (checkbox.checked && index === -1) {
+        checkedCategories.push(checkbox.id); // Add if checked
+    } else if (!checkbox.checked && index !== -1) {
+        checkedCategories.splice(index, 1); // Remove if unchecked
+        removeServicesFromTextInput(checkbox.id); // Remove associated services from text input
+    }
+}
+
+function removeServicesFromTextInput(categoryId) {
+    const servicesToRemove = getAllAssociatedServices(categoryId); // Get all associated services, including nested services
+    servicesToRemove.forEach(service => {
+        taskDescription.value = taskDescription.value.replace(new RegExp(service, 'g'), ''); // Remove service occurrences
+    });
+    taskDescription.value = taskDescription.value.replace(/;+/g, ';').replace(/^;|;$|^\s*|;*\s*$/g, ''); // Cleanup
+    updateTextInputAppearance();
+}
+
+function getAllAssociatedServices(categoryId) {
+    let servicesToRemove = categoryToServices[categoryId] || []; // Get direct services for the category
+    const nestedCategories = servicesToRemove.filter(service => categoryToServices[service]); // Find nested categories
+    nestedCategories.forEach(nestedCategory => {
+        servicesToRemove = servicesToRemove.concat(getAllAssociatedServices(nestedCategory)); // Recursively get nested services
+    });
+    return servicesToRemove;
+}
+
+
 
            function showDropdown(service) {
                // Ensuring any existing dropdown is removed before creating a new one
