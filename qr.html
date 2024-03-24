@@ -22,507 +22,506 @@
   <link rel="stylesheet" href="https://tommichael88.github.io/booktomnyc/scripts/choices.min.css">
   <!-- Include Choices JavaScript -->
 
-<script>    
-    <script src="https://tommichael88.github.io/booktomnyc/scripts/choices.min.js">
-        </script>
-    <script type="text/javascript">
+  <script>
+    < script src = "https://tommichael88.github.io/booktomnyc/scripts/choices.min.js" >
+  </script>
+  <script type="text/javascript">
     window.hasMobileFirstExtension =
       true;
-        </script>
-    <script type="text/javascript">
+  </script>
+  <script type="text/javascript">
     window.hasMobileFirstExtension = true;
-    </script>
-</script>
+  </script>
 
-<script>
-                document.addEventListener("DOMContentLoaded", function() {
-                  const serviceCheckboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
-                  const suggestionsContainer = document.getElementById('suggestionsContainer');
-                  const taskDescription = document.getElementById('taskDescription');
-                  const submitButton = document.getElementById('submitButton');
-                  const chevron = document.getElementById('chevronArrow');
-                  const bookingDetails = document.getElementById('bookingDetails');
-                  let checkedCategories = []; // Array to keep track of checked categories in order
-                  const categoryToServices = {
-                    "service1": ["Appliances Hourly Service Rate", "Door Handles & Locks Installation", "Furniture Repair Hourly Service Rate", "Hollow Door Repair", "Wall Repair - Patch & Paint"],
-                    "service3": ["Frame/Shelf Mounting Hourly Service Rate", "TV Mounting (Under 60\") + Concealed Cables", "TV Mounting (Under 60\") without cable management", "Curtains/Drapes w. Single Rod Installation"],
-                    "service6": ["Data Transfer / Data Back-Up", "Part Replacement/Upgrade", "PC Diagnostic Service", "Software Install/Update/Removal (4)", "System Restore", "Virus/Malware Removal"],
-                    "service4": ["Light Fixture Swap"],
-                    "service2": ["Furniture Assembly Hourly Service Rate", "Furniture Repair Hourly Service Rate"],
-                    "service5": ["Bidet Accessory Install/Removal", "Fixture Swap (Cosmetic)", "Leak Under Sink Repair", "Unclog Sink/Shower/Toilet (Minor)"]
-                  };
-                  const targetedSuggestions = {
-                    "Appliances Hourly Service Rate": ["Refrigerator Repair", "Washing Machine Repair", "Dryer Repair", "Dishwasher Repair", "Oven Repair", "Stove Repair", "Microwave Repair", "Garbage Disposal Repair", "Freezer Repair", // Added for repairing freezers
-                      "Ice Maker Repair", // Added for repairing ice makers in refrigerators
-                      "Range Hood Repair", // Added for repairing range hoods above stoves
-                      "Wine Cooler Repair", // Added for repairing wine coolers/refrigerators
-                      "Trash Compactor Repair" // Added for repairing trash compactors
-                    ],
-                    "Door Handles & Locks Installation": ["Electronic Lock Installation", "Deadbolt Replacement", "Knob Handle Installation", "Ring or Blink Doorbell Install", "Smart Lock Installation", "Keyless Entry System Setup", "Rekeying Locks", "Door Handle Repair", "Security Door Installation", "Key Duplication Service", "Peephole Installation", // Added for peephole installation
-                      "Door Reinforcement Installation", // Added for reinforcing doors against forced entry
-                      "Lock Maintenance Service", // Added for regular maintenance of locks
-                      "Emergency Lockout Assistance" // Added for emergency lockout assistance service
-                    ],
-                    "Wall Repair - Patch & Paint": ["Small hole (e.g., nail or screw)", "Large hole (e.g., fist-sized)", "Crack Repair", // Added for repairing cracks in walls
-                      "Textured Wall Patching", // Added for patching textured walls
-                      "Drywall Replacement" // Added for replacing damaged drywall
-                    ],
-                    "TV Mounting (Under 60\") + Concealed Cables": ["TV Size Under 20 inches", "TV Size 32 inches", "TV Size 42 inches", "TV Size 50 inches", "TV Size 50+ inches", "Soundbar Installation", // Added for installing soundbars with TVs
-                      "Cable Management Solutions", // Added for managing cables behind the TV
-                      "Remote Control Setup" // Added for setting up remotes for TV and sound system
-                    ],
-                    "Leak Under Sink Repair": ["Pipe Replacement", "Sealant Application", "Faucet Repair", // Added for repairing leaky faucets
-                      "Sink Drain Replacement", // Added for replacing faulty sink drains
-                      "Under-Sink Filter Installation" // Added for installing water filters under sinks
-                    ],
-                    "Virus/Malware Removal": ["Slow Performance Cleanup", "Pop-up Ad Removal", "Security Software Installation", "Data Backup and Recovery", // Added for backing up and recovering data affected by viruses
-                      "Firewall Configuration" // Added for configuring firewalls to prevent future infections
-                    ],
-                    "Frame/Shelf Mounting Hourly Service Rate": ["Picture Frame Mounting", "Floating Shelf Installation", "Bookshelf Mounting", "Mirror Hanging", // Added for hanging mirrors on walls
-                      "Artwork Installation" // Added for installing artwork on walls
-                    ],
-                    "Light Fixture Swap": ["Ceiling Light Fixture Replacement", "Wall Sconce Installation", "Chandelier Installation", "Recessed Lighting Installation", // Added for installing recessed lights
-                      "Track Lighting Installation" // Added for installing track lighting systems
-                    ],
-                    "Bidet Accessory Install/Removal": ["Bidet Seat Installation", "Bidet Attachment Installation", "Bidet Seat Removal", "Water Pressure Adjustment", // Added for adjusting bidet water pressure
-                      "Temperature Control Setup" // Added for setting up temperature controls on bidets
-                    ],
-                    "Fixture Swap (Cosmetic)": ["Faucet Replacement", "Light Switch Replacement", "Showerhead Replacement", "Toilet Seat Replacement", // Added for replacing toilet seats
-                      "Towel Rack Installation" // Added for installing towel racks in bathrooms
-                    ],
-                    "Unclog Sink/Shower/Toilet (Minor)": ["Sink Unclogging", "Shower Drain Unclogging", "Toilet Unclogging", "Plunger and Auger Service", // Added for using plungers and augers to unclog drains
-                      "Drain Cleaning Solution Application" // Added for applying drain cleaning solutions
-                    ],
-                    "Data Transfer / Data Back-Up": ["Data Transfer to New Device", "Data Backup on External Drive", "Cloud Backup Setup", "Data Encryption Service", // Added for encrypting sensitive data during transfer and backup
-                      "Scheduled Backup Configuration" // Added for scheduling regular data backups
-                    ],
-                    "Part Replacement/Upgrade": ["RAM Upgrade", "Hard Drive Replacement", "Graphics Card Installation", "CPU Cooling System Installation", // Added for installing cooling systems for CPUs
-                      "Motherboard Replacement" // Added for replacing faulty motherboards
-                    ],
-                    "PC Diagnostic Service": ["Performance Check", "Hardware Diagnostic", "Software Diagnostic", "Temperature Monitoring Service", // Added for monitoring system temperatures for overheating issues
-                      "Network Connectivity Test" // Added for testing and troubleshooting network connectivity
-                    ],
-                    "Software Install/Update/Removal (4)": ["Operating System Update", "Application Installation", "Software Uninstallation", "Driver Update Service", // Added for updating device drivers
-                      "Registry Cleanup" // Added for cleaning up registry errors for software optimization
-                    ],
-                    "System Restore": ["Operating System Rollback", "Data Recovery", "System Backup Restoration", "Factory Reset Service", // Added for restoring systems to factory settings
-                      "Boot Repair" // Added for repairing boot issues preventing system startup
-                    ],
-                    "Furniture Assembly Hourly Service Rate": ["IKEA", "NOT IKEA", "Office Furniture Assembly", // Added for assembling office furniture
-                      "Outdoor Furniture Assembly", // Added for assembling outdoor furniture
-                      "Custom Furniture Assembly" // Added for assembling custom-made furniture
-                    ]
-                  };
-                  const dropdownOptionsForFurnitureAssembly = {
-                    "Furniture Assembly Hourly Service Rate": ["Shoe rack", "Side table", "Lamp table", "Laundry hamper", "Footstool", "Dining table (extendable)", "Coffee table", "TV stand", "Console table", "Desk (small/medium)", "Desk (large)", "Bookcase (small/medium)", "Bookcase (large)", "Chest of drawers (small/medium)", "Chest of drawers (large 6+ Drawers)", "Wardrobe (small/medium)", "Wardrobe (large)", "Bed frame", "Sofa bed", "Kitchen cabinets", "OTHER/NOT LISTED"]
-                  };
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const serviceCheckboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
+      const suggestionsContainer = document.getElementById('suggestionsContainer');
+      const taskDescription = document.getElementById('taskDescription');
+      const submitButton = document.getElementById('submitButton');
+      const chevron = document.getElementById('chevronArrow');
+      const bookingDetails = document.getElementById('bookingDetails');
+      let checkedCategories = []; // Array to keep track of checked categories in order
+      const categoryToServices = {
+        "service1": ["Appliances Hourly Service Rate", "Door Handles & Locks Installation", "Furniture Repair Hourly Service Rate", "Hollow Door Repair", "Wall Repair - Patch & Paint"],
+        "service3": ["Frame/Shelf Mounting Hourly Service Rate", "TV Mounting (Under 60\") + Concealed Cables", "TV Mounting (Under 60\") without cable management", "Curtains/Drapes w. Single Rod Installation"],
+        "service6": ["Data Transfer / Data Back-Up", "Part Replacement/Upgrade", "PC Diagnostic Service", "Software Install/Update/Removal (4)", "System Restore", "Virus/Malware Removal"],
+        "service4": ["Light Fixture Swap"],
+        "service2": ["Furniture Assembly Hourly Service Rate", "Furniture Repair Hourly Service Rate"],
+        "service5": ["Bidet Accessory Install/Removal", "Fixture Swap (Cosmetic)", "Leak Under Sink Repair", "Unclog Sink/Shower/Toilet (Minor)"]
+      };
+      const targetedSuggestions = {
+        "Appliances Hourly Service Rate": ["Refrigerator Repair", "Washing Machine Repair", "Dryer Repair", "Dishwasher Repair", "Oven Repair", "Stove Repair", "Microwave Repair", "Garbage Disposal Repair", "Freezer Repair", // Added for repairing freezers
+          "Ice Maker Repair", // Added for repairing ice makers in refrigerators
+          "Range Hood Repair", // Added for repairing range hoods above stoves
+          "Wine Cooler Repair", // Added for repairing wine coolers/refrigerators
+          "Trash Compactor Repair" // Added for repairing trash compactors
+        ],
+        "Door Handles & Locks Installation": ["Electronic Lock Installation", "Deadbolt Replacement", "Knob Handle Installation", "Ring or Blink Doorbell Install", "Smart Lock Installation", "Keyless Entry System Setup", "Rekeying Locks", "Door Handle Repair", "Security Door Installation", "Key Duplication Service", "Peephole Installation", // Added for peephole installation
+          "Door Reinforcement Installation", // Added for reinforcing doors against forced entry
+          "Lock Maintenance Service", // Added for regular maintenance of locks
+          "Emergency Lockout Assistance" // Added for emergency lockout assistance service
+        ],
+        "Wall Repair - Patch & Paint": ["Small hole (e.g., nail or screw)", "Large hole (e.g., fist-sized)", "Crack Repair", // Added for repairing cracks in walls
+          "Textured Wall Patching", // Added for patching textured walls
+          "Drywall Replacement" // Added for replacing damaged drywall
+        ],
+        "TV Mounting (Under 60\") + Concealed Cables": ["TV Size Under 20 inches", "TV Size 32 inches", "TV Size 42 inches", "TV Size 50 inches", "TV Size 50+ inches", "Soundbar Installation", // Added for installing soundbars with TVs
+          "Cable Management Solutions", // Added for managing cables behind the TV
+          "Remote Control Setup" // Added for setting up remotes for TV and sound system
+        ],
+        "Leak Under Sink Repair": ["Pipe Replacement", "Sealant Application", "Faucet Repair", // Added for repairing leaky faucets
+          "Sink Drain Replacement", // Added for replacing faulty sink drains
+          "Under-Sink Filter Installation" // Added for installing water filters under sinks
+        ],
+        "Virus/Malware Removal": ["Slow Performance Cleanup", "Pop-up Ad Removal", "Security Software Installation", "Data Backup and Recovery", // Added for backing up and recovering data affected by viruses
+          "Firewall Configuration" // Added for configuring firewalls to prevent future infections
+        ],
+        "Frame/Shelf Mounting Hourly Service Rate": ["Picture Frame Mounting", "Floating Shelf Installation", "Bookshelf Mounting", "Mirror Hanging", // Added for hanging mirrors on walls
+          "Artwork Installation" // Added for installing artwork on walls
+        ],
+        "Light Fixture Swap": ["Ceiling Light Fixture Replacement", "Wall Sconce Installation", "Chandelier Installation", "Recessed Lighting Installation", // Added for installing recessed lights
+          "Track Lighting Installation" // Added for installing track lighting systems
+        ],
+        "Bidet Accessory Install/Removal": ["Bidet Seat Installation", "Bidet Attachment Installation", "Bidet Seat Removal", "Water Pressure Adjustment", // Added for adjusting bidet water pressure
+          "Temperature Control Setup" // Added for setting up temperature controls on bidets
+        ],
+        "Fixture Swap (Cosmetic)": ["Faucet Replacement", "Light Switch Replacement", "Showerhead Replacement", "Toilet Seat Replacement", // Added for replacing toilet seats
+          "Towel Rack Installation" // Added for installing towel racks in bathrooms
+        ],
+        "Unclog Sink/Shower/Toilet (Minor)": ["Sink Unclogging", "Shower Drain Unclogging", "Toilet Unclogging", "Plunger and Auger Service", // Added for using plungers and augers to unclog drains
+          "Drain Cleaning Solution Application" // Added for applying drain cleaning solutions
+        ],
+        "Data Transfer / Data Back-Up": ["Data Transfer to New Device", "Data Backup on External Drive", "Cloud Backup Setup", "Data Encryption Service", // Added for encrypting sensitive data during transfer and backup
+          "Scheduled Backup Configuration" // Added for scheduling regular data backups
+        ],
+        "Part Replacement/Upgrade": ["RAM Upgrade", "Hard Drive Replacement", "Graphics Card Installation", "CPU Cooling System Installation", // Added for installing cooling systems for CPUs
+          "Motherboard Replacement" // Added for replacing faulty motherboards
+        ],
+        "PC Diagnostic Service": ["Performance Check", "Hardware Diagnostic", "Software Diagnostic", "Temperature Monitoring Service", // Added for monitoring system temperatures for overheating issues
+          "Network Connectivity Test" // Added for testing and troubleshooting network connectivity
+        ],
+        "Software Install/Update/Removal (4)": ["Operating System Update", "Application Installation", "Software Uninstallation", "Driver Update Service", // Added for updating device drivers
+          "Registry Cleanup" // Added for cleaning up registry errors for software optimization
+        ],
+        "System Restore": ["Operating System Rollback", "Data Recovery", "System Backup Restoration", "Factory Reset Service", // Added for restoring systems to factory settings
+          "Boot Repair" // Added for repairing boot issues preventing system startup
+        ],
+        "Furniture Assembly Hourly Service Rate": ["IKEA", "NOT IKEA", "Office Furniture Assembly", // Added for assembling office furniture
+          "Outdoor Furniture Assembly", // Added for assembling outdoor furniture
+          "Custom Furniture Assembly" // Added for assembling custom-made furniture
+        ]
+      };
+      const dropdownOptionsForFurnitureAssembly = {
+        "Furniture Assembly Hourly Service Rate": ["Shoe rack", "Side table", "Lamp table", "Laundry hamper", "Footstool", "Dining table (extendable)", "Coffee table", "TV stand", "Console table", "Desk (small/medium)", "Desk (large)", "Bookcase (small/medium)", "Bookcase (large)", "Chest of drawers (small/medium)", "Chest of drawers (large 6+ Drawers)", "Wardrobe (small/medium)", "Wardrobe (large)", "Bed frame", "Sofa bed", "Kitchen cabinets", "OTHER/NOT LISTED"]
+      };
 
-                  function appendServiceToTextInput(service) {
-                    // Append service to text input, avoiding duplicates
-                    if (!taskDescription.value.includes(service)) {
-                      taskDescription.value += (taskDescription.value ? "; " : "") + service;
-                      updateTextInputAppearance();
-                    }
-                  }
+      function appendServiceToTextInput(service) {
+        // Append service to text input, avoiding duplicates
+        if (!taskDescription.value.includes(service)) {
+          taskDescription.value += (taskDescription.value ? "; " : "") + service;
+          updateTextInputAppearance();
+        }
+      }
 
-                  function toggleBookingDetails(show) {
-                    // Show or hide booking details and adjust chevron
-                    bookingDetails.style.display = show ? 'block' : 'none';
-                    chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
-                  }
+      function toggleBookingDetails(show) {
+        // Show or hide booking details and adjust chevron
+        bookingDetails.style.display = show ? 'block' : 'none';
+        chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
+      }
 
-                  function isAnyCategoryChecked() {
-                    return checkedCategories.length > 0;
-                  }
+      function isAnyCategoryChecked() {
+        return checkedCategories.length > 0;
+      }
 
-                  function updateTextInputAppearance() {
-                    // Update the appearance of the text input based on content
-                    taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
-                    submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
-                  }
+      function updateTextInputAppearance() {
+        // Update the appearance of the text input based on content
+        taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
+        submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
+      }
 
-                  function showSuggestions(specificService = '') {
-                    suggestionsContainer.innerHTML = '';
-                    let servicesToShow = [];
-                    if (specificService && targetedSuggestions[specificService]) {
-                      servicesToShow = targetedSuggestions[specificService];
-                    } else {
-                      checkedCategories.slice().reverse().forEach(categoryId => {
-                        if (categoryToServices[categoryId]) {
-                          servicesToShow = servicesToShow.concat(categoryToServices[categoryId]);
-                        }
-                      });
-                    }
-                    servicesToShow.forEach(service => {
-                      const button = createSuggestionButton(service, specificService);
-                      suggestionsContainer.appendChild(button);
-                    });
-                    toggleBookingDetails(isAnyCategoryChecked() || specificService);
-                  }
+      function showSuggestions(specificService = '') {
+        suggestionsContainer.innerHTML = '';
+        let servicesToShow = [];
+        if (specificService && targetedSuggestions[specificService]) {
+          servicesToShow = targetedSuggestions[specificService];
+        } else {
+          checkedCategories.slice().reverse().forEach(categoryId => {
+            if (categoryToServices[categoryId]) {
+              servicesToShow = servicesToShow.concat(categoryToServices[categoryId]);
+            }
+          });
+        }
+        servicesToShow.forEach(service => {
+          const button = createSuggestionButton(service, specificService);
+          suggestionsContainer.appendChild(button);
+        });
+        toggleBookingDetails(isAnyCategoryChecked() || specificService);
+      }
 
-                  function createSuggestionButton(service, specificService) {
-                    const button = document.createElement('button');
-                    button.textContent = service;
-                    button.className = 'suggestion-btn';
-                    button.setAttribute('data-service', service); // Add data attribute to identify the service
-                    button.onclick = () => {
-                      // Check if the service should trigger a dropdown
-                      if (dropdownOptionsForFurnitureAssembly[service]) {
-                        showDropdown(service);
-                      } else {
-                        appendServiceToTextInput(service);
-                        if (!specificService || specificService && targetedSuggestions[service]) {
-                          showSuggestions(service);
-                        } else {
-                          showSuggestions();
-                        }
-                      }
-                    };
-                    return button;
-                  }
+      function createSuggestionButton(service, specificService) {
+        const button = document.createElement('button');
+        button.textContent = service;
+        button.className = 'suggestion-btn';
+        button.setAttribute('data-service', service); // Add data attribute to identify the service
+        button.onclick = () => {
+          // Check if the service should trigger a dropdown
+          if (dropdownOptionsForFurnitureAssembly[service]) {
+            showDropdown(service);
+          } else {
+            appendServiceToTextInput(service);
+            if (!specificService || specificService && targetedSuggestions[service]) {
+              showSuggestions(service);
+            } else {
+              showSuggestions();
+            }
+          }
+        };
+        return button;
+      }
 
-                  function appendServiceToTextInput(service) {
-                    // Append service to text input, avoiding duplicates
-                    if (!taskDescription.value.includes(service)) {
-                      taskDescription.value += (taskDescription.value ? "; " : "") + service;
-                      updateTextInputAppearance();
-                    }
-                  }
+      function appendServiceToTextInput(service) {
+        // Append service to text input, avoiding duplicates
+        if (!taskDescription.value.includes(service)) {
+          taskDescription.value += (taskDescription.value ? "; " : "") + service;
+          updateTextInputAppearance();
+        }
+      }
 
-                  function toggleBookingDetails(show) {
-                    // Show or hide booking details and adjust chevron
-                    bookingDetails.style.display = show ? 'block' : 'none';
-                    chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
-                  }
+      function toggleBookingDetails(show) {
+        // Show or hide booking details and adjust chevron
+        bookingDetails.style.display = show ? 'block' : 'none';
+        chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
+      }
 
-                  function isAnyCategoryChecked() {
-                    return checkedCategories.length > 0;
-                  }
+      function isAnyCategoryChecked() {
+        return checkedCategories.length > 0;
+      }
 
-                  function updateTextInputAppearance() {
-                    // Update the appearance of the text input based on content
-                    taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
-                    submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
-                  }
+      function updateTextInputAppearance() {
+        // Update the appearance of the text input based on content
+        taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
+        submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
+      }
 
-                  function showSuggestions(specificService = '') {
-                    suggestionsContainer.innerHTML = '';
-                    let servicesToShow = [];
-                    if (specificService && targetedSuggestions[specificService]) {
-                      servicesToShow = targetedSuggestions[specificService];
-                    } else {
-                      checkedCategories.slice().reverse().forEach(categoryId => {
-                        if (categoryToServices[categoryId]) {
-                          servicesToShow = servicesToShow.concat(categoryToServices[categoryId]);
-                        }
-                      });
-                    }
-                    servicesToShow.forEach(service => {
-                      const button = createSuggestionButton(service, specificService);
-                      suggestionsContainer.appendChild(button);
-                    });
-                    toggleBookingDetails(isAnyCategoryChecked() || specificService);
-                  }
+      function showSuggestions(specificService = '') {
+        suggestionsContainer.innerHTML = '';
+        let servicesToShow = [];
+        if (specificService && targetedSuggestions[specificService]) {
+          servicesToShow = targetedSuggestions[specificService];
+        } else {
+          checkedCategories.slice().reverse().forEach(categoryId => {
+            if (categoryToServices[categoryId]) {
+              servicesToShow = servicesToShow.concat(categoryToServices[categoryId]);
+            }
+          });
+        }
+        servicesToShow.forEach(service => {
+          const button = createSuggestionButton(service, specificService);
+          suggestionsContainer.appendChild(button);
+        });
+        toggleBookingDetails(isAnyCategoryChecked() || specificService);
+      }
 
-                  function updateCheckedCategories(checkbox) {
-                    const index = checkedCategories.indexOf(checkbox.id);
-                    if (checkbox.checked && index === -1) {
-                      checkedCategories.push(checkbox.id); // Add if checked
-                    } else if (!checkbox.checked && index !== -1) {
-                      checkedCategories.splice(index, 1); // Remove if unchecked
-                      removeServicesFromTextInput(checkbox.id); // Remove associated services from text input
-                    }
-                  }
+      function updateCheckedCategories(checkbox) {
+        const index = checkedCategories.indexOf(checkbox.id);
+        if (checkbox.checked && index === -1) {
+          checkedCategories.push(checkbox.id); // Add if checked
+        } else if (!checkbox.checked && index !== -1) {
+          checkedCategories.splice(index, 1); // Remove if unchecked
+          removeServicesFromTextInput(checkbox.id); // Remove associated services from text input
+        }
+      }
 
-                  function removeServicesFromTextInput(categoryId) {
-                    const servicesToRemove = getAllAssociatedServices(categoryId); // Get all associated services, including nested services
-                    servicesToRemove.forEach(service => {
-                      taskDescription.value = taskDescription.value.replace(new RegExp(service, 'g'), ''); // Remove service occurrences
-                    });
-                    taskDescription.value = taskDescription.value.replace(/;+/g, ';').replace(/^;|;$|^\s*|;*\s*$/g, ''); // Cleanup
-                    updateTextInputAppearance(); // Update the appearance of the text input
-                  }
+      function removeServicesFromTextInput(categoryId) {
+        const servicesToRemove = getAllAssociatedServices(categoryId); // Get all associated services, including nested services
+        servicesToRemove.forEach(service => {
+          taskDescription.value = taskDescription.value.replace(new RegExp(service, 'g'), ''); // Remove service occurrences
+        });
+        taskDescription.value = taskDescription.value.replace(/;+/g, ';').replace(/^;|;$|^\s*|;*\s*$/g, ''); // Cleanup
+        updateTextInputAppearance(); // Update the appearance of the text input
+      }
 
-                  function getAllAssociatedServices(categoryId) {
-                    let servicesToRemove = categoryToServices[categoryId] || []; // Get direct services for the category
-                    const nestedCategories = servicesToRemove.filter(service => categoryToServices[service]); // Find nested categories
-                    nestedCategories.forEach(nestedCategory => {
-                      servicesToRemove = servicesToRemove.concat(getAllAssociatedServices(nestedCategory)); // Recursively get nested services
-                    });
-                    // Also check if any other categories have this service as a nested service
-                    Object.keys(categoryToServices).forEach(catId => {
-                      if (categoryToServices[catId].includes(categoryId)) {
-                        servicesToRemove.push(...getAllAssociatedServices(catId));
-                      }
-                    });
-                    return servicesToRemove;
-                  }
+      function getAllAssociatedServices(categoryId) {
+        let servicesToRemove = categoryToServices[categoryId] || []; // Get direct services for the category
+        const nestedCategories = servicesToRemove.filter(service => categoryToServices[service]); // Find nested categories
+        nestedCategories.forEach(nestedCategory => {
+          servicesToRemove = servicesToRemove.concat(getAllAssociatedServices(nestedCategory)); // Recursively get nested services
+        });
+        // Also check if any other categories have this service as a nested service
+        Object.keys(categoryToServices).forEach(catId => {
+          if (categoryToServices[catId].includes(categoryId)) {
+            servicesToRemove.push(...getAllAssociatedServices(catId));
+          }
+        });
+        return servicesToRemove;
+      }
 
-                  function removeCategoryAndServicesFromTextInput(categoryId) {
-                    console.log("Removing category and associated services for category:", categoryId);
-                    // Get all associated services, including nested services
-                    const associatedServices = getAllAssociatedServices(categoryId);
-                    console.log("Associated services to be removed:", associatedServices);
-                    // Remove associated services and their nested services recursively
-                    associatedServices.forEach(service => {
-                      console.log("Removing service:", service);
-                      removeCategoryAndServicesFromTextInput(service); // Recursively remove nested services
-                      taskDescription.value = taskDescription.value.replace(new RegExp(service, 'g'), ''); // Remove service occurrence
-                    });
-                    // Remove the category itself
-                    const categoryLabel = document.querySelector(`label[for="${categoryId}"]`);
-                    const categoryText = categoryLabel.textContent.trim();
-                    console.log("Removing category:", categoryText);
-                    taskDescription.value = taskDescription.value.replace(new RegExp(categoryText, 'g'), ''); // Remove category occurrence
-                    // Clean up any redundant semicolons and whitespace
-                    taskDescription.value = taskDescription.value.replace(/;+/g, ';').replace(/^;|;$|^\s*|;*\s*$/g, '');
-                    // Update the appearance of the text input
-                    updateTextInputAppearance();
-                  }
+      function removeCategoryAndServicesFromTextInput(categoryId) {
+        console.log("Removing category and associated services for category:", categoryId);
+        // Get all associated services, including nested services
+        const associatedServices = getAllAssociatedServices(categoryId);
+        console.log("Associated services to be removed:", associatedServices);
+        // Remove associated services and their nested services recursively
+        associatedServices.forEach(service => {
+          console.log("Removing service:", service);
+          removeCategoryAndServicesFromTextInput(service); // Recursively remove nested services
+          taskDescription.value = taskDescription.value.replace(new RegExp(service, 'g'), ''); // Remove service occurrence
+        });
+        // Remove the category itself
+        const categoryLabel = document.querySelector(`label[for="${categoryId}"]`);
+        const categoryText = categoryLabel.textContent.trim();
+        console.log("Removing category:", categoryText);
+        taskDescription.value = taskDescription.value.replace(new RegExp(categoryText, 'g'), ''); // Remove category occurrence
+        // Clean up any redundant semicolons and whitespace
+        taskDescription.value = taskDescription.value.replace(/;+/g, ';').replace(/^;|;$|^\s*|;*\s*$/g, '');
+        // Update the appearance of the text input
+        updateTextInputAppearance();
+      }
 
-                  function showDropdown(service) {
-                    // Ensuring any existing dropdown is removed before creating a new one
-                    let existingDropdown = document.getElementById('dropdownContainer');
-                    if (existingDropdown) {
-                      existingDropdown.remove();
-                    }
-                    // Create a container for the dropdown
-                    let dropdownContainer = document.createElement('div');
-                    dropdownContainer.id = 'dropdownContainer';
-                    dropdownContainer.className = 'dropdown-container'; // Add class for styling
-                    // Create a label for the dropdown
-                    let dropdownLabel = document.createElement('label');
-                    dropdownLabel.textContent = 'Select Furniture Type:';
-                    dropdownLabel.className = 'dropdown-label'; // Add class for styling
-                    dropdownContainer.appendChild(dropdownLabel);
-                    // Create a new dropdown element
-                    let dropdown = document.createElement('select');
-                    dropdown.id = 'dynamicDropdown';
-                    dropdown.className = 'dynamic-dropdown'; // Assign a class for styling
-                    dropdownContainer.appendChild(dropdown);
-                    // Adding a default "Select an option" choice
-                    let defaultOption = document.createElement('option');
-                    defaultOption.textContent = "Select an option";
-                    defaultOption.disabled = true;
-                    defaultOption.selected = true;
-                    dropdown.appendChild(defaultOption);
-                    // Populate dropdown with options for the service
-                    let options = dropdownOptionsForFurnitureAssembly[service];
-                    options.forEach(option => {
-                      let optionElement = document.createElement('option');
-                      optionElement.textContent = option;
-                      optionElement.value = option;
-                      dropdown.appendChild(optionElement);
-                    });
-                    // Event listener for when an option is selected
-                    dropdown.addEventListener('change', function() {
-                      if (this.value) {
-                        taskDescription.value += (taskDescription.value ? "; " : "") + this.value;
-                        dropdownContainer.remove(); // Optionally remove the dropdown container after selection
-                      }
-                    });
-                    // Insert the dropdown container before the task description textarea
-                    taskDescription.before(dropdownContainer);
-                  }
-                  serviceCheckboxes.forEach(checkbox => {
-                    checkbox.addEventListener('change', () => {
-                      updateCheckedCategories(checkbox);
-                      showSuggestions();
-                      updateTextInputAppearance();
-                    });
-                  });
+      function showDropdown(service) {
+        // Ensuring any existing dropdown is removed before creating a new one
+        let existingDropdown = document.getElementById('dropdownContainer');
+        if (existingDropdown) {
+          existingDropdown.remove();
+        }
+        // Create a container for the dropdown
+        let dropdownContainer = document.createElement('div');
+        dropdownContainer.id = 'dropdownContainer';
+        dropdownContainer.className = 'dropdown-container'; // Add class for styling
+        // Create a label for the dropdown
+        let dropdownLabel = document.createElement('label');
+        dropdownLabel.textContent = 'Select Furniture Type:';
+        dropdownLabel.className = 'dropdown-label'; // Add class for styling
+        dropdownContainer.appendChild(dropdownLabel);
+        // Create a new dropdown element
+        let dropdown = document.createElement('select');
+        dropdown.id = 'dynamicDropdown';
+        dropdown.className = 'dynamic-dropdown'; // Assign a class for styling
+        dropdownContainer.appendChild(dropdown);
+        // Adding a default "Select an option" choice
+        let defaultOption = document.createElement('option');
+        defaultOption.textContent = "Select an option";
+        defaultOption.disabled = true;
+        defaultOption.selected = true;
+        dropdown.appendChild(defaultOption);
+        // Populate dropdown with options for the service
+        let options = dropdownOptionsForFurnitureAssembly[service];
+        options.forEach(option => {
+          let optionElement = document.createElement('option');
+          optionElement.textContent = option;
+          optionElement.value = option;
+          dropdown.appendChild(optionElement);
+        });
+        // Event listener for when an option is selected
+        dropdown.addEventListener('change', function() {
+          if (this.value) {
+            taskDescription.value += (taskDescription.value ? "; " : "") + this.value;
+            dropdownContainer.remove(); // Optionally remove the dropdown container after selection
+          }
+        });
+        // Insert the dropdown container before the task description textarea
+        taskDescription.before(dropdownContainer);
+      }
+      serviceCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+          updateCheckedCategories(checkbox);
+          showSuggestions();
+          updateTextInputAppearance();
+        });
+      });
 
-                  function appendServiceToTextInput(service) {
-                    // Append service to text input, avoiding duplicates
-                    if (!taskDescription.value.includes(service)) {
-                      taskDescription.value += (taskDescription.value ? "; " : "") + service;
-                      updateTextInputAppearance();
-                    }
-                  }
+      function appendServiceToTextInput(service) {
+        // Append service to text input, avoiding duplicates
+        if (!taskDescription.value.includes(service)) {
+          taskDescription.value += (taskDescription.value ? "; " : "") + service;
+          updateTextInputAppearance();
+        }
+      }
 
-                  function toggleBookingDetails(show) {
-                    // Show or hide booking details and adjust chevron
-                    bookingDetails.style.display = show ? 'block' : 'none';
-                    chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
-                  }
+      function toggleBookingDetails(show) {
+        // Show or hide booking details and adjust chevron
+        bookingDetails.style.display = show ? 'block' : 'none';
+        chevron.style.transform = show ? 'rotate(90deg)' : 'rotate(-90deg)';
+      }
 
-                  function isAnyCategoryChecked() {
-                    return checkedCategories.length > 0;
-                  }
+      function isAnyCategoryChecked() {
+        return checkedCategories.length > 0;
+      }
 
-                  function updateTextInputAppearance() {
-                    // Update the appearance of the text input based on content
-                    taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
-                    submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
-                  }
+      function updateTextInputAppearance() {
+        // Update the appearance of the text input based on content
+        taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
+        submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
+      }
 
-                  function showSuggestions(specificService = '') {
-                    suggestionsContainer.innerHTML = '';
-                    let servicesToShow = [];
-                    if (specificService && targetedSuggestions[specificService]) {
-                      servicesToShow = targetedSuggestions[specificService];
-                    } else {
-                      checkedCategories.slice().reverse().forEach(categoryId => {
-                        if (categoryToServices[categoryId]) {
-                          servicesToShow = servicesToShow.concat(categoryToServices[categoryId]);
-                        }
-                      });
-                    }
-                    servicesToShow.forEach(service => {
-                      const button = createSuggestionButton(service, specificService);
-                      suggestionsContainer.appendChild(button);
-                    });
-                    toggleBookingDetails(isAnyCategoryChecked() || specificService);
-                  }
-                  // Initial setup calls
-                  showSuggestions();
-                  updateTextInputAppearance();
-                  updateCheckedCategories(checkbox);
-                  showSuggestions();
-                  updateTextInputAppearance();
-                });
-    </script>
-<script>
-                // Move the declaration of furnitureSelect above its usage
-                const furnitureSelect = document.getElementById('furniture-select');
-                // Define furnitureOptions array
-                const furnitureOptions = [{
-                      category: "BEKANT",
-                      items: ["Desk with underframe"]
-                    }, {
-                      category: "BESTA",
-                      items: ["Single frame, shelves, floor standing", "Single frame, door / drawer, floor standing", "Single frame, wall mounting"]
-                    }, {
-                      category: "BILLY",
-                      items: ["Bookcase one frame"]
-                    }, {
-                      category: "BJURSTA",
-                      items: ["Extendable table"]
-                    }, {
-                      category: "BRIMNES",
-                      items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame with storage", "Headboard", "Wardrobe with 2 doors", "Wardrobe with 3 doors", "Nightstand", "Daybed with 2 drawers"]
-                    }, {
-                      category: "BRUSALI",
-                      items: ["Bed frame", "Bed with 4 storage boxes", "3 drawer chest", "Nightstand"]
-                    }, {
-                      category: "FINGAL",
-                      items: ["Swivel chair"]
-                    }, {
-                      category: "FRIHETEN",
-                      items: ["Sofa bed with chaise"]
-                    }, {
-                      category: "GALANT",
-                      items: ["2 drawer unit", "3 drawer unit", "4 drawer unit", "Cabinet with sliding doors"]
-                    }, {
-                      category: "HEMNES",
-                      items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "8 drawer dresser", "Nightstand", "Daybed with 3 drawers"]
-                    }, {
-                      category: "KALLAX",
-                      items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert with 2 drawers", "Insert with door"]
-                    }, {
-                      category: "LACK",
-                      items: ["Side table", "Coffe table", "TV Unit"]
-                    }, {
-                      category: "LINNMON ADILS",
-                      items: ["Table (table top and four legs)"]
-                    }, {
-                      category: "MALM",
-                      items: ["Bed Frame", "Bed Frame with 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"
-                      },
-                      {
-                        category: "MICKE",
-                        items: ["Desk with 1 Drawer", "Desk with Drawers & Storage", "Add-on unit"]
-                      },
-                      {
-                        category: "MORVIK",
-                        items: ["Wardrobe"]
-                      },
-                      {
-                        category: "PAX",
-                        items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"]
-                      },
-                      {
-                        category: "SODERHAMN",
-                        items: ["Sofa one seat section with cover"]
-                      },
-                      {
-                        category: "TRYSIL",
-                        items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"]
-                      },
-                      {
-                        category: "OTHER NOT LISTED",
-                        items: ["NOT LISTED or UNKNOWN"]
-                      }];
-                    // Initialize Choices.js 
-                    const choices = new Choices(furnitureSelect, {
-                      searchEnabled: true, // Enable search functionality
-                    });
-                    // Create a default option 
-                    const defaultOption = document.createElement('option');
-                    defaultOption.value = "";
-                    defaultOption.textContent = "IKEA";
-                    defaultOption.selected = true;
-                    furnitureSelect.appendChild(defaultOption);
-                    // Create category and item options
-                    furnitureOptions.forEach(category => {
-                      const optgroup = document.createElement('optgroup');
-                      optgroup.label = category.category;
-                      category.items.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item;
-                        option.textContent = item;
-                        optgroup.appendChild(option);
-                      });
-                      furnitureSelect.appendChild(optgroup);
-                    });
-                    // Event listener for selection changes
-                    furnitureSelect.addEventListener('change', () => {
-                      const selectedValue = furnitureSelect.value;
-                      console.log("You selected:", selectedValue);
-                    });
-    </script>
-<script>
-                (function() {
-                  const originalTitle = document.title;
-                  const messageOne = "Tom's 🧰 HandyTech";
-                  const messageTwo = "📐BookTOM.NYC🪚";
-                  // Array of messages to randomly pick from
-                  const messages = [
-                    "🖼Wall🧱Mounting",
-                    "Minor 🏠 Repairs",
-                    "🚿 Plumbing 🪣",
-                    "🔌 Electrical 💡",
-                    "💻 Repairs",
-                    "🪑 Fixes"
-                  ];
-                  let currentTitleIndex = 0; // Start with index 0
-                  let interval;
+      function showSuggestions(specificService = '') {
+        suggestionsContainer.innerHTML = '';
+        let servicesToShow = [];
+        if (specificService && targetedSuggestions[specificService]) {
+          servicesToShow = targetedSuggestions[specificService];
+        } else {
+          checkedCategories.slice().reverse().forEach(categoryId => {
+            if (categoryToServices[categoryId]) {
+              servicesToShow = servicesToShow.concat(categoryToServices[categoryId]);
+            }
+          });
+        }
+        servicesToShow.forEach(service => {
+          const button = createSuggestionButton(service, specificService);
+          suggestionsContainer.appendChild(button);
+        });
+        toggleBookingDetails(isAnyCategoryChecked() || specificService);
+      }
+      // Initial setup calls
+      showSuggestions();
+      updateTextInputAppearance();
+      updateCheckedCategories(checkbox);
+      showSuggestions();
+      updateTextInputAppearance();
+    });
+  </script>
+  <script>
+    // Move the declaration of furnitureSelect above its usage
+    const furnitureSelect = document.getElementById('furniture-select');
+    // Define furnitureOptions array
+    const furnitureOptions = [{
+          category: "BEKANT",
+          items: ["Desk with underframe"]
+        }, {
+          category: "BESTA",
+          items: ["Single frame, shelves, floor standing", "Single frame, door / drawer, floor standing", "Single frame, wall mounting"]
+        }, {
+          category: "BILLY",
+          items: ["Bookcase one frame"]
+        }, {
+          category: "BJURSTA",
+          items: ["Extendable table"]
+        }, {
+          category: "BRIMNES",
+          items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame with storage", "Headboard", "Wardrobe with 2 doors", "Wardrobe with 3 doors", "Nightstand", "Daybed with 2 drawers"]
+        }, {
+          category: "BRUSALI",
+          items: ["Bed frame", "Bed with 4 storage boxes", "3 drawer chest", "Nightstand"]
+        }, {
+          category: "FINGAL",
+          items: ["Swivel chair"]
+        }, {
+          category: "FRIHETEN",
+          items: ["Sofa bed with chaise"]
+        }, {
+          category: "GALANT",
+          items: ["2 drawer unit", "3 drawer unit", "4 drawer unit", "Cabinet with sliding doors"]
+        }, {
+          category: "HEMNES",
+          items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "8 drawer dresser", "Nightstand", "Daybed with 3 drawers"]
+        }, {
+          category: "KALLAX",
+          items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert with 2 drawers", "Insert with door"]
+        }, {
+          category: "LACK",
+          items: ["Side table", "Coffe table", "TV Unit"]
+        }, {
+          category: "LINNMON ADILS",
+          items: ["Table (table top and four legs)"]
+        }, {
+          category: "MALM",
+          items: ["Bed Frame", "Bed Frame with 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"
+          },
+          {
+            category: "MICKE",
+            items: ["Desk with 1 Drawer", "Desk with Drawers & Storage", "Add-on unit"]
+          },
+          {
+            category: "MORVIK",
+            items: ["Wardrobe"]
+          },
+          {
+            category: "PAX",
+            items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"]
+          },
+          {
+            category: "SODERHAMN",
+            items: ["Sofa one seat section with cover"]
+          },
+          {
+            category: "TRYSIL",
+            items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"]
+          },
+          {
+            category: "OTHER NOT LISTED",
+            items: ["NOT LISTED or UNKNOWN"]
+          }];
+        // Initialize Choices.js 
+        const choices = new Choices(furnitureSelect, {
+          searchEnabled: true, // Enable search functionality
+        });
+        // Create a default option 
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.textContent = "IKEA";
+        defaultOption.selected = true;
+        furnitureSelect.appendChild(defaultOption);
+        // Create category and item options
+        furnitureOptions.forEach(category => {
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = category.category;
+          category.items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            option.textContent = item;
+            optgroup.appendChild(option);
+          });
+          furnitureSelect.appendChild(optgroup);
+        });
+        // Event listener for selection changes
+        furnitureSelect.addEventListener('change', () => {
+          const selectedValue = furnitureSelect.value;
+          console.log("You selected:", selectedValue);
+        });
+  </script>
+  <script>
+    (function() {
+      const originalTitle = document.title;
+      const messageOne = "Tom's 🧰 HandyTech";
+      const messageTwo = "📐BookTOM.NYC🪚";
+      // Array of messages to randomly pick from
+      const messages = [
+        "🖼Wall🧱Mounting",
+        "Minor 🏠 Repairs",
+        "🚿 Plumbing 🪣",
+        "🔌 Electrical 💡",
+        "💻 Repairs",
+        "🪑 Fixes"
+      ];
+      let currentTitleIndex = 0; // Start with index 0
+      let interval;
 
-                  function toggleTitle() {
-                    currentTitleIndex = (currentTitleIndex + 1) % 3; // Cycle through 0, 1, 2
-                    if (currentTitleIndex === 0) {
-                      document.title = messageOne;
-                    } else if (currentTitleIndex === 1) {
-                      document.title = messageTwo;
-                    } else { // messageThree logic
-                      const randomIndex = Math.floor(Math.random() * messages.length);
-                      document.title = messages[randomIndex];
-                    }
-                  }
-                  document.addEventListener("visibilitychange", function() {
-                    if (document.hidden) {
-                      // Immediately toggle once and then start interval
-                      toggleTitle();
-                      interval = setInterval(toggleTitle, 2000); // Adjust time as needed
-                    } else {
-                      clearInterval(interval); // Clear the interval when tab is active again
-                      document.title = originalTitle; // Restore original title
-                    }
-                  });
-                })();
-    </script>
-    
-<style>
+      function toggleTitle() {
+        currentTitleIndex = (currentTitleIndex + 1) % 3; // Cycle through 0, 1, 2
+        if (currentTitleIndex === 0) {
+          document.title = messageOne;
+        } else if (currentTitleIndex === 1) {
+          document.title = messageTwo;
+        } else { // messageThree logic
+          const randomIndex = Math.floor(Math.random() * messages.length);
+          document.title = messages[randomIndex];
+        }
+      }
+      document.addEventListener("visibilitychange", function() {
+        if (document.hidden) {
+          // Immediately toggle once and then start interval
+          toggleTitle();
+          interval = setInterval(toggleTitle, 2000); // Adjust time as needed
+        } else {
+          clearInterval(interval); // Clear the interval when tab is active again
+          document.title = originalTitle; // Restore original title
+        }
+      });
+    })();
+  </script>
+
+  <style>
     :root {
       --primary-color: silver;
       --background-color: #f8f9fa;
@@ -950,8 +949,8 @@
     #bookHereButton {
       display: inline-block;
     }
-</style>
-  
+  </style>
+
 </head>
 
 <body>
@@ -1149,10 +1148,9 @@
             <font size="6vw">
               <font size="4vw">
                 <font color="gray">
-          
-                    
-<!-- MODAL SCRIPT -->                    
-<script>
+
+                  <!-- MODAL SCRIPT -->
+                  <script>
                     // Get the modal
                     var
                       modal =
@@ -1278,8 +1276,8 @@
                           // For example, you might hide or show other elements, update their content, etc.
                         }
                       );
-    </script>
-    
+                  </script>
+
                 </font>
               </font>
             </font>
