@@ -1335,6 +1335,23 @@
                             };
                             return button;
                         }
+                        
+                        // Function to get all associated services, including nested services
+                        function getAllAssociatedServices(categoryId) {
+                            let servicesToRemove = categoryToServices[categoryId] || []; // Get direct services for the category
+                            const nestedCategories = servicesToRemove.filter(service => categoryToServices[service]); // Find nested categories
+                                 nestedCategories.forEach(nestedCategory => {
+                                 servicesToRemove = servicesToRemove.concat(getAllAssociatedServices(nestedCategory)); // Recursively get nested services
+                             });
+                        // Also check if any other categories have this service as a nested service
+                        Object.keys(categoryToServices).forEach(catId => {
+                            if (categoryToServices[catId].includes(categoryId)) {
+                                servicesToRemove.push(...getAllAssociatedServices(catId));
+                            }
+                            });
+                                return servicesToRemove;
+                        }
+
 
                         function updateCheckedCategories(checkbox) {
                             const index = checkedCategories.indexOf(checkbox.id);
