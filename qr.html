@@ -987,6 +987,15 @@ x                  <div style="font-size:6vw">
                 const dropdownOptionsForFurnitureAssembly = {
                     "Furniture Assembly ⏰ Hourly": ["Shoe rack", "Side table", "Lamp table", "Laundry hamper", "Footstool", "Dining table (extendable)", "Coffee table", "TV stand", "Console table", "Desk (small/medium)", "Desk (large)", "Bookcase (small/medium)", "Bookcase (large)", "Chest of drawers (small/medium)", "Chest of drawers (large 6+ Drawers)", "Wardrobe (small/medium)", "Wardrobe (large)", "Bed frame", "Sofa bed", "Kitchen cabinets", "OTHER/NOT LISTED"]
                 };
+                
+                function updateSelectedServices(checkbox) {
+    const service = checkbox.dataset.service; // Use dataset attribute for flexibility
+    if (checkbox.checked) {
+      appendServiceToTextInput(service);
+    } else {
+      removeServiceFromTextInput(service);
+    }
+  }
 
                 function appendServiceToTextInput(service) {
                     if (!taskDescription.value.includes(service)) {
@@ -996,6 +1005,26 @@ x                  <div style="font-size:6vw">
                         selectedServices.push(service);
                     }
                 }
+                  // Function to remove text and tags
+  function removeServiceFromTextInput(service) {
+    // Update task description
+    const taskDescriptionParts = taskDescription.value.split('; ');
+    const index = taskDescriptionParts.indexOf(service);
+    if (index > -1) {
+      taskDescriptionParts.splice(index, 1);
+      taskDescription.value = taskDescriptionParts.join('; ');
+    }
+
+    // Update selectedServices array
+    selectedServices = selectedServices.filter(s => s !== service);
+
+    // Remove the service tag
+    removeServiceTag(service);
+
+    // Update UI elements
+    updateTextInputAppearance();
+    showSuggestions();  // Update suggestions if needed
+  }
 
                 function updateCheckedCategoriesAndTags(checkbox) {
                     const categoryId = checkbox.id; // Assuming the checkbox ID is the category key for the `categoryToServices`
@@ -1019,25 +1048,22 @@ x                  <div style="font-size:6vw">
                     }
                 }
 
-                function addServiceTag(service) {
-                    const tag = document.createElement('div');
-                    tag.className = 'service-tag';
-                    tag.textContent = service;
-                    const removeBtn = document.createElement('span');
-                    removeBtn.textContent = 'X';
-                    removeBtn.className = 'remove-service';
-                    removeBtn.onclick = function() {
-                        // Logic to remove the tag:
-                        selectedServicesContainer.removeChild(tag); // Remove the tag from its parent
-                        // Also remove the service from the selectedServices array:
-                        const index = selectedServices.indexOf(service);
-                        if (index > -1) {
-                            selectedServices.splice(index, 1);
-                        }
-                    };
-                    tag.appendChild(removeBtn);
-                    selectedServicesContainer.appendChild(tag);
-                }
+                 function addServiceTag(service) {
+    const tag = document.createElement('div');
+    tag.className = 'service-tag';
+    tag.textContent = service;
+
+    const removeBtn = document.createElement('span');
+    removeBtn.textContent = 'X';
+    removeBtn.className = 'remove-service';
+    removeBtn.addEventListener('click', function() { // Attach event listener to the 'x' button
+      removeServiceFromTextInput(service); 
+    });
+    tag.appendChild(removeBtn);
+
+    selectedServicesContainer.appendChild(tag);
+  }
+
 
                 function toggleBookingDetails(show) {
                     bookingDetails.style.display = show ? 'block' : 'none';
