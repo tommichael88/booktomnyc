@@ -167,13 +167,14 @@
             display: none;
             position: fixed;
             z-index: 1;
+            y-index: 1%;
             left: 0;
-            top: 0;
+            top: 50%;
             width: 100%;
             height: 100%;
             overflow: auto;
             background-color: rgba(0, 0, 0, .75);
-            border-radius: 20px
+            border-radius: 5px;
             }
             .contactModal-content {
             display: block;
@@ -620,19 +621,48 @@
                         </center>
                         <br>
                         <script>
-                            document.addEventListener("DOMContentLoaded", function() {
-                                var t = document.getElementById("mycontactModal"),
-                                    e = document.getElementById("contactBtn"),
-                                    n = document.getElementsByClassName("contactModalClose")[0];
-                                e.addEventListener("click", function(e) {
-                                    e.preventDefault(), t.style.display = "block", t.classList.add("show")
-                                }), n.addEventListener("click", function(e) {
-                                    contactModalClose.style.display = "none", t.classList.remove("show")
-                                }), window.addEventListener("click", function(e) {
-                                    e.target == t && (t.style.display = "none", t.classList.remove("show"))
-                                })
-                            })
+                    document.addEventListener("DOMContentLoaded", function() {
+                        var t = document.getElementById("mycontactModal"),
+                            e = document.getElementById("contactBtn"),
+                            n = document.getElementsByClassName("contactModalClose")[0];
+                        e.addEventListener("click", function(e) {
+                            e.preventDefault(), t.style.display = "block", t.classList.add("show")
+                        }), n.addEventListener("click", function(e) {
+                            t.style.display = "none", t.classList.remove("show") // Corrected this line
+                        }), window.addEventListener("click", function(e) {
+                            e.target == t && (t.style.display = "none", t.classList.remove("show"))
+                        })
+                    });
+                    document.addEventListener("DOMContentLoaded", function() {
+                        var modal = document.getElementById("mycontactModal"),
+                            contactBtn = document.getElementById("contactBtn"),
+                            modalClose = document.getElementsByClassName("contactModalClose")[0],
+                            callButton = document.getElementById("callButton"),
+                            smsButton = document.getElementById("smsButton");
+                    
+                        contactBtn.addEventListener("click", function(e) {
+                            e.preventDefault(), modal.style.display = "block", modal.classList.add("show")
+                        });
+                    
+                        modalClose.addEventListener("click", function(e) {
+                            modal.style.display = "none", modal.classList.remove("show")
+                        });
+                    
+                        window.addEventListener("click", function(e) {
+                            if (e.target == modal) {
+                                modal.style.display = "none", modal.classList.remove("show")
+                            }
+                        });
+                    
+                        // Close modal after tapping the call or SMS button
+                        [callButton, smsButton].forEach(function(button) {
+                            button.addEventListener("click", function() {
+                                modal.style.display = "none", modal.classList.remove("show")
+                            });
+                        });
+                    });
                         </script>
+                        
                     </div></ul>
         
     <!-- SERVICE SCHEDULE -->
