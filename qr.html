@@ -781,47 +781,6 @@
                                 </div>
                             </div>
 
-                            <!-- SCRIPT: Contact Modal -->
-                            <script>
-                                document.addEventListener("DOMContentLoaded", function() {
-                                    var t = document.getElementById("mycontactModal"),
-                                        e = document.getElementById("contactBtn"),
-                                        n = document.getElementsByClassName("contactModalClose")[0];
-                                    e.addEventListener("click", function(e) {
-                                        e.preventDefault(), t.style.display = "block", t.classList.add("show")
-                                    }), n.addEventListener("click", function(e) {
-                                        t.style.display = "none", t.classList.remove("show") // Corrected this line
-                                    }), window.addEventListener("click", function(e) {
-                                        e.target == t && (t.style.display = "none", t.classList.remove("show"))
-                                    })
-                                });
-                                document.addEventListener("DOMContentLoaded", function() {
-                                    var modal = document.getElementById("mycontactModal"),
-                                        contactBtn = document.getElementById("contactBtn"),
-                                        modalClose = document.getElementsByClassName("contactModalClose")[0],
-                                        callButton = document.getElementById("callButton"),
-                                        smsButton = document.getElementById("smsButton");
-                                    contactBtn.addEventListener("click", function(e) {
-                                        e.preventDefault(), modal.style.display = "block", modal.classList.add("show")
-                                    });
-                                    modalClose.addEventListener("click", function(e) {
-                                        modal.style.display = "none", modal.classList.remove("show")
-                                    });
-                                    window.addEventListener("click", function(e) {
-                                        if (e.target == modal) {
-                                            modal.style.display = "none", modal.classList.remove("show")
-                                        }
-                                    });
-                                    // Close modal after tapping the call or SMS button
-                                    [callButton, smsButton].forEach(function(button) {
-                                        button.addEventListener("click", function() {
-                                            modal.style.display = "none", modal.classList.remove("show")
-                                        });
-                                    });
-                                });
-                            </script>
-
-
                             <!-- ======================= SCHEDULE 📅 SERVICE BOX ==================== -->
                             <div class="schedule-service-box">
                                 <div class="qrc_heading"><img src="https://github.com/tommichael88/booktomnyc/blob/main/images/calendar_darker.png?raw=true" alt="Service Calendar Icon" style="max-width: 2rem; height: auto; align-items: center; justify-content: center" ;>
@@ -1344,51 +1303,57 @@
                     const copyButton = document.getElementById('copyButton');
                     copyButton.addEventListener('click', copyTaskDescription);
                     3
-                    // Contact Modal functionality
                     const modal = document.getElementById("mycontactModal");
                     const contactBtn = document.getElementById("contactBtn");
                     const modalClose = document.getElementsByClassName("contactModalClose")[0];
+                });
+                document.addEventListener("DOMContentLoaded", function() {
+                    var modal = document.getElementById("mycontactModal"),
+                        contactBtn = document.getElementById("contactBtn"),
+                        modalClose = document.getElementsByClassName("contactModalClose")[0],
+                        callButton = document.getElementById("callButton"),
+                        smsButton = document.getElementById("smsButton");
 
-                    // Open modal using customBtn
+                    // Function to open the modal
                     function openModal() {
                         modal.style.display = "block";
                         modal.classList.add("show");
                     }
 
-                    // Close modal upon clicking outside or ESC keypress
-                    window.addEventListener("click", function(e) {
-                        if (e.target == modal) {
-                            modal.style.display = "none";
-                            modal.classList.remove("show");
-                        }
-                    });
+                    // Function to close the modal
+                    function closeModal() {
+                        modal.style.display = "none";
+                        modal.classList.remove("show");
+                    }
 
-                    // Close modal upon pressing escape key
-                    window.addEventListener("keydown", function(e) {
-                        if (e.key === "Escape" && modal.style.display === "block") {
-                            modal.style.display = "none";
-                            modal.classList.remove("show");
-                        }
-                    });
-
-                    // Button click handler
+                    // Event listener for the contact button
                     contactBtn.addEventListener("click", function(e) {
                         e.preventDefault();
                         openModal();
                     });
 
-                    // Close modal using X button
-                    modalClose.addEventListener("click", function() {
-                        modal.style.display = "none";
-                        modal.classList.remove("show");
+                    // Event listener for the close button in the modal
+                    modalClose.addEventListener("click", closeModal);
+
+                    // Additional buttons inside the modal that should also close it
+                    [callButton, smsButton].forEach(function(button) {
+                        button.addEventListener("click", closeModal);
                     });
 
-                    // If there's a #contact in the URL hash, open the modal automatically
+                    // Close the modal if a click occurs outside of it
+                    window.addEventListener("click", function(e) {
+                        if (e.target == modal) {
+                            closeModal();
+                        }
+                    });
+
+                    // Check if the URL hash is '#contact' and open the modal if it is
                     if (window.location.hash === "#contact") {
                         openModal();
                     }
                 });
             </script>
+
 </body>
 
 </html>
