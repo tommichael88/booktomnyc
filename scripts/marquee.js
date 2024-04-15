@@ -1,4 +1,3 @@
-        <script>
             (function() {
                 const originalTitle = document.title;
                 const messageOne = "Tom's 🧰 HandyTech";
@@ -30,4 +29,3 @@
                     }
                 });
             })();
-        </script>
