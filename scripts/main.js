@@ -1,4 +1,3 @@
-        <script>
             document.addEventListener("DOMContentLoaded", function() {
                 const serviceCheckboxes = document.querySelectorAll('.custom-checkbox input[type="checkbox"]');
                 serviceCheckboxes.forEach(checkbox => {
@@ -293,4 +292,3 @@
                 event.stopPropagation(); // Stop the event from bubbling up in the DOM
                 contactModal.style.display = "block"; // Assumes 'contactModal' is defined
             };
-        </script>
