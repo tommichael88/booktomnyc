@@ -319,7 +319,7 @@
         .contact-box,
         .invoice-box,
         .schedule-service-box {
-            display: flex;
+            display: block;
             margin: 4px auto;
             padding: 4px;
             background-color: rgba(999, 999, 999, .75);
@@ -1333,15 +1333,23 @@
                 updateTextInputAppearance();
             }
 
-            function updateTextInput() {
-                taskDescription.value = selectedServices.join('; ');
-                updateTextInputAppearance();
-            }
+           function updateTextInput() {
+    // Concatenates all selected services from checkboxes or adds manual entry
+    let manualText = taskDescription.value.split(';').filter(part => {
+        return !selectedServices.includes(part.trim()); // Filter out existing services
+    }).join('; ');
+    
+    taskDescription.value = selectedServices.join('; ') + (manualText ? '; ' + manualText : '');
+    updateTextInputAppearance();
+}
+
 
             function updateTextInputAppearance() {
                 taskDescription.style.borderColor = taskDescription.value.trim() !== '' ? 'red' : '';
                 submitButton.style.display = taskDescription.value.trim() !== '' ? 'block' : 'none';
             }
+            
+            
 
             function showDropdown(service) {
                 let existingDropdown = document.getElementById('dropdownContainer');
