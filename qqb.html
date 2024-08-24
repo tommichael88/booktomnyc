@@ -5,51 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMS-Like Conversation</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: #f2f2f2;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         #conversation {
-            width: 100%;
-            max-width: 400px;
-            margin: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 100%;
             background-color: #fff;
-            border-radius: 10px;
-            overflow: hidden;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
         #messages {
-            padding: 20px;
+            flex-grow: 1;
+            padding: 15px;
             overflow-y: auto;
-            max-height: 300px;
+            display: flex;
+            flex-direction: column;
         }
 
         .message {
-            margin-bottom: 15px;
-            display: flex;
-            align-items: flex-start;
+            margin-bottom: 10px;
+            max-width: 80%;
+            padding: 10px;
+            border-radius: 18px;
+            word-wrap: break-word;
         }
 
         .user-message {
-            background-color: #4CAF50;
-            color: #fff;
-            border-radius: 10px;
-            padding: 10px;
-            max-width: 70%;
             align-self: flex-end;
+            background-color: #DCF8C6;
+            color: #000;
         }
 
         .bot-message {
-            background-color: #008CBA;
-            color: #fff;
-            border-radius: 10px;
-            padding: 10px;
-            max-width: 70%;
             align-self: flex-start;
+            background-color: #E5E5EA;
+            color: #000;
         }
 
         .avatar {
@@ -57,26 +61,37 @@
             height: 30px;
             border-radius: 50%;
             margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        #inputArea {
+            display: flex;
+            padding: 10px;
+            background-color: #f2f2f2;
         }
 
         #userInput {
-            width: calc(100% - 40px);
+            flex-grow: 1;
             padding: 10px;
-            border: none;
-            border-top: 1px solid #ccc;
+            border: 1px solid #ccc;
+            border-radius: 20px;
             outline: none;
             font-size: 16px;
         }
 
         #sendButton {
-            width: 60px; /* Adjusted the width */
+            width: 40px;
             height: 40px;
             background-color: #4CAF50;
             color: #fff;
             border: none;
-            border-top: 1px solid #ccc;
+            border-radius: 50%;
+            margin-left: 10px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -89,37 +104,43 @@
             Hello! How can I help you today?
         </div>
     </div>
-    <div>
-    <input type="text" id="userInput" placeholder="Type your message..." autofocus> <button id="sendButton" onclick="sendMessage()">Send</button>
-  </div>
+    <div id="inputArea">
+        <input type="text" id="userInput" placeholder="Type your message..." autofocus>
+        <button id="sendButton" onclick="sendMessage()">➤</button>
+    </div>
 </div>
 
 <script>
     function sendMessage() {
-        var userInput = document.getElementById('userInput').value;
-        if (userInput.trim() !== '') {
+        var userInput = document.getElementById('userInput');
+        var message = userInput.value.trim();
+        if (message !== '') {
             var messagesDiv = document.getElementById('messages');
             var userMessageDiv = document.createElement('div');
             userMessageDiv.className = 'message user-message';
-            userMessageDiv.textContent = userInput;
+            userMessageDiv.textContent = message;
             messagesDiv.appendChild(userMessageDiv);
 
             // Simulate a bot response (you would replace this with your ChatGPT logic)
             var botMessageDiv = document.createElement('div');
             botMessageDiv.className = 'message bot-message';
-            botMessageDiv.innerHTML = '<img src="https://avatar.anywhere.app/files/img/fRQuZAVlbDh8/untitled-project-33-removebg-preview.png" alt="Bot Avatar" class="avatar">' +
-                'I got your message: ' + userInput;
+            botMessageDiv.innerHTML = '<img src="https://avatar.anywhere.app/files/img/f9D64zq1YR9E/qqb-latest.png?s=150" alt="Bot Avatar" class="avatar">' +
+                'I got your message: ' + message;
             messagesDiv.appendChild(botMessageDiv);
 
-            // Clear the user input field
-            document.getElementById('userInput').value = '';
-
-            // Scroll to the bottom of the conversation
+            userInput.value = '';
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
     }
+
+    document.getElementById('userInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
     window.onload = function() {
-      document.getElementById("userInput").focus(); // JavaScript focus() method
+        document.getElementById("userInput").focus();
     };
 </script>
 
