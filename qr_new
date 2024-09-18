@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,7 +15,6 @@
             background-color: #ffffff;
             text-align: center;
         }
-
         .container {
             max-width: 800px;
             margin: 0 auto;
@@ -25,7 +23,6 @@
             position: relative;
             z-index: 1;
         }
-
         .pg_background {
             background-size: cover;
             background-position: center;
@@ -36,23 +33,19 @@
             bottom: 0;
             z-index: -1;
         }
-
         header {
             background-color: rgba(0, 0, 0, 0.7);
             color: #ffffff;
             text-align: end;
             padding: 1rem 0;
         }
-
         h1, h2, h3 {
             margin: 1px 0;
         }
-
         .qr-code {
             max-width: 10px;
             margin: 10px auto;
         }
-
         .contact-button {
             background-color: #ff0000;
             color: #ffffff;
@@ -63,7 +56,6 @@
             margin-top: 5px;
             border-radius: 5px;
         }
-
         .contactModal {
             display: none;
             position: fixed;
@@ -75,7 +67,6 @@
             overflow: auto;
             background-color: rgba(0, 0, 0, 0.4);
         }
-
         .contactModal-content {
             background-color: #fefefe;
             margin: 15% auto;
@@ -84,7 +75,6 @@
             width: 80%;
             max-width: 500px;
         }
-
         .contactModalClose {
             color: #aaa;
             float: right;
@@ -92,14 +82,12 @@
             font-weight: bold;
             cursor: pointer;
         }
-
         .service-options {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 15px;
             margin-top: 20px;
         }
-
         .service-option {
             background-color: #000000;
             color: #ffffff;
@@ -109,15 +97,12 @@
             font-size: 14px;
             border-radius: 5px;
         }
-
         .service-option.selected {
             background-color: #ff0000;
         }
-
         .task-details {
             margin-top: 20px;
         }
-
         textarea {
             width: 100%;
             height: 100px;
@@ -125,7 +110,6 @@
             padding: 10px;
             font-size: 16px;
         }
-
         .book-button {
             background-color: #ff0000;
             color: #ffffff;
@@ -136,7 +120,6 @@
             margin-top: 20px;
             border-radius: 5px;
         }
-
         .invoices {
             background-color: rgba(0, 0, 0, 0.7);
             color: #ffffff;
@@ -144,7 +127,6 @@
             padding: 20px 0;
             margin-top: 20px;
         }
-
         .client-login {
             background-color: #ff0000;
             color: #ffffff;
@@ -155,7 +137,6 @@
             margin-top: 20px;
             border-radius: 5px;
         }
-
         footer {
             background-color: rgba(0, 0, 0, 0.7);
             color: #ffffff;
@@ -163,13 +144,11 @@
             padding: 10px 0;
             margin-top: auto;
         }
-
         footer a {
             color: #ffffff;
             text-decoration: none;
             margin: 0 10px;
         }
-
         @media (max-width: 600px) {
             .service-options {
                 grid-template-columns: 1fr;
@@ -180,9 +159,8 @@
         }
     </style>
 </head>
-
 <body>
-    <div class="pg_background" style="background-image: url('https://tommichael88.github.io/booktomnyc/images/redblackwhitebg.png?raw=true');"></div>
+        <div class="pg_background" style="background-image: url('https://tommichael88.github.io/booktomnyc/images/redblackwhitebg.png?raw=true');"></div>
     <div class="qrc_gallery_wrapper">
         <ul class="qrc_gallery_list">
             <li>
@@ -244,34 +222,71 @@
         </footer>
     </div>
     <script>
-        // Contact modal functionality
-        var modal = document.getElementById('mycontactModal');
-        var btn = document.getElementById('contactBtn');
-        var span = document.getElementsByClassName('contactModalClose')[0];
+    // Contact modal functionality
+    var modal = document.getElementById('mycontactModal');
+    var btn = document.getElementById('contactBtn');
+    var span = document.getElementsByClassName('contactModalClose')[0];
 
-        btn.onclick = function() {
-            modal.style.display = 'block';
-        }
+    btn.onclick = function() {
+        modal.style.display = 'block';
+    }
 
-        span.onclick = function() {
+    span.onclick = function() {
+        modal.style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
             modal.style.display = 'none';
         }
+    }
 
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        }
+    // Suggested Services functionality
+    const suggestedServices = {
+        "Minor Home Repairs": ["Drywall repair", "Door repair", "Window repair", "Tile repair"],
+        "Furniture": ["Assembly", "Repair", "Moving", "Disassembly"],
+        "Wall Mounting": ["TV mounting", "Shelf installation", "Picture hanging", "Mirror installation"],
+        "Electrical Help": ["Light fixture installation", "Outlet repair", "Switch replacement", "Ceiling fan installation"],
+        "Plumbing Help": ["Faucet repair", "Toilet repair", "Drain cleaning", "Pipe leak repair"],
+        "Computer Repairs": ["Virus removal", "Hardware upgrade", "Software installation", "Data recovery"]
+    };
 
-        // Service option selection
-        var serviceOptions = document.getElementsByClassName("service-option");
+    const serviceOptions = document.querySelectorAll('.service-option');
+    const serviceOptionsContainer = document.querySelector('.service-options');
+    const taskDetails = document.querySelector('.task-details textarea');
 
-        for (var i = 0; i < serviceOptions.length; i++) {
-            serviceOptions[i].addEventListener("click", function() {
-                this.classList.toggle("selected");
-            });
-        }
-    </script>
+    serviceOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const selectedService = this.textContent;
+            const suggestedList = suggestedServices[selectedService];
+
+            // Hide all service options
+            serviceOptions.forEach(opt => opt.style.display = 'none');
+
+            // Create and display suggested services
+            const suggestedHTML = `
+                <div id="suggestedServices">
+                    <h3>Suggested services for ${selectedService}:</h3>
+                    <ul>
+                        ${suggestedList.map(service => `<li><button onclick="selectSuggestedService('${service}')">${service}</button></li>`).join('')}
+                    </ul>
+                    <button onclick="goBack()">Go Back</button>
+                </div>
+            `;
+            serviceOptionsContainer.insertAdjacentHTML('afterend', suggestedHTML);
+        });
+    });
+
+    function selectSuggestedService(service) {
+        taskDetails.value += (taskDetails.value ? '\n' : '') + service;
+        document.getElementById('suggestedServices').remove();
+        serviceOptions.forEach(opt => opt.style.display = '');
+    }
+
+    function goBack() {
+        document.getElementById('suggestedServices').remove();
+        serviceOptions.forEach(opt => opt.style.display = '');
+    }
+</script>
 </body>
-
 </html>
