@@ -214,26 +214,60 @@
             margin-top: 15px;
         }
 
-        .selected-service-btn {
-            background-color: rgba(200, 200, 200, 0.7);
-            border: none;
-            border-radius: 20px;
-            padding: 8px 15px;
-            margin: 5px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: #000000;
-        }
+       .selected-services-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 10px;
+    margin-bottom: 20px;
+}
 
-        .selected-service-btn:hover {
-            background-color: rgba(180, 180, 180, 0.9);
-        }
+.selected-services-table td {
+    padding: 0;
+    text-align: center;
+}
 
-        .remove-service {
-            margin-left: 5px;
-            font-weight: bold;
-        }
+.selected-services-table th {
+    padding: 10px;
+    background-color: #f0f0f0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.selected-service-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #e0e0e0;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.selected-service-btn:hover {
+    background-color: #d0d0d0;
+}
+
+.remove-service {
+    margin-left: 5px;
+    color: red;
+    font-weight: bold;
+}
+
+.clear-all-btn {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 20px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.clear-all-btn:hover {
+    background-color: #d32f2f;
+}
 
         #selectedServicesSection {
             margin: 20px 0;
@@ -370,7 +404,7 @@
                 <button class="book-button" style="display: none;">★★★ BOOK ★★★</button>
             </div>
 
-            <hr>
+
         </main>
 
         <div class="card invoices">
@@ -385,7 +419,7 @@
             <button class="client-login">🔐 𝗖𝗟𝗜𝗘𝗡𝗧 PORTAL</button>
         </div>
         <br>
-        <hr>
+
 
         <!-- Footer -->
         <footer>
@@ -396,246 +430,274 @@
 
     </div>
     <!-- End of qrc_gallery_wrapper -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const mainContent = document.querySelector('main');
-            const serviceOptions = document.querySelectorAll('.service-option');
-            const taskDetails = document.querySelector('.task-details');
-            const taskTextarea = taskDetails.querySelector('textarea');
-            const bookButton = document.querySelector('.book-button');
-            const selectedServicesSection = document.getElementById('selectedServicesSection');
-            const suggestedSection = document.getElementById('suggestedSection');
 
-            const suggestedServices = {
-                "Minor Home Repairs": {
-                    "Drywall repair": ["Small holes", "Large holes", "Cracks", "Texture matching"],
-                    "Door repair": ["Hinges", "Locks", "Weather stripping", "Door frame"],
-                    "Window repair": ["Glass replacement", "Weatherization", "Frame repair", "Sash replacement"],
-                    "Tile repair": ["Grout repair", "Tile replacement", "Sealing", "Re-caulking"]
-                },
-                "Furniture Fixes": {
-                    "Assembly": ["IKEA furniture", "Other brand furniture", "Outdoor furniture", "Office furniture"],
-                    "Repair": ["Wood furniture", "Upholstery", "Metal furniture", "Antique restoration"],
-                    "Moving": ["In-home rearrangement", "Loading/Unloading", "Furniture protection", "Disassembly/Reassembly"],
-                    "Disassembly": ["IKEA furniture", "Other brand furniture", "For moving", "For disposal"]
-                },
-                "Wall Mounting": {
-                    "TV mounting": ["Flat screen", "Curved screen", "Above fireplace", "With cable management"],
-                    "Shelf installation": ["Floating shelves", "Bracket shelves", "Built-in shelves", "Heavy duty shelves"],
-                    "Picture hanging": ["Single frame", "Gallery wall", "Heavy mirrors", "Artwork installation"],
-                    "Mirror installation": ["Bathroom mirror", "Full-length mirror", "Decorative mirrors", "Custom shapes"]
-                },
-                "Electrical Help": {
-                    "Light fixture installation": ["Ceiling lights", "Wall sconces", "Pendant lights", "Recessed lighting"],
-                    "Outlet repair": ["GFCI installation", "USB outlet upgrade", "Loose outlet fix", "New outlet installation"],
-                    "Switch replacement": ["Dimmer switch", "Smart switch", "Three-way switch", "Timer switch"],
-                    "Ceiling fan installation": ["With light kit", "Remote control setup", "Balancing", "Existing wiring"]
-                },
-                "Plumbing Help": {
-                    "Faucet repair": ["Leaky faucet", "Faucet replacement", "Cartridge replacement", "Low water pressure fix"],
-                    "Toilet repair": ["Running toilet", "Clogged toilet", "Toilet replacement", "Bidet installation"],
-                    "Drain cleaning": ["Sink drain", "Bathtub drain", "Shower drain", "Main line cleaning"],
-                    "Pipe leak repair": ["Under sink", "In wall", "Copper pipe", "PVC pipe"]
-                },
-                "Computer Repairs": {
-                    "Virus removal": ["Malware removal", "Spyware removal", "System cleanup", "Security software installation"],
-                    "Hardware upgrade": ["RAM upgrade", "SSD installation", "Graphics card upgrade", "CPU replacement"],
-                    "Software installation": ["Operating system", "Productivity software", "Antivirus software", "Driver updates"],
-                    "Data recovery": ["Hard drive recovery", "SSD recovery", "File system repair", "Backup solution setup"]
-                }
-            };
 
-            let selectedServices = [];
-            let hasCompletedSelection = false;
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const mainContent = document.querySelector('main');
+        const serviceOptions = document.querySelector('.service-options');
+        const taskDetails = document.querySelector('.task-details');
+        const taskTextarea = taskDetails.querySelector('textarea');
+        const bookButton = document.querySelector('.book-button');
+        const selectedServicesSection = document.getElementById('selectedServicesSection');
+        const suggestedSection = document.getElementById('suggestedSection');
 
-            function updateSelectedServices() {
-                selectedServicesSection.innerHTML = '';
-                if (selectedServices.length > 0) {
-                    const serviceList = document.createElement('div');
-                    selectedServices.forEach(service => {
+        const suggestedServices = {
+            "Minor Home Repairs": {
+                "Drywall repair": ["Small holes", "Large holes", "Cracks", "Texture matching"],
+                "Door repair": ["Hinges", "Locks", "Weather stripping", "Door frame"],
+                "Window repair": ["Glass replacement", "Weatherization", "Frame repair", "Sash replacement"],
+                "Tile repair": ["Grout repair", "Tile replacement", "Sealing", "Re-caulking"]
+            },
+            "Furniture Fixes": {
+                "Assembly": ["IKEA furniture", "Other brand furniture", "Outdoor furniture", "Office furniture"],
+                "Repair": ["Wood furniture", "Upholstery", "Metal furniture", "Antique restoration"],
+                "Moving": ["In-home rearrangement", "Loading/Unloading", "Furniture protection", "Disassembly/Reassembly"],
+                "Disassembly": ["IKEA furniture", "Other brand furniture", "For moving", "For disposal"]
+            },
+            "Wall Mounting": {
+                "TV mounting": ["Flat screen", "Curved screen", "Above fireplace", "With cable management"],
+                "Shelf installation": ["Floating shelves", "Bracket shelves", "Built-in shelves", "Heavy duty shelves"],
+                "Picture hanging": ["Single frame", "Gallery wall", "Heavy mirrors", "Artwork installation"],
+                "Mirror installation": ["Bathroom mirror", "Full-length mirror", "Decorative mirrors", "Custom shapes"]
+            },
+            "Electrical Help": {
+                "Light fixture installation": ["Ceiling lights", "Wall sconces", "Pendant lights", "Recessed lighting"],
+                "Outlet repair": ["GFCI installation", "USB outlet upgrade", "Loose outlet fix", "New outlet installation"],
+                "Switch replacement": ["Dimmer switch", "Smart switch", "Three-way switch", "Timer switch"],
+                "Ceiling fan installation": ["With light kit", "Remote control setup", "Balancing", "Existing wiring"]
+            },
+            "Plumbing Help": {
+                "Faucet repair": ["Leaky faucet", "Faucet replacement", "Cartridge replacement", "Low water pressure fix"],
+                "Toilet repair": ["Running toilet", "Clogged toilet", "Toilet replacement", "Bidet installation"],
+                "Drain cleaning": ["Sink drain", "Bathtub drain", "Shower drain", "Main line cleaning"],
+                "Pipe leak repair": ["Under sink", "In wall", "Copper pipe", "PVC pipe"]
+            },
+            "Computer Repairs": {
+                "Virus removal": ["Malware removal", "Spyware removal", "System cleanup", "Security software installation"],
+                "Hardware upgrade": ["RAM upgrade", "SSD installation", "Graphics card upgrade", "CPU replacement"],
+                "Software installation": ["Operating system", "Productivity software", "Antivirus software", "Driver updates"],
+                "Data recovery": ["Hard drive recovery", "SSD recovery", "File system repair", "Backup solution setup"]
+            }
+        };
+
+        let selectedServices = [];
+        let hasCompletedSelection = false;
+
+        function updateSelectedServices() {
+            selectedServicesSection.innerHTML = '';
+            if (selectedServices.length > 0) {
+                const table = document.createElement('table');
+                table.className = 'selected-services-table';
+                
+                const headerRow = table.insertRow();
+                const headerCell = headerRow.insertCell();
+                headerCell.colSpan = 3;
+                headerCell.textContent = 'Selected Services';
+                
+                for (let i = 0; i < selectedServices.length; i += 3) {
+                    const row = table.insertRow();
+                    for (let j = 0; j < 3 && i + j < selectedServices.length; j++) {
+                        const cell = row.insertCell();
+                        const service = selectedServices[i + j];
+                        const parts = service.split(' - ');
+                        const specificService = parts[1];
+                        
                         const button = document.createElement('button');
                         button.className = 'selected-service-btn';
-                        button.innerHTML = `${service} <span class="remove-service">×</span>`;
-                        button.querySelector('.remove-service').addEventListener('click', (e) => {
-                            e.stopPropagation();
+                        button.innerHTML = `${specificService} <span class="remove-service">×</span>`;
+                        button.querySelector('.remove-service').addEventListener('click', function(event) {
+                            event.stopPropagation();
                             removeService(service);
                         });
-                        serviceList.appendChild(button);
-                    });
-                    selectedServicesSection.appendChild(serviceList);
-
-                    if (!document.querySelector('.clear-all-btn')) {
-                        const clearAllButton = document.createElement('button');
-                        clearAllButton.textContent = 'Clear All';
-                        clearAllButton.className = 'clear-all-btn';
-                        clearAllButton.addEventListener('click', clearAllServices);
-                        selectedServicesSection.appendChild(clearAllButton);
+                        
+                        cell.appendChild(button);
                     }
                 }
+                
+                selectedServicesSection.appendChild(table);
 
-                if (hasCompletedSelection) {
-                    taskDetails.style.display = 'block';
-                    bookButton.style.display = 'block';
+                if (!document.querySelector('.clear-all-btn')) {
+                    const clearAllButton = document.createElement('button');
+                    clearAllButton.textContent = 'Clear All';
+                    clearAllButton.className = 'clear-all-btn';
+                    clearAllButton.addEventListener('click', clearAllServices);
+                    selectedServicesSection.appendChild(clearAllButton);
                 }
             }
 
-            function removeService(service) {
-                selectedServices = selectedServices.filter(s => s !== service);
-                updateSelectedServices();
+            if (hasCompletedSelection) {
+                taskDetails.style.display = 'block';
+                bookButton.style.display = 'block';
+            }
+        }
+
+        function removeService(service) {
+            selectedServices = selectedServices.filter(function(s) {
+                return s !== service;
+            });
+            updateSelectedServices();
+        }
+
+        function clearAllServices() {
+            selectedServices = [];
+            hasCompletedSelection = false;
+            updateSelectedServices();
+            suggestedSection.innerHTML = '';
+            taskDetails.style.display = 'none';
+            bookButton.style.display = 'none';
+            serviceOptions.style.display = 'grid';
+        }
+
+        function showSuggestedServices(category, subcategory = null) {
+            suggestedSection.innerHTML = '';
+            let currentLevel = suggestedServices[category];
+            let title = category;
+
+            if (subcategory) {
+                currentLevel = currentLevel[subcategory];
+                title = subcategory;
             }
 
-            function clearAllServices() {
-                selectedServices = [];
-                hasCompletedSelection = false;
-                updateSelectedServices();
-                suggestedSection.innerHTML = '';
-                taskDetails.style.display = 'none';
-                bookButton.style.display = 'none';
+            const heading = document.createElement('h3');
+            heading.textContent = `Options for ${title}:`;
+            suggestedSection.appendChild(heading);
+
+            const optionsContainer = document.createElement('div');
+            optionsContainer.className = 'suggested-options';
+
+            if (Array.isArray(currentLevel)) {
+                currentLevel.forEach(function(option) {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.addEventListener('click', function() {
+                        selectSuggestedService(category, subcategory, option);
+                    });
+                    optionsContainer.appendChild(button);
+                });
+            } else {
+                Object.keys(currentLevel).forEach(function(option) {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.addEventListener('click', function() {
+                        if (subcategory) {
+                            selectSuggestedService(category, subcategory, option);
+                        } else {
+                            showSuggestedServices(category, option);
+                        }
+                    });
+                    optionsContainer.appendChild(button);
+                });
             }
 
-            function showSuggestedServices(category, subcategory = null) {
-                suggestedSection.innerHTML = '';
-                let currentLevel = suggestedServices[category];
-                let title = category;
+            suggestedSection.appendChild(optionsContainer);
 
+            const backButton = document.createElement('button');
+            backButton.id = 'backButton';
+            backButton.textContent = 'Back';
+            backButton.addEventListener('click', function() {
                 if (subcategory) {
-                    currentLevel = currentLevel[subcategory];
-                    title = subcategory;
-                }
-
-                const heading = document.createElement('h3');
-                heading.textContent = `Options for ${title}:`;
-                suggestedSection.appendChild(heading);
-
-                const optionsContainer = document.createElement('div');
-                optionsContainer.className = 'suggested-options';
-
-                if (Array.isArray(currentLevel)) {
-                    currentLevel.forEach(option => {
-                        const button = document.createElement('button');
-                        button.textContent = option;
-                        button.addEventListener('click', () => selectSuggestedService(category, subcategory, option));
-                        optionsContainer.appendChild(button);
-                    });
-                } else {
-                    Object.keys(currentLevel).forEach(option => {
-                        const button = document.createElement('button');
-                        button.textContent = option;
-                        button.addEventListener('click', () => {
-                            if (subcategory) {
-                                selectSuggestedService(category, subcategory, option);
-                            } else {
-                                showSuggestedServices(category, option);
-                            }
-                        });
-                        optionsContainer.appendChild(button);
-                    });
-                }
-
-                suggestedSection.appendChild(optionsContainer);
-
-                const backButton = document.createElement('button');
-                backButton.id = 'backButton';
-                backButton.textContent = 'Back';
-                backButton.addEventListener('click', () => {
-                    if (subcategory) {
-                        showSuggestedServices(category);
-                    } else {
-                        suggestedSection.innerHTML = '';
-                    }
-                });
-                suggestedSection.appendChild(backButton);
-            }
-
-            function selectSuggestedService(category, subcategory, option) {
-                let service = `${category} - ${subcategory}`;
-                if (option) {
-                    service += ` - ${option}`;
-                }
-                if (!selectedServices.includes(service)) {
-                    selectedServices.push(service);
-                    hasCompletedSelection = true;
-                    updateSelectedServices();
-                }
-                suggestedSection.innerHTML = '';
-            }
-
-            serviceOptions.forEach(option => {
-                option.addEventListener('click', function() {
-                    const category = this.textContent;
                     showSuggestedServices(category);
-                });
-            });
-
-            bookButton.addEventListener('click', function() {
-                if (selectedServices.length === 0) {
-                    alert('Please select at least one service before booking.');
                 } else {
-                    const additionalDetails = taskTextarea.value;
-                    alert(`Booking confirmed for: ${selectedServices.join(', ')}\n\nAdditional details: ${additionalDetails}`);
+                    suggestedSection.innerHTML = '';
+                    serviceOptions.style.display = 'grid';
                 }
             });
+            suggestedSection.appendChild(backButton);
 
-            // Contact modal functionality
-            var modal = document.getElementById('mycontactModal');
-            var btn = document.getElementById('contactBtn');
-            var span = document.getElementsByClassName('contactModalClose')[0];
+            serviceOptions.style.display = 'none';
+            suggestedSection.style.display = 'block';
 
-            btn.onclick = function() {
-                modal.style.display = 'block';
+            // Ensure suggested section is above selected services
+            mainContent.insertBefore(suggestedSection, selectedServicesSection);
+        }
+
+        function selectSuggestedService(category, subcategory, option) {
+            let service = `${category} - ${subcategory}`;
+            if (option) {
+                service += ` - ${option}`;
             }
+            if (!selectedServices.includes(service)) {
+                selectedServices.push(service);
+                hasCompletedSelection = true;
+                updateSelectedServices();
+            }
+            suggestedSection.innerHTML = '';
+            serviceOptions.style.display = 'grid';
+        }
 
-            span.onclick = function() {
+        serviceOptions.querySelectorAll('.service-option').forEach(function(option) {
+            option.addEventListener('click', function() {
+                const category = this.textContent;
+                showSuggestedServices(category);
+            });
+        });
+
+        bookButton.addEventListener('click', function() {
+            if (selectedServices.length === 0) {
+                alert('Please select at least one service before booking.');
+            } else {
+                const additionalDetails = taskTextarea.value;
+                alert(`Booking confirmed for: ${selectedServices.join(', ')}\n\nAdditional details: ${additionalDetails}`);
+            }
+        });
+
+        // Contact modal functionality
+        var modal = document.getElementById('mycontactModal');
+        var btn = document.getElementById('contactBtn');
+        var span = document.getElementsByClassName('contactModalClose')[0];
+
+        btn.onclick = function() {
+            modal.style.display = 'block';
+        }
+
+        span.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
                 modal.style.display = 'none';
             }
+        }
 
-            window.onclick = function(event) {
-                if (event.target == modal) {
-                    modal.style.display = 'none';
-                }
-            }
-
-            // Contact option buttons functionality
-            document.getElementById('emailBtn').addEventListener('click', function() {
-                window.location.href = 'mailto:tom@example.com';
-            });
-
-            document.getElementById('callBtn').addEventListener('click', function() {
-                window.location.href = 'tel:+1234567890';
-            });
-
-            document.getElementById('contactCardBtn').addEventListener('click', function() {
-                // Add functionality to download or display contact card
-                alert('Contact card functionality to be implemented');
-            });
-
-            document.getElementById('smsBtn').addEventListener('click', function() {
-                window.location.href = 'sms:+1234567890';
-            });
-
-            // Manage Your Visit button functionality
-            const manageVisitBtn = document.querySelector('.manage-visit-button');
-            manageVisitBtn.addEventListener('click', function() {
-                alert('Redirecting to Manage Your Visit page...');
-                // Add actual redirection or functionality here
-            });
-
-            // Function to handle window resize
-            function handleResize() {
-                if (window.innerWidth <= 600) {
-                    document.querySelector('.service-options').style.gridTemplateColumns = '1fr';
-                } else {
-                    document.querySelector('.service-options').style.gridTemplateColumns = 'repeat(2, 1fr)';
-                }
-            }
-
-            // Add event listener for window resize
-            window.addEventListener('resize', handleResize);
-
-            // Call handleResize initially to set the correct layout
-            handleResize();
+        // Contact option buttons functionality
+        document.getElementById('emailBtn').addEventListener('click', function() {
+            window.location.href = 'mailto:tom@example.com';
         });
-    </script>
-</body>
 
+        document.getElementById('callBtn').addEventListener('click', function() {
+            window.location.href = 'tel:+1234567890';
+        });
+
+        document.getElementById('contactCardBtn').addEventListener('click', function() {
+            alert('Contact card functionality to be implemented');
+        });
+
+        document.getElementById('smsBtn').addEventListener('click', function() {
+            window.location.href = 'sms:+1234567890';
+        });
+
+        // Manage Your Visit button functionality
+        const manageVisitBtn = document.querySelector('.manage-visit-button');
+        manageVisitBtn.addEventListener('click', function() {
+            alert('Redirecting to Manage Your Visit page...');
+        });
+
+        // Function to handle window resize
+        function handleResize() {
+            if (window.innerWidth <= 600) {
+                serviceOptions.style.gridTemplateColumns = '1fr';
+            } else {
+                serviceOptions.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            }
+        }
+
+        // Add event listener for window resize
+        window.addEventListener('resize', handleResize);
+
+        // Call handleResize initially to set the correct layout
+        handleResize();
+    });
+</script></body>
 </html>
