@@ -231,6 +231,31 @@
             background-color: #e0e0e0;
         }
 
+        #furnitureOptionsSection {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        #furniture-select {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+        #selectedFurnitureList {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #selectedFurnitureList li {
+            background-color: #e0e0e0;
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
         .card {
             background-color: rgba(255, 255, 255, .99);
             border-radius: 10px;
@@ -643,7 +668,7 @@
             <div class="service-category plumbing-help">Plumbing Help</div>
             <div class="service-category computer-repairs">Computer Repairs</div>
         </div>
-
+        <div id="furnitureOptionsSection" style="display: none; margin-bottom: 2px;"></div>
         <div id="selectedSection" style="margin-bottom: 2px;">
             <font color="#454545"></font>
             <!-- Closed the font tag -->
@@ -680,50 +705,52 @@
         </footer>
     </span>
 
-<script>
-    (function() {
-        const originalTitle = document.title;
-        const originalFavicon = document.getElementById('favicon').href; // Save the original favicon URL
-        const messageOne = "Tom's 🛠 ️HandyTech";
-        const messageTwo = "📐BookToM.NYC🪚";
-        const messages = ["🖼 Wall 🧱 Mounting", "Minor 🏠Repairs", "🚿 Plumbing 🪣", "🔌 Electrical 💡", "💻 Repairs", "🪑 Fixes"];
-        let currentTitleIndex = 0;
-        let interval;
+    <script>
+        (function() {
+            const originalTitle = document.title;
+            const originalFavicon = document.getElementById('favicon').href;
+            const messageOne = "Tom's 🛠 ️HandyTech";
+            const messageTwo = "📐BookToM.NYC🪚";
+            const messages = ["🖼 Wall 🧱 Mounting", "Minor 🏠Repairs", "🚿 Plumbing 🪣", "🔌 Electrical 💡", "💻 Repairs", "🪑 Fixes"];
+            let currentTitleIndex = 0;
+            let interval;
 
-        function toggleTitle() {
-            currentTitleIndex = (currentTitleIndex + 1) % 3; // Cycle through 0, 1, 2
-            if (currentTitleIndex === 0) {
-                document.title = messageOne;
-                document.getElementById('favicon').href = 'https://tommichael88.github.io/booktomnyc/images/tomshandylogo_newest.webp?raw=true';
-            } else if (currentTitleIndex === 1) {
-                document.title = messageTwo;
-                document.getElementById('favicon').href = originalFavicon;
-            } else { // random message logic
-                const randomIndex = Math.floor(Math.random() * messages.length);
-                document.title = messages[randomIndex];
-                document.getElementById('favicon').href = 'https://tommichael88.github.io/booktomnyc/images/invoicelogo_tomkongerslev_nobg__.webp?raw=true';
+            function toggleTitle() {
+                currentTitleIndex = (currentTitleIndex + 1) % 3;
+                if (currentTitleIndex === 0) {
+                    document.title = messageOne;
+                    document.getElementById('favicon').href = 'https://tommichael88.github.io/booktomnyc/images/tomshandylogo_newest.webp?raw=true';
+                } else if (currentTitleIndex === 1) {
+                    document.title = messageTwo;
+                    document.getElementById('favicon').href = originalFavicon;
+                } else {
+                    const randomIndex = Math.floor(Math.random() * messages.length);
+                    document.title = messages[randomIndex];
+                    document.getElementById('favicon').href = 'https://tommichael88.github.io/booktomnyc/images/invoicelogo_tomkongerslev_nobg__.webp?raw=true';
+                }
             }
-        }
 
-        document.addEventListener("visibilitychange", function() {
-            if (document.hidden) {
-                toggleTitle();
-                interval = setInterval(toggleTitle, 4000); // Adjust time as needed
-            } else {
-                clearInterval(interval); // Clear the interval when tab is active again
-                document.title = originalTitle; // Restore original title
-                document.getElementById('favicon').href = originalFavicon; // Restore original favicon
-            }
-        });
-    })();
+            document.addEventListener("visibilitychange", function() {
+                if (document.hidden) {
+                    toggleTitle();
+                    interval = setInterval(toggleTitle, 4000);
+                } else {
+                    clearInterval(interval);
+                    document.title = originalTitle;
+                    document.getElementById('favicon').href = originalFavicon;
+                }
+            });
+        })();
+
+        <!-- MAIN -->
         document.addEventListener('DOMContentLoaded', function() {
-            const mainContent = document.querySelector('main');
             const serviceOptions = document.querySelector('.service-category-grid');
             const taskDetails = document.querySelector('.task-details');
             const taskTextarea = taskDetails.querySelector('textarea');
             const bookButton = document.querySelector('.book-button');
             const selectedServicesSection = document.getElementById('selectedServicesSection');
             const selectedSection = document.getElementById('selectedSection');
+            const furnitureOptionsSection = document.getElementById('furnitureOptionsSection');
 
             const categoryServices = {
                 "Minor Home Repairs": {
@@ -763,6 +790,88 @@
                     "Data recovery": ["Hard drive recovery", "SSD recovery", "File system repair", "Backup solution setup"]
                 }
             };
+
+            const furnitureOptions = [{
+                    category: "BEKANT",
+                    items: ["Desk with underframe"]
+                },
+                {
+                    category: "BESTA",
+                    items: ["Single frame, shelves, floor standing", "Single frame, door / drawer, floor standing", "Single frame, wall mounting"]
+                },
+                {
+                    category: "BILLY",
+                    items: ["Bookcase one frame"]
+                },
+                {
+                    category: "BJURSTA",
+                    items: ["Extendable table"]
+                },
+                {
+                    category: "BRIMNES",
+                    items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame with storage", "Headboard", "Wardrobe with 2 doors", "Wardrobe with 3 doors", "Nightstand", "Daybed with 2 drawers"]
+                },
+                {
+                    category: "BRUSALI",
+                    items: ["Bed frame", "Bed with 4 storage boxes", "3 drawer chest", "Nightstand"]
+                },
+                {
+                    category: "FINGAL",
+                    items: ["Swivel chair"]
+                },
+                {
+                    category: "FRIHETEN",
+                    items: ["Sofa bed with chaise"]
+                },
+                {
+                    category: "GALANT",
+                    items: ["2 drawer unit", "3 drawer unit", "4 drawer unit", "Cabinet with sliding doors"]
+                },
+                {
+                    category: "HEMNES",
+                    items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "8 drawer dresser", "Nightstand", "Daybed with 3 drawers"]
+                },
+                {
+                    category: "KALLAX",
+                    items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert with 2 drawers", "Insert with door"]
+                },
+                {
+                    category: "LACK",
+                    items: ["Side table", "Coffe table", "TV Unit"]
+                },
+                {
+                    category: "LINNMON ADILS",
+                    items: ["Table (table top and four legs)"]
+                },
+                {
+                    category: "MALM",
+                    items: ["Bed Frame", "Bed Frame with 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"]
+                },
+                {
+                    category: "MICKE",
+                    items: ["Desk with 1 Drawer", "Desk with Drawers & Storage", "Add-on unit"]
+                },
+                {
+                    category: "MORVIK",
+                    items: ["Wardrobe"]
+                },
+                {
+                    category: "PAX",
+                    items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"]
+                },
+                {
+                    category: "SODERHAMN",
+                    items: ["Sofa one seat section with cover"]
+                },
+                {
+                    category: "TRYSIL",
+                    items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"]
+                },
+                {
+                    category: "OTHER NOT LISTED",
+                    items: ["NOT LISTED or UNKNOWN"]
+                }
+            ];
 
             let selectedServices = [];
             let hasCompletedSelection = false;
@@ -813,7 +922,13 @@
                     taskDetails.style.display = 'block';
                     bookButton.style.display = 'block';
                 }
-                // Scroll to and focus on the selected services section
+
+                if (selectedServices.some(service => service.startsWith('Furniture Fixes'))) {
+                    showFurnitureOptions();
+                } else {
+                    furnitureOptionsSection.style.display = 'none';
+                }
+
                 selectedServicesSection.scrollIntoView({
                     behavior: 'smooth'
                 });
@@ -835,6 +950,7 @@
                 taskDetails.style.display = 'none';
                 bookButton.style.display = 'none';
                 serviceOptions.style.display = 'grid';
+                furnitureOptionsSection.style.display = 'none';
             }
 
             function showcategoryServices(category, subcategory = null) {
@@ -895,14 +1011,12 @@
 
                 serviceOptions.style.display = 'none';
                 selectedSection.style.display = 'block';
-                // Scroll to and focus on the selected section
                 selectedSection.scrollIntoView({
                     behavior: 'smooth'
                 });
                 selectedSection.focus();
 
-                // Ensure suggested section is above selected services
-                mainContent.insertBefore(selectedSection, selectedServicesSection);
+                document.body.insertBefore(selectedSection, selectedServicesSection);
             }
 
             function selectService(category, subcategory, option) {
@@ -918,11 +1032,65 @@
                 selectedSection.innerHTML = '';
                 serviceOptions.style.display = 'grid';
 
-                // Focus on the selectedServicesSection after selecting a task detail
                 selectedServicesSection.scrollIntoView({
                     behavior: 'smooth'
                 });
                 selectedServicesSection.focus();
+
+                if (category === 'Furniture Fixes') {
+                    showFurnitureOptions();
+                } else {
+                    furnitureOptionsSection.style.display = 'none';
+                }
+            }
+
+            function showFurnitureOptions() {
+                furnitureOptionsSection.innerHTML = '';
+                furnitureOptionsSection.style.display = 'block';
+
+                const select = document.createElement('select');
+                select.id = 'furniture-select';
+
+                const defaultOption = document.createElement('option');
+                defaultOption.textContent = 'Select furniture item';
+                defaultOption.value = '';
+                select.appendChild(defaultOption);
+
+                furnitureOptions.forEach(option => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = option.category;
+                    option.items.forEach(item => {
+                        const optionElement = document.createElement('option');
+                        optionElement.textContent = item;
+                        optionElement.value = item;
+                        optgroup.appendChild(optionElement);
+                    });
+                    select.appendChild(optgroup);
+                });
+
+                const addButton = document.createElement('button');
+                addButton.textContent = 'Add Furniture Item';
+                addButton.addEventListener('click', addFurnitureItem);
+
+                const selectedList = document.createElement('ul');
+                selectedList.id = 'selectedFurnitureList';
+
+                furnitureOptionsSection.appendChild(select);
+                furnitureOptionsSection.appendChild(addButton);
+                furnitureOptionsSection.appendChild(selectedList);
+            }
+
+            function addFurnitureItem() {
+                const select = document.getElementById('furniture-select');
+                const selectedItem = select.value;
+                if (selectedItem) {
+                    const selectedList = document.getElementById('selectedFurnitureList');
+                    const listItem = document.createElement('li');
+                    listItem.textContent = selectedItem;
+                    selectedList.appendChild(listItem);
+
+                    taskTextarea.value += (taskTextarea.value ? "; " : "") + selectedItem;
+                }
             }
 
             serviceOptions.querySelectorAll('.service-category').forEach(function(option) {
@@ -932,26 +1100,31 @@
                 });
             });
 
-            bookButton.addEventListener('click', function() {
-                if (selectedServices.length === 0) {
-                    alert('Please select at least one service before booking.');
-                } else {
-                    const additionalDetails = taskTextarea.value;
-                    alert(`Booking confirmed for: ${selectedServices.join(', ')}\n\nAdditional details: ${additionalDetails}`);
-                }
-            });
+            if (bookButton) {
+                bookButton.addEventListener('click', function() {
+                    if (selectedServices.length === 0) {
+                        alert('Please select at least one service before booking.');
+                    } else {
+                        const additionalDetails = taskTextarea.value;
+                        alert(`Booking confirmed for: ${selectedServices.join(', ')}\n\nAdditional details: ${additionalDetails}`);
+                    }
+                });
+            }
 
-            // Contact modal functionality
             var modal = document.getElementById('mycontactModal');
             var btn = document.getElementById('contactBtn');
             var span = document.getElementsByClassName('contactModalClose')[0];
 
-            btn.onclick = function() {
-                modal.style.display = 'block';
+            if (btn) {
+                btn.onclick = function() {
+                    modal.style.display = 'block';
+                }
             }
 
-            span.onclick = function() {
-                modal.style.display = 'none';
+            if (span) {
+                span.onclick = function() {
+                    modal.style.display = 'none';
+                }
             }
 
             window.onclick = function(event) {
@@ -960,46 +1133,54 @@
                 }
             }
 
-            // Contact option buttons functionality
-            document.getElementById('emailBtn').addEventListener('click', function() {
-                window.location.href = 'mailto:tom@example.com';
-            });
+            const emailButton = document.getElementById('emailButton');
+            if (emailButton) {
+                emailButton.addEventListener('click', function() {
+                    window.location.href = 'mailto:booktom@icloud.com';
+                });
+            }
 
-            document.getElementById('callBtn').addEventListener('click', function() {
-                window.location.href = 'tel:+1234567890';
-            });
+            const callButton = document.getElementById('callButton');
+            if (callButton) {
+                callButton.addEventListener('click', function() {
+                    window.location.href = 'tel:+19294501977';
+                });
+            }
 
-            document.getElementById('contactCardBtn').addEventListener('click', function() {
-                alert('Contact card functionality to be implemented');
-            });
+            const contactCardButton = document.getElementById('contactCardButton');
+            if (contactCardButton) {
+                contactCardButton.addEventListener('click', function() {
+                    alert('Contact card functionality to be implemented');
+                });
+            }
 
-            document.getElementById('smsBtn').addEventListener('click', function() {
-                window.location.href = 'sms:+1234567890';
-            });
+            const smsButton = document.getElementById('smsButton');
+            if (smsButton) {
+                smsButton.addEventListener('click', function() {
+                    window.location.href = 'sms:+19294501977';
+                });
+            }
 
-            // Manage Your Visit button functionality
             const manageVisitBtn = document.querySelector('.reschedule-service-button');
-            manageVisitBtn.addEventListener('click', function() {
-                alert('Redirecting to Manage Your Visit page...');
-            });
+            if (manageVisitBtn) {
+                manageVisitBtn.addEventListener('click', function() {
+                    alert('Redirecting to Manage Your Visit page...');
+                });
+            }
 
-            // Function to handle window resize
             function handleResize() {
                 if (window.innerWidth <= 600) {
                     serviceOptions.style.gridTemplateColumns = '1fr';
                 } else {
-                    serviceOptions.style.gridTemplateColumns = 'repeat(2, 1fr)';
+                    serviceOptions.style.gridTemplateColumns = 'repeat(3, 1fr)';
                 }
             }
 
-            // Add event listener for window resize
             window.addEventListener('resize', handleResize);
 
-            // Call handleResize initially to set the correct layout
             handleResize();
         });
     </script>
-
 </body>
 
 </html>
