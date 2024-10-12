@@ -784,6 +784,13 @@
             const selectedServicesSection = document.getElementById('selectedServicesSection');
             const selectedSection = document.getElementById('selectedSection');
             const furnitureOptionsSection = document.getElementById('furnitureOptionsSection');
+            const otherServiceSection = document.getElementById('otherServiceSection');
+            const otherServiceInput = document.getElementById('other-service-input');
+            const suggestionsDropdown = document.getElementById('suggestions-dropdown');
+
+            let currentCategory = '';
+            let selectedServices = [];
+            let hasCompletedSelection = false;
 
             const categoryServices = {
                 "Minor Home Repairs": {
@@ -800,29 +807,30 @@
                 },
                 "Wall Mounting": {
                     "TV mounting": ["Flat screen", "Curved screen", "Above fireplace", "With cable management"],
-                    "Shelf installation": ["Floating shelves", "Bracket shelves", "Built-in shelves", "Heavy duty shelves"],
-                    "Picture hanging": ["Single frame", "Gallery wall", "Heavy mirrors", "Artwork installation"],
-                    "Mirror installation": ["Bathroom mirror", "Full-length mirror", "Decorative mirrors", "Custom shapes"]
+                    "Shelf Install": ["Floating shelves", "Bracket shelves", "Built-in shelves", "Heavy duty shelves"],
+                    "Picture hanging": ["Single frame", "Gallery wall", "Heavy mirrors", "Artwork Install"],
+                    "Mirror Install": ["Bathroom mirror", "Full-length mirror", "Decorative mirrors", "Custom shapes"]
                 },
                 "Electrical Help": {
-                    "Light fixture installation": ["Ceiling lights", "Wall sconces", "Pendant lights", "Recessed lighting"],
-                    "Outlet repair": ["GFCI installation", "USB outlet upgrade", "Loose outlet fix", "New outlet installation"],
+                    "Light fixture Install": ["Ceiling lights", "Wall sconces", "Pendant lights", "Recessed lighting"],
+                    "Outlet repair": ["GFCI Install", "USB outlet upgrade", "Loose outlet fix", "New outlet Install"],
                     "Switch replacement": ["Dimmer switch", "Smart switch", "Three-way switch", "Timer switch"],
-                    "Ceiling fan installation": ["With light kit", "Remote control setup", "Balancing", "Existing wiring"]
+                    "Ceiling fan Install": ["With light kit", "Remote control setup", "Balancing", "Existing wiring"]
                 },
                 "Plumbing Help": {
                     "Faucet repair": ["Leaky faucet", "Faucet replacement", "Cartridge replacement", "Low water pressure fix"],
-                    "Toilet repair": ["Running toilet", "Clogged toilet", "Toilet replacement", "Bidet installation"],
+                    "Toilet repair": ["Running toilet", "Clogged toilet", "Toilet replacement", "Bidet Install"],
                     "Drain cleaning": ["Sink drain", "Bathtub drain", "Shower drain", "Main line cleaning"],
                     "Pipe leak repair": ["Under sink", "In wall", "Copper pipe", "PVC pipe"]
                 },
                 "Computer Repairs": {
-                    "Virus removal": ["Malware removal", "Spyware removal", "System cleanup", "Security software installation"],
-                    "Hardware upgrade": ["RAM upgrade", "SSD installation", "Graphics card upgrade", "CPU replacement"],
-                    "Software installation": ["Operating system", "Productivity software", "Antivirus software", "Driver updates"],
+                    "Virus removal": ["Malware removal", "Spyware removal", "System cleanup", "Security software Install"],
+                    "Hardware upgrade": ["RAM upgrade", "SSD Install", "Graphics card upgrade", "CPU replacement"],
+                    "Software Install": ["Operating system", "Productivity software", "Antivirus software", "Driver updates"],
                     "Data recovery": ["Hard drive recovery", "SSD recovery", "File system repair", "Backup solution setup"]
                 }
             };
+
 
             const furnitureOptions = [{
                     category: "BEKANT",
@@ -917,13 +925,13 @@
 
                     selectedServices.forEach(service => {
                         const parts = service.split(' - ');
-                        const specificService = parts[1]; // Adjust to extract the service name
+                        const specificService = parts[1];
 
                         const listItem = document.createElement('li');
                         listItem.textContent = specificService;
 
                         const removeButton = document.createElement('button');
-                        removeButton.textContent = '❌'; // Emoji style "X" symbol
+                        removeButton.textContent = '❌';
                         removeButton.addEventListener('click', function() {
                             removeService(service);
                         });
@@ -935,7 +943,7 @@
 
                     if (!document.querySelector('.clear-all-btn')) {
                         const clearAllButton = document.createElement('button');
-                        clearAllButton.textContent = '🗙 ️Clear All';
+                        clearAllButton.textContent = '🗙 Clear All';
                         clearAllButton.className = 'clear-all-btn';
                         clearAllButton.addEventListener('click', clearAllServices);
                         selectedServicesSection.appendChild(clearAllButton);
@@ -958,6 +966,7 @@
                 });
                 selectedServicesSection.focus();
             }
+
 
             function showcategoryServices(category, subcategory = null) {
                 selectedSection.innerHTML = '';
@@ -1000,6 +1009,14 @@
                     });
                 }
 
+                // Add "Other" option
+                const otherButton = document.createElement('button');
+                otherButton.textContent = 'Other';
+                otherButton.addEventListener('click', function() {
+                    showOtherServiceInput(category);
+                });
+                optionsContainer.appendChild(otherButton);
+
                 selectedSection.appendChild(optionsContainer);
 
                 const backButton = document.createElement('button');
@@ -1025,6 +1042,81 @@
                 document.body.insertBefore(selectedSection, selectedServicesSection);
             }
 
+            function showOtherServiceInput(category) {
+                currentCategory = category;
+                selectedSection.style.display = 'none';
+                otherServiceSection.style.display = 'block';
+                otherServiceInput.value = '';
+                otherServiceInput.focus();
+                suggestionsDropdown.innerHTML = '';
+                suggestionsDropdown.style.display = 'none';
+
+                const backButton = document.createElement('button');
+                backButton.textContent = '↩ Back';
+                backButton.addEventListener('click', function() {
+                    otherServiceSection.style.display = 'none';
+                    showcategoryServices(category);
+                });
+                otherServiceSection.insertBefore(backButton, otherServiceSection.firstChild);
+            }
+
+            otherServiceInput.addEventListener('input', function() {
+                const input = this.value;
+                const suggestions = smartAutoComplete(input, currentCategory);
+
+                suggestionsDropdown.innerHTML = '';
+
+                if (suggestions.length > 0) {
+                    suggestionsDropdown.style.display = 'block';
+
+                    suggestions.forEach((suggestion) => {
+                        const div = document.createElement('div');
+                        div.classList.add('suggestion-item');
+                        div.innerHTML = `<strong>${suggestion.service}</strong>`;
+
+                        div.addEventListener('click', function() {
+                            selectService(currentCategory, suggestion.service, '');
+                            otherServiceSection.style.display = 'none';
+                        });
+
+                        suggestionsDropdown.appendChild(div);
+                    });
+                } else {
+                    suggestionsDropdown.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!otherServiceInput.contains(e.target) && !suggestionsDropdown.contains(e.target)) {
+                    suggestionsDropdown.style.display = 'none';
+                }
+            });
+
+            function smartAutoComplete(input, category) {
+                const lowercaseInput = input.toLowerCase();
+                const suggestions = [];
+
+                const services = categoryServices[category];
+                for (const [service, subservices] of Object.entries(services)) {
+                    if (service.toLowerCase().includes(lowercaseInput)) {
+                        suggestions.push({
+                            service: service,
+                            subservices: subservices
+                        });
+                    }
+                    for (const subservice of subservices) {
+                        if (subservice.toLowerCase().includes(lowercaseInput)) {
+                            suggestions.push({
+                                service: service,
+                                subservices: [subservice]
+                            });
+                        }
+                    }
+                }
+
+                return suggestions;
+            }
+
             function selectService(category, subcategory, option) {
                 let service = `${category} - ${subcategory}`;
                 if (option) {
@@ -1044,7 +1136,7 @@
                 selectedServicesSection.focus();
 
                 if (category === 'Furniture Fixes') {
-                    showFurnitureOptions(); // Displays the updated options
+                    showFurnitureOptions();
                 } else {
                     furnitureOptionsSection.style.display = 'none';
                 }
@@ -1167,6 +1259,8 @@
             }
 
 
+
+            // Modal functionality
             var modal = document.getElementById('mycontactModal');
             var btn = document.getElementById('contactBtn');
             var span = document.getElementsByClassName('contactModalClose')[0];
@@ -1189,6 +1283,7 @@
                 }
             }
 
+            // Contact buttons functionality
             const emailButton = document.getElementById('emailButton');
             if (emailButton) {
                 emailButton.addEventListener('click', function() {
@@ -1233,12 +1328,11 @@
             }
 
             window.addEventListener('resize', handleResize);
-
             handleResize();
         });
     </script>
 
-</body>
 
+</body>
 
 </html>
