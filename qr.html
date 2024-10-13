@@ -38,6 +38,7 @@
             background-size: cover;
             background-position: center;
             position: fixed;
+            object-fit: fill;
             top: 0;
             left: 0;
             right: 0;
@@ -85,7 +86,6 @@
 
         header {
             background: rgba(168, 168, 168, .55);
-            overflow: hidden;
         }
 
         h1 {
@@ -101,7 +101,7 @@
 
         main {
             max-width: 600px;
-            object-fit: contain;
+            object-fit: cover;
             display: block;
             margin: auto;
             max-width: 100%;
@@ -136,7 +136,6 @@
             text-align: center;
             justify-content: center;
             align-items: center;
-            object-fit: contain;
             padding: 8px auto;
             overflow: hidden;
         }
@@ -146,14 +145,14 @@
             position: start;
             justify-content: column;
             align-items: left;
-            background-size: cover;
+            background-size: contain;
         }
 
         .tom_kongerslev {
             display: block;
             align-content: center;
-            height: 2rem;
-            object-fit: contain;
+            height: 2.4rem;
+            object-fit: cover;
         }
 
         .contact-button {
@@ -243,6 +242,7 @@
             width: 90%;
             text-align: center;
             padding: 20px;
+            object-fit: cover;
         }
 
         .new-service-request-grid-topper {
@@ -254,6 +254,7 @@
             justify-content: center;
             text-align: center;
             text-decoration: bold;
+            object-fit: cover;
         }
 
         .reschedule-service-button {
@@ -265,11 +266,13 @@
             padding: 2px auto;
             font-size: .7rem;
             cursor: pointer;
+            object-fit: cover;
         }
 
         .reschedule-service-button:hover {
             color: silver;
             background-color: #000;
+            object-fit: cover;
         }
 
         .service-category-grid {
@@ -279,6 +282,7 @@
             margin-top: 0;
             margin-bottom: 0;
             border: 1px inset silver;
+            object-fit: cover;
         }
 
         .service-category {
@@ -1037,26 +1041,26 @@
             }
 
             function showOtherServiceInput(category) {
-        currentCategory = category;
-        selectedSection.style.display = 'none';
-        otherServiceSection.style.display = 'block';
-        otherServiceInput.value = '';
-        otherServiceInput.focus();
-        suggestionsDropdown.innerHTML = '';
-        suggestionsDropdown.style.display = 'none';
-        
-        const backButton = document.createElement('button');
-        backButton.textContent = '↩ Back';
-        backButton.addEventListener('click', function() {
-            otherServiceSection.style.display = 'none';
-            showcategoryServices(category);
-        });
+                currentCategory = category;
+                selectedSection.style.display = 'none';
+                otherServiceSection.style.display = 'block';
+                otherServiceInput.value = '';
+                otherServiceInput.focus();
+                suggestionsDropdown.innerHTML = '';
+                suggestionsDropdown.style.display = 'none';
 
-        const existingBackButton = otherServiceSection.querySelector('button');
-        if (!existingBackButton) {
-            otherServiceSection.insertBefore(backButton, otherServiceSection.firstChild);
-        }
-    }
+                const backButton = document.createElement('button');
+                backButton.textContent = '↩ Back';
+                backButton.addEventListener('click', function() {
+                    otherServiceSection.style.display = 'none';
+                    showcategoryServices(category);
+                });
+
+                const existingBackButton = otherServiceSection.querySelector('button');
+                if (!existingBackButton) {
+                    otherServiceSection.insertBefore(backButton, otherServiceSection.firstChild);
+                }
+            }
 
             function smartAutoComplete(input, category) {
                 const lowercaseInput = input.toLowerCase();
@@ -1107,7 +1111,7 @@
                     furnitureOptionsSection.style.display = 'none';
                 }
             }
-            
+
             function removeService(service) {
                 selectedServices = selectedServices.filter(function(s) {
                     return s !== service;
@@ -1204,7 +1208,7 @@
                 selectedList.innerHTML = '';
                 taskTextarea.value = '';
             }
-            
+
             // Event listeners
             serviceOptions.addEventListener('click', function(event) {
                 if (event.target.classList.contains('service-category')) {
@@ -1217,30 +1221,30 @@
             otherServiceInput.addEventListener('input', function() {
                 const input = this.value.trim().toLowerCase();
                 const suggestions = smartAutoComplete(input, currentCategory);
-                
+
                 suggestionsDropdown.innerHTML = '';
-                
+
                 if (suggestions.length > 0) {
                     suggestionsDropdown.style.display = 'block';
-                    
+
                     suggestions.forEach((suggestion) => {
                         const div = document.createElement('div');
                         div.classList.add('suggestion-item');
                         div.innerHTML = `<strong>${suggestion.service}</strong>`;
-                        
+
                         div.addEventListener('click', function() {
                             selectService(currentCategory, suggestion.service, '');
                             otherServiceSection.style.display = 'none';
                             suggestionsDropdown.style.display = 'none';
                         });
-                        
+
                         suggestionsDropdown.appendChild(div);
                     });
                 } else {
                     suggestionsDropdown.style.display = 'none';
                 }
             });
-        
+
             // Ensure the listener for click outside is updated
             document.addEventListener('click', function(event) {
                 if (!otherServiceInput.contains(event.target) && !suggestionsDropdown.contains(event.target)) {
