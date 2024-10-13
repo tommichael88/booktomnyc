@@ -1037,22 +1037,26 @@
             }
 
             function showOtherServiceInput(category) {
-                currentCategory = category;
-                selectedSection.style.display = 'none';
-                otherServiceSection.style.display = 'block';
-                otherServiceInput.value = '';
-                otherServiceInput.focus();
-                suggestionsDropdown.innerHTML = '';
-                suggestionsDropdown.style.display = 'none';
+        currentCategory = category;
+        selectedSection.style.display = 'none';
+        otherServiceSection.style.display = 'block';
+        otherServiceInput.value = '';
+        otherServiceInput.focus();
+        suggestionsDropdown.innerHTML = '';
+        suggestionsDropdown.style.display = 'none';
+        
+        const backButton = document.createElement('button');
+        backButton.textContent = '↩ Back';
+        backButton.addEventListener('click', function() {
+            otherServiceSection.style.display = 'none';
+            showcategoryServices(category);
+        });
 
-                const backButton = document.createElement('button');
-                backButton.textContent = '↩ Back';
-                backButton.addEventListener('click', function() {
-                    otherServiceSection.style.display = 'none';
-                    showcategoryServices(category);
-                });
-                otherServiceSection.insertBefore(backButton, otherServiceSection.firstChild);
-            }
+        const existingBackButton = otherServiceSection.querySelector('button');
+        if (!existingBackButton) {
+            otherServiceSection.insertBefore(backButton, otherServiceSection.firstChild);
+        }
+    }
 
             function smartAutoComplete(input, category) {
                 const lowercaseInput = input.toLowerCase();
@@ -1103,7 +1107,7 @@
                     furnitureOptionsSection.style.display = 'none';
                 }
             }
-
+            
             function removeService(service) {
                 selectedServices = selectedServices.filter(function(s) {
                     return s !== service;
@@ -1200,7 +1204,7 @@
                 selectedList.innerHTML = '';
                 taskTextarea.value = '';
             }
-
+            
             // Event listeners
             serviceOptions.addEventListener('click', function(event) {
                 if (event.target.classList.contains('service-category')) {
@@ -1209,37 +1213,41 @@
                 }
             });
 
+            // Updated input event listener
             otherServiceInput.addEventListener('input', function() {
-                const input = this.value;
+                const input = this.value.trim().toLowerCase();
                 const suggestions = smartAutoComplete(input, currentCategory);
-
+                
                 suggestionsDropdown.innerHTML = '';
-
+                
                 if (suggestions.length > 0) {
                     suggestionsDropdown.style.display = 'block';
-
+                    
                     suggestions.forEach((suggestion) => {
                         const div = document.createElement('div');
                         div.classList.add('suggestion-item');
                         div.innerHTML = `<strong>${suggestion.service}</strong>`;
-
+                        
                         div.addEventListener('click', function() {
                             selectService(currentCategory, suggestion.service, '');
                             otherServiceSection.style.display = 'none';
+                            suggestionsDropdown.style.display = 'none';
                         });
-
+                        
                         suggestionsDropdown.appendChild(div);
                     });
                 } else {
                     suggestionsDropdown.style.display = 'none';
                 }
             });
-
+        
+            // Ensure the listener for click outside is updated
             document.addEventListener('click', function(event) {
                 if (!otherServiceInput.contains(event.target) && !suggestionsDropdown.contains(event.target)) {
                     suggestionsDropdown.style.display = 'none';
                 }
             });
+
 
             if (bookButton) {
                 bookButton.addEventListener('click', function() {
