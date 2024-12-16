@@ -1,9 +1,11 @@
 # Import necessary modules
 from flask import Flask, request, jsonify, redirect
+import logging
 import os
 import openai
 
 app = Flask(__name__)
+app.logger.setLevel(logging.ERROR)
 
 # Set up OpenAI API key
 api_key = os.environ.get("OPENAI_API_KEY")
@@ -226,7 +228,8 @@ def handle_chat():
         else:
             raise  # Re-raise the exception for generic handling
     except Exception as e:  # General catch-all for other exceptions
-        return jsonify({'error': f"Oops, something went wrong. Error: {e}"})
+        app.logger.error(f"An error occurred: {e}")
+        return jsonify({'error': "Oops, something went wrong. Please try again later."})
 
 # Serve the HTML file
 @app.route('/')
