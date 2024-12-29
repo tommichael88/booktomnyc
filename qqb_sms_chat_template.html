@@ -3,29 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMS-Like Conversation</title>
+    <title>🤖 Messages</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f2f2f2;
+            background-color: #f4f4f4;
         }
 
         #conversation {
             width: 100%;
             max-width: 400px;
-            margin: auto;
-            background-color: #fff;
+            margin: 30px auto;
+            background-color: #ffffff;
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         #messages {
             padding: 20px;
             overflow-y: auto;
-            max-height: 300px;
+            max-height: 400px;
+            margin-right: auto;
         }
 
         .message {
@@ -35,16 +36,18 @@
         }
 
         .user-message {
-            background-color: #4CAF50;
-            color: #fff;
+            background-color: #fff; /* White background for user messages */
+            color: #333;
             border-radius: 10px;
             padding: 10px;
+            margin-left: 50%;
             max-width: 70%;
-            align-self: flex-end;
+            align-self: flex;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
         }
 
         .bot-message {
-            background-color: #008CBA;
+            background-color: #0084ff; /* Blue background for bot messages */
             color: #fff;
             border-radius: 10px;
             padding: 10px;
@@ -60,23 +63,41 @@
         }
 
         #userInput {
-            width: calc(100% - 40px);
+            width: calc(100% - 120px); /* Adjusted width to accommodate typing indicator */
             padding: 10px;
             border: none;
-            border-top: 1px solid #ccc;
+            border-top: 1px solid #ddd;
             outline: none;
             font-size: 16px;
         }
 
         #sendButton {
-            width: 60px; /* Adjusted the width */
+            width: 70px;
             height: 40px;
-            background-color: #4CAF50;
+            background-color: #0084ff;
             color: #fff;
             border: none;
-            border-top: 1px solid #ccc;
+            border-top: 1px solid #ddd;
             cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        #typing-indicator {
+            display: none;
+            margin-left: 10px; 
             font-size: 16px;
+            color: #999;
+            position: relative; /* Positioned relative to the input container */
+            top: -1px; /* Adjust top value to fine-tune position */
+        }
+
+        #user-typing {
+            display: none;
+margin-left: auto;            font-size: 16px;
+            color: #999;
+            position: relative; /* Positioned relative to the input container */
+            top: -1px; /* Adjust top value to fine-tune position */
         }
     </style>
 </head>
@@ -85,56 +106,128 @@
 <div id="conversation">
     <div id="messages">
         <div class="message bot-message">
-            <img src="https://avatar.anywhere.app/files/img/fRQuZAVlbDh8/untitled-project-33-removebg-preview.png" alt="Bot Avatar" class="avatar">
+            <img src="https://avatar.anywhere.app/files/img/fRQuZAVlbDh8/untitled-project-33-removebg-preview.png" alt="🤖" class="avatar">
             Hello! How can I help you today?
         </div>
     </div>
+    <div id="typing-indicator"></div> <div id="user-typing"></div>
     <div>
-        <input type="text" id="userInput" placeholder="Type your message...">
-        <button id="sendButton" onclick="sendMessage()">Send</button>
+        <input type="text" id="userInput" placeholder="Type your message..." onkeyup="userTyping(event)">
+        <button id="sendButton" onclick="sendMessage()"><b>SEND</b></button>
     </div>
 </div>
 
 <script>
-    function sendMessage() {
-  	    var userInput = document.getElementById('userInput').value;
-  	    if (userInput.trim() !== '') {
-            var messagesDiv = document.getElementById('messages');
-            var userMessageDiv = document.createElement('div');
-            userMessageDiv.className = 'message user-message';
-            userMessageDiv.textContent = userInput;
-            messagesDiv.appendChild(userMessageDiv);
+  function sendMessage() {
+    // Get the user's input from the text box.
+    var userInput = document.getElementById('userInput').value;
 
-            fetch('/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: userInput }) 
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Add message to conversation
-            var botMessageDiv = document.createElement('div');
-            botMessageDiv.className = 'message bot-message';
-            botMessageDiv.innerHTML = '<img src="https://avatar.anywhere.app/files/img/fRQuZAVlbDh8/untitled-project-33-removebg-preview.png" alt="Bot Avatar" class="avatar">' +
-                                      data.response + '<br><b>Estimated Total Price: </b>$' + data.price;
-            messagesDiv.appendChild(botMessageDiv);
+    // Check if the user has entered any text.
+    if (userInput.trim() !== '') {
+      // Get the div where the messages are displayed.
+      var messagesDiv = document.getElementById('messages');
 
-            // Clear the user input field
-            document.getElementById('userInput').value = '';
+      // Create a new div to hold the user's message.
+      var userMessageDiv = document.createElement('div');
 
-            // Scroll to the bottom of the conversation
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      // Add the appropriate CSS class to style the user's message.
+      userMessageDiv.className = 'message user-message';
 
-	} else {
-    	   // If input is blank...
-    	   alert("Please type a message before sending.");
+      // Set the text content of the message div to the user's input.
+      userMessageDiv.textContent = userInput;
+
+      // Add the user's message to the messages div.
+      messagesDiv.appendChild(userMessageDiv);
+
+      // --- Typing Indicator ---
+      var typingIndicator = document.getElementById('typing-indicator');
+      typingIndicator.textContent = "🤖💭•";
+      typingIndicator.style.display = "block";
+
+      var dots = 1;
+      var typingInterval = setInterval(function() {
+        if (dots < 3) {
+          typingIndicator.textContent += "•";
+          dots++;
+        } else {
+          clearInterval(typingInterval); 
+          typingIndicator.textContent = ""; 
+          setTimeout(function() {
+            typingIndicator.style.display = "none"; 
+          }, 700); 
         }
-	
-	}
-      }
+      }, 500); 
+
+      // Hide the user typing indicator since the bot is now "typing".
+      document.getElementById('user-typing').style.display = "none";
+      // --- End of Typing Indicator ---
+
+
+      // Send the user's message to the server for processing.
+      fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userInput })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Create a new div to hold the bot's response.
+        var botMessageDiv = document.createElement('div');
+        botMessageDiv.className = 'message bot-message';
+
+        // Set the HTML content of the bot's message.
+        botMessageDiv.innerHTML = '<img src="https://avatar.anywhere.app/files/img/fRQuZAVlbDh8/untitled-project-33-removebg-preview.png" alt="Bot Avatar" class="avatar">' +
+          data.response + '<br><b>Estimated Total Price: </b>$' + data.price;
+
+        // Add the bot's message to the messages div.
+        messagesDiv.appendChild(botMessageDiv);
+
+        // Clear the user input field.
+        document.getElementById('userInput').value = '';
+
+        // Scroll to the bottom of the conversation.
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+
+    } else {
+      // If the input is empty, alert the user.
+      alert("Please type a message before sending.");
+    }
+  }
+
+
+  function userTyping(event) {
+    // --- User Typing Indicator ---
+    var userTypingIndicator = document.getElementById('user-typing');
+    if (document.getElementById('userInput').value.trim() !== '') {
+      userTypingIndicator.textContent = ".";
+      userTypingIndicator.style.display = "block";
+
+      var userDots = 1;
+      var userTypingInterval = setInterval(function() {
+        if (userDots < 3) {
+          userTypingIndicator.textContent += ".";
+          userDots++;
+        } else {
+          clearInterval(userTypingInterval);
+          userTypingIndicator.textContent = ".";
+        }
+      }, 400); 
+    } else {
+      clearInterval(userTypingInterval);
+      userTypingIndicator.style.display = "none";
+    }
+    // --- End of User Typing Indicator ---
+
+
+    // Handle Enter key press.
+    if (event.key === "Enter" && !event.shiftKey) {
+      sendMessage(); 
+    } else if (event.key === "Enter" && event.shiftKey) {
+      // Allow Shift+Enter for a new line.
+      document.getElementById('userInput').value += "\n"; 
+    }
   }
 </script>
-
 </body>
 </html>
-
