@@ -138,7 +138,7 @@
        client typing<span>•</span><span>•</span><span>•</span>
     </div>
     <div id="input-container">
-        <input type="text" id="userInput" placeholder="Type your message..." onkeyup="userTyping(event)">
+        <input type="text" id="userInput" placeholder="Type your message..." onkeyup="userTyping(event)" autofocus>
         <button id="sendButton" onclick="sendMessage()">➤</button>
     </div>
 </div>
@@ -146,13 +146,19 @@
 <script>
     let userTypingTimeout;
 
+    function focusInput() {
+        document.getElementById('userInput').focus();
+    }
+
+    window.onload = focusInput;
+
     function sendMessage() {
-        var userInput = document.getElementById('userInput').value;
-        if (userInput.trim() !== '') {
+        var userInput = document.getElementById('userInput');
+        if (userInput.value.trim() !== '') {
             var messagesDiv = document.getElementById('messages');
             var userMessageDiv = document.createElement('div');
             userMessageDiv.className = 'message user-message';
-            userMessageDiv.textContent = userInput;
+            userMessageDiv.textContent = userInput.value;
             messagesDiv.appendChild(userMessageDiv);
 
             document.getElementById('user-typing').style.display = "none";
@@ -168,7 +174,8 @@
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
             }, 2000);
 
-            document.getElementById('userInput').value = '';
+            userInput.value = '';
+            userInput.blur(); // Remove focus after sending
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         } else {
             alert("Please type a message before sending.");
