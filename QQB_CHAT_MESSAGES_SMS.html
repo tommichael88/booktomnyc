@@ -10,6 +10,10 @@
             margin: 0;
             padding: 0;
             background-color: #f4f4f4;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         #header {
@@ -19,6 +23,7 @@
             padding: 4px;
             background-color: #f0f0f0;
             border-bottom: 1px solid #ddd;
+            flex-shrink: 0;
         }
         
         #header .avatar {
@@ -36,18 +41,26 @@
         #conversation {
             width: 100%;
             max-width: 400px;
-            margin: 30px auto;
+            height: 80vh;
             background-color: #ffffff;
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         #messages {
+            flex: 1;
             padding: 20px;
             overflow-y: auto;
-            max-height: 500px;
-            margin-right: auto;
         }
 
         .message {
@@ -84,10 +97,12 @@
         }
 
         #input-container {
-            display: flex;
-            align-items: center;
             padding: 10px;
             background-color: #f4f4f4;
+            border-top: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
         }
 
         #userInput {
@@ -148,22 +163,24 @@
         <img src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/qqb_og.png" alt="🤖" class="avatar">
         <h1>QuickQuoteBot</h1>
     </div>
-    <div id="messages">
-        <div class="message bot-message">
-            <data-src="">🤖</span>
-            Hello! How can I help you today?
+    <div id="chat-container">
+        <div id="messages">
+            <div class="message bot-message">
+                <data-src="">🤖</span>
+                Hello! How can I help you today?
+            </div>
         </div>
-    </div>
-    <div id="bot-typing" class="typing-indicator">
-        <img src="https://avatar.anywhere.app/files/img/fRQuZAVlbDh8/untitled-project-33-removebg-preview.png" alt="🤖" class="avatar" style="width: 20px; height: 20px;">
-        <span>•</span><span>•</span><span>•</span>
-    </div>
-    <div id="user-typing" class="typing-indicator" style="text-align: right;">
-       client typing<span>•</span><span>•</span><span>•</span>
-    </div>
-    <div id="input-container">
-        <input type="text" id="userInput" placeholder="Type your message..." onkeyup="userTyping(event)" autofocus>
-        <button id="sendButton" onclick="sendMessage()">➤</button>
+        <div id="bot-typing" class="typing-indicator">
+            <img src="https://avatar.anywhere.app/files/img/fRQuZAVlbDh8/untitled-project-33-removebg-preview.png" alt="🤖" class="avatar" style="width: 20px; height: 20px;">
+            <span>•</span><span>•</span><span>•</span>
+        </div>
+        <div id="user-typing" class="typing-indicator" style="text-align: right;">
+           client typing<span>•</span><span>•</span><span>•</span>
+        </div>
+        <div id="input-container">
+            <input type="text" id="userInput" placeholder="Type your message..." onkeyup="userTyping(event)" autofocus>
+            <button id="sendButton" onclick="sendMessage()">➤</button>
+        </div>
     </div>
 </div>
 
@@ -199,7 +216,7 @@
             }, 2000);
 
             userInput.value = '';
-            userInput.blur(); // Remove focus after sending
+            userInput.blur();
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         } else {
             alert("Please type a message before sending.");
