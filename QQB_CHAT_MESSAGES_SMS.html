@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +16,7 @@
             align-items: center;
             justify-content: center;
         }
-        
+
         #header {
             display: flex;
             align-items: center;
@@ -25,13 +26,13 @@
             border-bottom: 1px solid #ddd;
             flex-shrink: 0;
         }
-        
+
         #header .avatar {
             width: 2rem;
             height: 2rem;
             margin-right: 2px;
         }
-        
+
         #header h1 {
             font-size: 16px;
             margin: 1px;
@@ -89,11 +90,9 @@
             align-self: flex-start;
         }
 
-        .avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            margin-right: 10px;
+        .bot-emoji {
+            display: inline-block;
+            vertical-align: middle;
         }
 
         #input-container {
@@ -151,91 +150,80 @@
         }
 
         @keyframes blink {
-            0% { opacity: 0.1; }
-            20% { opacity: 1; }
-            100% { opacity: 0.1; }
+            0% {
+                opacity: 0.1;
+            }
+
+            20% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.1;
+            }
         }
     </style>
 </head>
+
 <body>
-<div id="conversation">
-    <div id="header">
-        <img src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/qqb_og.png" alt="🤖" class="avatar">
-        <h1>QuickQuoteBot</h1>
-    </div>
-    <div id="chat-container">
-        <div id="messages">
-            <div class="message bot-message">
-                <data-src="">🤖</span>
-                Hello! How can I help you today?
+    <div id="conversation">
+        <div id="header"> <span style="font-size: 24px; margin-right: 8px;">🤖</span>
+            <h1>QuickQuoteBot</h1>
+        </div>
+        <div id="chat-container">
+            <div id="messages">
+                <div class="message bot-message"> <span style="margin-right: 8px;">🤖</span> Hello! How can I help you today? </div>
             </div>
-        </div>
-        <div id="bot-typing" class="typing-indicator">
-            <img src="https://avatar.anywhere.app/files/img/fRQuZAVlbDh8/untitled-project-33-removebg-preview.png" alt="🤖" class="avatar" style="width: 20px; height: 20px;">
-            <span>•</span><span>•</span><span>•</span>
-        </div>
-        <div id="user-typing" class="typing-indicator" style="text-align: right;">
-           client typing<span>•</span><span>•</span><span>•</span>
-        </div>
-        <div id="input-container">
-            <input type="text" id="userInput" placeholder="Type your message..." onkeyup="userTyping(event)" autofocus>
-            <button id="sendButton" onclick="sendMessage()">➤</button>
+            <div id="bot-typing" class="typing-indicator"> <span class="bot-emoji" style="font-size: 20px; margin-right: 10px;">🤖</span> <span>- </span><span>- </span><span>- </span> </div>
+            <!-- Commented out user typing indicator <div id="user-typing" class="typing-indicator" style="text-align: right; color: gray;"> you're typing<span>- </span><span>- </span><span>- </span> </div> -->
+            <div id="input-container"> <input type="text" id="userInput" placeholder="Type your message..." autofocus>
+ <button id="sendButton" onclick="sendMessage()">➤</button> </div>
         </div>
     </div>
-</div>
+    <script>
+        /* Commented out typing timeout variable let userTypingTimeout; */
+        function focusInput() {
+            document.getElementById('userInput').focus();
+        }
+        window.onload = focusInput;
+        document.getElementById('userInput').addEventListener('keypress', function(event) {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
 
-<script>
-    let userTypingTimeout;
+function sendMessage() {
+    var userInput = document.getElementById('userInput');
+    if (userInput.value.trim() !== '') {
+        var messagesDiv = document.getElementById('messages');
+        var userMessageDiv = document.createElement('div');
+        userMessageDiv.className = 'message user-message';
+        userMessageDiv.textContent = userInput.value;
+        messagesDiv.appendChild(userMessageDiv);
 
-    function focusInput() {
-        document.getElementById('userInput').focus();
-    }
+        document.getElementById('bot-typing').style.display = "block";
 
-    window.onload = focusInput;
-
-    function sendMessage() {
-        var userInput = document.getElementById('userInput');
-        if (userInput.value.trim() !== '') {
-            var messagesDiv = document.getElementById('messages');
-            var userMessageDiv = document.createElement('div');
-            userMessageDiv.className = 'message user-message';
-            userMessageDiv.textContent = userInput.value;
-            messagesDiv.appendChild(userMessageDiv);
-
-            document.getElementById('user-typing').style.display = "none";
-            document.getElementById('bot-typing').style.display = "block";
-
-            setTimeout(() => {
-                var botMessageDiv = document.createElement('div');
-                botMessageDiv.className = 'message bot-message';
-                botMessageDiv.innerHTML = '<data-src="">🤖</span>' +
-                    'This is a simulated response. In a real application, you would process the user input and generate an appropriate response.';
-                messagesDiv.appendChild(botMessageDiv);
-                document.getElementById('bot-typing').style.display = "none";
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            }, 2000);
-
-            userInput.value = '';
-            userInput.blur();
+        setTimeout(() => {
+            var botMessageDiv = document.createElement('div');
+            botMessageDiv.className = 'message bot-message';
+            botMessageDiv.innerHTML = '<span style="margin-right: 8px;">🤖</span>' +
+                'This is a simulated response. In a real application, you would process the user input and generate an appropriate response.';
+            messagesDiv.appendChild(botMessageDiv);
+            document.getElementById('bot-typing').style.display = "none";
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        } else {
-            alert("Please type a message before sending.");
-        }
+            userInput.focus(); // Return focus after bot response[4]
+        }, 2000);
+
+        userInput.value = '';
+        userInput.focus(); // Maintain focus immediately after clearing[3]
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } else {
+        alert("Please type a message before sending.");
+        userInput.focus(); // Return focus even after alert[2]
     }
-
-    function userTyping(event) {
-        clearTimeout(userTypingTimeout);
-        document.getElementById('user-typing').style.display = "block";
-
-        userTypingTimeout = setTimeout(() => {
-            document.getElementById('user-typing').style.display = "none";
-        }, 1000);
-
-        if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            sendMessage();
-        }
-    }
-</script>
+} /* Commented out typing indicator functionality function userTyping(event) { clearTimeout(userTypingTimeout); document.getElementById('user-typing').style.display = "block"; userTypingTimeout = setTimeout(() => { document.getElementById('user-typing').style.display = "none"; }, 1000); if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendMessage(); } } */
+    </script>
 </body>
+
 </html>
