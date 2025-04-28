@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Service by Category</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-card: #1e1e1e;
+            --bg-card-hover: #2a2a2a;
+            --primary: #474747;
+            --primary-hover: #ffffff;
+            --text-primary: #f5f5f5;
+            --text-secondary: #c0c0c0;
+            --accent-light: rgba(250, 0, 0, 1);
+            --accent: rgba(250, 0, 0, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+            display: inline-block;
+        }
+
+        .header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 3px;
+        }
+
+        .header h2 {
+            font-size: 1.1rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 1rem auto 0;
+            line-height: 1.4;
+        }
+
+        .menu-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .category-tile {
+            background-color: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.75rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .category-tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(222, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .category-tile:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            background-color: var(--bg-card-hover);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .category-tile:hover::before {
+            opacity: 0.6;
+        }
+
+        .category-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1.25rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .category-tile:hover .category-icon {
+            transform: scale(1.1);
+        }
+
+        .category-tile h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+            position: relative;
+            display: inline-block;
+        }
+
+        .category-tile h2::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        .category-tile:hover h2::after {
+            width: 100%;
+        }
+
+        .category-tile p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+        }
+
+        .book-button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            width: fit-content;
+        }
+
+        .book-button:hover {
+            background-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
+        }
+
+        .book-button i {
+            margin-left: 8px;
+            transition: transform 0.2s ease;
+        }
+
+        .book-button:hover i {
+            transform: translateX(3px);
+        }
+
+        .back-button {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-bottom: 2rem;
+            display: none;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .back-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .back-button:hover {
+            background-color: var(--bg-card-hover);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .back-button:hover::before {
+            left: 100%;
+        }
+
+        .service-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .service-tile {
+            background-color: var(--bg-card);
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-tile::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--accent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .service-tile:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            background-color: var(--bg-card-hover);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .service-tile:hover::after {
+            transform: scaleX(1);
+        }
+
+        .service-tile h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+        }
+
+        .service-tile h3 i {
+            margin-right: 10px;
+            color: var(--accent);
+        }
+
+        .service-tile p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+            padding-left: 26px;
+        }
+
+        .price {
+            font-weight: 700;
+            color: rgba(900, 0, 0, .75);
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            padding-left: 26px;
+        }
+
+        .price::before {
+            content: '•';
+            color: var(--primary);
+            margin-right: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .description {
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            animation: fadeIn 0.3s ease-out;
+            padding-left: 26px;
+        }
+
+        .service-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-button, .book-service-button {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .info-button {
+            background-color: transparent;
+            border: 1px solid var(--primary);
+            color: var(--text-primary);
+        }
+
+        .info-button:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent);
+        }
+
+        .book-service-button {
+            background-color: var(--accent);
+            border: none;
+            color: white;
+        }
+
+        .book-service-button:hover {
+            background-color: var(--accent-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(222, 0, 0, 0.3);
+        }
+
+        /* Service Selection Components */
+        .selected-section {
+            display: none;
+            margin-bottom: 2rem;
+            background-color: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .selected-section h3 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .services-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .service-option {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .service-option:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        .selected-services-section {
+            display: none;
+            margin-bottom: 2rem;
+            background-color: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .selected-services-list {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .selected-services-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .remove-service {
+            background: none;
+            border: none;
+            color: #de0000;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .clear-all-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .clear-all-btn:hover {
+            background-color: var(--accent-light);
+        }
+
+        /* Task Details Section */
+        .task-details {
+            display: none;
+            margin-bottom: 2rem;
+            background-color: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .task-details h4 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .task-details select {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border-radius: 6px;
+        }
+
+        .task-details textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border-radius: 6px;
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Furniture Options */
+        #furnitureOptionsSection {
+            display: none;
+            margin-bottom: 1.5rem;
+        }
+
+        #selectedFurnitureList {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        #selectedFurnitureList li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .remove-item {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .clear-all-items {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .clear-all-items:hover {
+            background-color: var(--accent-light);
+        }
+
+        /* Final Book Button */
+        .final-book-button {
+            display: none;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 2rem auto;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .final-book-button:hover {
+            background-color: var(--accent-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .menu-container {
+                grid-template-columns: 1fr;
+                color: #c0c0c0;
+
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .header h2 {
+                font-size: 1rem;
+            }
+            
+            .category-tile {
+                padding: 1.5rem;
+            }
+            
+            .service-tile {
+                padding: 1.25rem;
+            }
+
+            .services-options {
+                grid-template-columns: 1fr;
+                color: #c0c0c0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Schedule Service <font color=#c0c0c0>ᵇʸ ᶜᵃᵗᵉᵍᵒʳʸ</font></h1>
+            <h2>Select category to view available services</h2>
+        </div>
+
+        <button class="back-button" onclick="showCategories()">← Back to Categories</button>
+
+        <div class="menu-container" id="categories-grid">
+            <!-- Minor Home Repairs -->
+            <div class="category-tile" onclick="showServices('minor-home-repairs')">
+                <div class="category-icon">🏠</div>
+                <h2>Minor Home Repairs</h2>
+                <p>Providing experienced outdoor and indoor repairs, we handle all minor home repairs with precision and care. Trust us to maintain your home's integrity and safety.</p>
+                <button class="book-button">Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+
+            <!-- Furniture Fixes & Assembly -->
+            <div class="category-tile" onclick="showServices('furniture-fixes')">
+                <div class="category-icon">🛋️</div>
+                <h2>Furniture Fixes</h2>
+                <p>Whether you need furniture repair or assembly services, we ensure your furniture is handled with care. We make your furniture needs our priority.</p>
+                <button class="book-button">Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+
+            <!-- Wall Mounting -->
+            <div class="category-tile" onclick="showServices('wall-mounting')">
+                <div class="category-icon">🖼️</div>
+                <h2>Wall Mounting</h2>
+                <p>Expert mounting services for TVs, shelves, pictures, and mirrors, ensuring secure and level installations. Enhance your spaces with our expert mounting.</p>
+                <button class="book-button">Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+
+            <!-- Electrical Help -->
+            <div class="category-tile" onclick="showServices('electrical-help')">
+                <div class="category-icon">💡</div>
+                <h2>Electrical Help</h2>
+                <p>Our team is equipped to handle electrical tests, fixture installations, and repairs safely and efficiently. Count on us for reliable electrical support.</p>
+                <button class="book-button">Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+
+            <!-- Plumbing Help -->
+            <div class="category-tile" onclick="showServices('plumbing-help')">
+                <div class="category-icon">🚿</div>
+                <h2>Plumbing Help</h2>
+                <p>From faucet repairs to drain cleaning, our plumbing services cover all your needs to keep your water flowing smoothly. We address leaks and other plumbing issues promptly.</p>
+                <button class="book-button">Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+
+            <!-- Computer Repairs -->
+            <div class="category-tile" onclick="showServices('computer-repairs')">
+                <div class="category-icon">💻</div>
+                <h2>Computer Repairs</h2>
+                <p>We offer comprehensive computer service coverage, including software, hardware repairs, and data recovery, all at competitive prices to get you back to work quickly.</p>
+                <button class="book-button">Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+        </div>
+
+        <!-- Service Selection Components -->
+        <div id="selectedSection" class="selected-section">
+            <!-- Dynamically populated with service options -->
+        </div>
+
+        <div id="selectedServicesSection" class="selected-services-section">
+            <!-- Dynamically populated with selected services -->
+        </div>
+
+        <div class="task-details">
+            <div id="furnitureOptionsSection">
+                <h4>Select Furniture Item</h4>
+                <select id="furniture-select">
+                    <option value="">Select Here</option>
+                </select>
+                <button style="background-color:silver;color:#000;border:none;padding:10px" onclick="addFurnitureItem()">🗹Add Item ️</button>
+                <ul id="selectedFurnitureList"></ul>
+                <button style="background-color:black;color:#000;border:none;padding:10px" onclick="clearAllFurnitureItems()">Clear All</button>
+            </div>
+            <textarea placeholder="Type more details here." style="width:100%;padding:5px;font-size:16px;"></textarea>
+        </div>
+
+        <button class="final-book-button" onclick="bookServices()">★ BOOK NOW ★</button>
+
+        <!-- Service Grids (hidden by default) -->
+        <div class="service-grid" id="minor-home-repairs">
+            <div class="service-tile">
+                <h3><i class="fas fa-door-open"></i> Door Repair</h3>
+                <p>Skilled repair for all types of interior doors</p>
+                <div class="price">$125 flat rate</div>
+                <div class="description">
+                    Flat-rate for patch & paint interior door damage for holes up to the size of a baseball, including hollow-core doors. Materials Included!
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/f49fa04d-7ff4-4151-86a8-c1c37208cffa?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+
+            <div class="service-tile">
+                <h3><i class="fas fa-door-closed"></i> Door Replacement Install</h3>
+                <p>Complete door replacement service</p>
+                <div class="price">$350 flat rate</div>
+                <div class="description">
+                    Removal of existing door and proper leveling, crafting and/or painting of replacement. Does not include cost of door.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/36ecf81b-cec0-481f-94d7-59547edb0f85?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+
+            <div class="service-tile">
+                <h3><i class="fas fa-hammer"></i> Wall Repair Patch & Paint</h3>
+                <p>Advanced wall damage repair</p>
+                <div class="price">$70 flat rate</div>
+                <div class="description">
+                    Materials Included! Flat-rate for interior wall patch & paint repairs for drywall damage up to the size of a standard baseball.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/sd0f5e34b00b79dbe48a213e049cf068dc13435df?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Furniture Fixes & Assembly Services -->
+        <div class="service-grid" id="furniture-fixes">
+            <div class="service-tile">
+                <h3><i class="fas fa-couch"></i> Furniture Assembly</h3>
+                <p>Skilled assembly of your furniture</p>
+                <div class="price">$40/hour</div>
+                <div class="description">
+                    Assembly of small to medium furniture units. This may include tables, nightstands, office chairs, etc.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/s23e8c65a1623f96330829e5d8fad3c8c9b749081?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+
+            <div class="service-tile">
+                <h3><i class="fas fa-tools"></i> Furniture Repairs</h3>
+                <p>Fix and restore your furniture</p>
+                <div class="price">$70/hour</div>
+                <div class="description">
+                    Per hour service charge for repairing damaged furniture. We handle all types of furniture repairs with care and precision.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/e9a8281d-d940-4672-994d-fc847e9ae87c?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wall Mounting Services -->
+        <div class="service-grid" id="wall-mounting">
+            <div class="service-tile">
+                <h3><i class="fas fa-tv"></i> TV Mounting</h3>
+                <p>Secure mounting for all TV sizes</p>
+                <div class="price">$120 flat rate</div>
+                <div class="description">
+                    Expert TV mounting service with proper cable management. Includes mounting hardware (bracket not included).
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/f1722146-46be-4739-95fd-99693e3c136b?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+
+            <div class="service-tile">
+                <h3><i class="fas fa-image"></i> Picture/Shelf Mounting</h3>
+                <p>Perfect placement for your decor</p>
+                <div class="price">$60 flat rate</div>
+                <div class="description">
+                    Expert mounting of pictures, shelves, and mirrors with precision leveling and secure installation.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/9521b26e-29e4-4ce1-a81f-6ed7bcd126c8?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Electrical Help Services -->
+        <div class="service-grid" id="electrical-help">
+            <div class="service-tile">
+                <h3><i class="fas fa-lightbulb"></i> Fixture Installation</h3>
+                <p>Light fixture installation</p>
+                <div class="price">$85/hour</div>
+                <div class="description">
+                    Safe installation of light fixtures, ceiling fans, and other electrical fixtures with proper wiring.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/s4a7f450fcd6e522f7bb22c6fcc24ce8728881e92?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+
+            <div class="service-tile">
+                <h3><i class="fas fa-plug"></i> Outlet/Switch Repair</h3>
+                <p>Fix faulty outlets and switches</p>
+                <div class="price">$75/hour</div>
+                <div class="description">
+                    Repair and replacement of electrical outlets and switches to ensure safety and functionality.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/d1d4439b-e925-4f95-8887-68b9a6293c63?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plumbing Help Services -->
+        <div class="service-grid" id="plumbing-help">
+            <div class="service-tile">
+                <h3><i class="fas fa-faucet"></i> Faucet Repair</h3>
+                <p>Fix leaky or malfunctioning faucets</p>
+                <div class="price">$90/hour</div>
+                <div class="description">
+                    Repair or replacement of kitchen and bathroom faucets to stop leaks and ensure proper water flow.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/s8570f47a115ab0130d433373942571a6fcfecb47?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+
+            <div class="service-tile">
+                <h3><i class="fas fa-shower"></i> Drain Cleaning</h3>
+                <p>Clear clogged drains</p>
+                <div class="price">$80/hour</div>
+                <div class="description">
+                    We offer our drain cleaning service to remove small clogs and ensure proper drainage in sinks, showers, and tubs.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/f333ac2d-c05f-426b-91de-79c46af905b2?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Computer Repairs Services -->
+        <div class="service-grid" id="computer-repairs">
+            <div class="service-tile">
+                <h3><i class="fas fa-laptop-medical"></i> Diagnostic & Repair</h3>
+                <p>Comprehensive computer diagnostics</p>
+                <div class="price">$60/hour</div>
+                <div class="description">
+                    Thorough diagnostic testing to identify hardware or software issues followed by Expert repairs.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/37ee94a2-aabf-4235-99a8-4d12b16e26f5?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+
+            <div class="service-tile">
+                <h3><i class="fas fa-hdd"></i> Data Recovery</h3>
+                <p>Recover your important files</p>
+                <div class="price">$100 and up</div>
+                <div class="description">
+                    Advanced data recovery service for accidentally deleted files or damaged storage devices.
+                </div>
+                <div class="service-actions">
+                    <button class="info-button" onclick="toggleDescription(this.parentElement)">More Info</button>
+                    <a href="https://booking.setmore.com/scheduleappointment/468d0d96-b028-46cd-a291-702f1464e4d6/services/10fceb1f-83c5-4d6e-b853-77a0105edecf?source=easyshare" 
+                       class="book-service-button" 
+                       target="_blank">
+                       Book Now
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM element selections
+        const serviceOptions = document.querySelector('.service-category-grid');
+        const taskDetails = document.querySelector('.task-details');
+        const taskTextarea = taskDetails.querySelector('textarea');
+        const finalBookButton = document.querySelector('.final-book-button');
+        const selectedServicesSection = document.getElementById('selectedServicesSection');
+        const selectedSection = document.getElementById('selectedSection');
+        const furnitureOptionsSection = document.getElementById('furnitureOptionsSection');
+        const furnitureSelect = document.getElementById('furniture-select');
+        const selectedFurnitureList = document.getElementById('selectedFurnitureList');
+        
+        // Global variables
+        let currentCategory = '';
+        let selectedServices = [];
+        let hasCompletedSelection = false;
+        
+        // Category services data
+        const categoryServices = {
+            "Minor Home Repairs": {
+                "Drywall repair": ["Small holes", "Large holes", "Cracks", "Texture matching"],
+                "Door repair": ["Hinges", "Locks", "Weather stripping", "Door frame"],
+                "Window repair": ["Glass replacement", "Weatherization", "Frame repair", "Sash replacement"],
+                "Tile repair": ["Grout repair", "Tile replacement", "Sealing", "Re-caulking"]
+            },
+            "Furniture Fixes": {
+                "Assembly": ["IKEA furniture", "Other brand furniture", "Outdoor furniture", "Office furniture"],
+                "Repair": ["Wood furniture", "Upholstery", "Metal furniture", "Antique restoration"],
+                "Moving": ["In-home rearrangement", "Loading/Unloading", "Furniture protection", "Disassembly/Reassembly"],
+                "Disassembly": ["IKEA furniture", "Other brand furniture", "For moving", "For disposal"]
+            },
+            "Wall Mounting": {
+                "TV mounting": ["Flat screen", "Curved screen", "Above fireplace", "With cable management"],
+                "Shelf Install": ["Floating shelves", "Bracket shelves", "Built-in shelves", "Heavy duty shelves"],
+                "Picture hanging": ["Single frame", "Gallery wall", "Heavy mirrors", "Artwork Install"],
+                "Mirror Install": ["Bathroom mirror", "Full-length mirror", "Decorative mirrors", "Custom shapes"]
+            },
+            "Electrical Help": {
+                "Light fixture Install": ["Ceiling lights", "Wall sconces", "Pendant lights", "Recessed lighting"],
+                "Outlet repair": ["GFCI Install", "USB outlet upgrade", "Loose outlet fix", "New outlet Install"],
+                "Switch replacement": ["Dimmer switch", "Smart switch", "Three-way switch", "Timer switch"],
+                "Ceiling fan Install": ["With light kit", "Remote control setup", "Balancing", "Existing wiring"]
+            },
+            "Plumbing Help": {
+                "Faucet repair": ["Leaky faucet", "Faucet replacement", "Cartridge replacement", "Low water pressure fix"],
+                "Toilet repair": ["Running toilet", "Clogged toilet", "Toilet replacement", "Bidet Install"],
+                "Drain cleaning": ["Sink drain", "Bathtub drain", "Shower drain", "Main line cleaning"],
+                "Pipe leak repair": ["Under sink", "In wall", "Copper pipe", "PVC pipe"]
+            },
+            "Computer Repairs": {
+                "Virus removal": ["Malware removal", "Spyware removal", "System cleanup", "Security software Install"],
+                "Hardware upgrade": ["RAM upgrade", "SSD Install", "Graphics card upgrade", "CPU replacement"],
+                "Software Install": ["Operating system", "Productivity software", "Antivirus software", "Driver updates"],
+                "Data recovery": ["Hard drive recovery", "SSD recovery", "File system repair", "Backup solution setup"]
+            }
+        };
+        
+        const furnitureOptions = [
+            { category: "BEKANT", items: ["Desk + underframe"] },
+            { category: "BESTA", items: ["Single frame, shelves/floor standing", "Single frame, door/drawer, floor standing", "Single frame/wall mounting"] },
+            { category: "BILLY", items: ["Bookcase 1x frame"] },
+            { category: "BJURSTA", items: ["Extendable table"] },
+            { category: "BRIMNES", items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame & storage", "Headboard", "Wardrobe 2x doors", "Wardrobe 3x doors", "Nightstand", "Daybed 2x drawers"] },
+            { category: "BRUSALI", items: ["Bed frame", "Bed + 4 storage boxes", "3 drawer chest", "Nightstand"] },
+            { category: "FINGAL", items: ["Swivel chair"] },
+            { category: "FRIHETEN", items: ["Sofa bed & chaise"] },
+            { category: "GALANT", items: ["2x drawer", "3x drawer", "4x drawer", "Cabinet (sliding doors)"] },
+            { category: "HEMNES", items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "Dresser 8x drawer", "Nightstand", "Daybed & 3 drawers"] },
+            { category: "KALLAX", items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert + 2 drawers", "Insert + door"] },
+            { category: "LACK", items: ["Side table", "Coffe table", "TV Unit"] },
+            { category: "LINNMON ADILS", items: ["Table (table top and four legs)"] },
+            { category: "MALM", items: ["Bed Frame", "Bed Frame + 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"] },
+            { category: "MICKE", items: ["Desk + 1 Drawer", "Desk + Drawers & Storage", "Add-on unit"] },
+            { category: "MORVIK", items: ["Wardrobe"] },
+            { category: "PAX", items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"] },
+            { category: "SODERHAMN", items: ["Sofa one seat section + cover"] },
+            { category: "TRYSIL", items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"] },
+            { category: "OTHER NOT LISTED", items: ["NOT LISTED or UNKNOWN"] }
+        ];
+
+        // Initialize the furniture select options
+        function initFurnitureOptions() {
+            furnitureSelect.innerHTML = '';
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Select Here';
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            furnitureSelect.appendChild(defaultOption);
+            
+            furnitureOptions.forEach(option => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = option.category;
+                option.items.forEach(item => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = item;
+                    optionElement.textContent = item;
+                    optgroup.appendChild(optionElement);
+                });
+                furnitureSelect.appendChild(optgroup);
+            });
+        }
+
+        // Show services for a category
+        function showServices(serviceId) {
+            // Hide all category tiles
+            document.getElementById('categories-grid').style.display = 'none';
+
+            // Show the selected service grid
+            document.getElementById(serviceId).style.display = 'grid';
+
+            // Show the back button
+            document.querySelector('.back-button').style.display = 'block';
+
+            // Scroll to top
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // Show categories
+        function showCategories() {
+            // Hide all service grids
+            const serviceGrids = document.querySelectorAll('.service-grid');
+            serviceGrids.forEach(grid => {
+                grid.style.display = 'none';
+            });
+
+            // Hide selection sections
+            selectedSection.style.display = 'none';
+            selectedServicesSection.style.display = 'none';
+            taskDetails.style.display = 'none';
+            finalBookButton.style.display = 'none';
+
+            // Show the categories grid
+            document.getElementById('categories-grid').style.display = 'grid';
+
+            // Hide the back button
+            document.querySelector('.back-button').style.display = 'none';
+
+            // Scroll to top
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // Show category services
+        function showcategoryServices(category, subcategory = null) {
+            currentCategory = category;
+            selectedSection.innerHTML = '';
+            
+            let currentLevel = categoryServices[category];
+            let title = category;
+            
+            if (subcategory) {
+                currentLevel = currentLevel[subcategory];
+                title = subcategory;
+            }
+            
+            const heading = document.createElement('h3');
+            heading.textContent = `${title}`;
+            selectedSection.appendChild(heading);
+            
+            const optionsContainer = document.createElement('div');
+            optionsContainer.className = 'services-options';
+            
+            if (Array.isArray(currentLevel)) {
+                currentLevel.forEach(function(option) {
+                    const button = document.createElement('button');
+                    button.className = 'service-option';
+                    button.textContent = option;
+                    button.addEventListener('click', function() {
+                        selectService(category, subcategory, option);
+                    });
+                    optionsContainer.appendChild(button);
+                });
+            } else {
+                Object.keys(currentLevel).forEach(function(option) {
+                    const button = document.createElement('button');
+                    button.className = 'service-option';
+                    button.textContent = option;
+                    button.addEventListener('click', function() {
+                        if (subcategory) {
+                            selectService(category, subcategory, option);
+                        } else {
+                            showcategoryServices(category, option);
+                        }
+                    });
+                    optionsContainer.appendChild(button);
+                });
+            }
+            
+            const otherButton = document.createElement('button');
+            otherButton.className = 'service-option';
+            otherButton.textContent = 'Other';
+            otherButton.addEventListener('click', function() {
+                showOtherServiceInput(category);
+            });
+            optionsContainer.appendChild(otherButton);
+            
+            selectedSection.appendChild(optionsContainer);
+            
+            const backButton = document.createElement('button');
+            backButton.className = 'back-button';
+            backButton.textContent = '↩ Previous';
+            backButton.addEventListener('click', function() {
+                if (subcategory) {
+                    showcategoryServices(category);
+                } else {
+                    selectedSection.style.display = 'none';
+                    document.getElementById('categories-grid').style.display = 'grid';
+                }
+            });
+            selectedSection.appendChild(backButton);
+            
+            document.getElementById('categories-grid').style.display = 'none';
+            selectedSection.style.display = 'block';
+            selectedSection.scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+
+        // Select a service
+        function selectService(category, subcategory, option) {
+            let service = `${category} - ${subcategory}`;
+            if (option) {
+                service += ` - ${option}`;
+            }
+            
+            if (!selectedServices.includes(service)) {
+                selectedServices.push(service);
+                hasCompletedSelection = true;
+                updateSelectedServices();
+            }
+            
+            selectedSection.style.display = 'none';
+            selectedServicesSection.scrollIntoView({
+                behavior: 'smooth'
+            });
+            
+            if (category === 'Furniture Fixes') {
+                furnitureOptionsSection.style.display = 'block';
+                initFurnitureOptions();
+            } else {
+                furnitureOptionsSection.style.display = 'none';
+            }
+        }
+
+        // Update selected services display
+        function updateSelectedServices() {
+            selectedServicesSection.innerHTML = '';
+            
+            if (selectedServices.length > 0) {
+                const heading = document.createElement('h3');
+                heading.textContent = 'Selected Services';
+                selectedServicesSection.appendChild(heading);
+                
+                const list = document.createElement('ul');
+                list.className = 'selected-services-list';
+                
+                selectedServices.forEach(service => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = service;
+                    
+                    const removeButton = document.createElement('button');
+                    removeButton.className = 'remove-service';
+                    removeButton.textContent = '❌';
+                    removeButton.addEventListener('click', function() {
+                        selectedServices = selectedServices.filter(s => s !== service);
+                        updateSelectedServices();
+                    });
+                    
+                    listItem.appendChild(removeButton);
+                    list.appendChild(listItem);
+                });
+                
+                selectedServicesSection.appendChild(list);
+                
+                const clearAllButton = document.createElement('button');
+                clearAllButton.className = 'clear-all-btn';
+                clearAllButton.textContent = 'Clear All';
+                clearAllButton.addEventListener('click', clearAllServices);
+                selectedServicesSection.appendChild(clearAllButton);
+                
+                selectedServicesSection.style.display = 'block';
+                taskDetails.style.display = 'block';
+                finalBookButton.style.display = 'block';
+            } else {
+                selectedServicesSection.style.display = 'none';
+                taskDetails.style.display = 'none';
+                finalBookButton.style.display = 'none';
+            }
+        }
+
+        // Clear all services
+        function clearAllServices() {
+            selectedServices = [];
+            hasCompletedSelection = false;
+            updateSelectedServices();
+            selectedSection.style.display = 'none';
+            document.getElementById('categories-grid').style.display = 'grid';
+            furnitureOptionsSection.style.display = 'none';
+            taskTextarea.value = '';
+            selectedFurnitureList.innerHTML = '';
+        }
+
+        // Add furniture item
+        function addFurnitureItem() {
+            const selectedItem = furnitureSelect.value;
+            if (selectedItem) {
+                const listItem = document.createElement('li');
+                listItem.textContent = selectedItem;
+                
+                const removeButton = document.createElement('button');
+                removeButton.className = 'remove-item';
+                removeButton.textContent = '❌';
+                removeButton.addEventListener('click', function() {
+                    listItem.remove();
+                });
+                
+                listItem.appendChild(removeButton);
+                selectedFurnitureList.appendChild(listItem);
+                
+                taskTextarea.value += (taskTextarea.value ? "; " : "") + selectedItem;
+                furnitureSelect.value = '';
+            }
+        }
+
+        // Clear all furniture items
+        function clearAllFurnitureItems() {
+            selectedFurnitureList.innerHTML = '';
+            taskTextarea.value = taskTextarea.value.split(';')
+                .filter(part => !furnitureOptions.some(opt => 
+                    opt.items.some(item => part.includes(item))))
+                .join(';')
+                .trim();
+        }
+
+        // Book services
+        function bookServices() {
+            if (selectedServices.length === 0) {
+                alert('Please select at least one service before booking.');
+                return;
+            }
+            
+            const additionalDetails = taskTextarea.value;
+            const furnitureItems = Array.from(selectedFurnitureList.children)
+                .map(li => li.textContent.replace('❌', '').trim())
+                .filter(text => text);
+            
+            // Here you would typically send this data to your backend
+            console.log('Booking services:', {
+                services: selectedServices,
+                furnitureItems,
+                additionalDetails
+            });
+            
+            alert(`Booking confirmed for: ${selectedServices.join(', ')}\n\nFurniture Items: ${furnitureItems.join(', ')}\n\nAdditional details: ${additionalDetails}`);
+        }
+
+        // Toggle service description
+        function toggleDescription(tile) {
+            const description = tile.querySelector('.description');
+            if (description.style.display === 'block') {
+                description.style.display = 'none';
+            } else {
+                // Close any other open descriptions first
+                const allDescriptions = document.querySelectorAll('.description');
+                allDescriptions.forEach(desc => {
+                    if (desc !== description) {
+                        desc.style.display = 'none';
+                    }
+                });
+                
+                description.style.display = 'block';
+            }
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up category click handlers
+            document.querySelectorAll('.category-tile').forEach(tile => {
+                const category = tile.querySelector('h2').textContent;
+                tile.addEventListener('click', function() {
+                    showcategoryServices(category);
+                });
+            });
+            
+            // Initialize furniture options
+            initFurnitureOptions();
+        });
+    </script>
+</body>
+</html>
