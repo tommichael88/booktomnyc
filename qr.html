@@ -357,47 +357,215 @@
       color: silver
     }
 
+    /* ========== SERVICE CATEGORY GRID ========== */
     .service-category-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 4px margin: 20px 20px;
-      padding-bottom: 5px
+      gap: 4px;
+      margin: 1px;
+      padding-bottom: 5px;
     }
 
     .service-category {
-      background: rgba(166, 166, 166, .5);
+      background: rgba(166, 166, 166, 0.5);
       color: #000;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 -1px 1px rgba(255, 255, 255, .3);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 -1px 1px rgba(255, 255, 255, 0.3);
       border: 2px outset rgba(255, 255, 255, 1);
       border-radius: 0;
       padding: 20px 10px;
       cursor: pointer;
-      transition: all .3s ease;
+      transition: all 0.3s ease;
       min-height: 120px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-size: 1rem
+      font-size: 1rem;
+      position: relative;
+      text-align: center;
     }
 
+    /* Underline Animation Fix */
+    .service-category::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: 15px;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent) 0%, #de0000 100%);
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: center;
+      margin: 0 auto;
+      right: 0;
+    }
+
+    .service-category:hover::after {
+      width: 80%;
+      left: 10%;
+    }
+
+    /* Text Glow Effect */
     .service-category:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 4px 15px rgba(222, 0, 0, .2);
-      border-color: var(--accent)
+      text-shadow:
+        0 0 8px rgba(222, 0, 0, 0.6),
+        0 0 12px rgba(222, 0, 0, 0.4),
+        0 0 16px rgba(222, 0, 0, 0.2);
+      color: #fff;
     }
 
+    /* Icon Styling */
     .service-category::before {
       content: attr(data-icon);
       font-size: 2.5rem;
-      color: #b8b8b8;
       margin-bottom: 4px;
       background: linear-gradient(25deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 5px rgba(0, 0, 0, .6), 1px 1px 0 rgba(255, 255, 255, .2);
-      display: inline-block
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.6), 1px 1px 0 rgba(255, 255, 255, 0.2);
+      display: block;
+      transition: all 0.4s ease-out;
+    }
+
+    /* Hover Effects */
+    .service-category:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 15px rgba(222, 0, 0, 0.2);
+      border-color: var(--accent);
+    }
+
+    /* Animations */
+    @keyframes textGlow {
+      0% {
+        text-shadow: 0 0 5px rgba(222, 0, 0, 0);
+      }
+
+      100% {
+        text-shadow: 0 0 8px rgba(222, 0, 0, 0.6), 0 0 12px rgba(222, 0, 0, 0.4), 0 0 16px rgba(222, 0, 0, 0.2);
+      }
+    }
+
+    @keyframes underlineExpand {
+      0% {
+        width: 0;
+        left: 50%;
+      }
+
+      100% {
+        width: 80%;
+        left: 10%;
+      }
+    }
+
+    .service-category:hover::after {
+      animation: underlineExpand 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* Mobile Optimization */
+    @media (max-width: 480px) {
+      .service-category-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .service-category {
+        min-height: 90px;
+        padding: 15px 5px;
+        font-size: 0.9rem;
+      }
+
+      .service-category::before {
+        font-size: 2rem;
+      }
+
+      .service-category::after {
+        bottom: 10px;
+      }
+    }
+
+    /* ========== ANIMATIONS ========== */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes tapAnimation {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(0.95);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      20%,
+      60% {
+        transform: translateX(-5px);
+      }
+
+      40%,
+      80% {
+        transform: translateX(5px);
+      }
+    }
+
+    @keyframes textGlow {
+      0% {
+        text-shadow: 0 0 5px rgba(222, 0, 0, 0), 0 1px 2px rgba(0, 0, 0, 0.55);
+      }
+
+      100% {
+        text-shadow: 0 0 8px rgba(222, 0, 0, 0.6), 0 0 12px rgba(222, 0, 0, 0.4), 0 0 16px rgba(222, 0, 0, 0.2);
+      }
+    }
+
+    @keyframes backgroundPulse {
+      0% {
+        opacity: 0;
+        transform: scaleX(0);
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scaleX(1);
+      }
+
+      100% {
+        opacity: 0;
+      }
     }
 
     .services {
@@ -818,7 +986,23 @@
       .tom_kongerslev {
         width: 45%;
       }
-    }
+
+      /* ========== MOBILE RESPONSIVE ========== */
+      @media (max-width: 480px) {
+        .service-category-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .service-category {
+          min-height: 90px;
+          padding: 15px 5px;
+          font-size: 0.9rem;
+        }
+
+        .service-category::before {
+          font-size: 2rem;
+        }
+      }
   </style>
 </head>
 
@@ -1514,6 +1698,24 @@
               }
             }
             window.addEventListener('resize', handleResize);
+          });
+          document.querySelectorAll('.service-category').forEach(item => {
+            // Click animation
+            item.addEventListener('click', function() {
+              this.classList.add('tap-animate');
+              setTimeout(() => this.classList.remove('tap-animate'), 300);
+            });
+            // Error state example
+            item.addEventListener('error', function() {
+              this.style.animation = 'shake 0.5s ease';
+              setTimeout(() => this.style.animation = '', 500);
+            });
+          });
+          // Page load animation
+          window.addEventListener('load', () => {
+            document.querySelectorAll('.service-category').forEach(el => {
+              el.style.animation = 'fadeIn 0.5s ease-out';
+            });
           });
         </script>
 </body>
