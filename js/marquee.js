@@ -1,6 +1,6 @@
 // marquee.js
 (function() {
-    const originalTitle = document.title;
+    const originalTitle = "BookTom";
     const originalFavicon = document.querySelector('link[rel="icon"]').href;
     const messageOne = "Tom's HandyTech";
     const messageTwo = "📐BookToM.NYC🪚";
