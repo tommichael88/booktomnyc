@@ -1,31 +1,32 @@
-            (function() {
-                const originalTitle = document.title;
-                const messageOne = "Tom's 🧰 HandyTech";
-                const messageTwo = "📐BookTOM.NYC🪚";
-                // Array of messages to randomly pick from
-                const messages = ["🖼 Wall 🧱 Mounting", "Minor 🏠 Repairs", "🚿 Plumbing 🪣", "🔌 Electrical 💡", "💻 Repairs", "🪑 Fixes"];
-                let currentTitleIndex = 0; // Start with index 0
-                let interval;
+(function() {
+            const originalTitle = document.title;
+            const originalFavicon = document.querySelector('link[rel="icon"]').href;
+            const messageOne = "Tom's HandyTech";
+            const messageTwo = "📐BookToM.NYC🪚";
+            const messages = ["Wall 🧱 Mounting", "🖼️ Hanging", "🏠 Repairs", "🚿Plumbing 🪣", "🔌 Electrical 💡", "💻 Repairs", "🪑 Fixes", "🛋 Assembly️"];
+            let currentTitleIndex = 0;
+            let interval;
 
-                function toggleTitle() {
-                    currentTitleIndex = (currentTitleIndex + 1) % 3; // Cycle through 0, 1, 2
-                    if (currentTitleIndex === 0) {
-                        document.title = messageOne;
-                    } else if (currentTitleIndex === 1) {
-                        document.title = messageTwo;
-                    } else { // messageThree logic
-                        const randomIndex = Math.floor(Math.random() * messages.length);
-                        document.title = messages[randomIndex];
-                    }
+            function toggleTitle() {
+                currentTitleIndex = (currentTitleIndex + 1) % (messages.length + 2);
+                if (currentTitleIndex === 0) {
+                    document.title = messageOne;
+                    document.querySelector('link[rel="icon"]').href = 'https://tommichael88.github.io/booktomnyc/images/tomshandylogo_newest.webp?raw=true';
+                } else if (currentTitleIndex === 1) {
+                    document.title = messageTwo;
+                    document.querySelector('link[rel="icon"]').href = originalFavicon;
+                } else {
+                    document.title = messages[currentTitleIndex - 2];
+                    document.querySelector('link[rel="icon"]').href = 'https://tommichael88.github.io/booktomnyc/images/invoicelogo_tomkongerslev_nobg__.webp?raw=true';
                 }
-                document.addEventListener("visibilitychange", function() {
-                    if (document.hidden) {
-                        // Immediately toggle once and then start interval
-                        toggleTitle();
-                        interval = setInterval(toggleTitle, 2000); // Adjust time as needed
-                    } else {
-                        clearInterval(interval); // Clear the interval when tab is active again
-                        document.title = originalTitle; // Restore original title
-                    }
-                });
-            })();
+            }
+            document.addEventListener("visibilitychange", function() {
+                if (document.hidden) {
+                    interval = setInterval(toggleTitle, 10000);
+                } else {
+                    clearInterval(interval);
+                    document.title = originalTitle;
+                    document.querySelector('link[rel="icon"]').href = originalFavicon;
+                }
+            });
+        })();
