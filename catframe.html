@@ -325,14 +325,12 @@
         .responsive-iframe-container {
             width: 100%;
             border: 1px solid #c0c0c0;
-            height: auto;
             overflow: hidden;
         }
 
         .responsive-iframe-container iframe {
             display: block;
             width: 100%;
-            height: 100%;
             border: 0;
         }
 
@@ -581,7 +579,7 @@
                             <div class="contactModal-content">
                                 <div class="contactModal-header">
                                     <span class="contactModalClose">
-                                        <b>❌</b>
+                                        <b>✖</b>
                                     </span>
                                 </div>
                                 <div class="contactModal-actions">
@@ -598,7 +596,7 @@
                                     <a href="#" id="contactCardButton" class="actionButton">
                                         <img src="https://tommichael88.github.io/booktomnyc/images/contactbook_modal.png?raw=true" alt="ContactCard Button" class="iconImage">
                                         <br>
-                                        <font color="#454545">save</font>
+                                        <font color="#454545">save 🪪</font>
                                     </a>
                                     <a href="sms:+19294501977" id="smsButton" class="actionButton">
                                         <img src="https://tommichael88.github.io/booktomnyc/images/sms_modal.png?raw=true" alt="SMS Button" class="iconImage">
@@ -635,8 +633,14 @@
                             <button class="reschedule-service-button">➤ 🗓️ View | Edit ️</button>
                         </div>
                         <div class="responsive-iframe-container">
-                            <iframe src="https://tommichael88.github.io/booktomnyc/cat_light.html" frameborder="0" scrolling="auto"></iframe>
-                        </div>
+  <iframe
+    id="serviceIframe"
+    src="https://tommichael88.github.io/booktomnyc/cat_light.html"
+    style="width:100%; border:0; display:block;"
+    scrolling="no"
+    allowtransparency="true"
+  ></iframe>
+</div>
                     </li>
                 </ul>
             </div>
@@ -662,6 +666,7 @@
             <a href="https://tommichael88.github.io/booktomnyc/Privacy%20Policy">Privacy Policy</a>| <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#annex-a">Service Scope</a>| <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement">Service Agreement</a>
         </footer>
         <script>
+        
             document.addEventListener('DOMContentLoaded', function() {
                 // Adjusts iframe height to fit its content
                 // Calculate 1% of the viewport height
@@ -690,7 +695,7 @@
                 const categoryIcons = {
                     "Minor Home Repairs": "🏠",
                     "Furniture Fixes": "🛋️",
-                    "Wall Mounting": "🧱",
+                    "Wall Mounting": "⬜",
                     "Electrical Help": "💡",
                     "Plumbing Help": "🚿",
                     "Computer Repairs": "💻"
@@ -1107,6 +1112,31 @@
                     bookButton.style.display = 'none';
                     serviceOptions.style.display = 'grid';
                 }
+                
+                function resizeIframe() {
+  var iframe = document.getElementById('serviceIframe');
+  if (iframe && iframe.contentWindow && iframe.contentWindow.document.body) {
+    // Get the height of the iframe content
+    var contentHeight = iframe.contentWindow.document.body.scrollHeight;
+    iframe.style.height = contentHeight + 'px';
+  }
+}
+
+// Resize when iframe loads
+document.getElementById('serviceIframe').addEventListener('load', function() {
+  resizeIframe();
+
+  // Optional: resize again if content inside iframe changes
+  // (requires MutationObserver support in the iframe page)
+  var iframeDoc = this.contentDocument || this.contentWindow.document;
+  if (iframeDoc) {
+    var observer = new MutationObserver(resizeIframe);
+    observer.observe(iframeDoc.body, { childList: true, subtree: true, attributes: true });
+  }
+});
+
+// Optional: resize on window resize
+window.addEventListener('resize', resizeIframe);
                 // ========== EVENT LISTENERS ==========
                 // When a service category is clicked, show the category options.
                 serviceOptions.addEventListener('click', function(e) {
@@ -1156,6 +1186,17 @@
                         alert('Booking confirmed for:\n' + selectedServices.join('\n') + '\n\nNotes:\n' + details);
                     }
                 });
+
+window.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'resize-iframe') {
+    var iframe = document.getElementById('serviceIframe');
+    if (iframe) {
+      iframe.style.height = event.data.height + 'px';
+    }
+  }
+});
+
+
                 // ========== INITIALIZATION ==========
                 initializeFurnitureOptions();
                 updateSelectedServices();
@@ -1164,6 +1205,7 @@
                 furnitureOptionsSection.style.display = 'none';
                 bookButton.style.display = 'none';
             });
+            
         </script>
 </body>
 
