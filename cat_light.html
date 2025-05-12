@@ -1,1256 +1,1409 @@
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
-  <title>BookTOM</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
-  <style>
-      root {
-      --bg-dark: #121212;
-      --bg-card: #1e1e1e;
-      --bg-card-hover: #2a2a2a;
-      --primary: #474747;
-      --primary-hover: #ffffff;
-      --text-primary: #f5f5f5;
-      --text-secondary: #c0c0c0;
-      --accent-light: rgba(250, 0, 0, 1);
-      --accent: rgba(250, 0, 0, 1);
-      --selected-bg: rgba(250, 0, 0, 0.1);
-    }
-
- 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background: var(--bg-dark);
-}
-
-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* Fixed 3×2 Grid Layout */
-.menu-container {
-  flex: 1;
-  padding: var(--grid-gap);
-}
-
-#categories-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: var(--grid-gap);
-  height: calc(100vh - 68px);
-  padding: var(--grid-gap);
-}
-
-.category-tile {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: var(--bg-card);
-  border: 1px solid var(--primary);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-    .category-tile:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-      background-color: var(--bg-card-hover);
-    }
-
-    .category-icon {
-      display: inline-block;
-      font-size: 2rem;
-      background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      transition: transform 0.3s ease;
-    }
-
-    .category-tile h2 {
-      font-weight: 600;
-    }
-
-    .category-tile h2::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      width: 0;
-      height: 2px;
-      background: var(--accent);
-      transition: width 0.3s ease;
-    }
-
-    .category-tile:hover h2::after {
-      width: 100%;
-    }
-
-    .category-icon {
-      font-size: 2.5rem;
-      background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      transition: transform 0.3s ease;
-    }
-
-    /* ANIMATIONS */
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes tapAnimation {
-      0% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(0.95);
-      }
-
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @keyframes pulse {
-      0% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(1.05);
-      }
-
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @keyframes shake {
-
-      0%,
-      100% {
-        transform: translateX(0);
-      }
-
-      20%,
-      60% {
-        transform: translateX(-5px);
-      }
-
-      40%,
-      80% {
-        transform: translateX(5px);
-      }
-    }
-
-    .tap-animate {
-      animation: tapAnimation 0.3s ease;
-    }
-
-    /* NAVIGATION */
-    .service-navbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(30, 30, 30, 0.95);
-      backdrop-filter: blur(8px);
-      padding: 0 auto;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      border-bottom: 1px solid rgba(222, 0, 0, 0.9);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    .search-nav-container {
-      display: flex;
-      align-items: center;
-      margin-left: 1rem;
-      margin-right: auto;
-      position: relative;
-    }
-
-    .search-btn {
-      background: none;
-      border: none;
-      color: #c0c0c0;
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-    }
-
-    .search-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: scale(1.1);
-    }
-
-    .search-input {
-      width: 250px;
-      padding: 0.75rem 1rem;
-      background: var(--bg-card);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 25px;
-      color: #c0c0c0;
-      font-size: 0.95rem;
-      transition: all 0.3s ease;
-    }
-
-    @media (max-width: 768px) {
-      .search-input {
-        width: calc(100vw - 120px);
-      }
-    }
-
-    .cart-btn {
-      background: #fff;
-      border: none;
-      border-radius: 50%;
-      width: 44px;
-      height: 44px;
-      position: relative;
-      box-shadow: 0 4px 15px rgba(222, 0, 0, 0.3);
-      transition: all 0.3s ease;
-    }
-
-    .cart-count {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      background: white;
-      color: #de0000;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    /* SEARCH RESULTS */
-    #searchResults {
-      display: none;
-      position: absolute;
-      top: 70px;
-      left: 2rem;
-      right: 2rem;
-      background: var(--bg-card);
-      border: 1px solid var(--accent);
-      border-radius: 4px;
-      z-index: 1100;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    #searchResults div {
-      padding: 0.5rem;
-      cursor: pointer;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    #searchResults div:hover {
-      background: var(--bg-card-hover);
-    }
-
-    /* LAYOUT & CONTAINERS */
-    .container {
-      max-width: 1200px;
-    }
-
-    .header {
-      text-align: center;
-    }
-
-    .header h1 {
-      font-size: 2.2rem;
-      font-weight: 700;
-      background: linear-gradient(225deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      display: inline-block;
-      position: relative;
-    }
-
-    .header h1::after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 50%;
-      height: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
-      border-radius: 3px;
-    }
-
-    .header h2 {
-      font-size: 1rem;
-      font-weight: 400;
-      color: var(--text-secondary);
-    }
-
-    /* CATEGORY GRID LAYOUT */
-    ..menu-container {
-      width: 100%;
-      gap: 1rem;
-      padding: 1rem;
-      box-sizing: border-box;
-    }
-
-    #categories-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-      gap: .1rem;
-      width: 100%;
-    }
-
-    /* CATEGORY TILES */
-    .category-tile {
-      min-height: 200px;
-      /* Reduced from 280px */
-      aspect-ratio: 1 / 1;
-      padding: auto;
-      width: 100%;
-    }
-
-    .category-tile::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(222, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .category-tile:hover,
-    .category-tile:active {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-      background-color: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      border-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .category-tile:hover::before,
-    .category-tile:active::before {
-      opacity: 0.6;
-    }
-
-    .category-icon {
-      font-size: 2rem;
-      background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      display: column;
-      transition: transform 0.3s ease;
-    }
-
-    .category-tile:hover .category-icon,
-    .category-tile:active .category-icon {
-      transform: scale(1.1);
-    }
-
-    .category-tile h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      display: inline-block;
-    }
-
-    .category-tile h2::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      left: 0;
-      width: 0;
-      height: 2px;
-      background: var(--accent);
-      transition: width 0.3s ease;
-    }
-
-    .category-tile:hover h2::after,
-    .category-tile:active h2::after {
-      width: 100%;
-    }
-
-    .category-tile p {
-      color: var(--text-secondary);
-    }
-
-    /* SERVICE SELECTION & details */
-    .service-selection-grid,
-    .details-grid {
-      display: grid;
-      gap: 1.5rem;
-      margin-bottom: 0;
-    }
-
-    .service-selection-card {
-      background: var(--bg-card);
-      padding: 1rem;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-
-    .service-selection-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .service-selection-card h3 {
-      font-size: 1rem;
-      margin: 0.5rem 0;
-    }
-
-    .service-selection-card p {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-    }
-
-    .service-price {
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 0.9rem;
-      margin: 0.5rem 0;
-    }
-
-    .service-selection-icon {
-      font-size: 2.2rem;
-      margin-bottom: 1rem;
-      filter: grayscale(100%);
-      color: black;
-    }
-
-    .detail-card {
-      background: var(--bg-card);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 0.75rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .detail-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .detail-card.selected {
-      background: var(--selected-bg);
-      border-color: var(--accent);
-    }
-
-    /* BUTTONS */
-    .book-button {
-      background: linear-gradient(27deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      color: white;
-      border: none;
-      padding: 0.6rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .final-book-button,
-    .clear-all-btn {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.6rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .book-button:hover,
-    .final-book-button:hover,
-    .clear-all-btn:hover {
-      background: var(--accent-light);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
-    }
-
-    .book-button i {
-      margin-left: 8px;
-      transition: transform 0.2s ease;
-    }
-
-    .book-button:hover i {
-      transform: translateX(3px);
-    }
-
-    .back-button {
-      background: var(--bg-card);
-      color: var(--text-primary);
-      border: 1px solid var(--accent);
-      padding: 0.75rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 300;
-      font-size: small;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: block;
-      margin-top: 1rem;
-    }
-
-    .back-button:hover {
-      background: rgba(222, 0, 0, 0.1);
-      transform: translateY(-2px);
-    }
-
-    .back-button::before {
-      content: "←";
-      margin-right: 0.5rem;
-    }
-
-    /* MODAL */
-    .modal-overlay {
-      position: fixed;
-      top: 70px;
-      right: 20px;
-      width: 380px;
-      max-height: calc(100vh - 100px);
-      background: transparent;
-      display: none;
-      z-index: 1000;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .modal-content {
-      background: rgba(30, 30, 30, 0.98);
-      backdrop-filter: blur(12px);
-      border-radius: 12px;
-      border: 1px solid rgba(222, 0, 0, 0.3);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-      overflow: hidden;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .modal-header {
-      padding: 1.2rem;
-      border-bottom: 1px solid rgba(222, 0, 0, 0.2);
-      position: relative;
-      background: rgba(0, 0, 0, 0.2);
-    }
-
-    .modal-title {
-      margin: 0;
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 1.2rem;
-      right: 1.2rem;
-      background: none;
-      border: none;
-      color: var(--text-primary);
-      font-size: 1.5rem;
-      cursor: pointer;
-      transition: color 0.2s;
-      opacity: 0.7;
-    }
-
-    .close-btn:hover {
-      color: var(--accent);
-      opacity: 1;
-    }
-
-    .service-list {
-      padding: 1rem;
-      overflow-y: auto;
-      flex-grow: 1;
-    }
-
-    .service-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.8rem 1rem;
-      border-bottom: 1px solid rgba(240, 240, 240, 0.1);
-      transition: all 0.3s ease;
-    }
-
-    .service-item:hover {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .subtotal {
-      display: flex;
-      justify-content: space-between;
-      font-size: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .subtotal-value {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .summary-section {
-      padding: 1.2rem;
-      border-top: 1px solid rgba(222, 0, 0, 0.2);
-      background: rgba(0, 0, 0, 0.2);
-    }
-
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
-      padding: 0 1.2rem 1.2rem;
-    }
-
-    /* TASK DETAILS & FURNITURE details */
-    .task-details {
-      margin-top: 1rem;
-      padding: 0.75rem;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 8px;
-      border-left: 3px solid var(--accent);
-    }
-
-    .task-details h3 {
-      margin-bottom: 1rem;
-      color: var(--text-primary);
-      font-size: 1.1rem;
-    }
-
-    .task-details select,
-    .task-details textarea {
-      width: 100%;
-      padding: 0.75rem;
-      margin-bottom: 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: var(--text-primary);
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-
-    .task-details textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    /* FURNITURE details */
-    #furnituredetailsSection {
-      display: none;
-      margin-bottom: 1.5rem;
-    }
-
-    #furnituredetailsSection button {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 0.5rem;
-      transition: all 0.2s ease;
-    }
-
-    #furnituredetailsSection button:hover {
-      background-color: var(--accent);
-    }
-
-    #selectedFurnitureList {
-      list-style: none;
-      margin: 1rem 0;
-    }
-
-    #selectedFurnitureList li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      background: var(--bg-card);
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-    }
-
-    /* MISCELLANEOUS */
-    .no-results {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-secondary);
-      display: none;
-    }
-
-    /* MOBILE-FIRST MEDIA QUERIES */
-    @media (max-width: 575.98px) {
-      .header h1 {
-        font-size: 1.75rem;
-      }
-
-      .category-tile {
-        padding: 1.25rem;
-      }
-
-      .service-navbar {
-        padding: 0 1rem;
-      }
-    }
-
-    /* RESPONSIVE IMPROVEMENTS */
-    .service-navbar {
-      padding: 0 1rem;
-    }
-
-    .search-input {
-      width: 100%;
-      max-width: 250px;
-    }
-
-    .menu-container {
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-    }
-
-    .category-tile {
-      min-height: 280px;
-      /* Consistent card heights */
-    }
-
-    /* TOUCH-FRIENDLY ELEMENTS */
-    .category-tile,
-    .service-selection-card,
-    .detail-card {
-      touch-action: manipulation;
-      /* Improve touch responsiveness */
-    }
-
-    button,
-    input,
-    select {
-      min-height: 44px;
-      /* ADA compliant touch target */
-    }
-
-    /* MODAL IMPROVEMENTS */
-    .modal-overlay {
-      width: 95%;
-      right: 2.5%;
-      max-width: 380px;
-      top: 80px;
-    }
-
-    @media (max-width: 767.98px) {
-      .modal-overlay {
-        width: 100%;
-        right: 0;
-        max-width: none;
-        top: 70px;
-      }
-
-      .modal-content {
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-      }
-    }
-
-    /* BROWSER FALLBACKS */
-    .service-navbar {
-      background: var(--bg-card);
-      /* Fallback for backdrop-filter */
-    }
-
-    @supports (backdrop-filter: blur(8px)) {
-      .service-navbar {
-        background: rgba(30, 30, 30, 0.95);
-        backdrop-filter: blur(8px);
-      }
-    }
-
-    /* IMPROVED INPUT STYLING */
-    input[type="text"],
-    select,
-    textarea {
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      font-size: 16px;
-      /* Prevent iOS zoom */
-    }
-
-    /* SERVICE SELECTION IMPROVEMENTS */
-    .service-selection-icon {
-      font-size: clamp(1.75rem, 4vw, 2.2rem);
-    }
-
-    /* FURNITURE SELECTION MOBILE OPTIMIZATION */
-    #furnituredetailsSection label {
-      display: block;
-      margin: 0.5rem 0;
-      padding: 0.75rem;
-      background: var(--bg-card);
-      border-radius: 8px;
-    }
-
-    #furnituredetailsSection select {
-      width: 100%;
-      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
-      background-repeat: no-repeat;
-      background-position: right 1rem center;
-      background-size: 12px;
-      padding-right: 2.5rem;
-    }
-
-    /* PERFORMANCE OPTIMIZATIONS */
-    .category-tile::before {
-      will-change: opacity;
-      /* Hint for GPU acceleration */
-    }
-
-    /* RESPONSIVE ADJUSTMENTS */
-    @media (max-width: 768px) {
-      .menu-container {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    /* Mobile adjustments for very small devices */
-    @media (max-width: 480px) {
-      .contact-button {
-        padding: 4px 8px;
-        min-width: 75px;
-        font-size: 0.9em;
-      }
-
-      .thandylogo {
-        width: 35%;
-      }
-
-      .tom_kongerslev {
-        width: 45%;
-      }
-
-      .service-category-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .service-category {
-        min-height: 90px;
-        padding: 15px 5px;
-        font-size: 0.9rem;
-      }
-
-      .service-category::before {
-        font-size: 2rem;
-      }
-
-      .service-category::after {
-        bottom: 10px;
-      }
-    }
-
-    /* Adjust the iframe container height on devices up to 768px */
-    @media (max-width: 768px) {
-      .responsive-iframe-container {
-        height: calc(var(--vh, 1vh) * 100);
-      }
-    }
-  </style>
-</head><body>
-  <!-- Navigation Bar -->
-  <nav class="service-navbar" aria-label="Main navigation">
-    <div class="search-nav-container">
-      <button class="search-btn" id="searchToggleBtn" aria-label="Search services">
-        <i class="fas fa-search"></i>
-      </button>
-      <input type="text" class="search-input" id="searchbox1" placeholder="Search services..." aria-label="Search input">
-    </div>
-    <button class="cart-btn" id="cartBtn" aria-label="View cart"> 🛒<span class="cart-count" id="cartCount">0</span>
-    </button>
-  </nav>
-  <!-- Search Results Dropdown -->
-  <div id="searchResults" style="display: none;"><div>Minor Home Repairs &gt; Appliances ⏲Hourly Service</div><div>Minor Home Repairs &gt; Door Handles &amp; Locks Installation</div><div>Minor Home Repairs &gt; Furniture Repair ⏲Hourly Service (detail: Upholstery)</div><div>Minor Home Repairs &gt; Hollow Door Repair</div><div>Minor Home Repairs &gt; Wall Repair - Patch &amp; Paint</div><div>Wall Mounting &gt; Curtains/Drapes w. Single Rod Installation (detail: Tension rod)</div><div>Wall Mounting &gt; TV Mounting (Under 60") + Concealed Cables</div><div>Wall Mounting &gt; TV Mounting (Under 60") standard</div><div>Computer Repairs &gt; Data Transfer / Data Back-Up</div><div>Computer Repairs &gt; PC Diagnostic Service</div><div>Computer Repairs &gt; Software Install/Update/Removal</div><div>Computer Repairs &gt; System Restore</div><div>Computer Repairs &gt; Virus/Malware Removal (detail: System cleanup)</div><div>Electrical Help &gt; Light Fixture Swap</div><div>Furniture Fixes &amp; Assembly &gt; Furniture Repair ⏲Hourly Service (detail: Upholstery)</div><div>Plumbing Help &gt; Bidet Accessory Install/Removal</div><div>Plumbing Help &gt; Fixture Swap (Cosmetic)</div><div>Plumbing Help &gt; Leak Under Sink Repair</div><div>Plumbing Help &gt; Unclog Sink/Shower/Toilet (Minor)</div></div>
-
-  <!-- Categories Grid -->
-  <div class="menu-container" id="categories-grid" style="display: grid; grid-template-columns: repeat(3, 1fr);">
-    <div class="category-tile" data-category="Minor Home Repairs">
-      <div class="category-icon">🏠</div>
-      <h2>Minor Home Repairs</h2>
-
-    </div>
-    <div class="category-tile" data-category="Furniture Fixes &amp; Assembly">
-      <div class="category-icon">🛋️</div>
-      <h2>Furniture Fixes</h2>
-
-    </div>
-    <div class="category-tile" data-category="Wall Mounting">
-      <div class="category-icon">🖼️</div>
-      <h2>Wall Mounting</h2>
-
-    </div>
-    <div class="category-tile" data-category="Electrical Help">
-      <div class="category-icon">💡</div>
-      <h2>Electrical Help</h2>
-    </div>
-    <div class="category-tile" data-category="Plumbing Help">
-      <div class="category-icon">🚿</div>
-      <h2>Plumbing Help</h2>
-
-    </div>
-    <div class="category-tile" data-category="Computer Repairs">
-      <div class="category-icon">💻</div>
-      <h2>Computer Repairs</h2>
-    </div>
-  </div>
-
-  <!-- Service Selection Container -->
-  <div id="serviceSelectionContainer" style="display: none;">
-    <div id="selectedSection"><h3>Minor Home Repairs Services</h3><div class="service-selection-grid"><div class="service-selection-card"><div class="service-selection-icon">🎛️</div>
-                          <h3>Appliances ⏲Hourly Service</h3>
-                          <p>⏲Hourly rate for appliance maintenance, repair, assessment. Excludes specialized service.</p>
-                          <div class="service-price">$70/hour</div></div><div class="service-selection-card"><div class="service-selection-icon">🔒</div>
-                          <h3>Door Handles &amp; Locks Installation</h3>
-                          <p>Flat-rate for door knob, lock installation. Hardware provided by client.</p>
-                          <div class="service-price">$70</div></div><div class="service-selection-card"><div class="service-selection-icon">🪑</div>
-                          <h3>Furniture Repair ⏲Hourly Service</h3>
-                          <p>⏲Hourly charge for repairing damaged furniture.</p>
-                          <div class="service-price">$70/hour</div></div><div class="service-selection-card"><div class="service-selection-icon">🚪</div>
-                          <h3>Hollow Door Repair</h3>
-                          <p>Flat-rate patch &amp; paint for interior door damage. Materials included.</p>
-                          <div class="service-price">$125</div></div><div class="service-selection-card"><div class="service-selection-icon">🧱</div>
-                          <h3>Wall Repair - Patch &amp; Paint</h3>
-                          <p>Flat-rate interior wall patch &amp; paint repairs. Materials included.</p>
-                          <div class="service-price">$70</div></div></div><button class="back-button">Back to Categories</button></div>
-    <!-- Furniture details for Furniture Fixes & Assembly -->
-    <div class="task-details" id="furnituredetailsSection" style="display: none;">
-      <h3>Select Your Furniture Item</h3>
-      <div>
-        <label>
-          <input type="radio" name="furnitureType" value="ikea" checked=""> IKEA
-        </label>
-        <label>
-          <input type="radio" name="furnitureType" value="generic"> Non‑IKEA
-        </label>
-      </div>
-      <select id="furniture-select">Select Here<optgroup label="BEKANT"><detail>Desk + Underframe</detail></optgroup><optgroup label="BESTA"><detail>Single frame, shelves/floor standing</detail><detail>Single frame, door/drawer, floor standing</detail><detail>Single frame/wall mounting</detail></optgroup><optgroup label="BILLY"><detail>Bookcase 1x frame</detail></optgroup><optgroup label="BJURSTA"><detail>Extendable table</detail></optgroup><optgroup label="BRIMNES"><detail>Bed frame</detail><detail>2 drawer chest</detail><detail>3 drawer chest</detail><detail>4 drawer chest</detail><detail>Bed frame &amp; storage</detail><detail>Headboard</detail><detail>Wardrobe 2x doors</detail><detail>Wardrobe 3x doors</detail><detail>Nightstand</detail><detail>Daybed 2x drawers</detail></optgroup><optgroup label="BRUSALI"><detail>Bed frame</detail><detail>Bed + 4 storage boxes</detail><detail>3 drawer chest</detail><detail>Nightstand</detail></optgroup><optgroup label="FINGAL"><detail>Swivel chair</detail></optgroup><optgroup label="FRIHETEN"><detail>Sofa bed &amp; chaise</detail></optgroup><optgroup label="GALANT"><detail>2x drawer</detail><detail>3x drawer</detail><detail>4x drawer</detail><detail>Cabinet (sliding doors)</detail></optgroup><optgroup label="HEMNES"><detail>Bed frame</detail><detail>2 drawer chest</detail><detail>3 drawer chest</detail><detail>6 drawer chest</detail><detail>Dresser 8x drawer</detail><detail>Nightstand</detail><detail>Daybed &amp; 3 drawers</detail></optgroup><optgroup label="KALLAX"><detail>Shelving unit 5x5</detail><detail>Shelving unit 4x4</detail><detail>Shelving unit 2x4</detail><detail>Shelving unit 1x4</detail><detail>Shelving unit 2x2</detail><detail>Insert + 2 drawers</detail><detail>Insert + door</detail></optgroup><optgroup label="LACK"><detail>Side table</detail><detail>Coffee table</detail><detail>TV Unit</detail></optgroup><optgroup label="LINNMON ADILS"><detail>Table (table top and four legs)</detail></optgroup><optgroup label="MALM"><detail>Bed Frame</detail><detail>Bed Frame + 4 Storage boxes</detail><detail>2 Drawer Chest</detail><detail>3 Drawer Chest</detail><detail>4 Drawer Chest</detail><detail>6 Drawer Chest</detail><detail>6 Drawer Dresser</detail><detail>Lift bed</detail></optgroup><optgroup label="MICKE"><detail>Desk + 1 Drawer</detail><detail>Desk + Drawers &amp; Storage</detail><detail>Add-on unit</detail></optgroup><optgroup label="MORVIK"><detail>Wardrobe</detail></optgroup><optgroup label="PAX"><detail>One frame, hinged doors, up to 3 addons</detail><detail>Two frames, sliding doors, up to 5 addons</detail></optgroup><optgroup label="SODERHAMN"><detail>Sofa one seat section + cover</detail></optgroup><optgroup label="TRYSIL"><detail>Bed Frame</detail><detail>3 Drawer Chest</detail><detail>Nightstand</detail><detail>Wardrobe</detail></optgroup><optgroup label="OTHER NOT LISTED"><detail>NOT LISTED or UNKNOWN</detail></optgroup></select>
-      <button class="book-button" onclick="addFurnitureItem()">Add Furniture Item</button>
-      <ul id="selectedFurnitureList"></ul>
-      <button class="clear-all-btn" onclick="clearAllFurnitureItems()">Clear Furniture Items</button>
-    </div>
-  </div>
-
-  <!-- Service details Container -->
-  <div id="servicedetailsContainer" style="display: none;"><h3>Wall Repair - Patch &amp; Paint</h3><div class="details-grid"><div class="detail-card">Small holes</div><div class="detail-card selected">Large holes</div><div class="detail-card">Cracks</div></div><textarea id="serviceNoteInput" placeholder="Enter any additional details regarding the job..." style="display: block; width: 100%; margin-top: 1rem; padding: 0.75rem;"></textarea><button class="book-button" style="margin-top: 1rem;">Add</button><button class="back-button" style="margin-top: 1rem;">Back</button></div>
-
-  <!-- Selected Services & Order Review -->
-  <div id="selectedServicesSection" class="selected-services-section" style="display: none;">
-    <h3>Services Requested</h3>
-    <div id="selectedServicesList"></div>
-    <div class="estimate-total" id="estimateTotal" style="display: none;">
-      <span>Estimated Subtotal:</span>
-      <span id="totalAmount">$0</span>
-    </div>
-    <button class="final-book-button" onclick="bookServices()">Checkout</button>
-    <button class="clear-all-btn" onclick="clearAllServices()" style="background-color: grey;">Clear All</button>
-  </div>
-
-  <!-- Modal for Cart -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title">Your Selected Services</h2>
-        <button class="close-btn" id="closeModal">×</button>
-      </div>
-      <div class="service-list" id="modalServiceList"></div>
-      <div class="summary-section">
-        <div class="subtotal">
-          <span>Subtotal (<span id="serviceCount">0</span> items):</span>
-          <span class="subtotal-value" id="modalTotal">$0</span>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
+    <title>BookTOM</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <style>
+        root {
+            --bg-dark: #121212;
+            --bg-card: #1e1e1e;
+            --bg-card-hover: #2a2a2a;
+            --primary: #474747;
+            --primary-hover: #ffffff;
+            --text-primary: #f5f5f5;
+            --text-secondary: #c0c0c0;
+            --accent-light: rgba(250, 0, 0, 1);
+            --accent: rgba(250, 0, 0, 1);
+            --selected-bg: rgba(250, 0, 0, 0.1);
+        }
+
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: var(--bg-dark);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Fixed 3×2 Grid Layout */
+        .menu-container {
+            flex: 1;
+            padding: var(--grid-gap);
+        }
+
+        #categories-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: var(--grid-gap);
+            height: calc(100vh - 68px);
+            padding: var(--grid-gap);
+        }
+
+        .category-tile {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-card);
+            border: 1px solid var(--primary);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-tile:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            background-color: var(--bg-card-hover);
+        }
+
+        .category-icon {
+            display: inline-block;
+            font-size: 2rem;
+            background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            transition: transform 0.3s ease;
+        }
+
+        .category-tile h2 {
+            font-weight: 600;
+        }
+
+        .category-tile h2::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        .category-tile:hover h2::after {
+            width: 100%;
+        }
+
+        .category-icon {
+            font-size: 2.5rem;
+            background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            transition: transform 0.3s ease;
+        }
+
+        /* ANIMATIONS */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes tapAnimation {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(0.95);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translateX(-5px);
+            }
+
+            40%,
+            80% {
+                transform: translateX(5px);
+            }
+        }
+
+        .tap-animate {
+            animation: tapAnimation 0.3s ease;
+        }
+
+        /* NAVIGATION */
+        .service-navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 0 auto;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(222, 0, 0, 0.9);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .search-nav-container {
+            display: flex;
+            align-items: center;
+            margin-left: 1rem;
+            margin-right: auto;
+            position: relative;
+        }
+
+        .search-btn {
+            background: none;
+            border: none;
+            color: #c0c0c0;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.1);
+        }
+
+        .search-input {
+            width: 250px;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            color: #c0c0c0;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .search-input {
+                width: calc(100vw - 120px);
+            }
+        }
+
+        .cart-btn {
+            background: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(222, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: white;
+            color: #de0000;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        /* SEARCH RESULTS */
+        #searchResults {
+            display: none;
+            position: absolute;
+            top: 70px;
+            left: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            border-radius: 4px;
+            z-index: 1100;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        #searchResults div {
+            padding: 0.5rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #searchResults div:hover {
+            background: var(--bg-card-hover);
+        }
+
+        /* LAYOUT & CONTAINERS */
+        .container {
+            max-width: 1200px;
+        }
+
+        .header {
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(225deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: inline-block;
+            position: relative;
+        }
+
+        .header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 3px;
+        }
+
+        .header h2 {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+
+        /* CATEGORY GRID LAYOUT */
+        ..menu-container {
+            width: 100%;
+            gap: 1rem;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+
+        #categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: .1rem;
+            width: 100%;
+        }
+
+        /* CATEGORY TILES */
+        .category-tile {
+            min-height: 200px;
+            /* Reduced from 280px */
+            aspect-ratio: 1 / 1;
+            padding: auto;
+            width: 100%;
+        }
+
+        .category-tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(222, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .category-tile:hover,
+        .category-tile:active {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            background-color: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .category-tile:hover::before,
+        .category-tile:active::before {
+            opacity: 0.6;
+        }
+
+        .category-icon {
+            font-size: 2rem;
+            background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: column;
+            transition: transform 0.3s ease;
+        }
+
+        .category-tile:hover .category-icon,
+        .category-tile:active .category-icon {
+            transform: scale(1.1);
+        }
+
+        .category-tile h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: inline-block;
+        }
+
+        .category-tile h2::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        .category-tile:hover h2::after,
+        .category-tile:active h2::after {
+            width: 100%;
+        }
+
+        .category-tile p {
+            color: var(--text-secondary);
+        }
+
+        /* SERVICE SELECTION & details */
+        .service-selection-grid,
+        .details-grid {
+            display: grid;
+            gap: 1.5rem;
+            margin-bottom: 0;
+        }
+
+        .service-selection-card {
+            background: var(--bg-card);
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .service-selection-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .service-selection-card h3 {
+            font-size: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .service-selection-card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .service-price {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+
+        .service-selection-icon {
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+            filter: grayscale(100%);
+            color: black;
+        }
+
+        .detail-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .detail-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .detail-card.selected {
+            background: var(--selected-bg);
+            border-color: var(--accent);
+        }
+
+        /* BUTTONS */
+        .book-button {
+            background: linear-gradient(27deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .final-book-button,
+        .clear-all-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .book-button:hover,
+        .final-book-button:hover,
+        .clear-all-btn:hover {
+            background: var(--accent-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
+        }
+
+        .book-button i {
+            margin-left: 8px;
+            transition: transform 0.2s ease;
+        }
+
+        .book-button:hover i {
+            transform: translateX(3px);
+        }
+
+        .back-button {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--accent);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 300;
+            font-size: small;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: block;
+            margin-top: 1rem;
+        }
+
+        .back-button:hover {
+            background: rgba(222, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .back-button::before {
+            content: "←";
+            margin-right: 0.5rem;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 380px;
+            max-height: calc(100vh - 100px);
+            background: transparent;
+            display: none;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: rgba(30, 30, 30, 0.98);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            border: 1px solid rgba(222, 0, 0, 0.3);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 1.2rem;
+            border-bottom: 1px solid rgba(222, 0, 0, 0.2);
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 1.2rem;
+            right: 1.2rem;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+            opacity: 0.7;
+        }
+
+        .close-btn:hover {
+            color: var(--accent);
+            opacity: 1;
+        }
+
+        .service-list {
+            padding: 1rem;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .service-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid rgba(240, 240, 240, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .service-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .subtotal {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .subtotal-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-section {
+            padding: 1.2rem;
+            border-top: 1px solid rgba(222, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            padding: 0 1.2rem 1.2rem;
+        }
+
+        /* TASK DETAILS & FURNITURE details */
+        .task-details {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .task-details h3 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+        }
+
+        .task-details select,
+        .task-details textarea {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .task-details textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* FURNITURE details */
+        #furnituredetailsSection {
+            display: none;
+            margin-bottom: 1.5rem;
+        }
+
+        #furnituredetailsSection button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        #furnituredetailsSection button:hover {
+            background-color: var(--accent);
+        }
+
+        #selectedFurnitureList {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        #selectedFurnitureList li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: var(--bg-card);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+
+        /* MISCELLANEOUS */
+        .no-results {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            display: none;
+        }
+
+        /* MOBILE-FIRST MEDIA QUERIES */
+        @media (max-width: 575.98px) {
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .category-tile {
+                padding: 1.25rem;
+            }
+
+            .service-navbar {
+                padding: 0 1rem;
+            }
+        }
+
+        /* RESPONSIVE IMPROVEMENTS */
+        .service-navbar {
+            padding: 0 1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            max-width: 250px;
+        }
+
+        .menu-container {
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+        }
+
+        .category-tile {
+            min-height: 280px;
+            /* Consistent card heights */
+        }
+
+        /* TOUCH-FRIENDLY ELEMENTS */
+        .category-tile,
+        .service-selection-card,
+        .detail-card {
+            touch-action: manipulation;
+            /* Improve touch responsiveness */
+        }
+
+        button,
+        input,
+        select {
+            min-height: 44px;
+            /* ADA compliant touch target */
+        }
+
+        /* MODAL IMPROVEMENTS */
+        .modal-overlay {
+            width: 95%;
+            right: 2.5%;
+            max-width: 380px;
+            top: 80px;
+        }
+
+        @media (max-width: 767.98px) {
+            .modal-overlay {
+                width: 100%;
+                right: 0;
+                max-width: none;
+                top: 70px;
+            }
+
+            .modal-content {
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+        }
+
+        /* BROWSER FALLBACKS */
+        .service-navbar {
+            background: var(--bg-card);
+            /* Fallback for backdrop-filter */
+        }
+
+        @supports (backdrop-filter: blur(8px)) {
+            .service-navbar {
+                background: rgba(30, 30, 30, 0.95);
+                backdrop-filter: blur(8px);
+            }
+        }
+
+        /* IMPROVED INPUT STYLING */
+        input[type="text"],
+        select,
+        textarea {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            font-size: 16px;
+            /* Prevent iOS zoom */
+        }
+
+        /* SERVICE SELECTION IMPROVEMENTS */
+        .service-selection-icon {
+            font-size: clamp(1.75rem, 4vw, 2.2rem);
+        }
+
+        /* FURNITURE SELECTION MOBILE OPTIMIZATION */
+        #furnituredetailsSection label {
+            display: block;
+            margin: 0.5rem 0;
+            padding: 0.75rem;
+            background: var(--bg-card);
+            border-radius: 8px;
+        }
+
+        #furnituredetailsSection select {
+            width: 100%;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 12px;
+            padding-right: 2.5rem;
+        }
+
+        /* PERFORMANCE OPTIMIZATIONS */
+        .category-tile::before {
+            will-change: opacity;
+            /* Hint for GPU acceleration */
+        }
+
+        /* RESPONSIVE ADJUSTMENTS */
+        @media (max-width: 768px) {
+            .menu-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Mobile adjustments for very small devices */
+        @media (max-width: 480px) {
+            .contact-button {
+                padding: 4px 8px;
+                min-width: 75px;
+                font-size: 0.9em;
+            }
+
+            .thandylogo {
+                width: 35%;
+            }
+
+            .tom_kongerslev {
+                width: 45%;
+            }
+
+            .service-category-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .service-category {
+                min-height: 90px;
+                padding: 15px 5px;
+                font-size: 0.9rem;
+            }
+
+            .service-category::before {
+                font-size: 2rem;
+            }
+
+            .service-category::after {
+                bottom: 10px;
+            }
+        }
+
+        /* Adjust the iframe container height on devices up to 768px */
+        @media (max-width: 768px) {
+            .responsive-iframe-container {
+                height: calc(var(--vh, 1vh) * 100);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="service-navbar" aria-label="Main navigation">
+        <div class="search-nav-container">
+            <button class="search-btn" id="searchToggleBtn" aria-label="Search services">
+                <i class="fas fa-search"></i>
+            </button>
+            <input type="text" class="search-input" id="searchbox1" placeholder="Search services..." aria-label="Search input">
         </div>
-      </div>
-      <div class="action-buttons">
-        <button class="book-button" onclick="showCategories()">➕ More Services</button>
-        <button class="book-button" onclick="bookServices()">Checkout</button>
-      </div>
+        <button class="cart-btn" id="cartBtn" aria-label="View cart"> 🛒<span class="cart-count" id="cartCount">0</span>
+        </button>
+    </nav>
+    <!-- Search Results Dropdown -->
+    <div id="searchResults" style="display: none;">
+        <div>Minor Home Repairs &gt; Appliances ⏲Hourly Service</div>
+        <div>Minor Home Repairs &gt; Door Handles &amp; Locks Installation</div>
+        <div>Minor Home Repairs &gt; Furniture Repair ⏲Hourly Service (detail: Upholstery)</div>
+        <div>Minor Home Repairs &gt; Hollow Door Repair</div>
+        <div>Minor Home Repairs &gt; Wall Repair - Patch &amp; Paint</div>
+        <div>Wall Mounting &gt; Curtains/Drapes w. Single Rod Installation (detail: Tension rod)</div>
+        <div>Wall Mounting &gt; TV Mounting (Under 60") + Concealed Cables</div>
+        <div>Wall Mounting &gt; TV Mounting (Under 60") standard</div>
+        <div>Computer Repairs &gt; Data Transfer / Data Back-Up</div>
+        <div>Computer Repairs &gt; PC Diagnostic Service</div>
+        <div>Computer Repairs &gt; Software Install/Update/Removal</div>
+        <div>Computer Repairs &gt; System Restore</div>
+        <div>Computer Repairs &gt; Virus/Malware Removal (detail: System cleanup)</div>
+        <div>Electrical Help &gt; Light Fixture Swap</div>
+        <div>Furniture Fixes &amp; Assembly &gt; Furniture Repair ⏲Hourly Service (detail: Upholstery)</div>
+        <div>Plumbing Help &gt; Bidet Accessory Install/Removal</div>
+        <div>Plumbing Help &gt; Fixture Swap (Cosmetic)</div>
+        <div>Plumbing Help &gt; Leak Under Sink Repair</div>
+        <div>Plumbing Help &gt; Unclog Sink/Shower/Toilet (Minor)</div>
     </div>
-  </div>
-   <!-- End Container -->
 
-  <script>
-    // Configurable hourly rate for Furniture Assembly (default = 40)
-    const furnitureHourlyRate = 40;
-    const state = {
-      selectedServices: [],
-      furnitureItems: [],
-      modalVisible: false
-    };
-    // Perform a search across serviceData (service names, descriptions, and details)
-    function performSearch(query) {
-      const results = [];
-      query = query.toLowerCase().trim();
-      Object.keys(serviceData).forEach(category => {
-        Object.keys(serviceData[category]).forEach(service => {
-          const info = serviceData[category][service];
-          if (service.toLowerCase().includes(query) || info.description.toLowerCase().includes(query)) {
-            results.push({
-              category,
-              service,
-              matchdetail: null
-            });
-          } else {
-            info.details.forEach(detail => {
-              if (detail.toLowerCase().includes(query)) {
-                results.push({
-                  category,
-                  service,
-                  matchdetail: detail
+    <!-- Categories Grid -->
+    <div class="menu-container" id="categories-grid" style="display: grid; grid-template-columns: repeat(3, 1fr);">
+        <div class="category-tile" data-category="Minor Home Repairs">
+            <div class="category-icon">🏠</div>
+            <h2>Minor Home Repairs</h2>
+
+        </div>
+        <div class="category-tile" data-category="Furniture Fixes &amp; Assembly">
+            <div class="category-icon">🛋️</div>
+            <h2>Furniture Fixes</h2>
+
+        </div>
+        <div class="category-tile" data-category="Wall Mounting">
+            <div class="category-icon">🖼️</div>
+            <h2>Wall Mounting</h2>
+
+        </div>
+        <div class="category-tile" data-category="Electrical Help">
+            <div class="category-icon">💡</div>
+            <h2>Electrical Help</h2>
+        </div>
+        <div class="category-tile" data-category="Plumbing Help">
+            <div class="category-icon">🚿</div>
+            <h2>Plumbing Help</h2>
+
+        </div>
+        <div class="category-tile" data-category="Computer Repairs">
+            <div class="category-icon">💻</div>
+            <h2>Computer Repairs</h2>
+        </div>
+    </div>
+
+    <!-- Service Selection Container -->
+    <div id="serviceSelectionContainer" style="display: none;">
+        <div id="selectedSection">
+            <h3>Minor Home Repairs Services</h3>
+            <div class="service-selection-grid">
+                <div class="service-selection-card">
+                    <div class="service-selection-icon">🎛️</div>
+                    <h3>Appliances ⏲Hourly Service</h3>
+                    <p>⏲Hourly rate for appliance maintenance, repair, assessment. Excludes specialized service.</p>
+                    <div class="service-price">$70/hour</div>
+                </div>
+                <div class="service-selection-card">
+                    <div class="service-selection-icon">🔒</div>
+                    <h3>Door Handles &amp; Locks Installation</h3>
+                    <p>Flat-rate for door knob, lock installation. Hardware provided by client.</p>
+                    <div class="service-price">$70</div>
+                </div>
+                <div class="service-selection-card">
+                    <div class="service-selection-icon">🪑</div>
+                    <h3>Furniture Repair ⏲Hourly Service</h3>
+                    <p>⏲Hourly charge for repairing damaged furniture.</p>
+                    <div class="service-price">$70/hour</div>
+                </div>
+                <div class="service-selection-card">
+                    <div class="service-selection-icon">🚪</div>
+                    <h3>Hollow Door Repair</h3>
+                    <p>Flat-rate patch &amp; paint for interior door damage. Materials included.</p>
+                    <div class="service-price">$125</div>
+                </div>
+                <div class="service-selection-card">
+                    <div class="service-selection-icon">🧱</div>
+                    <h3>Wall Repair - Patch &amp; Paint</h3>
+                    <p>Flat-rate interior wall patch &amp; paint repairs. Materials included.</p>
+                    <div class="service-price">$70</div>
+                </div>
+            </div><button class="back-button">Back to Categories</button>
+        </div>
+        <!-- Furniture details for Furniture Fixes & Assembly -->
+        <div class="task-details" id="furnituredetailsSection" style="display: none;">
+            <h3>Select Your Furniture Item</h3>
+            <div>
+                <label>
+                    <input type="radio" name="furnitureType" value="ikea" checked=""> IKEA
+                </label>
+                <label>
+                    <input type="radio" name="furnitureType" value="generic"> Non‑IKEA
+                </label>
+            </div>
+            <select id="furniture-select">Select Here<optgroup label="BEKANT">
+                    <detail>Desk + Underframe</detail>
+                </optgroup>
+                <optgroup label="BESTA">
+                    <detail>Single frame, shelves/floor standing</detail>
+                    <detail>Single frame, door/drawer, floor standing</detail>
+                    <detail>Single frame/wall mounting</detail>
+                </optgroup>
+                <optgroup label="BILLY">
+                    <detail>Bookcase 1x frame</detail>
+                </optgroup>
+                <optgroup label="BJURSTA">
+                    <detail>Extendable table</detail>
+                </optgroup>
+                <optgroup label="BRIMNES">
+                    <detail>Bed frame</detail>
+                    <detail>2 drawer chest</detail>
+                    <detail>3 drawer chest</detail>
+                    <detail>4 drawer chest</detail>
+                    <detail>Bed frame &amp; storage</detail>
+                    <detail>Headboard</detail>
+                    <detail>Wardrobe 2x doors</detail>
+                    <detail>Wardrobe 3x doors</detail>
+                    <detail>Nightstand</detail>
+                    <detail>Daybed 2x drawers</detail>
+                </optgroup>
+                <optgroup label="BRUSALI">
+                    <detail>Bed frame</detail>
+                    <detail>Bed + 4 storage boxes</detail>
+                    <detail>3 drawer chest</detail>
+                    <detail>Nightstand</detail>
+                </optgroup>
+                <optgroup label="FINGAL">
+                    <detail>Swivel chair</detail>
+                </optgroup>
+                <optgroup label="FRIHETEN">
+                    <detail>Sofa bed &amp; chaise</detail>
+                </optgroup>
+                <optgroup label="GALANT">
+                    <detail>2x drawer</detail>
+                    <detail>3x drawer</detail>
+                    <detail>4x drawer</detail>
+                    <detail>Cabinet (sliding doors)</detail>
+                </optgroup>
+                <optgroup label="HEMNES">
+                    <detail>Bed frame</detail>
+                    <detail>2 drawer chest</detail>
+                    <detail>3 drawer chest</detail>
+                    <detail>6 drawer chest</detail>
+                    <detail>Dresser 8x drawer</detail>
+                    <detail>Nightstand</detail>
+                    <detail>Daybed &amp; 3 drawers</detail>
+                </optgroup>
+                <optgroup label="KALLAX">
+                    <detail>Shelving unit 5x5</detail>
+                    <detail>Shelving unit 4x4</detail>
+                    <detail>Shelving unit 2x4</detail>
+                    <detail>Shelving unit 1x4</detail>
+                    <detail>Shelving unit 2x2</detail>
+                    <detail>Insert + 2 drawers</detail>
+                    <detail>Insert + door</detail>
+                </optgroup>
+                <optgroup label="LACK">
+                    <detail>Side table</detail>
+                    <detail>Coffee table</detail>
+                    <detail>TV Unit</detail>
+                </optgroup>
+                <optgroup label="LINNMON ADILS">
+                    <detail>Table (table top and four legs)</detail>
+                </optgroup>
+                <optgroup label="MALM">
+                    <detail>Bed Frame</detail>
+                    <detail>Bed Frame + 4 Storage boxes</detail>
+                    <detail>2 Drawer Chest</detail>
+                    <detail>3 Drawer Chest</detail>
+                    <detail>4 Drawer Chest</detail>
+                    <detail>6 Drawer Chest</detail>
+                    <detail>6 Drawer Dresser</detail>
+                    <detail>Lift bed</detail>
+                </optgroup>
+                <optgroup label="MICKE">
+                    <detail>Desk + 1 Drawer</detail>
+                    <detail>Desk + Drawers &amp; Storage</detail>
+                    <detail>Add-on unit</detail>
+                </optgroup>
+                <optgroup label="MORVIK">
+                    <detail>Wardrobe</detail>
+                </optgroup>
+                <optgroup label="PAX">
+                    <detail>One frame, hinged doors, up to 3 addons</detail>
+                    <detail>Two frames, sliding doors, up to 5 addons</detail>
+                </optgroup>
+                <optgroup label="SODERHAMN">
+                    <detail>Sofa one seat section + cover</detail>
+                </optgroup>
+                <optgroup label="TRYSIL">
+                    <detail>Bed Frame</detail>
+                    <detail>3 Drawer Chest</detail>
+                    <detail>Nightstand</detail>
+                    <detail>Wardrobe</detail>
+                </optgroup>
+                <optgroup label="OTHER NOT LISTED">
+                    <detail>NOT LISTED or UNKNOWN</detail>
+                </optgroup>
+            </select>
+            <button class="book-button" onclick="addFurnitureItem()">Add Furniture Item</button>
+            <ul id="selectedFurnitureList"></ul>
+            <button class="clear-all-btn" onclick="clearAllFurnitureItems()">Clear Furniture Items</button>
+        </div>
+    </div>
+
+    <!-- Service details Container -->
+    <div id="servicedetailsContainer" style="display: none;">
+        <h3>Wall Repair - Patch &amp; Paint</h3>
+        <div class="details-grid">
+            <div class="detail-card">Small holes</div>
+            <div class="detail-card selected">Large holes</div>
+            <div class="detail-card">Cracks</div>
+        </div><textarea id="serviceNoteInput" placeholder="Enter any additional details regarding the job..." style="display: block; width: 100%; margin-top: 1rem; padding: 0.75rem;"></textarea><button class="book-button" style="margin-top: 1rem;">Add</button><button class="back-button" style="margin-top: 1rem;">Back</button>
+    </div>
+
+    <!-- Selected Services & Order Review -->
+    <div id="selectedServicesSection" class="selected-services-section" style="display: none;">
+        <h3>Services Requested</h3>
+        <div id="selectedServicesList"></div>
+        <div class="estimate-total" id="estimateTotal" style="display: none;">
+            <span>Estimated Subtotal:</span>
+            <span id="totalAmount">$0</span>
+        </div>
+        <button class="final-book-button" onclick="bookServices()">Checkout</button>
+        <button class="clear-all-btn" onclick="clearAllServices()" style="background-color: grey;">Clear All</button>
+    </div>
+
+    <!-- Modal for Cart -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Your Selected Services</h2>
+                <button class="close-btn" id="closeModal">×</button>
+            </div>
+            <div class="service-list" id="modalServiceList"></div>
+            <div class="summary-section">
+                <div class="subtotal">
+                    <span>Subtotal (<span id="serviceCount">0</span> items):</span>
+                    <span class="subtotal-value" id="modalTotal">$0</span>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="book-button" onclick="showCategories()">➕ More Services</button>
+                <button class="book-button" onclick="bookServices()">Checkout</button>
+            </div>
+        </div>
+    </div>
+    <!-- End Container -->
+
+    <script>
+        // Configurable hourly rate for Furniture Assembly (default = 40)
+        const furnitureHourlyRate = 40;
+        const state = {
+            selectedServices: [],
+            furnitureItems: [],
+            modalVisible: false
+        };
+        // Perform a search across serviceData (service names, descriptions, and details)
+        function performSearch(query) {
+            const results = [];
+            query = query.toLowerCase().trim();
+            Object.keys(serviceData).forEach(category => {
+                Object.keys(serviceData[category]).forEach(service => {
+                    const info = serviceData[category][service];
+                    if (service.toLowerCase().includes(query) || info.description.toLowerCase().includes(query)) {
+                        results.push({
+                            category,
+                            service,
+                            matchdetail: null
+                        });
+                    } else {
+                        info.details.forEach(detail => {
+                            if (detail.toLowerCase().includes(query)) {
+                                results.push({
+                                    category,
+                                    service,
+                                    matchdetail: detail
+                                });
+                            }
+                        });
+                    }
                 });
-              }
             });
-          }
+            return results;
+        }
+        // Search input event handler to show suggestions
+        document.getElementById('searchbox1').addEventListener('input', function() {
+            const query = this.value.trim().toLowerCase();
+            const resultsContainer = document.getElementById('searchResults');
+            if (!query) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+            const results = performSearch(query);
+            if (results.length === 0) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+            resultsContainer.innerHTML = '';
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.textContent = result.category + " > " + result.service + (result.matchdetail ? " (detail: " + result.matchdetail + ")" : "");
+                div.addEventListener('click', () => {
+                    resultsContainer.style.display = 'none';
+                    document.getElementById('searchbox1').value = '';
+                    showServicedetails(result.category, result.service, result.matchdetail);
+                });
+                resultsContainer.appendChild(div);
+            });
+            resultsContainer.style.display = 'block';
         });
-      });
-      return results;
-    }
-    // Search input event handler to show suggestions
-    document.getElementById('searchbox1').addEventListener('input', function() {
-      const query = this.value.trim().toLowerCase();
-      const resultsContainer = document.getElementById('searchResults');
-      if (!query) {
-        resultsContainer.style.display = 'none';
-        return;
-      }
-      const results = performSearch(query);
-      if (results.length === 0) {
-        resultsContainer.style.display = 'none';
-        return;
-      }
-      resultsContainer.innerHTML = '';
-      results.forEach(result => {
-        const div = document.createElement('div');
-        div.textContent = result.category + " > " + result.service + (result.matchdetail ? " (detail: " + result.matchdetail + ")" : "");
-        div.addEventListener('click', () => {
-          resultsContainer.style.display = 'none';
-          document.getElementById('searchbox1').value = '';
-          showServicedetails(result.category, result.service, result.matchdetail);
-        });
-        resultsContainer.appendChild(div);
-      });
-      resultsContainer.style.display = 'block';
-    });
 
-    function updateCart() {
-      document.getElementById('cartCount').textContent = state.selectedServices.length;
-    }
+        function updateCart() {
+            document.getElementById('cartCount').textContent = state.selectedServices.length;
+        }
 
-    function addToCart(service) {
-      state.selectedServices.push(service);
-      updateCart();
-    }
+        function addToCart(service) {
+            state.selectedServices.push(service);
+            updateCart();
+        }
 
-    function clearAllServices() {
-      state.selectedServices = [];
-      updateCart();
-      document.getElementById('selectedServicesSection').style.display = 'none';
-      showCategories();
-    }
+        function clearAllServices() {
+            state.selectedServices = [];
+            updateCart();
+            document.getElementById('selectedServicesSection').style.display = 'none';
+            showCategories();
+        }
 
-    function showCategories() {
-      document.getElementById('categories-grid').style.display = 'grid';
-      document.getElementById('serviceSelectionContainer').style.display = 'none';
-      document.getElementById('servicedetailsContainer').style.display = 'none';
-      document.getElementById('furnituredetailsSection').style.display = 'none';
-    }
+        function showCategories() {
+            document.getElementById('categories-grid').style.display = 'grid';
+            document.getElementById('serviceSelectionContainer').style.display = 'none';
+            document.getElementById('servicedetailsContainer').style.display = 'none';
+            document.getElementById('furnituredetailsSection').style.display = 'none';
+        }
 
-    function showCategoryServices(category) {
-      document.getElementById('categories-grid').style.display = 'none';
-      const selectedSection = document.getElementById('selectedSection');
-      selectedSection.innerHTML = '';
-      const heading = document.createElement('h3');
-      heading.textContent = category + " Services";
-      selectedSection.appendChild(heading);
-      const servicesGrid = document.createElement('div');
-      servicesGrid.className = 'service-selection-grid';
-      Object.keys(serviceData[category]).forEach(service => {
-        const serviceInfo = serviceData[category][service];
-        const card = document.createElement('div');
-        card.className = 'service-selection-card';
-        card.innerHTML = `<div class="service-selection-icon">${serviceInfo.icon}</div>
+        function showCategoryServices(category) {
+            document.getElementById('categories-grid').style.display = 'none';
+            const selectedSection = document.getElementById('selectedSection');
+            selectedSection.innerHTML = '';
+            const heading = document.createElement('h3');
+            heading.textContent = category + " Services";
+            selectedSection.appendChild(heading);
+            const servicesGrid = document.createElement('div');
+            servicesGrid.className = 'service-selection-grid';
+            Object.keys(serviceData[category]).forEach(service => {
+                const serviceInfo = serviceData[category][service];
+                const card = document.createElement('div');
+                card.className = 'service-selection-card';
+                card.innerHTML = `<div class="service-selection-icon">${serviceInfo.icon}</div>
                           <h3>${service}</h3>
                           <p>${serviceInfo.description}</p>
                           <div class="service-price">${serviceInfo.price}</div>`;
-        card.addEventListener('click', () => {
-          showServicedetails(category, service);
-        });
-        servicesGrid.appendChild(card);
-      });
-      selectedSection.appendChild(servicesGrid);
-      const backButton = document.createElement('button');
-      backButton.className = 'back-button';
-      backButton.textContent = 'Back to Categories';
-      backButton.addEventListener('click', showCategories);
-      selectedSection.appendChild(backButton);
-      if (category === "Furniture Fixes & Assembly") {
-        document.getElementById('furnituredetailsSection').style.display = 'block';
-        initFurnituredetails();
-      } else {
-        document.getElementById('furnituredetailsSection').style.display = 'none';
-      }
-      document.getElementById('serviceSelectionContainer').style.display = 'block';
-      document.getElementById('servicedetailsContainer').style.display = 'none';
-    }
-    // Modified showServicedetails to accept an detailal preselecteddetail.
-    function showServicedetails(category, service, preselecteddetail) {
-      document.getElementById('categories-grid').style.display = 'none';
-      document.getElementById('serviceSelectionContainer').style.display = 'none';
-      document.getElementById('furnituredetailsSection').style.display = 'none';
-      const serviceInfo = serviceData[category][service];
-      const container = document.getElementById('servicedetailsContainer');
-      container.innerHTML = '';
-      const header = document.createElement('h3');
-      header.textContent = service;
-      container.appendChild(header);
-      const detailsGrid = document.createElement('div');
-      detailsGrid.className = 'details-grid';
-      serviceInfo.details.forEach(detail => {
-        const detailCard = document.createElement('div');
-        detailCard.className = 'detail-card';
-        detailCard.textContent = detail;
-        detailCard.addEventListener('click', () => {
-          detailsGrid.querySelectorAll('.detail-card').forEach(card => card.classList.remove('selected'));
-          detailCard.classList.add('selected');
-          noteInput.style.display = 'block';
-          noteInput.focus();
-        });
-        // Auto-select detail if preselecteddetail is provided and matches.
-        if (preselecteddetail && detail.toLowerCase().includes(preselecteddetail.toLowerCase())) {
-          detailCard.classList.add('selected');
+                card.addEventListener('click', () => {
+                    showServicedetails(category, service);
+                });
+                servicesGrid.appendChild(card);
+            });
+            selectedSection.appendChild(servicesGrid);
+            const backButton = document.createElement('button');
+            backButton.className = 'back-button';
+            backButton.textContent = 'Back to Categories';
+            backButton.addEventListener('click', showCategories);
+            selectedSection.appendChild(backButton);
+            if (category === "Furniture Fixes & Assembly") {
+                document.getElementById('furnituredetailsSection').style.display = 'block';
+                initFurnituredetails();
+            } else {
+                document.getElementById('furnituredetailsSection').style.display = 'none';
+            }
+            document.getElementById('serviceSelectionContainer').style.display = 'block';
+            document.getElementById('servicedetailsContainer').style.display = 'none';
         }
-        detailsGrid.appendChild(detailCard);
-      });
-      container.appendChild(detailsGrid);
-      const noteInput = document.createElement('textarea');
-      noteInput.id = 'serviceNoteInput';
-      noteInput.placeholder = 'Enter any additional details regarding the job...';
-      // If an detail was auto-selected via search, show the note input immediately.
-      if (preselecteddetail) {
-        noteInput.style.display = 'block';
-        noteInput.focus();
-      } else {
-        noteInput.style.display = 'none';
-      }
-      noteInput.style.width = '100%';
-      noteInput.style.marginTop = '1rem';
-      noteInput.style.padding = '0.75rem';
-      container.appendChild(noteInput);
-      const addButton = document.createElement('button');
-      addButton.className = 'book-button';
-      addButton.style.marginTop = '1rem';
-      addButton.textContent = 'Add';
-      addButton.addEventListener('click', () => {
-        const selecteddetailElem = detailsGrid.querySelector('.detail-card.selected');
-        if (!selecteddetailElem) {
-          alert('Please select an detail.');
-          return;
+        // Modified showServicedetails to accept an detailal preselecteddetail.
+        function showServicedetails(category, service, preselecteddetail) {
+            document.getElementById('categories-grid').style.display = 'none';
+            document.getElementById('serviceSelectionContainer').style.display = 'none';
+            document.getElementById('furnituredetailsSection').style.display = 'none';
+            const serviceInfo = serviceData[category][service];
+            const container = document.getElementById('servicedetailsContainer');
+            container.innerHTML = '';
+            const header = document.createElement('h3');
+            header.textContent = service;
+            container.appendChild(header);
+            const detailsGrid = document.createElement('div');
+            detailsGrid.className = 'details-grid';
+            serviceInfo.details.forEach(detail => {
+                const detailCard = document.createElement('div');
+                detailCard.className = 'detail-card';
+                detailCard.textContent = detail;
+                detailCard.addEventListener('click', () => {
+                    detailsGrid.querySelectorAll('.detail-card').forEach(card => card.classList.remove('selected'));
+                    detailCard.classList.add('selected');
+                    noteInput.style.display = 'block';
+                    noteInput.focus();
+                });
+                // Auto-select detail if preselecteddetail is provided and matches.
+                if (preselecteddetail && detail.toLowerCase().includes(preselecteddetail.toLowerCase())) {
+                    detailCard.classList.add('selected');
+                }
+                detailsGrid.appendChild(detailCard);
+            });
+            container.appendChild(detailsGrid);
+            const noteInput = document.createElement('textarea');
+            noteInput.id = 'serviceNoteInput';
+            noteInput.placeholder = 'Enter any additional details regarding the job...';
+            // If an detail was auto-selected via search, show the note input immediately.
+            if (preselecteddetail) {
+                noteInput.style.display = 'block';
+                noteInput.focus();
+            } else {
+                noteInput.style.display = 'none';
+            }
+            noteInput.style.width = '100%';
+            noteInput.style.marginTop = '1rem';
+            noteInput.style.padding = '0.75rem';
+            container.appendChild(noteInput);
+            const addButton = document.createElement('button');
+            addButton.className = 'book-button';
+            addButton.style.marginTop = '1rem';
+            addButton.textContent = 'Add';
+            addButton.addEventListener('click', () => {
+                const selecteddetailElem = detailsGrid.querySelector('.detail-card.selected');
+                if (!selecteddetailElem) {
+                    alert('Please select an detail.');
+                    return;
+                }
+                if (!noteInput.value.trim() && service !== "Furniture Assembly ⏲Hourly Service") {
+                    alert('Please enter job details.');
+                    noteInput.focus();
+                    return;
+                }
+                let finalNotes = noteInput.value.trim();
+                let finalPrice = serviceInfo.price;
+                if (category === "Furniture Fixes & Assembly" && service === "Furniture Assembly ⏲Hourly Service") {
+                    if (state.furnitureItems.length === 0) {
+                        alert('Please add at least one furniture item.');
+                        return;
+                    }
+                    finalNotes += "\nFurniture Items: " + state.furnitureItems.join(", ");
+                    const numItems = state.furnitureItems.length;
+                    const numericPrice = furnitureHourlyRate * numItems;
+                    finalPrice = "$" + numericPrice + "/hour";
+                    clearAllFurnitureItems();
+                }
+                const serviceEntry = {
+                    id: category + "-" + service + "-" + Date.now(),
+                    category: category,
+                    name: service,
+                    price: finalPrice,
+                    icon: serviceInfo.icon,
+                    detail: selecteddetailElem.textContent,
+                    notes: finalNotes
+                };
+                addToCart(serviceEntry);
+                updateSelectedServices();
+                container.style.display = 'none';
+                showCategories();
+            });
+            container.appendChild(addButton);
+            const backButton = document.createElement('button');
+            backButton.className = 'back-button';
+            backButton.style.marginTop = '1rem';
+            backButton.textContent = 'Back';
+            backButton.addEventListener('click', () => {
+                container.style.display = 'none';
+                showCategoryServices(category);
+            });
+            container.appendChild(backButton);
+            container.style.display = 'block';
         }
-        if (!noteInput.value.trim() && service !== "Furniture Assembly ⏲Hourly Service") {
-          alert('Please enter job details.');
-          noteInput.focus();
-          return;
-        }
-        let finalNotes = noteInput.value.trim();
-        let finalPrice = serviceInfo.price;
-        if (category === "Furniture Fixes & Assembly" && service === "Furniture Assembly ⏲Hourly Service") {
-          if (state.furnitureItems.length === 0) {
-            alert('Please add at least one furniture item.');
-            return;
-          }
-          finalNotes += "\nFurniture Items: " + state.furnitureItems.join(", ");
-          const numItems = state.furnitureItems.length;
-          const numericPrice = furnitureHourlyRate * numItems;
-          finalPrice = "$" + numericPrice + "/hour";
-          clearAllFurnitureItems();
-        }
-        const serviceEntry = {
-          id: category + "-" + service + "-" + Date.now(),
-          category: category,
-          name: service,
-          price: finalPrice,
-          icon: serviceInfo.icon,
-          detail: selecteddetailElem.textContent,
-          notes: finalNotes
-        };
-        addToCart(serviceEntry);
-        updateSelectedServices();
-        container.style.display = 'none';
-        showCategories();
-      });
-      container.appendChild(addButton);
-      const backButton = document.createElement('button');
-      backButton.className = 'back-button';
-      backButton.style.marginTop = '1rem';
-      backButton.textContent = 'Back';
-      backButton.addEventListener('click', () => {
-        container.style.display = 'none';
-        showCategoryServices(category);
-      });
-      container.appendChild(backButton);
-      container.style.display = 'block';
-    }
 
-    function updateSelectedServices() {
-      const selectedServicesList = document.getElementById('selectedServicesList');
-      selectedServicesList.innerHTML = '';
-      let total = 0;
-      state.selectedServices.forEach(service => {
-        const priceVal = parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
-        total += priceVal;
-        const div = document.createElement('div');
-        div.className = 'selected-service-item';
-        div.innerHTML = `<div class="selected-service-icon">${service.icon}</div>
+        function updateSelectedServices() {
+            const selectedServicesList = document.getElementById('selectedServicesList');
+            selectedServicesList.innerHTML = '';
+            let total = 0;
+            state.selectedServices.forEach(service => {
+                const priceVal = parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
+                total += priceVal;
+                const div = document.createElement('div');
+                div.className = 'selected-service-item';
+                div.innerHTML = `<div class="selected-service-icon">${service.icon}</div>
                          <div class="selected-service-text">
                            <h4>${service.name}</h4>
                            <div class="selected-service-notes">
@@ -1262,407 +1415,409 @@ body {
                          <button class="remove-service-btn" onclick="removeService('${service.id}')">
                            <i class="fas fa-times"></i>
                          </button>`;
-        selectedServicesList.appendChild(div);
-      });
-      document.getElementById('estimateTotal').style.display = 'flex';
-      document.getElementById('totalAmount').textContent = "$" + total.toFixed(2);
-      document.getElementById('selectedServicesSection').style.display = 'block';
-    }
+                selectedServicesList.appendChild(div);
+            });
+            document.getElementById('estimateTotal').style.display = 'flex';
+            document.getElementById('totalAmount').textContent = "$" + total.toFixed(2);
+            document.getElementById('selectedServicesSection').style.display = 'block';
+        }
 
-    function removeService(id) {
-      state.selectedServices = state.selectedServices.filter(s => s.id !== id);
-      updateSelectedServices();
-      if (state.selectedServices.length === 0) {
-        showCategories();
-      }
-    }
-    // FURNITURE details FUNCTIONS
-    const ikeaFurniture = [{
-        category: "BEKANT",
-        items: ["Desk + Underframe"]
-      },
-      {
-        category: "BESTA",
-        items: ["Single frame, shelves/floor standing", "Single frame, door/drawer, floor standing", "Single frame/wall mounting"]
-      },
-      {
-        category: "BILLY",
-        items: ["Bookcase 1x frame"]
-      },
-      {
-        category: "BJURSTA",
-        items: ["Extendable table"]
-      },
-      {
-        category: "BRIMNES",
-        items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame & storage", "Headboard", "Wardrobe 2x doors", "Wardrobe 3x doors", "Nightstand", "Daybed 2x drawers"]
-      },
-      {
-        category: "BRUSALI",
-        items: ["Bed frame", "Bed + 4 storage boxes", "3 drawer chest", "Nightstand"]
-      },
-      {
-        category: "FINGAL",
-        items: ["Swivel chair"]
-      },
-      {
-        category: "FRIHETEN",
-        items: ["Sofa bed & chaise"]
-      },
-      {
-        category: "GALANT",
-        items: ["2x drawer", "3x drawer", "4x drawer", "Cabinet (sliding doors)"]
-      },
-      {
-        category: "HEMNES",
-        items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "Dresser 8x drawer", "Nightstand", "Daybed & 3 drawers"]
-      },
-      {
-        category: "KALLAX",
-        items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert + 2 drawers", "Insert + door"]
-      },
-      {
-        category: "LACK",
-        items: ["Side table", "Coffee table", "TV Unit"]
-      },
-      {
-        category: "LINNMON ADILS",
-        items: ["Table (table top and four legs)"]
-      },
-      {
-        category: "MALM",
-        items: ["Bed Frame", "Bed Frame + 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"]
-      },
-      {
-        category: "MICKE",
-        items: ["Desk + 1 Drawer", "Desk + Drawers & Storage", "Add-on unit"]
-      },
-      {
-        category: "MORVIK",
-        items: ["Wardrobe"]
-      },
-      {
-        category: "PAX",
-        items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"]
-      },
-      {
-        category: "SODERHAMN",
-        items: ["Sofa one seat section + cover"]
-      },
-      {
-        category: "TRYSIL",
-        items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"]
-      },
-      {
-        category: "OTHER NOT LISTED",
-        items: ["NOT LISTED or UNKNOWN"]
-      }
-    ];
+        function removeService(id) {
+            state.selectedServices = state.selectedServices.filter(s => s.id !== id);
+            updateSelectedServices();
+            if (state.selectedServices.length === 0) {
+                showCategories();
+            }
+        }
+        // FURNITURE details FUNCTIONS
+        const ikeaFurniture = [{
+                category: "BEKANT",
+                items: ["Desk + Underframe"]
+            },
+            {
+                category: "BESTA",
+                items: ["Single frame, shelves/floor standing", "Single frame, door/drawer, floor standing", "Single frame/wall mounting"]
+            },
+            {
+                category: "BILLY",
+                items: ["Bookcase 1x frame"]
+            },
+            {
+                category: "BJURSTA",
+                items: ["Extendable table"]
+            },
+            {
+                category: "BRIMNES",
+                items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame & storage", "Headboard", "Wardrobe 2x doors", "Wardrobe 3x doors", "Nightstand", "Daybed 2x drawers"]
+            },
+            {
+                category: "BRUSALI",
+                items: ["Bed frame", "Bed + 4 storage boxes", "3 drawer chest", "Nightstand"]
+            },
+            {
+                category: "FINGAL",
+                items: ["Swivel chair"]
+            },
+            {
+                category: "FRIHETEN",
+                items: ["Sofa bed & chaise"]
+            },
+            {
+                category: "GALANT",
+                items: ["2x drawer", "3x drawer", "4x drawer", "Cabinet (sliding doors)"]
+            },
+            {
+                category: "HEMNES",
+                items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "Dresser 8x drawer", "Nightstand", "Daybed & 3 drawers"]
+            },
+            {
+                category: "KALLAX",
+                items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert + 2 drawers", "Insert + door"]
+            },
+            {
+                category: "LACK",
+                items: ["Side table", "Coffee table", "TV Unit"]
+            },
+            {
+                category: "LINNMON ADILS",
+                items: ["Table (table top and four legs)"]
+            },
+            {
+                category: "MALM",
+                items: ["Bed Frame", "Bed Frame + 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"]
+            },
+            {
+                category: "MICKE",
+                items: ["Desk + 1 Drawer", "Desk + Drawers & Storage", "Add-on unit"]
+            },
+            {
+                category: "MORVIK",
+                items: ["Wardrobe"]
+            },
+            {
+                category: "PAX",
+                items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"]
+            },
+            {
+                category: "SODERHAMN",
+                items: ["Sofa one seat section + cover"]
+            },
+            {
+                category: "TRYSIL",
+                items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"]
+            },
+            {
+                category: "OTHER NOT LISTED",
+                items: ["NOT LISTED or UNKNOWN"]
+            }
+        ];
 
-    function initFurnituredetails() {
-      const furnitureSelect = document.getElementById('furniture-select');
-      furnitureSelect.innerHTML = '<detail value="">Select Here</detail>';
-      // For now, both IKEA and generic use the same list. (You can adapt this later.)
-      const type = document.querySelector('input[name="furnitureType"]:checked').value;
-      const list = ikeaFurniture;
-      list.forEach(detail => {
-        let optgroup = document.createElement('optgroup');
-        optgroup.label = detail.category;
-        detail.items.forEach(item => {
-          let opt = document.createElement('detail');
-          opt.value = item;
-          opt.textContent = item;
-          optgroup.appendChild(opt);
-        });
-        furnitureSelect.appendChild(optgroup);
-      });
-    }
+        function initFurnituredetails() {
+            const furnitureSelect = document.getElementById('furniture-select');
+            furnitureSelect.innerHTML = '<detail value="">Select Here</detail>';
+            // For now, both IKEA and generic use the same list. (You can adapt this later.)
+            const type = document.querySelector('input[name="furnitureType"]:checked').value;
+            const list = ikeaFurniture;
+            list.forEach(detail => {
+                let optgroup = document.createElement('optgroup');
+                optgroup.label = detail.category;
+                detail.items.forEach(item => {
+                    let opt = document.createElement('detail');
+                    opt.value = item;
+                    opt.textContent = item;
+                    optgroup.appendChild(opt);
+                });
+                furnitureSelect.appendChild(optgroup);
+            });
+        }
 
-    function addFurnitureItem() {
-      const furnitureSelect = document.getElementById('furniture-select');
-      const selectedItem = furnitureSelect.value;
-      if (!selectedItem) return;
-      const selectedFurnitureList = document.getElementById('selectedFurnitureList');
-      const li = document.createElement('li');
-      li.innerHTML = `<span>${selectedItem}</span>
+        function addFurnitureItem() {
+            const furnitureSelect = document.getElementById('furniture-select');
+            const selectedItem = furnitureSelect.value;
+            if (!selectedItem) return;
+            const selectedFurnitureList = document.getElementById('selectedFurnitureList');
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${selectedItem}</span>
                       <button class="remove-item" onclick="this.parentElement.remove(); removeFurnitureItem('${selectedItem}');">
                         <i class="fas fa-times"></i>
                       </button>`;
-      selectedFurnitureList.appendChild(li);
-      state.furnitureItems.push(selectedItem);
-      furnitureSelect.value = "";
-    }
+            selectedFurnitureList.appendChild(li);
+            state.furnitureItems.push(selectedItem);
+            furnitureSelect.value = "";
+        }
 
-    function removeFurnitureItem(item) {
-      state.furnitureItems = state.furnitureItems.filter(i => i !== item);
-    }
+        function removeFurnitureItem(item) {
+            state.furnitureItems = state.furnitureItems.filter(i => i !== item);
+        }
 
-    function clearAllFurnitureItems() {
-      document.getElementById('selectedFurnitureList').innerHTML = "";
-      state.furnitureItems = [];
-    }
+        function clearAllFurnitureItems() {
+            document.getElementById('selectedFurnitureList').innerHTML = "";
+            state.furnitureItems = [];
+        }
 
-    function bookServices() {
-      if (state.selectedServices.length === 0) {
-        alert("No services selected!");
-        return;
-      }
-      const appointmentDate = document.getElementById('appointmentDate').value;
-      const appointmentTime = document.getElementById('appointmentTime').value;
-      if (!appointmentDate || !appointmentTime) {
-        alert("Please select an appointment date and time.");
-        return;
-      }
-      alert(`Booking confirmed for ${appointmentDate} at ${appointmentTime}.
+        function bookServices() {
+            if (state.selectedServices.length === 0) {
+                alert("No services selected!");
+                return;
+            }
+            const appointmentDate = document.getElementById('appointmentDate').value;
+            const appointmentTime = document.getElementById('appointmentTime').value;
+            if (!appointmentDate || !appointmentTime) {
+                alert("Please select an appointment date and time.");
+                return;
+            }
+            alert(`Booking confirmed for ${appointmentDate} at ${appointmentTime}.
 Estimated Total: ${document.getElementById('totalAmount').textContent}
 Thank you!`);
-      clearAllServices();
-    }
+            clearAllServices();
+        }
 
-    function updateCartModal() {
-      const modalList = document.getElementById('modalServiceList');
-      modalList.innerHTML = "";
-      let total = 0;
-      state.selectedServices.forEach(service => {
-        const div = document.createElement('div');
-        div.className = 'service-item';
-        div.innerHTML = `
+        function updateCartModal() {
+            const modalList = document.getElementById('modalServiceList');
+            modalList.innerHTML = "";
+            let total = 0;
+            state.selectedServices.forEach(service => {
+                const div = document.createElement('div');
+                div.className = 'service-item';
+                div.innerHTML = `
           <span>${service.name}</span>
           <span class="service-price">${service.price}</span>
           <button class="remove-btn" onclick="removeService('${service.id}')">✕</button>
         `;
-        modalList.appendChild(div);
-        total += parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
-      });
-      document.getElementById('serviceCount').textContent = state.selectedServices.length;
-      document.getElementById('modalTotal').textContent = "$" + total.toFixed(2);
-    }
+                modalList.appendChild(div);
+                total += parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
+            });
+            document.getElementById('serviceCount').textContent = state.selectedServices.length;
+            document.getElementById('modalTotal').textContent = "$" + total.toFixed(2);
+        }
 
-    function toggleModal() {
-      const modalOverlay = document.getElementById('modalOverlay');
-      if (state.modalVisible) {
-        modalOverlay.style.display = 'none';
-      } else {
-        updateCartModal();
-        modalOverlay.style.display = 'block';
-      }
-      state.modalVisible = !state.modalVisible;
-    }
+        function toggleModal() {
+            const modalOverlay = document.getElementById('modalOverlay');
+            if (state.modalVisible) {
+                modalOverlay.style.display = 'none';
+            } else {
+                updateCartModal();
+                modalOverlay.style.display = 'block';
+            }
+            state.modalVisible = !state.modalVisible;
+        }
 
-    function closeModal() {
-      document.getElementById('modalOverlay').style.display = 'none';
-      state.modalVisible = false;
-    }
-    document.getElementById('cartBtn').addEventListener('click', toggleModal);
-    document.getElementById('closeModal').addEventListener('click', closeModal);
-    document.addEventListener('DOMContentLoaded', () => {
-      if (document.getElementById('furniture-select')) {
-        initFurnituredetails();
-      }
-      const appointmentDateInput = document.getElementById('appointmentDate');
-      if (appointmentDateInput) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        appointmentDateInput.min = tomorrow.toISOString().split('T')[0];
-      }
-      document.querySelectorAll('.category-tile').forEach(tile => {
-        tile.addEventListener('click', function() {
-          const category = this.getAttribute('data-category');
-          this.classList.add('tap-animate');
-          setTimeout(() => this.classList.remove('tap-animate'), 300);
-          showCategoryServices(category);
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            state.modalVisible = false;
+        }
+        document.getElementById('cartBtn').addEventListener('click', toggleModal);
+        document.getElementById('closeModal').addEventListener('click', closeModal);
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.getElementById('furniture-select')) {
+                initFurnituredetails();
+            }
+            const appointmentDateInput = document.getElementById('appointmentDate');
+            if (appointmentDateInput) {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                appointmentDateInput.min = tomorrow.toISOString().split('T')[0];
+            }
+            document.querySelectorAll('.category-tile').forEach(tile => {
+                tile.addEventListener('click', function() {
+                    const category = this.getAttribute('data-category');
+                    this.classList.add('tap-animate');
+                    setTimeout(() => this.classList.remove('tap-animate'), 300);
+                    showCategoryServices(category);
+                });
+            });
         });
-      });
-    });
-    // Expose functions to global scope.
-    window.showCategories = showCategories;
-    window.showCategoryServices = showCategoryServices;
-    window.showServicedetails = showServicedetails;
-    window.removeService = removeService;
-    window.addFurnitureItem = addFurnitureItem;
-    window.clearAllFurnitureItems = clearAllFurnitureItems;
-    window.bookServices = bookServices;
-    window.updateCartModal = updateCartModal;
-    window.toggleModal = toggleModal;
-    window.closeModal = closeModal;
-    window.initFurnituredetails = initFurnituredetails;
-    window.updateSelectedServices = updateSelectedServices;
-    window.clearAllServices = clearAllServices;
-    // Service Data
-    window.serviceData = {
-      "Minor Home Repairs": {
-        "Appliances ⏲Hourly Service": {
-          price: "$70/hour",
-          description: "⏲Hourly rate for appliance maintenance, repair, assessment. Excludes specialized service.",
-          icon: "🎛️",
-          details: ["Maintenance", "Repair", "Assessment"]
-        },
-        "Door Handles & Locks Installation": {
-          price: "$70",
-          description: "Flat-rate for door knob, lock installation. Hardware provided by client.",
-          icon: "🔒",
-          details: ["Standard door", "Security lock", "Smart lock"]
-        },
-        "Furniture Repair ⏲Hourly Service": {
-          price: "$70/hour",
-          description: "⏲Hourly charge for repairing damaged furniture.",
-          icon: "🪑",
-          details: ["Wood furniture", "Upholstery", "Metal furniture"]
-        },
-        "Hollow Door Repair": {
-          price: "$125",
-          description: "Flat-rate patch & paint for interior door damage. Materials included.",
-          icon: "🚪",
-          details: ["Patch & paint", "Hinge repair", "Frame adjustment"]
-        },
-        "Wall Repair - Patch & Paint": {
-          price: "$70",
-          description: "Flat-rate interior wall patch & paint repairs. Materials included.",
-          icon: "🧱",
-          details: ["Small holes", "Large holes", "Cracks"]
-        }
-      },
-      "Wall Mounting": {
-        "Curtains/Drapes w. Single Rod Installation": {
-          price: "$50",
-          description: "Single-rod installation of standard curtains or drapes.",
-          icon: "🪟",
-          details: ["Standard rod", "Tension rod", "Decorative rod"]
-        },
-        "Frame/Shelf Mounting ⏲Hourly Service": {
-          price: "$60/hour",
-          description: "⏲Hourly service for wall mounting frames and shelves.",
-          icon: "📚",
-          details: ["Picture frames", "Shelves", "Wall art"]
-        },
-        "TV Mounting (Under 60\") + Concealed Cables": {
-          price: "$150",
-          description: "Flat-rate for TV mounting under 60\" with concealed cables.",
-          icon: "📺",
-          details: ["Drywall", "Concrete", "Brick"]
-        },
-        "TV Mounting (Under 60\") standard": {
-          price: "$60",
-          description: "Flat-rate for TV mounting under 60\". Additional hardware costs may apply.",
-          icon: "📺",
-          details: ["Basic mounting", "Tilt mount", "Swivel mount"]
-        }
-      },
-      "Computer Repairs": {
-        "Data Transfer / Data Back-Up": {
-          price: "$99",
-          description: "Copy data or create backups. Excludes additional hardware.",
-          icon: "💾",
-          details: ["External drive", "Cloud backup", "Network transfer"]
-        },
-        "Part Replacement/Upgrade": {
-          price: "$125",
-          description: "Replace/upgrade PC hardware parts. Client-provided or expensed parts.",
-          icon: "💻",
-          details: ["RAM", "SSD", "Graphics card"]
-        },
-        "PC Diagnostic Service": {
-          price: "$75",
-          description: "Diagnose hardware or software issues with PC. Fee credited toward repair services.",
-          icon: "🔍",
-          details: ["Hardware", "Software", "Performance"]
-        },
-        "Software Install/Update/Removal": {
-          price: "$50",
-          description: "Install, update, or remove up to 4 software applications.",
-          icon: "📀",
-          details: ["Operating system", "Applications", "Drivers"]
-        },
-        "System Restore": {
-          price: "$125",
-          description: "Restore PC back to an earlier version of Windows.",
-          icon: "⏮️",
-          details: ["Factory reset", "Recovery partition", "Backup restore"]
-        },
-        "Virus/Malware Removal": {
-          price: "$125",
-          description: "Remove malicious or bothersome programs while preserving OS.",
-          icon: "🛡️",
-          details: ["Scan & remove", "System cleanup", "Prevention setup"]
-        }
-      },
-      "Electrical Help": {
-        "Light Fixture Swap": {
-          price: "$60",
-          description: "Flat-rate to replace existing light fixture (excluding ceiling fans).",
-          icon: "💡",
-          details: ["Ceiling light", "Wall sconce", "Pendant light"]
-        }
-      },
-      "Furniture Fixes & Assembly": {
-        "Furniture Assembly ⏲Hourly Service": {
-          price: "$40/hour",
-          description: "⏲Hourly charge for assembling small furniture units.",
-          icon: "🛋️",
-          details: ["IKEA furniture", "Office furniture", "Outdoor furniture"]
-        },
-        "Furniture Repair ⏲Hourly Service": {
-          price: "$70/hour",
-          description: "⏲Hourly charge for repairing damaged furniture.",
-          icon: "🔨",
-          details: ["Wood repair", "Upholstery", "Structural repair"]
-        }
-      },
-      "Plumbing Help": {
-        "Bidet Accessory Install/Removal": {
-          price: "$70",
-          description: "Flat-rate for bidet attachment install/removal. Excludes specialized toilets.",
-          icon: "🚽",
-          details: ["Standard bidet", "Smart bidet", "Add-on"]
-        },
-        "Fixture Swap (Cosmetic)": {
-          price: "$70",
-          description: "Flat-rate for swapping sink faucet, shower head, or other cosmetic fixture changes.",
-          icon: "🚰",
-          details: ["Faucet", "Shower head", "Drain cover"]
-        },
-        "Leak Under Sink Repair": {
-          price: "$75",
-          description: "Flat-rate repair for minor leak under sink.",
-          icon: "💧",
-          details: ["Pipe leak", "Drain leak", "Supply line"]
-        },
-        "Unclog Sink/Shower/Toilet (Minor)": {
-          price: "$70",
-          description: "Flat-rate for non-major clog removal. Major work billed per hour.",
-          icon: "🪠",
-          details: ["Plunger", "Drain snake", "Chemical treatment"]
-        }
-      }
-    };
-    // Add touch event listeners
-    document.querySelectorAll('.category-tile').forEach(tile => {
-      tile.addEventListener('touchstart', function() {
-        this.classList.add('tap-animate');
-      });
-      tile.addEventListener('touchend', function() {
-        setTimeout(() => this.classList.remove('tap-animate'), 300);
-      });
-    });
-    // Viewport height fix for mobile
-    function setVH() {
-      let vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    }
-    setVH();
-    window.addEventListener('resize', setVH);
-    // Prevent zoom on input focus
-    document.querySelectorAll('input, select, textarea').forEach(input => {
-      input.addEventListener('focus', () => {
-        window.requestAnimationFrame(() => {
-          input.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-          });
+        // Expose functions to global scope.
+        window.showCategories = showCategories;
+        window.showCategoryServices = showCategoryServices;
+        window.showServicedetails = showServicedetails;
+        window.removeService = removeService;
+        window.addFurnitureItem = addFurnitureItem;
+        window.clearAllFurnitureItems = clearAllFurnitureItems;
+        window.bookServices = bookServices;
+        window.updateCartModal = updateCartModal;
+        window.toggleModal = toggleModal;
+        window.closeModal = closeModal;
+        window.initFurnituredetails = initFurnituredetails;
+        window.updateSelectedServices = updateSelectedServices;
+        window.clearAllServices = clearAllServices;
+        // Service Data
+        window.serviceData = {
+            "Minor Home Repairs": {
+                "Appliances ⏲Hourly Service": {
+                    price: "$70/hour",
+                    description: "⏲Hourly rate for appliance maintenance, repair, assessment. Excludes specialized service.",
+                    icon: "🎛️",
+                    details: ["Maintenance", "Repair", "Assessment"]
+                },
+                "Door Handles & Locks Installation": {
+                    price: "$70",
+                    description: "Flat-rate for door knob, lock installation. Hardware provided by client.",
+                    icon: "🔒",
+                    details: ["Standard door", "Security lock", "Smart lock"]
+                },
+                "Furniture Repair ⏲Hourly Service": {
+                    price: "$70/hour",
+                    description: "⏲Hourly charge for repairing damaged furniture.",
+                    icon: "🪑",
+                    details: ["Wood furniture", "Upholstery", "Metal furniture"]
+                },
+                "Hollow Door Repair": {
+                    price: "$125",
+                    description: "Flat-rate patch & paint for interior door damage. Materials included.",
+                    icon: "🚪",
+                    details: ["Patch & paint", "Hinge repair", "Frame adjustment"]
+                },
+                "Wall Repair - Patch & Paint": {
+                    price: "$70",
+                    description: "Flat-rate interior wall patch & paint repairs. Materials included.",
+                    icon: "🧱",
+                    details: ["Small holes", "Large holes", "Cracks"]
+                }
+            },
+            "Wall Mounting": {
+                "Curtains/Drapes w. Single Rod Installation": {
+                    price: "$50",
+                    description: "Single-rod installation of standard curtains or drapes.",
+                    icon: "🪟",
+                    details: ["Standard rod", "Tension rod", "Decorative rod"]
+                },
+                "Frame/Shelf Mounting ⏲Hourly Service": {
+                    price: "$60/hour",
+                    description: "⏲Hourly service for wall mounting frames and shelves.",
+                    icon: "📚",
+                    details: ["Picture frames", "Shelves", "Wall art"]
+                },
+                "TV Mounting (Under 60\") + Concealed Cables": {
+                    price: "$150",
+                    description: "Flat-rate for TV mounting under 60\" with concealed cables.",
+                    icon: "📺",
+                    details: ["Drywall", "Concrete", "Brick"]
+                },
+                "TV Mounting (Under 60\") standard": {
+                    price: "$60",
+                    description: "Flat-rate for TV mounting under 60\". Additional hardware costs may apply.",
+                    icon: "📺",
+                    details: ["Basic mounting", "Tilt mount", "Swivel mount"]
+                }
+            },
+            "Computer Repairs": {
+                "Data Transfer / Data Back-Up": {
+                    price: "$99",
+                    description: "Copy data or create backups. Excludes additional hardware.",
+                    icon: "💾",
+                    details: ["External drive", "Cloud backup", "Network transfer"]
+                },
+                "Part Replacement/Upgrade": {
+                    price: "$125",
+                    description: "Replace/upgrade PC hardware parts. Client-provided or expensed parts.",
+                    icon: "💻",
+                    details: ["RAM", "SSD", "Graphics card"]
+                },
+                "PC Diagnostic Service": {
+                    price: "$75",
+                    description: "Diagnose hardware or software issues with PC. Fee credited toward repair services.",
+                    icon: "🔍",
+                    details: ["Hardware", "Software", "Performance"]
+                },
+                "Software Install/Update/Removal": {
+                    price: "$50",
+                    description: "Install, update, or remove up to 4 software applications.",
+                    icon: "📀",
+                    details: ["Operating system", "Applications", "Drivers"]
+                },
+                "System Restore": {
+                    price: "$125",
+                    description: "Restore PC back to an earlier version of Windows.",
+                    icon: "⏮️",
+                    details: ["Factory reset", "Recovery partition", "Backup restore"]
+                },
+                "Virus/Malware Removal": {
+                    price: "$125",
+                    description: "Remove malicious or bothersome programs while preserving OS.",
+                    icon: "🛡️",
+                    details: ["Scan & remove", "System cleanup", "Prevention setup"]
+                }
+            },
+            "Electrical Help": {
+                "Light Fixture Swap": {
+                    price: "$60",
+                    description: "Flat-rate to replace existing light fixture (excluding ceiling fans).",
+                    icon: "💡",
+                    details: ["Ceiling light", "Wall sconce", "Pendant light"]
+                }
+            },
+            "Furniture Fixes & Assembly": {
+                "Furniture Assembly ⏲Hourly Service": {
+                    price: "$40/hour",
+                    description: "⏲Hourly charge for assembling small furniture units.",
+                    icon: "🛋️",
+                    details: ["IKEA furniture", "Office furniture", "Outdoor furniture"]
+                },
+                "Furniture Repair ⏲Hourly Service": {
+                    price: "$70/hour",
+                    description: "⏲Hourly charge for repairing damaged furniture.",
+                    icon: "🔨",
+                    details: ["Wood repair", "Upholstery", "Structural repair"]
+                }
+            },
+            "Plumbing Help": {
+                "Bidet Accessory Install/Removal": {
+                    price: "$70",
+                    description: "Flat-rate for bidet attachment install/removal. Excludes specialized toilets.",
+                    icon: "🚽",
+                    details: ["Standard bidet", "Smart bidet", "Add-on"]
+                },
+                "Fixture Swap (Cosmetic)": {
+                    price: "$70",
+                    description: "Flat-rate for swapping sink faucet, shower head, or other cosmetic fixture changes.",
+                    icon: "🚰",
+                    details: ["Faucet", "Shower head", "Drain cover"]
+                },
+                "Leak Under Sink Repair": {
+                    price: "$75",
+                    description: "Flat-rate repair for minor leak under sink.",
+                    icon: "💧",
+                    details: ["Pipe leak", "Drain leak", "Supply line"]
+                },
+                "Unclog Sink/Shower/Toilet (Minor)": {
+                    price: "$70",
+                    description: "Flat-rate for non-major clog removal. Major work billed per hour.",
+                    icon: "🪠",
+                    details: ["Plunger", "Drain snake", "Chemical treatment"]
+                }
+            }
+        };
+        // Add touch event listeners
+        document.querySelectorAll('.category-tile').forEach(tile => {
+            tile.addEventListener('touchstart', function() {
+                this.classList.add('tap-animate');
+            });
+            tile.addEventListener('touchend', function() {
+                setTimeout(() => this.classList.remove('tap-animate'), 300);
+            });
         });
-      });
-    });
-  </script>
+        // Viewport height fix for mobile
+        function setVH() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        setVH();
+        window.addEventListener('resize', setVH);
+        // Prevent zoom on input focus
+        document.querySelectorAll('input, select, textarea').forEach(input => {
+            input.addEventListener('focus', () => {
+                window.requestAnimationFrame(() => {
+                    input.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                });
+            });
+        });
+    </script>
 
 
-</body></html>
+</body>
+
+</html>
