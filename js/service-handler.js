@@ -168,10 +168,14 @@
                                     serviceContent.style.display = 'flex';
                                     serviceContent.style.justifyContent = 'space-between';
                                     serviceContent.style.alignItems = 'center';
-                                    serviceContent.innerHTML = `
-                <span>${serviceIcon} ${service}</span>
-                <button class="remove-service">❌</button>
-            `;
+                                    const serviceText = document.createElement('span');
+                                    serviceText.textContent = `${service}`;
+                                    serviceText.insertAdjacentHTML('afterbegin', `${serviceIcon} `);
+                                    const removeButton = document.createElement('button');
+                                    removeButton.className = 'remove-service';
+                                    removeButton.textContent = '❌';
+                                    serviceContent.appendChild(serviceText);
+                                    serviceContent.appendChild(removeButton);
                                     // Nested furniture list (only for Furniture Fixes)
                                     if (service.startsWith('Furniture Fixes') && furnitureItems[service]?.length > 0) {
                                         const furnitureList = document.createElement('ul');
