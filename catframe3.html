@@ -965,8 +965,13 @@
                                             let mainService = (serviceParts.length > 1) ? serviceParts[1] : serviceParts[0];
                                             let serviceIcon = serviceIcons[mainService] || '🔧';
 
-                                            listItem.innerHTML = '<span>' + serviceIcon + ' ' + service + '</span>' +
-                                                '<button class="remove-service">❌</button>';
+                                            let span = document.createElement('span');
+                                            span.textContent = serviceIcon + ' ' + service;
+                                            let removeButton = document.createElement('button');
+                                            removeButton.className = 'remove-service';
+                                            removeButton.textContent = '❌';
+                                            listItem.appendChild(span);
+                                            listItem.appendChild(removeButton);
 
                                             // If this is a Furniture Fixes service with associated furniture items, list them.
                                             if (service.indexOf('Furniture Fixes') === 0 && furnitureItems[service] && furnitureItems[service].length > 0) {
@@ -974,8 +979,13 @@
                                                 furnitureList.className = 'nested-furniture-list';
                                                 furnitureItems[service].forEach(function(item) {
                                                     let furnitureItem = document.createElement('li');
-                                                    furnitureItem.innerHTML = '<span>' + item + '</span>' +
-                                                        '<button class="remove-furniture">❌</button>';
+                                                    let span = document.createElement('span');
+                                                    span.textContent = item;
+                                                    let removeButton = document.createElement('button');
+                                                    removeButton.className = 'remove-furniture';
+                                                    removeButton.textContent = '❌';
+                                                    furnitureItem.appendChild(span);
+                                                    furnitureItem.appendChild(removeButton);
                                                     furnitureItem.querySelector('.remove-furniture').addEventListener('click', function() {
                                                         furnitureItems[service] = furnitureItems[service].filter(function(i) {
                                                             return i !== item;
