@@ -1358,10 +1358,17 @@
       if (!selectedItem) return;
       const selectedFurnitureList = document.getElementById('selectedFurnitureList');
       const li = document.createElement('li');
-      li.innerHTML = `<span>${selectedItem}</span>
-                      <button class="remove-item" onclick="this.parentElement.remove(); removeFurnitureItem('${selectedItem}');">
-                        <i class="fas fa-times"></i>
-                      </button>`;
+      const span = document.createElement('span');
+      span.textContent = selectedItem;
+      const button = document.createElement('button');
+      button.className = "remove-item";
+      button.innerHTML = '<i class="fas fa-times"></i>';
+      button.onclick = function () {
+        this.parentElement.remove();
+        removeFurnitureItem(selectedItem);
+      };
+      li.appendChild(span);
+      li.appendChild(button);
       selectedFurnitureList.appendChild(li);
       state.furnitureItems.push(selectedItem);
       furnitureSelect.value = "";
