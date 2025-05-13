@@ -1259,8 +1259,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 let mainService = (serviceParts.length > 1) ? serviceParts[1] : serviceParts[0];
                 let serviceIcon = serviceIcons[mainService] || '🔧';
 
-                listItem.innerHTML = '<span>' + serviceIcon + ' ' + service + '</span>' +
-                                     '<button class="remove-service">❌</button>';
+                let span = document.createElement('span');
+                span.textContent = service; // Safely set the service text
+                span.insertAdjacentText('afterbegin', serviceIcon + ' '); // Prepend the trusted serviceIcon
+
+                let removeButton = document.createElement('button');
+                removeButton.className = 'remove-service';
+                removeButton.textContent = '❌'; // Safely set the button text
+
+                listItem.appendChild(span);
+                listItem.appendChild(removeButton);
 
                 // If this is a Furniture Fixes service with associated furniture items, list them.
                 if (service.indexOf('Furniture Fixes') === 0 && furnitureItems[service] && furnitureItems[service].length > 0) {
