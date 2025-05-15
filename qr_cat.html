@@ -2305,67 +2305,89 @@
                     document.getElementById('servicedetailsContainer').style.display = 'none';
                     document.getElementById('selectedServicesSection').style.display = 'none';
                 }
+function showCategoryServices(category) {
+    // Hide the categories grid
+    document.getElementById('categories-grid').style.display = 'none';
 
-                    function showCategoryServices(category) {
-                    // Hide the categories grid
-                    document.getElementById('categories-grid').style.display = 'none';
-                    const section = document.getElementById('selectedSection');
-                    section.innerHTML = ""; // Clear previous content
-                
-                    // Heading
-                    const h3 = document.createElement("h3");
-                    h3.textContent = `${category} Services`;
-                    section.appendChild(h3);
-                
-                    // Service grid
-                    const grid = document.createElement('div');
-                    grid.className = 'service-selection-grid';
-                
-                    // Defensive: Check if serviceData and category exist
-                    if (!serviceData[category]) {
-                        const err = document.createElement('p');
-                        err.textContent = "No services found for this category.";
-                        section.appendChild(err);
-                        return;
-                    }
-                
-                    Object.keys(serviceData[category]).forEach(service => {
-                        const info = serviceData[category][service];
-                        const card = document.createElement('div');
-                        card.className = 'service-selection-card';
-                
-                        // Icon: if info.icon is plain text or a safe emoji, use textContent
-                        // If it's SVG/HTML, you must sanitize or validate it before using innerHTML
-                        const iconDiv = document.createElement('div');
-                        iconDiv.className = 'service-selection-icon';
-                        // If info.icon is a string like "🛠️", use textContent:
-                        iconDiv.textContent = info.icon;
-                
-                        // If you must support SVG/HTML icons, use DOMPurify:
-                        // iconDiv.innerHTML = DOMPurify.sanitize(info.icon);
-                
-                        const h4 = document.createElement('h4');
-                        h4.textContent = service;
-                
-                        const p = document.createElement('p');
-                        p.textContent = info.description;
-                
-                        const priceDiv = document.createElement('div');
-                        priceDiv.className = 'service-price';
-                        priceDiv.textContent = info.price;
-                
-                        card.appendChild(iconDiv);
-                        card.appendChild(h4);
-                        card.appendChild(p);
-                        card.appendChild(priceDiv);
-                
-                        card.addEventListener('click', () => {
-                            showServicedetails(category, service);
-                        });
-                        grid.appendChild(card);
-                    });
-                
-                    section.appendChild(grid);
+    // Get the section to update
+    const section = document.getElementById('selectedSection');
+    section.innerHTML = ""; // Clear previous content
+
+    // Add the category heading
+    const h3 = document.createElement("h3");
+    h3.textContent = category + " Services";
+    section.appendChild(h3);
+
+    // Build the service grid
+    const grid = document.createElement('div');
+    grid.className = 'service-selection-grid';
+
+    // Defensive: Check if category exists
+    if (!serviceData[category]) {
+        const err = document.createElement('p');
+        err.textContent = "No services found for this category.";
+        section.appendChild(err);
+        return;
+    }
+
+    // Create a card for each service in this category
+    Object.keys(serviceData[category]).forEach(service => {
+        const info = serviceData[category][service];
+        const card = document.createElement('div');
+        card.className = 'service-selection-card';
+
+        // Icon (emoji, safe as text)
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'service-selection-icon';
+        iconDiv.textContent = info.icon;
+
+        // Service name
+        const h4 = document.createElement('h4');
+        h4.textContent = service;
+
+        // Description
+        const p = document.createElement('p');
+        p.textContent = info.description;
+
+        // Price
+        const priceDiv = document.createElement('div');
+        priceDiv.className = 'service-price';
+        priceDiv.textContent = info.price;
+
+        // Assemble the card
+        card.appendChild(iconDiv);
+        card.appendChild(h4);
+        card.appendChild(p);
+        card.appendChild(priceDiv);
+
+        // Add click event to show service details
+        card.addEventListener('click', () => {
+            showServicedetails(category, service);
+        });
+
+        grid.appendChild(card);
+    });
+
+    section.appendChild(grid);
+
+    // Back button
+    const backBtn = document.createElement('button');
+    backBtn.className = 'back-button';
+    backBtn.textContent = 'Back to Categories';
+    backBtn.onclick = showCategories;
+    section.appendChild(backBtn);
+
+    // Furniture details toggle
+    if (category === "Furniture Fixes & Assembly") {
+        document.getElementById('furnituredetailsSection').style.display = 'block';
+        initFurnituredetails();
+    } else {
+        document.getElementById('furnituredetailsSection').style.display = 'none';
+    }
+    document.getElementById('serviceSelectionContainer').style.display = 'block';
+    document.getElementById('servicedetailsContainer').style.display = 'none';
+}
+
                 
                     // Back button
                     const backBtn = document.createElement('button');
