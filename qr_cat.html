@@ -2,2409 +2,2427 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>BookTOM</title>
-  <meta name="description" content="" />
-  <meta property="og:title" content="Tom Kongerslev" />
-  <meta property="og:type" content="website" />
-  <meta property="og:description" content="BookTom" />
-  <meta property="og:image" content="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" />
-  <link id="favicon" rel="icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon" />
-  <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/tomshandylogo_newest.webp?raw=true" as="image" />
-  <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" as="image" />
-  <link rel="preload" href="https://tommichael88.github.io/booktomnyc/js/marquee.js" as="script" />
-  <link rel="shortcut icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon" />
-  <link rel="apple-touch-icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" />
-  <link rel="stylesheet" href="https://tommichael88.github.io/booktomnyc/External/styles.css" />
-  <style>
-    /* Variables */
-    :root {
-      --bg-dark: #121212;
-      --bg-card: #1e1e1e;
-      --bg-card-hover: #2a2a2a;
-      --primary: #474747;
-      --primary-hover: #ffffff;
-      --text-primary: #f5f5f5;
-      --text-secondary: #c0c0c0;
-      --accent-light: rgba(250, 0, 0, 1);
-      --accent: rgba(250, 0, 0, 1);
-      --selected-bg: rgba(250, 0, 0, 0.1);
-      --border-radius: 8px;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-primary);
-      padding: 0;
-      min-height: 100vh;
-    }
-
-    .pg_background {
-      background-image: url(https://github.com/tommichael88/booktomnyc/blob/main/images/background_16b.jpg?raw=true);
-      background-size: cover;
-      background-attachment: fixed;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: -1;
-    }
-
-    .fab-container {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 9999
-    }
-
-    .fab {
-      opacity: 45%;
-      background-color: transparent;
-      border: none;
-      outline: 0;
-      cursor: pointer;
-      transition: opacity .3s ease
-    }
-
-    .fab img {
-      width: 40px;
-      height: 40px
-    }
-
-    .fab:hover {
-      opacity: 100%
-    }
-
-    .contactModal {
-      display: none;
-      position: fixed;
-      z-index: 2;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(1, 1, 1, .45)
-    }
-
-    .contactModal-content {
-      background-color: rgba(1, 0, 0, .75);
-      color: silver;
-      margin: 10%;
-      padding: 20px;
-      border-radius: 10px;
-      width: 80%;
-      max-width: 600px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, .2);
-      animation: fadeIn .3s ease
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0
-      }
-
-      to {
-        opacity: 1
-      }
-    }
-
-    .contactModalClose {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: color .3s ease
-    }
-
-    .contactModalClose:hover {
-      color: #fff
-    }
-
-    .contactModal-actions {
-      display: flex;
-      justify-content: space-around;
-      align-items: center
-    }
-
-    .iconImage {
-      width: 50px;
-      height: 50px;
-      object-fit: contain
-    }
-
-    .contact-option-btn {
-      display: inline-block;
-      width: 50%;
-      padding: 10px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 10px;
-      font-size: 8px;
-      cursor: pointer;
-      transition: background-color .3s ease
-    }
-
-    .contact-option-btn:hover {
-      background-color: #e0e0e0
-    }
-
-    .container {
-      margin: 50px auto;
-      padding: 20px;
-      background-color: #fff;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, .1);
-      box-sizing: border-box
-    }
-
-    /* Navigation bar (kept from your previous working version) */
-    .service-navbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(30, 30, 30, 0.95);
-      backdrop-filter: blur(8px);
-      padding: 0.5rem 1rem;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      border-bottom: 1px solid rgba(222, 0, 0, 0.9);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    .search-nav-container {
-      display: flex;
-      align-items: center;
-      margin-left: 1rem;
-      margin-right: auto;
-      position: relative;
-    }
-
-    .search-btn {
-      background: none;
-      border: none;
-      color: var(--text-primary);
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-    }
-
-    .search-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: scale(1.1);
-    }
-
-    .search-input {
-      width: 250px;
-      padding: 0.75rem 1rem;
-      background: var(--bg-card);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 25px;
-      color: var(--text-primary);
-      font-size: 0.95rem;
-      transition: all 0.3s ease;
-    }
-
-    @media (max-width: 768px) {
-      .search-input {
-        width: calc(100vw - 120px);
-      }
-    }
-
-    .cart-btn {
-      background: none;
-      border: none;
-      border-radius: 50%;
-      width: 44px;
-      height: 44px;
-      position: relative;
-      box-shadow: 0 4px 15px rgba(222, 0, 0, 0.3);
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .cart-count {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      background: white;
-      color: #de0000;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    /* SEARCH RESULTS */
-    #searchResults {
-      display: none;
-      position: absolute;
-      top: 70px;
-      left: 2rem;
-      right: 2rem;
-      background: var(--bg-card);
-      border: 1px solid var(--accent);
-      border-radius: 4px;
-      z-index: 1100;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    #searchResults div {
-      padding: 0.5rem;
-      cursor: pointer;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    #searchResults div:hover {
-      background: var(--bg-card-hover);
-    }
-
-    /* LAYOUT & CONTAINERS */
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 1.5rem;
-      position: relative;
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 2rem;
-      padding-top: 1.5rem;
-    }
-
-    .header h1 {
-      font-size: 2.2rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(225deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      display: inline-block;
-      position: relative;
-    }
-
-    .header h1::after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 50%;
-      height: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
-      border-radius: 3px;
-    }
-
-    .header h2 {
-      font-size: 1rem;
-      font-weight: 400;
-      color: var(--text-secondary);
-      max-width: 600px;
-      margin: 1rem auto 0;
-      line-height: 1.1;
-    }
-
-    .menu-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-      box-sizing: border-box
-    }
-
-    /* CATEGORY TILES */
-    .category-tile {
-      background-color: var(--bg-card);
-      border-radius: 12px;
-      padding: 1.75rem;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-      object-fit: contain
-    }
-
-    .category-tile::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      background: linear-gradient(135deg, rgba(222, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .category-tile:hover,
-    .category-tile:active {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-      background-color: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      border-color: rgba(255, 255, 255, 0.1);
-      text-shadow:
-        0 0 8px rgba(222, 0, 0, 0.6),
-        0 0 12px rgba(222, 0, 0, 0.4),
-        0 0 16px rgba(222, 0, 0, 0.2);
-      color: #fff;
-    }
-
-    .category-tile:hover::before,
-    .category-tile:active::before {
-      opacity: 0.6;
-    }
-
-    .category-icon {
-      font-size: 2.5rem;
-      margin-bottom: 1.25rem;
-      background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      display: inline-block;
-      transition: transform 0.3s ease;
-    }
-
-    .category-tile:hover .category-icon,
-    .category-tile:active .category-icon {
-      transform: scale(1.1);
-    }
-
-    .category-tile h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 0.75rem;
-      color: var(--text-primary);
-      position: relative;
-      display: inline-block;
-      text-shadow:
-        0 0 8px rgba(0, 0, 0, 0.6),
-        0 0 12px rgba(0, 0, 0, 0.4),
-        0 0 16px rgba(0, 0, 0, 0.2);
-      color: #fff;
-    }
-
-    .category-tile h2::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      left: 0;
-      width: 0;
-      height: 2px;
-      background: var(--accent);
-      transition: width 0.3s ease;
-    }
-
-    .category-tile:hover h2::after,
-    .category-tile:active h2::after {
-      width: 100%;
-      text-shadow:
-        0 0 8px rgba(222, 0, 0, 0.6),
-        0 0 12px rgba(222, 0, 0, 0.4),
-        0 0 16px rgba(222, 0, 0, 0.2);
-      color: #fff;
-    }
-
-    .category-tile p {
-      color: var(--text-secondary);
-      font-size: 0.95rem;
-      line-height: 1.6;
-      margin-bottom: 1.5rem;
-      flex-grow: 1;
-    }
-
-    /* SERVICE SELECTION & DETAILS */
-    .service-selection-grid,
-    .details-grid {
-      display: grid;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .service-selection-card {
-      background: var(--bg-card);
-      padding: 1rem;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-
-    .service-selection-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .service-selection-card h3 {
-      font-size: 1rem;
-      margin: 0.5rem 0;
-    }
-
-    .service-selection-card p {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-    }
-
-    .service-price {
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 0.9rem;
-      margin: 0.5rem 0;
-    }
-
-    .service-selection-icon {
-      font-size: 2.2rem;
-      margin-bottom: 1rem;
-      filter: grayscale(100%);
-      color: black;
-    }
-
-    .detail-card {
-      background: var(--bg-card);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 0.75rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .detail-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .detail-card.selected {
-      background: var(--selected-bg);
-      border-color: var(--accent);
-    }
-
-    /* BUTTONS */
-    .book-button {
-      background: linear-gradient(27deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      color: white;
-      border: none;
-      padding: 0.6rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .final-book-button,
-    .clear-all-btn {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.6rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .book-button:hover,
-    .final-book-button:hover,
-    .clear-all-btn:hover {
-      background: var(--accent-light);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
-    }
-
-    .book-button i {
-      margin-left: 8px;
-      transition: transform 0.2s ease;
-    }
-
-    .book-button:hover i {
-      transform: translateX(3px);
-    }
-
-    .back-button {
-      background: var(--bg-card);
-      color: var(--text-primary);
-      border: 1px solid var(--accent);
-      padding: 0.75rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 300;
-      font-size: small;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: block;
-      margin-top: 1rem;
-    }
-
-    .back-button:hover {
-      background: rgba(222, 0, 0, 0.1);
-      transform: translateY(-2px);
-    }
-
-    .back-button::before {
-      content: "←";
-      margin-right: 0.5rem;
-    }
-
-    /* MODAL */
-    .modal-overlay {
-      position: fixed;
-      top: 70px;
-      right: 20px;
-      width: 380px;
-      max-height: calc(100vh - 100px);
-      background: transparent;
-      display: none;
-      z-index: 1000;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .modal-content {
-      background: rgba(30, 30, 30, 0.98);
-      backdrop-filter: blur(12px);
-      border-radius: 12px;
-      border: 1px solid rgba(222, 0, 0, 0.3);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-      overflow: hidden;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .modal-header {
-      padding: 1.2rem;
-      border-bottom: 1px solid rgba(222, 0, 0, 0.2);
-      position: relative;
-      background: rgba(0, 0, 0, 0.2);
-    }
-
-    .modal-title {
-      margin: 0;
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 1.2rem;
-      right: 1.2rem;
-      background: none;
-      border: none;
-      color: var(--text-primary);
-      font-size: 1.5rem;
-      cursor: pointer;
-      transition: color 0.2s;
-      opacity: 0.7;
-    }
-
-    .close-btn:hover {
-      color: var(--accent);
-      opacity: 1;
-    }
-
-    .service-list {
-      padding: 1rem;
-      overflow-y: auto;
-      flex-grow: 1;
-    }
-
-    .selected-service-item {
-      color: #454547;
-      background: #fff;
-    }
-
-    .service-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.8rem 1rem;
-      border-bottom: 1px solid rgba(240, 240, 240, 0.1);
-      transition: all 0.3s ease;
-    }
-
-    .service-item:hover {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .subtotal-value {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    /* Summary Section */
-    .summary-section {
-      padding: 1.2rem;
-      border-top: 1px solid rgba(222, 0, 0, 0.2);
-      background: rgba(0, 0, 0, 0.2);
-    }
-
-    /* Action Buttons */
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
-      padding: 0 1.2rem 1.2rem;
-    }
-
-    /* TASK DETAILS & FURNITURE DETAILS */
-    .task-details {
-      margin-top: 1rem;
-      padding: 0.75rem;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 8px;
-      border-left: 3px solid var(--accent);
-    }
-
-    .task-details h3 {
-      margin-bottom: 1rem;
-      color: var(--text-primary);
-      font-size: 1.1rem;
-    }
-
-    .task-details select,
-    .task-details textarea {
-      width: 100%;
-      padding: 0.75rem;
-      margin-bottom: 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: var(--text-primary);
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-
-    .task-details textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    /* FURNITURE DETAILS */
-    #furnituredetailsSection {
-      display: none;
-      margin-bottom: 1.5rem;
-    }
-
-    #furnituredetailsSection button {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 0.5rem;
-      transition: all 0.2s ease;
-    }
-
-    #furnituredetailsSection button:hover {
-      background-color: var(--accent);
-    }
-
-    #selectedFurnitureList {
-      list-style: none;
-      margin: 1rem 0;
-    }
-
-    #selectedFurnitureList li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      background: var(--bg-card);
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-    }
-
-    /* MISCELLANEOUS */
-    .no-results {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-secondary);
-      display: none;
-    }
-
-    /* MOBILE-FIRST MEDIA QUERIES */
-    @media (max-width: 575.98px) {
-      .container {
-        padding: 1rem;
-      }
-
-      .header h1 {
-        font-size: 1.75rem;
-      }
-
-      .category-tile {
-        padding: 1.25rem;
-      }
-
-      .service-navbar {
-        padding: 0 1rem;
-      }
-    }
-
-    /* Additional Responsive Adjustments */
-    @media (min-width: 576px) and (max-width: 767.98px) {
-      .container {
-        padding: 1.25rem;
-      }
-    }
-  </style>
-  <style>
-    :root {
-      --bg-dark: #121212;
-      --bg-card: #1e1e1e;
-      --bg-card-hover: #2a2a2a;
-      --primary: #474747;
-      --primary-hover: #ffffff;
-      --text-primary: #f5f5f5;
-      --text-secondary: #c0c0c0;
-      --accent-light: rgba(250, 0, 0, 1);
-      --accent: rgba(250, 0, 0, 1);
-      --selected-bg: rgba(250, 0, 0, 0.1);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    .pg_background {
-      background-image: url(https://github.com/tommichael88/booktomnyc/blob/main/images/background_16b.jpg?raw=true);
-      background-size: cover;
-      background-attachment: fixed;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: -1
-    }
-
-    header {
-      display: flex;
-      background: rgba(168, 168, 168, .55);
-      padding: 10px;
-      border-radius: var(--border-radius);
-      margin: 10px
-    }
-
-    h1 {
-      font-size: 2rem;
-      color: #454545
-    }
-
-    h2,
-    h3 {
-      margin: 4px 0;
-      color: #454545
-    }
-
-    body {
-      font-family: var(--font-roboto);
-      background-color: var(--bg-dark);
-      color: var(--text-primary);
-      margin: auto;
-      padding: 10px;
-      max-width: 468px
-    }
-
-    main {
-      position: center;
-      padding-bottom: 1px;
-      margin: auto;
-      border-radius: var(--border-radius);
-      z-index: 9
-    }
-
-    .fab-container {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 9999
-    }
-
-    .fab {
-      opacity: 45%;
-      background-color: transparent;
-      border: none;
-      outline: 0;
-      cursor: pointer;
-      transition: opacity .3s ease
-    }
-
-    .fab img {
-      width: 40px;
-      height: 40px
-    }
-
-    .fab:hover {
-      opacity: 100%
-    }
-
-    .qrc_page_wrapper {
-      background-size: cover;
-      /* background-repeat: no-repeat; */
-      /* background-repeat: no-repeat; */
-      background-position: inherit;
-      /* background-position: center center; */
-      background-color: var(--qrc-secondary);
-      max-width: 1000%;
-      /* min-height: 50vh; max-height: 100vh; */
-      padding: 0;
-      padding-top: 0.1px;
-      padding-bottom: 0.1px;
-      overflow: auto;
-      position: relative;
-      height: 100vh;
-    }
-
-    .qrc_page_inner {
-      max-width: 490px;
-      margin: auto;
-      position: relative;
-      padding: 15px 15px 1px 15px;
-      -webkit-border-top-left-radius: var(--qrc-border-radius);
-      -webkit-border-top-right-radius: var(--qrc-border-radius);
-      -moz-border-radius-topleft: var(--qrc-border-radius);
-      -moz-border-radius-topright: var(--qrc-border-radius);
-      border-top-left-radius: var(--qrc-border-radius);
-      border-top-right-radius: var(--qrc-border-radius);
-      padding-bottom: 90px;
-      z-index: 9;
-      box-sizing: border-box
-    }
-
-    .profile-image {
-      display: block;
-      width: 100%;
-      height: auto;
-      border-radius: var(--border-radius);
-      margin: 10px auto;
-      box-sizing: border-box
-    }
-
-    .highlight-box {
-      display: flex;
-      align-items: column;
-      gap: 2%;
-      /* Creates minimum spacing between all elements */
-      border: 0;
-      max-width: 100%;
-      height: auto;
-      padding: 4px;
-      background: linear-gradient(125deg, silver 10%, silver 20%, #474747 70%, #000 80%, #000 95%);
-      box-shadow: 0 4px 0 rgba(169, 169, 169, .95);
-      box-sizing: border-box
-    }
-
-    .thandylogo {
-      width: 70px ;
-      height: 30px ;
-      box-shadow: 0 4px 0 rgba(95, 95, 95, .85);
-      justify-content: middle;
-    }
-
-    .tom_kongerslev {
-      width: 30px;
-      height: 20px;
-      object-fit: scale-down;
-       
-    }
-
-    .contact-button {
-      background-color: #000;
-      color: silver;
-      padding: 2px 2px;
-      min-width: 65px;
-      /* Ensures legibility on mobile */
-      font-weight: 500;
-      border: 2px outset silver;
-      border-radius: 1px;
-      cursor: pointer;
-      transition: background-color .3s ease;
-      flex-shrink: 0;
-      white-space: nowrap;
-      /* Prevents text wrapping */
-      height: 100%;
-      /* Matches container height */
-      display: grid;
-      place-items: center;
-      /* Perfect vertical alignment */
-      margin-left: 52%;
-
-    }
-
-    .contact-button:hover {
-      background-color: rgba(169, 169, 169, .75);
-      color: #000000;
-    }
-
-    .contactModal {
-      display: none;
-      position: fixed;
-      z-index: 2;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(1, 1, 1, .45)
-    }
-
-    .contactModal-content {
-      background-color: rgba(1, 0, 0, .75);
-      color: silver;
-      margin: 10%;
-      padding: 20px;
-      border-radius: 10px;
-      width: 80%;
-      max-width: 600px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, .2);
-      animation: fadeIn .3s ease
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0
-      }
-
-      to {
-        opacity: 1
-      }
-    }
-
-    .contactModalClose {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: color .3s ease
-    }
-
-    .contactModalClose:hover {
-      color: #fff
-    }
-
-    .contactModal-actions {
-      display: flex;
-      justify-content: space-around;
-      align-items: center
-    }
-
-    .contact-option-btn {
-      display: inline-block;
-      width: 50%;
-      padding: 10px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 10px;
-      font-size: 8px;
-      cursor: pointer;
-      transition: background-color .3s ease
-    }
-
-    .contact-option-btn:hover {
-      background-color: #e0e0e0
-    }
-
-    .card-schedule-service {
-      display: block;
-      border: 1px outset rgba(0, 0, 0, .75);
-      background-color: rgba(255, 255, 255, .5);
-      border-radius: 10px;
-      box-shadow: 4px 4px 8px rgba(95, 95, 95, .85);
-      text-align: center;
-      padding: auto;
-      margin: auto;
-      overflow: hidden;
-      box-sizing: border-box
-      /* Contain iframe contents */
-    }
-
-    .new-service-request-grid-topper {
-      padding: 4px;
-      border: 2px outset rgba(0, 0, 0, .99);
-      color: silver;
-      display: flex;
-      justify-content: center;
-      text-justify: bottom;
-      text-align: center;
-      text-decoration: bold;
-      object-fit: contain
-    }
-
-    .reschedule-service-button {
-      font-weight: 700;
-      background-color: transparent;
-      color: silver;
-      border: px outset silver;
-      border-radius: 0;
-      padding: 2px auto;
-      font-size: .75rem;
-      cursor: pointer;
-      object-fit: contain;
-      transition: background-color .3s ease
-    }
-
-    .reschedule-service-button:hover {
-      color: silver;
-      background-color: #000;
-    }
-
-    /* Animations */
-    @keyframes textGlow {
-      0% {
-        text-shadow: 0 0 5px rgba(222, 0, 0, 0);
-      }
-
-      100% {
-        text-shadow: 0 0 8px rgba(222, 0, 0, 0.6), 0 0 12px rgba(222, 0, 0, 0.4), 0 0 16px rgba(222, 0, 0, 0.2);
-      }
-    }
-
-    @keyframes underlineExpand {
-      0% {
-        width: 0;
-        left: 50%;
-      }
-
-      100% {
-        width: 80%;
-        left: 10%;
-      }
-    }
-
-    .service-category:hover::after {
-      animation: underlineExpand 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    }
-
-    /* ========== ANIMATIONS ========== */
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes tapAnimation {
-      0% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(0.95);
-      }
-
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @keyframes pulse {
-      0% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(1.05);
-      }
-
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @keyframes shake {
-
-      0%,
-      100% {
-        transform: translateX(0);
-      }
-
-      20%,
-      60% {
-        transform: translateX(-5px);
-      }
-
-      40%,
-      80% {
-        transform: translateX(5px);
-      }
-    }
-
-    @keyframes textGlow {
-      0% {
-        text-shadow: 0 0 5px rgba(222, 0, 0, 0), 0 1px 2px rgba(0, 0, 0, 0.55);
-      }
-
-      100% {
-        text-shadow: 0 0 8px rgba(222, 0, 0, 0.6), 0 0 12px rgba(222, 0, 0, 0.4), 0 0 16px rgba(222, 0, 0, 0.2);
-      }
-    }
-
-    @keyframes backgroundPulse {
-      0% {
-        opacity: 0;
-        transform: scaleX(0);
-      }
-
-      50% {
-        opacity: 0.4;
-        transform: scaleX(1);
-      }
-
-      100% {
-        opacity: 0;
-      }
-    }
-
-    .book-button,
-    .final-book-button,
-    .client-login {
-      background: radial-gradient(circle, silver 5%, #de0000 40%, #8a0615 60%, #8a0615 90%);
-      font-weight: 700;
-      color: #fff;
-      border: 4px outset #000;
-      padding: 12px 40px;
-      font-size: 16px;
-      cursor: pointer;
-      margin-top: 20px;
-      border-radius: 5px;
-      transition: all .3s ease
-    }
-
-    .client-login:hover {
-      background-color: #454545;
-      cursor: pointer
-    }
-
-    .card-invoices {
-      display: block;
-      border: 1px outset rgba(0, 0, 0, .75);
-      background-color: rgba(255, 255, 255, .5);
-      border-radius: 10px;
-      box-shadow: 4px 4px 8px rgba(95, 95, 95, .85);
-      text-align: center;
-      padding: 2px;
-      margin-top: 4rem;
-      box-sizing: border-box
-    }
-
-    .card-invoices h1 {
-      color: #000;
-      font-size: 5vw
-    }
-
-    .card-invoices p {
-      color: #666
-    }
-
-    footer {
-      display: flex;
-      font-weight: 700;
-      color: #454547;
-      text-align: middle;
-      justify-content: center;
-      margin-top: 4rem;
-    }
-
-    footer a {
-      font-size: 10px;
-      margin: 2% 2%
-    }
-
-    /* Mobile optimization */
-    @media (max-width: 480px) {
-      .contact-button {
-        padding: 4px 8px;
-        min-width: 75px;
-        font-size: 0.9em;
-      }
-
-      .thandylogo {
-        width: 35%;
-      }
-
-      .tom_kongerslev {
-        width: 45%;
-      }
-
-      /* ========== MOBILE RESPONSIVE ========== */
-      @media (max-width: 480px) {
-        .service-category-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .service-category {
-          min-height: 90px;
-          padding: 15px 5px;
-          font-size: 0.9rem;
-        }
-
-        .service-category::before {
-          font-size: 2rem;
-        }
-
-        .service-category::after {
-          bottom: 10px;
-        }
-      }
-
-      /* ------------------------------------ ↓ CAT MIGRATION ↓ ---------------------------------------- */
-    }
-
-    .page-container {
-      margin: 0;
-      padding: 0;
-    }
-
-    .menu-container {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box
-    }
-
-    #categories-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: .1rem;
-      padding: .1rem;
-      box-sizing: border-box;
-    }
-
-    .category-icon {
-      font-size: 2rem;
-      background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      transition: transform 0.3s ease;
-    }
-
-    .category-tile {
-      background: rgba(169, 169, 169, .45);
-      display: flex;
-      flex-direction: column;
-      border: 1px outset rgba(0, 0, 0, 0.9);
-      color: #454547;
-      font-weight: 400;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      cursor: pointer;
-      box-sizing: border-box
-    }
-
-    .category-tile::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      background: linear-gradient(135deg, rgba(222, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-    }
-
-    .category-tile:hover,
-    .category-tile:active {
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-      transform: translateY(-4px) scale(1.03);
-      border-color: #de0000;
-      color: #000;
-    }
-
-    .category-tile:hover::before,
-    .category-tile:active::before {
-      opacity: 0.6;
-    }
-
-    .category-tile h2 {
-      position: relative;
-      /* For underline positioning */
-      margin: 0;
-      /* Remove default margins */
-      padding: 0 0;
-      /* Add vertical padding */
-      font-size: 1rem;
-      object-fit: contain;
-    }
-
-    .category-tile:hover .category-icon,
-    .category-tile:active .category-icon {
-      transform: scale(1.1);
-    }
-
-    .category-tile h2::after {
-      content: '';
-      position: absolute;
-      bottom: 4px;
-      left: 0;
-      width: 0;
-      background: var(--accent);
-      transition: width 0.3s ease;
-    }
-
-    .category-tile:hover h2::after,
-    .category-tile:active h2::after {
-      width: 100%;
-    }
-
-    .category-tile p {
-      color: #c0c0c0;
-      font-size: 0rem;
-      margin: 0;
-      text-align: center;
-    }
-
-    .search-btn {
-      background: none;
-      border: none;
-      color: #c0c0c0;
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-    }
-
-    .search-input {
-      width: 50%;
-      padding: 0.75rem 1rem;
-      background: var(--bg-card);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
-      color: #c0c0c0;
-      font-size: 01rem;
-      transition: all 0.3s ease;
-    }
-
-    /* Cart Button */
-    .cart-btn {
-      background: #fff;
-      border: none;
-      border-radius: 50%;
-      width: 2.5rem;
-      height: 2.5rem;
-      position: relative;
-      box-shadow: 0 4px 25px rgba(222, 0, 0, 0.45);
-      cursor: pointer;
-    }
-
-    .cart-count {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      background: white;
-      color: #000;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      font-size: 1rem;
-      font-weight: 700;
-    }
-
-    /* ANIMATIONS */
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes tapAnimation {
-      0% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(0.95);
-      }
-
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @keyframes pulse {
-      0% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(1.05);
-      }
-
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @keyframes shake {
-
-      0%,
-      100% {
-        transform: translateX(0);
-      }
-
-      20%,
-      60% {
-        transform: translateX(-5px);
-      }
-
-      40%,
-      80% {
-        transform: translateX(5px);
-      }
-    }
-
-    .tap-animate {
-      animation: tapAnimation 0.3s ease;
-    }
-
-    /* SEARCH RESULTS */
-    #searchResults {
-      display: none;
-      position: absolute;
-      top: 70px;
-      left: 2rem;
-      right: 2rem;
-      background: #fff;
-      color: #454547;
-      border: 1px solid var(--accent);
-      border-radius: 4px;
-      z-index: 1100;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    #searchResults div {
-      padding: 0.5rem;
-      cursor: pointer;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    #searchResults div:hover {
-      background: var(--bg-card-hover);
-    }
-
-    /* LAYOUT & CONTAINERS */
-    .container {}
-
-    .header {
-      text-align: center;
-    }
-
-    .header h1 {
-      font-size: 1rem;
-      font-weight: 700;
-      background: linear-gradient(225deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      display: inline-block;
-      position: relative;
-    }
-
-    .header h1::after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 50%;
-      height: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
-      border-radius: 3px;
-    }
-
-    .header h2 {
-      font-size: 1rem;
-      font-weight: 400;
-      color: var(--text-secondary);
-    }
-
-    /* SERVICE SELECTION & details */
-    .service-selection-grid,
-    .details-grid {
-      display: inline-grid;
-      grid-template-columns: repeat(2, auto);
-      gap: .5rem;
-      align-items: center;
-    }
-
-    .service-selection-card {
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-card);
-      padding: .5rem .5rem;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      transition: all 0.2s ease;
-      cursor: pointer;
-      min-height: 0;
-      min-width: 0;
-      margin: 0 0 0.5em 0;
-    }
-
-    .service-selection-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .service-selection-card h4 {
-      font-size: 1rem;
-      margin: 0.5rem;
-    }
-
-    .service-selection-card p {
-      font-size: .75rem;
-      color: var(--text-secondary);
-    }
-
-    .service-price {
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 0.9rem;
-      margin: 0.5rem 0;
-    }
-
-    .service-selection-icon {
-      font-size: .75rem;
-      margin-bottom: 2px;
-      filter: grayscale(100%);
-      color: black;
-      object-fit: scale-down;
-    }
-
-    .detail-card {
-      background: var(--bg-card);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 0.75rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .detail-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .detail-card.selected {
-      background: var(--selected-bg);
-      border-color: var(--accent);
-    }
-
-    /* BUTTONS */
-    .book-button {
-      background: linear-gradient(27deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .clear-all-btn {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.6rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .book-button:hover,
-    .final-book-button:hover,
-    .clear-all-btn:hover {
-      background: var(--accent-light);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
-    }
-
-    .book-button i {
-      margin-left: 8px;
-      transition: transform 0.2s ease;
-    }
-
-    .book-button:hover i {
-      transform: translateX(3px);
-    }
-
-    .back-button {
-      background: var(--bg-card);
-      color: var(--text-primary);
-      border: 1px solid var(--accent);
-      padding: 0.75rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 300;
-      font-size: small;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: block;
-      margin-top: 1rem;
-    }
-
-    .back-button:hover {
-      background: rgba(222, 0, 0, 0.1);
-      transform: translateY(-2px);
-    }
-
-    .back-button::before {
-      content: "←";
-      margin-right: 0.5rem;
-    }
-
-    /* MODAL */
-    .modal-overlay {
-      position: fixed;
-      top: 70px;
-      right: 20px;
-      width: 380px;
-      max-height: calc(100vh - 100px);
-      background: transparent;
-      display: none;
-      z-index: 1000;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .modal-content {
-      background: rgba(30, 30, 30, 0.98);
-      color: #c0c0c0;
-      backdrop-filter: blur(12px);
-      border-radius: 12px;
-      border: 1px solid rgba(222, 0, 0, 0.3);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-      overflow: hidden;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .modal-header {
-      padding: 1.2rem;
-      border-bottom: 1px solid rgba(222, 0, 0, 0.2);
-      position: relative;
-      background: rgba(0, 0, 0, 0.2);
-    }
-
-    .modal-title {
-      margin: 0;
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 1.2rem;
-      right: 1.2rem;
-      background: none;
-      border: none;
-      color: var(--text-primary);
-      font-size: 1.5rem;
-      cursor: pointer;
-      transition: color 0.2s;
-      opacity: 0.7;
-    }
-
-    .close-btn:hover {
-      color: var(--accent);
-      opacity: 1;
-    }
-
-    .service-list {
-      padding: 1rem;
-      overflow-y: auto;
-      flex-grow: 1;
-      box-sizing: border-box;
-    }
-
-    .service-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.8rem 1rem;
-      border-bottom: 1px solid rgba(240, 240, 240, 0.1);
-      transition: all 0.3s ease;
-      box-sizing: border-box
-    }
-
-    .service-item:hover {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .subtotal {
-      display: flex;
-      justify-content: space-between;
-      font-size: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .subtotal-value {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .summary-section {
-      padding: 1.2rem;
-      border-top: 1px solid rgba(222, 0, 0, 0.2);
-      background: rgba(0, 0, 0, 0.2);
-    }
-
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
-      padding: 0 1.2rem 1.2rem;
-    }
-
-    /* TASK DETAILS & FURNITURE details */
-    .task-details {
-      margin-top: 1rem;
-      padding: 0.75rem;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 8px;
-      border-left: 3px solid var(--accent);
-    }
-
-    .task-details h3 {
-      margin-bottom: 1rem;
-      color: var(--text-primary);
-      font-size: 1.1rem;
-    }
-
-    .task-details select,
-    .task-details textarea {
-      width: 100%;
-      padding: 0.75rem;
-      margin-bottom: 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: var(--text-primary);
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-
-    .task-details textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    /* FURNITURE details */
-    #furnituredetailsSection {
-      display: none;
-      margin-bottom: 1.5rem;
-    }
-
-    #furnituredetailsSection button {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 0.5rem;
-      transition: all 0.2s ease;
-    }
-
-    #furnituredetailsSection button:hover {
-      background-color: var(--accent);
-    }
-
-    #selectedFurnitureList {
-      list-style: none;
-      margin: 1rem 0;
-    }
-
-    #selectedFurnitureList li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      background: var(--bg-card);
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-    }
-
-    /* MISCELLANEOUS */
-    .no-results {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-secondary);
-      display: none;
-    }
-
-    /* MOBILE-FIRST MEDIA QUERIES */
-    @media (max-width: 575.98px) {
-      .header h1 {
-        font-size: 1.75rem;
-      }
-
-      .category-tile {
-        padding: .5rem;
-      }
-
-      .service-navbar {
-        padding: 0 1rem;
-      }
-    }
-
-    /* RESPONSIVE IMPROVEMENTS */
-    .service-navbar {
-      padding: 0 1rem;
-    }
-
-    .search-input {
-      width: 100%;
-      max-width: 250px;
-    }
-
-    .category-tile {
-      min-height: 50px;
-      min-width: 50px;
-      aspect-ratio: 1/1;
-      /* Consistent card heights */
-    }
-
-    /* TOUCH-FRIENDLY ELEMENTS */
-    .category-tile,
-    .service-selection-card,
-    .detail-card {
-      touch-action: manipulation;
-      /* Improve touch responsiveness */
-    }
-
-    button,
-    input,
-    select {
-      min-height: 44px;
-      /* ADA compliant touch target */
-    }
-
-    /* MODAL IMPROVEMENTS */
-    .modal-overlay {
-      width: 95%;
-      right: 2.5%;
-      max-width: 380px;
-      top: 80px;
-    }
-
-    @media (max-width: 767.98px) {
-      .modal-overlay {
-        width: 100%;
-        right: 0;
-        max-width: none;
-        top: 70px;
-      }
-
-      .modal-content {
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-      }
-    }
-
-    /* BROWSER FALLBACKS */
-    .service-navbar {
-      background: var(--bg-card);
-      /* Fallback for backdrop-filter */
-    }
-
-    @supports (backdrop-filter: blur(8px)) {
-      .service-navbar {
-        background: rgba(30, 30, 30, 0.95);
-        backdrop-filter: blur(8px);
-      }
-    }
-
-    /* IMPROVED INPUT STYLING */
-    input[type="text"],
-    select,
-    textarea {
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      font-size: 16px;
-      box-sizing: border-box;
-      flex-direction: center;
-      /* Prevent iOS zoom */
-    }
-
-    /* SERVICE SELECTION IMPROVEMENTS */
-    .service-selection-icon {
-      font-size: clamp(1rem, 4vw, 3rem);
-    }
-
-    /* FURNITURE SELECTION MOBILE OPTIMIZATION */
-    #furnituredetailsSection label {
-      display: block;
-      margin: 0.5rem 0;
-      padding: 0.75rem;
-      background: var(--bg-card);
-      border-radius: 8px;
-    }
-
-    #furnituredetailsSection select {
-      width: 100%;
-      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
-      background-repeat: no-repeat;
-      background-position: right 1rem center;
-      background-size: 12px;
-      padding-right: 2.5rem;
-    }
-
-    /* PERFORMANCE OPTIMIZATIONS */
-    .category-tile::before {
-      will-change: opacity;
-      /* Hint for GPU acceleration */
-    }
-
-    /* RESPONSIVE ADJUSTMENTS */
-    @media (max-width: 768px) {
-      .menu-container {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    /* Mobile adjustments for very small devices */
-    @media (max-width: 480px) {
-      .contact-button {
-        padding: 4px 8px;
-        min-width: 75px;
-        font-size: 0.9em;
-      }
-
-      .thandylogo {
-        width: 35%;
-      }
-
-      .tom_kongerslev {
-        width: 45%;
-      }
-
-      .service-category-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .service-category {
-        min-height: 90px;
-        padding: 5px 5px;
-        font-size: 0.9rem;
-      }
-
-      .service-category::before {
-        font-size: 2rem;
-      }
-
-      .service-category::after {
-        bottom: 10px;
-      }
-    }
-
-    @media (max-width: 900px) {
-      .menu-container {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 600px) {
-      .menu-container {
-        grid-template-columns: 1fr;
-        padding: 0.5rem;
-        gap: 0.5rem;
-      }
-
-      .category-tile {
-        aspect-ratio: unset;
-        height: auto;
-        width: auto;
-      }
-    }
-  </style>
-
-  <script src="https://tommichael88.github.io/booktomnyc/js/marquee.js" defer></script>
+	<meta charset="UTF-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>BookTOM</title>
+	<meta name="description" content="" />
+	<meta property="og:title" content="Tom Kongerslev" />
+	<meta property="og:type" content="website" />
+	<meta property="og:description" content="BookTom" />
+	<meta property="og:image" content="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" />
+	<link id="favicon" rel="icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon" />
+	<link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/tomshandylogo_newest.webp?raw=true" as="image" />
+	<link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" as="image" />
+	<link rel="preload" href="https://tommichael88.github.io/booktomnyc/js/marquee.js" as="script" />
+	<link rel="shortcut icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon" />
+	<link rel="apple-touch-icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" />
+	<link rel="stylesheet" href="https://tommichael88.github.io/booktomnyc/External/styles.css" />
+	<style>
+		/* Variables */
+		:root {
+			--bg-dark: #121212;
+			--bg-card: #1e1e1e;
+			--bg-card-hover: #2a2a2a;
+			--primary: #474747;
+			--primary-hover: #ffffff;
+			--text-primary: #f5f5f5;
+			--text-secondary: #c0c0c0;
+			--accent-light: rgba(250, 0, 0, 1);
+			--accent: rgba(250, 0, 0, 1);
+			--selected-bg: rgba(250, 0, 0, 0.1);
+			--border-radius: 8px;
+		}
+
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+			font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, sans-serif;
+		}
+
+		body {
+			background-color: var(--bg-dark);
+			color: var(--text-primary);
+			padding: 0;
+			min-height: 100vh;
+		}
+
+		.pg_background {
+			background-image: url(https://github.com/tommichael88/booktomnyc/blob/main/images/background_16b.jpg?raw=true);
+			background-size: cover;
+			background-attachment: fixed;
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			z-index: -1;
+		}
+
+		.fab-container {
+			position: fixed;
+			top: 10px;
+			right: 10px;
+			z-index: 9999
+		}
+
+		.fab {
+			opacity: 45%;
+			background-color: transparent;
+			border: none;
+			outline: 0;
+			cursor: pointer;
+			transition: opacity .3s ease
+		}
+
+		.fab img {
+			width: 40px;
+			height: 40px
+		}
+
+		.fab:hover {
+			opacity: 100%
+		}
+
+		.contactModal {
+			display: none;
+			position: fixed;
+			z-index: 2;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			overflow: auto;
+			background-color: rgba(1, 1, 1, .45)
+		}
+
+		.contactModal-content {
+			background-color: rgba(1, 0, 0, .75);
+			color: silver;
+			margin: 10%;
+			padding: 20px;
+			border-radius: 10px;
+			width: 80%;
+			max-width: 600px;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, .2);
+			animation: fadeIn .3s ease
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0
+			}
+
+			to {
+				opacity: 1
+			}
+		}
+
+		.contactModalClose {
+			color: #aaa;
+			float: right;
+			font-size: 28px;
+			font-weight: 700;
+			cursor: pointer;
+			transition: color .3s ease
+		}
+
+		.contactModalClose:hover {
+			color: #fff
+		}
+
+		.contactModal-actions {
+			display: flex;
+			justify-content: space-around;
+			align-items: center
+		}
+
+		.iconImage {
+			width: 50px;
+			height: 50px;
+			object-fit: contain
+		}
+
+		.contact-option-btn {
+			display: inline-block;
+			width: 50%;
+			padding: 10px;
+			margin: 10px 0;
+			border: none;
+			border-radius: 10px;
+			font-size: 8px;
+			cursor: pointer;
+			transition: background-color .3s ease
+		}
+
+		.contact-option-btn:hover {
+			background-color: #e0e0e0
+		}
+
+		.container {
+			margin: 50px auto;
+			padding: 20px;
+			background-color: #fff;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, .1);
+			box-sizing: border-box
+		}
+
+		/* Navigation bar (kept from your previous working version) */
+		.service-navbar {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			background: rgba(30, 30, 30, 0.95);
+			backdrop-filter: blur(8px);
+			padding: 0.5rem 1rem;
+			position: sticky;
+			top: 0;
+			z-index: 1000;
+			border-bottom: 1px solid rgba(222, 0, 0, 0.9);
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+		}
+
+		.search-nav-container {
+			display: flex;
+			align-items: center;
+			margin-left: 1rem;
+			margin-right: auto;
+			position: relative;
+		}
+
+		.search-btn {
+			background: none;
+			border: none;
+			color: var(--text-primary);
+			font-size: 1.2rem;
+			cursor: pointer;
+			padding: 0.5rem;
+			border-radius: 50%;
+			transition: all 0.3s ease;
+		}
+
+		.search-btn:hover {
+			background: rgba(255, 255, 255, 0.1);
+			transform: scale(1.1);
+		}
+
+		.search-input {
+			width: 250px;
+			padding: 0.75rem 1rem;
+			background: var(--bg-card);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 25px;
+			color: var(--text-primary);
+			font-size: 0.95rem;
+			transition: all 0.3s ease;
+		}
+
+		@media (max-width: 768px) {
+			.search-input {
+				width: calc(100vw - 120px);
+			}
+		}
+
+		.cart-btn {
+			background: none;
+			border: none;
+			border-radius: 50%;
+			width: 44px;
+			height: 44px;
+			position: relative;
+			box-shadow: 0 4px 15px rgba(222, 0, 0, 0.3);
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.cart-count {
+			position: absolute;
+			top: -5px;
+			right: -5px;
+			background: white;
+			color: #de0000;
+			border-radius: 50%;
+			width: 20px;
+			height: 20px;
+			font-size: 0.8rem;
+			font-weight: 700;
+		}
+
+		/* SEARCH RESULTS */
+		#searchResults {
+			display: none;
+			position: absolute;
+			top: 70px;
+			left: 2rem;
+			right: 2rem;
+			background: var(--bg-card);
+			border: 1px solid var(--accent);
+			border-radius: 4px;
+			z-index: 1100;
+			max-height: 300px;
+			overflow-y: auto;
+		}
+
+		#searchResults div {
+			padding: 0.5rem;
+			cursor: pointer;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		#searchResults div:hover {
+			background: var(--bg-card-hover);
+		}
+
+		/* LAYOUT & CONTAINERS */
+		.container {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 1.5rem;
+			position: relative;
+		}
+
+		.header {
+			text-align: center;
+			margin-bottom: 2rem;
+			padding-top: 1.5rem;
+		}
+
+		.header h1 {
+			font-size: 2.2rem;
+			font-weight: 700;
+			margin-bottom: 0.5rem;
+			background: linear-gradient(225deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent;
+			display: inline-block;
+			position: relative;
+		}
+
+		.header h1::after {
+			content: '';
+			position: absolute;
+			bottom: -10px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 50%;
+			height: 3px;
+			background: linear-gradient(90deg, var(--primary), var(--accent));
+			border-radius: 3px;
+		}
+
+		.header h2 {
+			font-size: 1rem;
+			font-weight: 400;
+			color: var(--text-secondary);
+			max-width: 600px;
+			margin: 1rem auto 0;
+			line-height: 1.1;
+		}
+
+		.menu-container {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+			gap: 1.5rem;
+			margin-bottom: 2rem;
+			box-sizing: border-box
+		}
+
+		/* CATEGORY TILES */
+		.category-tile {
+			background-color: var(--bg-card);
+			border-radius: 12px;
+			padding: 1.75rem;
+			cursor: pointer;
+			transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+			border: 1px solid rgba(255, 255, 255, 0.05);
+			position: relative;
+			overflow: hidden;
+			display: flex;
+			flex-direction: column;
+			box-sizing: border-box;
+			object-fit: contain
+		}
+
+		.category-tile::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			background: linear-gradient(135deg, rgba(222, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+			opacity: 0;
+			transition: opacity 0.3s ease;
+		}
+
+		.category-tile:hover,
+		.category-tile:active {
+			transform: translateY(-5px);
+			box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+			background-color: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+			border-color: rgba(255, 255, 255, 0.1);
+			text-shadow:
+				0 0 8px rgba(222, 0, 0, 0.6),
+				0 0 12px rgba(222, 0, 0, 0.4),
+				0 0 16px rgba(222, 0, 0, 0.2);
+			color: #fff;
+		}
+
+		.category-tile:hover::before,
+		.category-tile:active::before {
+			opacity: 0.6;
+		}
+
+		.category-icon {
+			font-size: 2.5rem;
+			margin-bottom: 1.25rem;
+			background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent;
+			display: inline-block;
+			transition: transform 0.3s ease;
+		}
+
+		.category-tile:hover .category-icon,
+		.category-tile:active .category-icon {
+			transform: scale(1.1);
+		}
+
+		.category-tile h2 {
+			font-size: 1.25rem;
+			font-weight: 600;
+			margin-bottom: 0.75rem;
+			color: var(--text-primary);
+			position: relative;
+			display: inline-block;
+			text-shadow:
+				0 0 8px rgba(0, 0, 0, 0.6),
+				0 0 12px rgba(0, 0, 0, 0.4),
+				0 0 16px rgba(0, 0, 0, 0.2);
+			color: #fff;
+		}
+
+		.category-tile h2::after {
+			content: '';
+			position: absolute;
+			bottom: -5px;
+			left: 0;
+			width: 0;
+			height: 2px;
+			background: var(--accent);
+			transition: width 0.3s ease;
+		}
+
+		.category-tile:hover h2::after,
+		.category-tile:active h2::after {
+			width: 100%;
+			text-shadow:
+				0 0 8px rgba(222, 0, 0, 0.6),
+				0 0 12px rgba(222, 0, 0, 0.4),
+				0 0 16px rgba(222, 0, 0, 0.2);
+			color: #fff;
+		}
+
+		.category-tile p {
+			color: var(--text-secondary);
+			font-size: 0.95rem;
+			line-height: 1.6;
+			margin-bottom: 1.5rem;
+			flex-grow: 1;
+		}
+
+		/* SERVICE SELECTION & DETAILS */
+		.service-grid,
+		.details-grid {
+			display: grid;
+			gap: 1.5rem;
+			margin-bottom: 2rem;
+		}
+
+		.service-card {
+			background: var(--bg-card);
+			padding: 1rem;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 10px;
+			transition: all 0.2s ease;
+			cursor: pointer;
+		}
+
+		.service-card:hover {
+			background: var(--bg-card-hover);
+			transform: translateY(-2px);
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+		}
+
+		.service-card h3 {
+			font-size: 1rem;
+			margin: 0.5rem 0;
+		}
+
+		.service-card p {
+			font-size: 0.85rem;
+			color: var(--text-secondary);
+		}
+
+		.service-price {
+			color: var(--accent);
+			font-weight: 600;
+			font-size: 0.9rem;
+			margin: 0.5rem 0;
+		}
+
+		.service-icon {
+			font-size: 2.2rem;
+			margin-bottom: 1rem;
+			filter: grayscale(100%);
+			color: black;
+		}
+
+		.detail-card {
+			background: var(--bg-card);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 8px;
+			padding: 0.75rem;
+			text-align: center;
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+
+		.detail-card:hover {
+			background: var(--bg-card-hover);
+			transform: translateY(-2px);
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+		}
+
+		.detail-card.selected {
+			background: var(--selected-bg);
+			border-color: var(--accent);
+		}
+
+		/* BUTTONS */
+		.book-button,
+		.final-book-button {
+			background: linear-gradient(27deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+			color: white;
+			border: none;
+			padding: 0.6rem 1.25rem;
+			border-radius: 8px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.clear-all-btn {
+			background: var(--accent);
+			color: white;
+			border: none;
+			padding: 0.6rem 1.25rem;
+			border-radius: 8px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.book-button:hover,
+		.final-book-button:hover,
+		.clear-all-btn:hover {
+			background: var(--accent-light);
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
+		}
+
+		.book-button i {
+			margin-left: 8px;
+			transition: transform 0.2s ease;
+		}
+
+		.book-button:hover i {
+			transform: translateX(3px);
+		}
+
+		.back-button {
+			background: var(--bg-card);
+			color: var(--text-primary);
+			border: 1px solid var(--accent);
+			padding: 0.75rem 1.25rem;
+			border-radius: 8px;
+			font-weight: 300;
+			font-size: small;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			display: block;
+			margin-top: 1rem;
+		}
+
+		.back-button:hover {
+			background: rgba(222, 0, 0, 0.1);
+			transform: translateY(-2px);
+		}
+
+		.back-button::before {
+			content: "←";
+			margin-right: 0.5rem;
+		}
+
+		/* MODAL */
+		.modal-overlay {
+			position: fixed;
+			top: 70px;
+			right: 20px;
+			width: 380px;
+			max-height: calc(100vh - 100px);
+			background: transparent;
+			display: none;
+			z-index: 1000;
+			animation: fadeIn 0.3s ease;
+		}
+
+		.modal-content {
+			background: rgba(30, 30, 30, 0.98);
+			backdrop-filter: blur(12px);
+			border-radius: 12px;
+			border: 1px solid rgba(222, 0, 0, 0.3);
+			box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+			overflow: hidden;
+			max-height: 80vh;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.modal-header {
+			padding: 1.2rem;
+			border-bottom: 1px solid rgba(222, 0, 0, 0.2);
+			position: relative;
+			background: rgba(0, 0, 0, 0.2);
+		}
+
+		.modal-title {
+			margin: 0;
+			font-size: 1.2rem;
+			font-weight: 600;
+			color: var(--text-primary);
+		}
+
+		.close-btn {
+			position: absolute;
+			top: 1.2rem;
+			right: 1.2rem;
+			background: none;
+			border: none;
+			color: var(--text-primary);
+			font-size: 1.5rem;
+			cursor: pointer;
+			transition: color 0.2s;
+			opacity: 0.7;
+		}
+
+		.close-btn:hover {
+			color: var(--accent);
+			opacity: 1;
+		}
+
+		.service-list {
+			padding: 1rem;
+			overflow-y: auto;
+			flex-grow: 1;
+		}
+
+		.selected-service-item {
+			color: #454547;
+			background: #fff;
+		}
+
+		.service-item {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 0.8rem 1rem;
+			border-bottom: 1px solid rgba(240, 240, 240, 0.1);
+			transition: all 0.3s ease;
+		}
+
+		.service-item:hover {
+			background: rgba(255, 255, 255, 0.03);
+		}
+
+		.subtotal-value {
+			font-weight: 600;
+			color: var(--text-primary);
+		}
+
+		/* Summary Section */
+		.summary-section {
+			padding: 1.2rem;
+			border-top: 1px solid rgba(222, 0, 0, 0.2);
+			background: rgba(0, 0, 0, 0.2);
+		}
+
+		/* Action Buttons */
+		.action-buttons {
+			display: flex;
+			flex-direction: column;
+			gap: 0.8rem;
+			padding: 0 1.2rem 1.2rem;
+		}
+
+		/* TASK DETAILS & FURNITURE DETAILS */
+		.task-details {
+			margin-top: 1rem;
+			padding: 0.75rem;
+			background: rgba(255, 255, 255, 0.03);
+			border-radius: 8px;
+			border-left: 3px solid var(--accent);
+		}
+
+		.task-details h3 {
+			margin-bottom: 1rem;
+			color: var(--text-primary);
+			font-size: 1.1rem;
+		}
+
+		.task-details select,
+		.task-details textarea {
+			width: 100%;
+			padding: 0.75rem;
+			margin-bottom: 1rem;
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			color: var(--text-primary);
+			border-radius: 6px;
+			font-size: 0.9rem;
+		}
+
+		.task-details textarea {
+			min-height: 80px;
+			resize: vertical;
+		}
+
+		/* FURNITURE DETAILS */
+		#furnituredetailsSection {
+			display: none;
+			margin-bottom: 1.5rem;
+		}
+
+		#furnituredetailsSection button {
+			background-color: var(--primary);
+			color: white;
+			border: none;
+			padding: 0.5rem 1rem;
+			border-radius: 6px;
+			cursor: pointer;
+			margin-top: 0.5rem;
+			transition: all 0.2s ease;
+		}
+
+		#furnituredetailsSection button:hover {
+			background-color: var(--accent);
+		}
+
+		#selectedFurnitureList {
+			list-style: none;
+			margin: 1rem 0;
+		}
+
+		#selectedFurnitureList li {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 0.75rem;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+			background: var(--bg-card);
+			border-radius: 6px;
+			margin-bottom: 0.5rem;
+		}
+
+		/* MISCELLANEOUS */
+		.no-results {
+			text-align: center;
+			padding: 2rem;
+			color: var(--text-secondary);
+			display: none;
+		}
+
+		/* MOBILE-FIRST MEDIA QUERIES */
+		@media (max-width: 575.98px) {
+			.container {
+				padding: 1rem;
+			}
+
+			.header h1 {
+				font-size: 1.75rem;
+			}
+
+			.category-tile {
+				padding: 1.25rem;
+			}
+
+			.service-navbar {
+				padding: 0 1rem;
+			}
+		}
+
+		/* Additional Responsive Adjustments */
+		@media (min-width: 576px) and (max-width: 767.98px) {
+			.container {
+				padding: 1.25rem;
+			}
+		}
+
+		:root {
+			--bg-dark: #121212;
+			--bg-card: #1e1e1e;
+			--bg-card-hover: #2a2a2a;
+			--primary: #474747;
+			--primary-hover: #ffffff;
+			--text-primary: #f5f5f5;
+			--text-secondary: #c0c0c0;
+			--accent-light: rgba(250, 0, 0, 1);
+			--accent: rgba(250, 0, 0, 1);
+			--selected-bg: rgba(250, 0, 0, 0.1);
+		}
+
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+			font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, sans-serif;
+		}
+
+		.pg_background {
+			background-image: url(https://github.com/tommichael88/booktomnyc/blob/main/images/background_16b.jpg?raw=true);
+			background-size: cover;
+			background-attachment: fixed;
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			z-index: -1
+		}
+
+		header {
+			display: flex;
+			background: rgba(168, 168, 168, .55);
+			padding: 10px;
+			border-radius: var(--border-radius);
+			margin: 10px
+		}
+
+		h1 {
+			font-size: 2rem;
+			color: #454545
+		}
+
+		h2,
+		h3 {
+			margin: 4px 0;
+			color: #454545
+		}
+
+		body {
+			font-family: var(--font-roboto);
+			background-color: var(--bg-dark);
+			color: var(--text-primary);
+			margin: auto;
+			padding: 10px;
+			max-width: 468px
+		}
+
+		main {
+			position: center;
+			padding-bottom: 1px;
+			margin: auto;
+			border-radius: var(--border-radius);
+			z-index: 9
+		}
+
+		.fab-container {
+			position: fixed;
+			top: 10px;
+			right: 10px;
+			z-index: 9999
+		}
+
+		.fab {
+			opacity: 45%;
+			background-color: transparent;
+			border: none;
+			outline: 0;
+			cursor: pointer;
+			transition: opacity .3s ease
+		}
+
+		.fab img {
+			width: 40px;
+			height: 40px
+		}
+
+		.fab:hover {
+			opacity: 100%
+		}
+
+		.qrc_page_wrapper {
+			background-size: cover;
+			/* background-repeat: no-repeat; */
+			/* background-repeat: no-repeat; */
+			background-position: inherit;
+			/* background-position: center center; */
+			background-color: var(--qrc-secondary);
+			max-width: 1000%;
+			/* min-height: 50vh; max-height: 100vh; */
+			padding: 0;
+			padding-top: 0.1px;
+			padding-bottom: 0.1px;
+			overflow: auto;
+			position: relative;
+			height: 100vh;
+		}
+
+		.qrc_page_inner {
+			max-width: 490px;
+			margin: auto;
+			position: relative;
+			padding: 15px 15px 1px 15px;
+			-webkit-border-top-left-radius: var(--qrc-border-radius);
+			-webkit-border-top-right-radius: var(--qrc-border-radius);
+			-moz-border-radius-topleft: var(--qrc-border-radius);
+			-moz-border-radius-topright: var(--qrc-border-radius);
+			border-top-left-radius: var(--qrc-border-radius);
+			border-top-right-radius: var(--qrc-border-radius);
+			padding-bottom: 90px;
+			z-index: 9;
+			box-sizing: border-box
+		}
+
+		.profile-image {
+			display: block;
+			width: 100%;
+			height: auto;
+			border-radius: var(--border-radius);
+			margin: 10px auto;
+			box-sizing: border-box
+		}
+
+		.highlight-box {
+			display: flex;
+			align-items: column;
+			gap: 2%;
+			/* Creates minimum spacing between all elements */
+			border: 0;
+			max-width: 100%;
+			height: auto;
+			padding: 4px;
+			background: linear-gradient(125deg, silver 10%, silver 20%, #474747 70%, #000 80%, #000 95%);
+			box-shadow: 0 4px 0 rgba(169, 169, 169, .95);
+			box-sizing: border-box
+		}
+
+		.thandylogo {
+			width: 70px;
+			height: 30px;
+			box-shadow: 0 4px 0 rgba(95, 95, 95, .85);
+			justify-content: middle;
+		}
+
+		.tom_kongerslev {
+			width: 30px;
+			height: 20px;
+			object-fit: scale-down;
+		}
+
+		.contact-button {
+			background-color: #000;
+			color: silver;
+			padding: 2px 2px;
+			min-width: 65px;
+			/* Ensures legibility on mobile */
+			font-weight: 500;
+			border: 2px outset silver;
+			border-radius: 1px;
+			cursor: pointer;
+			transition: background-color .3s ease;
+			flex-shrink: 0;
+			white-space: nowrap;
+			/* Prevents text wrapping */
+			height: 100%;
+			/* Matches container height */
+			display: grid;
+			place-items: center;
+			/* Perfect vertical alignment */
+			margin-left: 52%;
+		}
+
+		.contact-button:hover {
+			background-color: rgba(169, 169, 169, .75);
+			color: #000000;
+		}
+
+		.contactModal {
+			display: none;
+			position: fixed;
+			z-index: 2;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			overflow: auto;
+			background-color: rgba(1, 1, 1, .45)
+		}
+
+		.contactModal-content {
+			background-color: rgba(1, 0, 0, .75);
+			color: silver;
+			margin: 10%;
+			padding: 20px;
+			border-radius: 10px;
+			width: 80%;
+			max-width: 600px;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, .2);
+			animation: fadeIn .3s ease
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0
+			}
+
+			to {
+				opacity: 1
+			}
+		}
+
+		.contactModalClose {
+			color: #aaa;
+			float: right;
+			font-size: 28px;
+			font-weight: 700;
+			cursor: pointer;
+			transition: color .3s ease
+		}
+
+		.contactModalClose:hover {
+			color: #fff
+		}
+
+		.contactModal-actions {
+			display: flex;
+			justify-content: space-around;
+			align-items: center
+		}
+
+		.contact-option-btn {
+			display: inline-block;
+			width: 50%;
+			padding: 10px;
+			margin: 10px 0;
+			border: none;
+			border-radius: 10px;
+			font-size: 8px;
+			cursor: pointer;
+			transition: background-color .3s ease
+		}
+
+		.contact-option-btn:hover {
+			background-color: #e0e0e0
+		}
+
+		.card-schedule-service {
+			display: block;
+			border: 1px outset rgba(0, 0, 0, .75);
+			background-color: rgba(255, 255, 255, .5);
+			border-radius: 10px;
+			box-shadow: 4px 4px 8px rgba(95, 95, 95, .85);
+			text-align: center;
+			padding: auto;
+			margin: auto;
+			overflow: hidden;
+			box-sizing: border-box
+				/* Contain iframe contents */
+		}
+
+		.new-service-request-grid-topper {
+			padding: 4px;
+			border: 2px outset rgba(0, 0, 0, .99);
+			color: silver;
+			display: flex;
+			justify-content: center;
+			text-justify: bottom;
+			text-align: center;
+			text-decoration: bold;
+			object-fit: contain
+		}
+
+		.reschedule-service-button {
+			font-weight: 700;
+			background-color: transparent;
+			color: silver;
+			border: px outset silver;
+			border-radius: 0;
+			padding: 2px auto;
+			font-size: .75rem;
+			cursor: pointer;
+			object-fit: contain;
+			transition: background-color .3s ease
+		}
+
+		.reschedule-service-button:hover {
+			color: silver;
+			background-color: #000;
+		}
+
+		/* Animations */
+		@keyframes textGlow {
+			0% {
+				text-shadow: 0 0 5px rgba(222, 0, 0, 0);
+			}
+
+			100% {
+				text-shadow: 0 0 8px rgba(222, 0, 0, 0.6), 0 0 12px rgba(222, 0, 0, 0.4), 0 0 16px rgba(222, 0, 0, 0.2);
+			}
+		}
+
+		@keyframes underlineExpand {
+			0% {
+				width: 0;
+				left: 50%;
+			}
+
+			100% {
+				width: 80%;
+				left: 10%;
+			}
+		}
+
+		.service-category:hover::after {
+			animation: underlineExpand 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+		}
+
+		/* ========== ANIMATIONS ========== */
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(10px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		@keyframes tapAnimation {
+			0% {
+				transform: scale(1);
+			}
+
+			50% {
+				transform: scale(0.95);
+			}
+
+			100% {
+				transform: scale(1);
+			}
+		}
+
+		@keyframes pulse {
+			0% {
+				transform: scale(1);
+			}
+
+			50% {
+				transform: scale(1.05);
+			}
+
+			100% {
+				transform: scale(1);
+			}
+		}
+
+		@keyframes shake {
+
+			0%,
+			100% {
+				transform: translateX(0);
+			}
+
+			20%,
+			60% {
+				transform: translateX(-5px);
+			}
+
+			40%,
+			80% {
+				transform: translateX(5px);
+			}
+		}
+
+		@keyframes textGlow {
+			0% {
+				text-shadow: 0 0 5px rgba(222, 0, 0, 0), 0 1px 2px rgba(0, 0, 0, 0.55);
+			}
+
+			100% {
+				text-shadow: 0 0 8px rgba(222, 0, 0, 0.6), 0 0 12px rgba(222, 0, 0, 0.4), 0 0 16px rgba(222, 0, 0, 0.2);
+			}
+		}
+
+		@keyframes backgroundPulse {
+			0% {
+				opacity: 0;
+				transform: scaleX(0);
+			}
+
+			50% {
+				opacity: 0.4;
+				transform: scaleX(1);
+			}
+
+			100% {
+				opacity: 0;
+			}
+		}
+
+		.book-button,
+		.final-book-button,
+		.client-login {
+			background: radial-gradient(circle, silver 5%, #de0000 40%, #8a0615 60%, #8a0615 90%);
+			font-weight: 700;
+			color: #fff;
+			border: 4px outset #000;
+			padding: 12px 40px;
+			font-size: 16px;
+			cursor: pointer;
+			margin-top: 20px;
+			border-radius: 5px;
+			transition: all .3s ease
+		}
+
+		.client-login:hover {
+			background-color: #454545;
+			cursor: pointer
+		}
+
+		.card-invoices {
+			display: block;
+			border: 1px outset rgba(0, 0, 0, .75);
+			background-color: rgba(255, 255, 255, .5);
+			border-radius: 10px;
+			box-shadow: 4px 4px 8px rgba(95, 95, 95, .85);
+			text-align: center;
+			padding: 2px;
+			margin-top: 4rem;
+			box-sizing: border-box
+		}
+
+		.card-invoices h1 {
+			color: #000;
+			font-size: 5vw
+		}
+
+		.card-invoices p {
+			color: #666
+		}
+
+		footer {
+			display: flex;
+			font-weight: 700;
+			color: #454547;
+			text-align: middle;
+			justify-content: center;
+			margin-top: 4rem;
+		}
+
+		footer a {
+			font-size: 10px;
+			margin: 2% 2%
+		}
+
+		/* Mobile optimization */
+		@media (max-width: 480px) {
+			.contact-button {
+				padding: 4px 8px;
+				min-width: 75px;
+				font-size: 0.9em;
+			}
+
+			.thandylogo {
+				width: 35%;
+			}
+
+			.tom_kongerslev {
+				width: 45%;
+			}
+
+			/* ========== MOBILE RESPONSIVE ========== */
+			@media (max-width: 480px) {
+				.service-category-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.service-category {
+					min-height: 90px;
+					padding: 15px 5px;
+					font-size: 0.9rem;
+				}
+
+				.service-category::before {
+					font-size: 2rem;
+				}
+
+				.service-category::after {
+					bottom: 10px;
+				}
+			}
+
+			/* ------------------------------------ ↓ CAT MIGRATION ↓ ---------------------------------------- */
+		}
+
+		.page-container {
+			margin: 0;
+			padding: 0;
+		}
+
+		.menu-container {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box
+		}
+
+		#categories-grid {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: .1rem;
+			padding: .1rem;
+			box-sizing: border-box;
+		}
+
+		.category-icon {
+			font-size: 2rem;
+			background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent;
+			transition: transform 0.3s ease;
+		}
+
+		.category-tile {
+			background: rgba(169, 169, 169, .45);
+			display: flex;
+			flex-direction: column;
+			border: 1px outset rgba(0, 0, 0, 0.9);
+			color: #454547;
+			font-weight: 400;
+			align-items: center;
+			justify-content: center;
+			text-align: center;
+			transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+			cursor: pointer;
+			box-sizing: border-box
+		}
+
+		.category-tile::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			background: linear-gradient(135deg, rgba(222, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+			opacity: 0;
+			transition: opacity 0.3s ease;
+			pointer-events: none;
+		}
+
+		.category-tile:hover,
+		.category-tile:active {
+			box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+			transform: translateY(-4px) scale(1.03);
+			border-color: #de0000;
+			color: #000;
+		}
+
+		.category-tile:hover::before,
+		.category-tile:active::before {
+			opacity: 0.6;
+		}
+
+		.category-tile h2 {
+			position: relative;
+			/* For underline positioning */
+			margin: 0;
+			/* Remove default margins */
+			padding: 0 0;
+			/* Add vertical padding */
+			font-size: 1rem;
+			object-fit: contain;
+		}
+
+		.category-tile:hover .category-icon,
+		.category-tile:active .category-icon {
+			transform: scale(1.1);
+		}
+
+		.category-tile h2::after {
+			content: '';
+			position: absolute;
+			bottom: 4px;
+			left: 0;
+			width: 0;
+			background: var(--accent);
+			transition: width 0.3s ease;
+		}
+
+		.category-tile:hover h2::after,
+		.category-tile:active h2::after {
+			width: 100%;
+		}
+
+		.category-tile p {
+			color: #c0c0c0;
+			font-size: 0rem;
+			margin: 0;
+			text-align: center;
+		}
+
+		.search-btn {
+			background: none;
+			border: none;
+			color: #c0c0c0;
+			font-size: 1.2rem;
+			cursor: pointer;
+			padding: 0.5rem;
+			border-radius: 50%;
+			transition: all 0.3s ease;
+		}
+
+		.search-input {
+			width: 50%;
+			padding: 0.75rem 1rem;
+			background: var(--bg-card);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 2px;
+			color: #c0c0c0;
+			font-size: 01rem;
+			transition: all 0.3s ease;
+		}
+
+		/* Cart Button */
+		.cart-btn {
+			background: #fff;
+			border: none;
+			border-radius: 50%;
+			width: 2.5rem;
+			height: 2.5rem;
+			position: relative;
+			box-shadow: 0 4px 25px rgba(222, 0, 0, 0.45);
+			cursor: pointer;
+		}
+
+		.cart-count {
+			position: absolute;
+			top: -5px;
+			right: -5px;
+			background: white;
+			color: #000;
+			border-radius: 50%;
+			width: 20px;
+			height: 20px;
+			font-size: 1rem;
+			font-weight: 700;
+		}
+
+		/* ANIMATIONS */
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(10px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		@keyframes tapAnimation {
+			0% {
+				transform: scale(1);
+			}
+
+			50% {
+				transform: scale(0.95);
+			}
+
+			100% {
+				transform: scale(1);
+			}
+		}
+
+		@keyframes pulse {
+			0% {
+				transform: scale(1);
+			}
+
+			50% {
+				transform: scale(1.05);
+			}
+
+			100% {
+				transform: scale(1);
+			}
+		}
+
+		@keyframes shake {
+
+			0%,
+			100% {
+				transform: translateX(0);
+			}
+
+			20%,
+			60% {
+				transform: translateX(-5px);
+			}
+
+			40%,
+			80% {
+				transform: translateX(5px);
+			}
+		}
+
+		.tap-animate {
+			animation: tapAnimation 0.3s ease;
+		}
+
+		/* SEARCH RESULTS */
+		#searchResults {
+			display: none;
+			position: absolute;
+			top: 70px;
+			left: 2rem;
+			right: 2rem;
+			background: #fff;
+			color: #454547;
+			border: 1px solid var(--accent);
+			border-radius: 4px;
+			z-index: 1100;
+			max-height: 300px;
+			overflow-y: auto;
+		}
+
+		#searchResults div {
+			padding: 0.5rem;
+			cursor: pointer;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		#searchResults div:hover {
+			background: var(--bg-card-hover);
+		}
+
+		/* LAYOUT & CONTAINERS */
+		.container {}
+
+		.header {
+			text-align: center;
+		}
+
+		.header h1 {
+			font-size: 1rem;
+			font-weight: 700;
+			background: linear-gradient(225deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent;
+			display: inline-block;
+			position: relative;
+		}
+
+		.header h1::after {
+			content: '';
+			position: absolute;
+			bottom: -10px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 50%;
+			height: 3px;
+			background: linear-gradient(90deg, var(--primary), var(--accent));
+			border-radius: 3px;
+		}
+
+		.header h2 {
+			font-size: 1rem;
+			font-weight: 400;
+			color: var(--text-secondary);
+		}
+
+		/* SERVICE SELECTION & details */
+		.service-grid,
+		.details-grid {
+			display: inline-grid;
+			grid-template-columns: repeat(2, auto);
+			gap: .5rem;
+			align-items: center;
+		}
+
+		.service-card {
+			display: flex;
+			flex-direction: column;
+			background: var(--bg-card);
+			padding: .5rem .5rem;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 10px;
+			transition: all 0.2s ease;
+			cursor: pointer;
+			min-height: 0;
+			min-width: 0;
+			margin: 0 0 0.5em 0;
+		}
+
+		.service-card:hover {
+			background: var(--bg-card-hover);
+			transform: translateY(-2px);
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+		}
+
+		.service-card h4 {
+			font-size: 1rem;
+			margin: 0.5rem;
+		}
+
+		.service-card p {
+			font-size: .75rem;
+			color: var(--text-secondary);
+		}
+
+		.service-price {
+			color: var(--accent);
+			font-weight: 600;
+			font-size: 0.9rem;
+			margin: 0.5rem 0;
+		}
+
+		.service-icon {
+			font-size: .75rem;
+			margin-bottom: 2px;
+			filter: grayscale(100%);
+			color: black;
+			object-fit: scale-down;
+		}
+
+		.detail-card {
+			background: var(--bg-card);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 8px;
+			padding: 0.75rem;
+			text-align: center;
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+
+		.detail-card:hover {
+			background: var(--bg-card-hover);
+			transform: translateY(-2px);
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+		}
+
+		.detail-card.selected {
+			background: var(--selected-bg);
+			border-color: var(--accent);
+		}
+
+		/* BUTTONS */
+		.book-button {
+			background: linear-gradient(27deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+			color: white;
+			border: none;
+			padding: 0.5rem 1rem;
+			border-radius: 8px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.clear-all-btn {
+			background: var(--accent);
+			color: white;
+			border: none;
+			padding: 0.6rem 1.25rem;
+			border-radius: 8px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.book-button:hover,
+		.final-book-button:hover,
+		.clear-all-btn:hover {
+			background: var(--accent-light);
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
+		}
+
+		.book-button i {
+			margin-left: 8px;
+			transition: transform 0.2s ease;
+		}
+
+		.book-button:hover i {
+			transform: translateX(3px);
+		}
+
+		.back-button {
+			background: var(--bg-card);
+			color: var(--text-primary);
+			border: 1px solid var(--accent);
+			padding: 0.75rem 1.25rem;
+			border-radius: 8px;
+			font-weight: 300;
+			font-size: small;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			display: block;
+			margin-top: 1rem;
+		}
+
+		.back-button:hover {
+			background: rgba(222, 0, 0, 0.1);
+			transform: translateY(-2px);
+		}
+
+		.back-button::before {
+			content: "←";
+			margin-right: 0.5rem;
+		}
+
+		/* MODAL */
+		.modal-overlay {
+			position: fixed;
+			top: 70px;
+			right: 20px;
+			width: 380px;
+			max-height: calc(100vh - 100px);
+			background: transparent;
+			display: none;
+			z-index: 1000;
+			animation: fadeIn 0.3s ease;
+		}
+
+		.modal-content {
+			background: rgba(30, 30, 30, 0.98);
+			color: #c0c0c0;
+			backdrop-filter: blur(12px);
+			border-radius: 12px;
+			border: 1px solid rgba(222, 0, 0, 0.3);
+			box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+			overflow: hidden;
+			max-height: 80vh;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.modal-header {
+			padding: 1.2rem;
+			border-bottom: 1px solid rgba(222, 0, 0, 0.2);
+			position: relative;
+			background: rgba(0, 0, 0, 0.2);
+		}
+
+		.modal-title {
+			margin: 0;
+			font-size: 1.2rem;
+			font-weight: 600;
+			color: var(--text-primary);
+		}
+
+		.close-btn {
+			position: absolute;
+			top: 1.2rem;
+			right: 1.2rem;
+			background: none;
+			border: none;
+			color: var(--text-primary);
+			font-size: 1.5rem;
+			cursor: pointer;
+			transition: color 0.2s;
+			opacity: 0.7;
+		}
+
+		.close-btn:hover {
+			color: var(--accent);
+			opacity: 1;
+		}
+
+		.service-list {
+			padding: 1rem;
+			overflow-y: auto;
+			flex-grow: 1;
+			box-sizing: border-box;
+		}
+
+		.service-item {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 0.8rem 1rem;
+			border-bottom: 1px solid rgba(240, 240, 240, 0.1);
+			transition: all 0.3s ease;
+			box-sizing: border-box
+		}
+
+		.service-item:hover {
+			background: rgba(255, 255, 255, 0.03);
+		}
+
+		.subtotal {
+			display: flex;
+			justify-content: space-between;
+			font-size: 1rem;
+			margin-bottom: 1rem;
+		}
+
+		.subtotal-value {
+			font-weight: 600;
+			color: var(--text-primary);
+		}
+
+		.summary-section {
+			padding: 1.2rem;
+			border-top: 1px solid rgba(222, 0, 0, 0.2);
+			background: rgba(0, 0, 0, 0.2);
+		}
+
+		.action-buttons {
+			display: flex;
+			flex-direction: column;
+			gap: 0.8rem;
+			padding: 0 1.2rem 1.2rem;
+		}
+
+		/* TASK DETAILS & FURNITURE details */
+		.task-details {
+			margin-top: 1rem;
+			padding: 0.75rem;
+			background: rgba(255, 255, 255, 0.03);
+			border-radius: 8px;
+			border-left: 3px solid var(--accent);
+		}
+
+		.task-details h3 {
+			margin-bottom: 1rem;
+			color: var(--text-primary);
+			font-size: 1.1rem;
+		}
+
+		.task-details select,
+		.task-details textarea {
+			width: 100%;
+			padding: 0.75rem;
+			margin-bottom: 1rem;
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			color: var(--text-primary);
+			border-radius: 6px;
+			font-size: 0.9rem;
+		}
+
+		.task-details textarea {
+			min-height: 80px;
+			resize: vertical;
+		}
+
+		/* FURNITURE details */
+		#furnituredetailsSection {
+			display: none;
+			margin-bottom: 1.5rem;
+		}
+
+		#furnituredetailsSection button {
+			background-color: var(--primary);
+			color: white;
+			border: none;
+			padding: 0.5rem 1rem;
+			border-radius: 6px;
+			cursor: pointer;
+			margin-top: 0.5rem;
+			transition: all 0.2s ease;
+		}
+
+		#furnituredetailsSection button:hover {
+			background-color: var(--accent);
+		}
+
+		#selectedFurnitureList {
+			list-style: none;
+			margin: 1rem 0;
+		}
+
+		#selectedFurnitureList li {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 0.75rem;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+			background: var(--bg-card);
+			border-radius: 6px;
+			margin-bottom: 0.5rem;
+		}
+
+		/* MISCELLANEOUS */
+		.no-results {
+			text-align: center;
+			padding: 2rem;
+			color: var(--text-secondary);
+			display: none;
+		}
+
+		/* MOBILE-FIRST MEDIA QUERIES */
+		@media (max-width: 575.98px) {
+			.header h1 {
+				font-size: 1.75rem;
+			}
+
+			.category-tile {
+				padding: .5rem;
+			}
+
+			.service-navbar {
+				padding: 0 1rem;
+			}
+		}
+
+		/* RESPONSIVE IMPROVEMENTS */
+		.service-navbar {
+			padding: 0 1rem;
+		}
+
+		.search-input {
+			width: 100%;
+			max-width: 250px;
+		}
+
+		.category-tile {
+			min-height: 50px;
+			min-width: 50px;
+			aspect-ratio: 1/1;
+			/* Consistent card heights */
+		}
+
+		/* TOUCH-FRIENDLY ELEMENTS */
+		.category-tile,
+		.service-card,
+		.detail-card {
+			touch-action: manipulation;
+			/* Improve touch responsiveness */
+		}
+
+		button,
+		input,
+		select {
+			min-height: 44px;
+			/* ADA compliant touch target */
+		}
+
+		/* MODAL IMPROVEMENTS */
+		.modal-overlay {
+			width: 95%;
+			right: 2.5%;
+			max-width: 380px;
+			top: 80px;
+		}
+
+		@media (max-width: 767.98px) {
+			.modal-overlay {
+				width: 100%;
+				right: 0;
+				max-width: none;
+				top: 70px;
+			}
+
+			.modal-content {
+				border-radius: 0;
+				border-left: none;
+				border-right: none;
+			}
+		}
+
+		/* BROWSER FALLBACKS */
+		.service-navbar {
+			background: var(--bg-card);
+			/* Fallback for backdrop-filter */
+		}
+
+		@supports (backdrop-filter: blur(8px)) {
+			.service-navbar {
+				background: rgba(30, 30, 30, 0.95);
+				backdrop-filter: blur(8px);
+			}
+		}
+
+		/* IMPROVED INPUT STYLING */
+		input[type="text"],
+		select,
+		textarea {
+			-webkit-appearance: none;
+			-moz-appearance: none;
+			appearance: none;
+			font-size: 16px;
+			box-sizing: border-box;
+			flex-direction: center;
+			/* Prevent iOS zoom */
+		}
+
+		/* SERVICE SELECTION IMPROVEMENTS */
+		.service-icon {
+			font-size: clamp(1rem, 4vw, 3rem);
+		}
+
+		/* FURNITURE SELECTION MOBILE OPTIMIZATION */
+		#furnituredetailsSection label {
+			display: block;
+			margin: 0.5rem 0;
+			padding: 0.75rem;
+			background: var(--bg-card);
+			border-radius: 8px;
+		}
+
+		#furnituredetailsSection select {
+			width: 100%;
+			background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+			background-repeat: no-repeat;
+			background-position: right 1rem center;
+			background-size: 12px;
+			padding-right: 2.5rem;
+		}
+
+		/* PERFORMANCE OPTIMIZATIONS */
+		.category-tile::before {
+			will-change: opacity;
+			/* Hint for GPU acceleration */
+		}
+
+		/* RESPONSIVE ADJUSTMENTS */
+		@media (max-width: 768px) {
+			.menu-container {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+			}
+		}
+
+		/* Mobile adjustments for very small devices */
+		@media (max-width: 480px) {
+			.contact-button {
+				padding: 4px 8px;
+				min-width: 75px;
+				font-size: 0.9em;
+			}
+
+			.thandylogo {
+				width: 35%;
+			}
+
+			.tom_kongerslev {
+				width: 45%;
+			}
+
+			.service-category-grid {
+				grid-template-columns: 1fr;
+			}
+
+			.service-category {
+				min-height: 90px;
+				padding: 5px 5px;
+				font-size: 0.9rem;
+			}
+
+			.service-category::before {
+				font-size: 2rem;
+			}
+
+			.service-category::after {
+				bottom: 10px;
+			}
+		}
+
+		@media (max-width: 900px) {
+			.menu-container {
+				grid-template-columns: repeat(2, 1fr);
+			}
+		}
+
+		@media (max-width: 600px) {
+			.menu-container {
+				grid-template-columns: 1fr;
+				padding: 0.5rem;
+				gap: 0.5rem;
+			}
+
+			.category-tile {
+				aspect-ratio: unset;
+				height: auto;
+				width: auto;
+			}
+		}
+
+		@keyframes tapAnimation {
+			0% {
+				transform: scale(1);
+			}
+
+			50% {
+				transform: scale(0.95);
+			}
+
+			100% {
+				transform: scale(1);
+			}
+		}
+
+		.tap-animate {
+			animation: tapAnimation 0.3s ease;
+		}
+	</style>
+
+	<script src="https://tommichael88.github.io/booktomnyc/js/marquee.js" defer></script>
 </head>
 
 <body style="font-family:Roboto">
-  <div class="pg_background" style="background-image:url(https://github.com/tommichael88/booktomnyc/blob/main/images/background_16b.jpg?raw=true)"></div>
-  <div class="fab-container"></div>
-  <div class="qrc_page_inner">
-    <div class="section qrc_gallery">
-      <div class="qrc_gallery_wrapper">
-        <div class="qrc_gallery_list">
-          <div class="profile-image-container">
-              <img class="profile-image" src="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" alt="Profile Image">
-          </div>
-          <span class="highlight-box">
-            <img class="thandylogo" src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/thandylogo.png" alt="HandyTech logo">
-            <div class="tom_kongerslev">
-              <img src="https://tommichael88.github.io/booktomnyc/images/tmk_ai_signature2b.png?raw=true" alt="Tom Kongerslev signature">
-            </div>
-            <button id="contactBtn" class="contact-button">CONTACT ≣</button>
-          </span>
+	<div class="pg_background" style="background-image:url(https://github.com/tommichael88/booktomnyc/blob/main/images/background_16b.jpg?raw=true)"></div>
+	<div class="fab-container"></div>
+	<div class="qrc_page_inner">
+		<div class="section qrc_gallery">
+			<div class="qrc_gallery_wrapper">
+				<div class="qrc_gallery_list">
+					<div class="profile-image-container">
+						<img class="profile-image" src="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" alt="Profile Image">
+					</div>
+					<span class="highlight-box">
+						<img class="thandylogo" src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/thandylogo.png" alt="HandyTech logo">
+						<div class="tom_kongerslev">
+							<img src="https://tommichael88.github.io/booktomnyc/images/tmk_ai_signature2b.png?raw=true" alt="Tom Kongerslev signature">
+						</div>
+						<button id="contactBtn" class="contact-button">CONTACT ≣</button>
+					</span>
 
-          <div class="card-schedule-service">
-            <h1 style="color:#454545;text-align:center;font-size:2rem;line-height:.85; margin-bottom:2.5rem;margin-top:3rem;">
-              <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/calendar.png?raw=true" style="max-width:45px;height:auto;padding:2px" alt="Service Calendar Icon">
-              <font><i>SERVICE</i></font><br>
-              <b>SCHEDULE</b>
-            </h1>
-            <div class="new-service-request-grid-topper" style="display:flex;justify-content:space-between;align-items:center;font-size:1rem;background: linear-gradient(25deg, #000 1%, #8a0615 20%, #de0000 40%, #8a0615 60%, #000 95%);color: #fff">
-              <span><u>ᴺᵉʷ</u> <b>Service Request ▼</b></span>
-              <button class="reschedule-service-button">➤ 🗓️ View | Edit ️</button>
-            </div>
+					<div class="card-schedule-service">
+						<h1 style="color:#454545;text-align:center;font-size:2rem;line-height:.85; margin-bottom:2.5rem;margin-top:3rem;">
+							<img src="https://github.com/tommichael88/booktomnyc/blob/main/images/calendar.png?raw=true" style="max-width:45px;height:auto;padding:2px" alt="Service Calendar Icon">
+							<font><i>SERVICE</i></font><br>
+							<b>SCHEDULE</b>
+						</h1>
+						<div class="new-service-request-grid-topper" style="display:flex;justify-content:space-between;align-items:center;font-size:1rem;background: linear-gradient(25deg, #000 1%, #8a0615 20%, #de0000 40%, #8a0615 60%, #000 95%);color: #fff">
+							<span><u>ᴺᵉʷ</u> <b>Service Request ▼</b></span>
+							<button class="reschedule-service-button">➤ 🗓️ View | Edit ️</button>
+						</div>
 
-            <!-- Categories Grid -->
-            <div class="page-container">
-              <div class="menu-container" id="categories-grid">
-                <div class="category-tile" data-category="Minor Home Repairs">
-                  <div class="category-icon">🏠</div>
-                  <h2>Minor Home Repairs</h2>
-                </div>
-                <div class="category-tile" data-category="Furniture Fixes &amp; Assembly">
-                  <div class="category-icon">🛋️</div>
-                  <h2>Furniture Fixes</h2>
+						<!-- Categories Grid -->
+						<div class="page-container">
+							<div class="menu-container" id="categories-grid">
+								<div class="category-tile" data-category="Minor Home Repairs">
+									<div class="category-icon">🏠</div>
+									<h2>Minor Home Repairs</h2>
+								</div>
+								<div class="category-tile" data-category="Furniture Fixes &amp; Assembly">
+									<div class="category-icon">🛋️</div>
+									<h2>Furniture Fixes</h2>
 
-                </div>
-                <div class="category-tile" data-category="Wall Mounting">
-                  <div class="category-icon">🖼️</div>
-                  <h2>Wall Mounting</h2>
+								</div>
+								<div class="category-tile" data-category="Wall Mounting">
+									<div class="category-icon">🖼️</div>
+									<h2>Wall Mounting</h2>
 
-                </div>
-                <div class="category-tile" data-category="Electrical Help">
-                  <div class="category-icon">💡</div>
-                  <h2>Electrical Help</h2>
-                </div>
-                <div class="category-tile" data-category="Plumbing Help">
-                  <div class="category-icon">🚿</div>
-                  <h2>Plumbing Help</h2>
+								</div>
+								<div class="category-tile" data-category="Electrical Help">
+									<div class="category-icon">💡</div>
+									<h2>Electrical Help</h2>
+								</div>
+								<div class="category-tile" data-category="Plumbing Help">
+									<div class="category-icon">🚿</div>
+									<h2>Plumbing Help</h2>
 
-                </div>
-                <div class="category-tile" data-category="Computer Repairs">
-                  <div class="category-icon">💻</div>
-                  <h2>Computer Repairs</h2>
-                </div>
-              </div>
-            </div> <!-- Floating Cart FAB (hidden if no items) -->
-            <div id="cartFab" class="fab-container" style="display: none;">
-              <button class="fab" onclick="toggleCartModal()">
-                📃 <span id="fabCartCount">0</span>
-              </button>
-            </div>
-            <!-- Search Modal -->
-            <div id="searchModal" class="modal-overlay">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2 class="modal-title">Search Services</h2>
-                  <button class="close-btn" onclick="closeSearchModal()">×</button>
-                </div>
-                <input type="text" class="search-input" id="modalSearchInput" placeholder="" />
-                <div id="modalSearchResults" class="service-list"></div>
-              </div>
-            </div>
+								</div>
+								<div class="category-tile" data-category="Computer Repairs">
+									<div class="category-icon">💻</div>
+									<h2>Computer Repairs</h2>
+								</div>
+							</div>
+						</div> <!-- Floating Cart FAB (hidden if no items) -->
+						<div id="cartFab" class="fab-container" style="display: none;">
+							<button class="fab" onclick="toggleCartModal()">
+								📃 <span id="fabCartCount">0</span>
+							</button>
+						</div>
+						<!-- Search Modal -->
+						<div id="searchModal" class="modal-overlay">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h2 class="modal-title">Search Services</h2>
+									<button class="close-btn" onclick="closeSearchModal()">×</button>
+								</div>
+								<input type="text" class="search-input" id="modalSearchInput" placeholder="" />
+								<div id="modalSearchResults" class="service-list"></div>
+							</div>
+						</div>
 
-            <!-- Cart Modal -->
-            <div id="modalOverlay" class="modal-overlay">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2 class="modal-title">Your Selected Services</h2>
-                  <button class="close-btn" onclick="toggleCartModal()">×</button>
-                </div>
-                <div id="modalServiceList" class="service-list"></div>
-                <div class="summary-section">
-                  <div class="subtotal">
-                    <span>Subtotal (<span id="serviceCount">0</span> items):</span>
-                    <span id="modalTotal">$0</span>
-                  </div>
-                </div>
-                <div class="action-buttons">
-                  <button class="book-button" onclick="showCategories()">➕ More Services</button>
-                  <button class="final-book-button" onclick="bookServices()">Checkout</button>
-                </div>
-              </div>
-            </div>
-            <!-- Service Selection Container (for chosen category) -->
-            <div id="serviceSelectionContainer" style="display: none;">
-              <div id="selectedSection"></div>
-              <!-- Furniture Details (if applicable) -->
-              <div class="task-details" id="furnituredetailsSection" style="display: none;">
-                <h4>Select Your Furniture Item</h4>
-                <div>
-                  <label>
-                    <input type="radio" name="furnitureType" value="ikea" checked> IKEA
-                  </label>
-                  <label>
-                    <input type="radio" name="furnitureType" value="generic"> Non‑IKEA
-                  </label>
-                </div>
-                <select id="furniture-select">
-                  <option value="">Select Here</option>
-                </select>
-                <button class="book-button" onclick="addFurnitureItem()">Add Furniture Item</button>
-                <ul id="selectedFurnitureList"></ul>
-                <button class="clear-all-btn" onclick="clearAllFurnitureItems()">Clear Furniture Items</button>
-              </div>
-            </div>
+						<!-- Cart Modal -->
+						<div id="modalCheckout" class="modal-overlay">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h2 class="modal-title">Your Selected Services</h2>
+									<button class="close-btn" onclick="toggleCartModal()">×</button>
+								</div>
+								<div id="modalShoppingList" class="service-list"></div>
+								<div class="summary-section">
+									<div class="subtotal">
+										<span>Subtotal (<span id="serviceCount">0</span> items):</span>
+										<span id="modalTotal">$0</span>
+									</div>
+								</div>
+								<div class="action-buttons"><button class="clear-all-btn" onclick="clearAllServices()" style="background-color: grey;">Clear All</button>
+									<button class="book-button" onclick="showCategories()">➕ More Services</button>
+									<button class="final-book-button" onclick="bookServices()">Checkout</button>
+								</div>
+							</div>
+						</div>
+						<!-- Service Selection Container (for chosen category) -->
+						<div id="serviceSelectionContainer" style="display: none;">
+							<div id="servicesSection"></div>
+							<!-- Furniture Details (if applicable) -->
+							<div class="task-details" id="furnituredetailsSection" style="display: none;">
+								<h4>Select Your Furniture Item</h4>
+								<div>
+									<label>
+										<input type="radio" name="furnitureType" value="ikea" checked> IKEA
+									</label>
+									<label>
+										<input type="radio" name="furnitureType" value="generic"> Non‑IKEA
+									</label>
+								</div>
+								<select id="furniture-select">
+									<option value="">Select Here</option>
+								</select>
+								<button class="book-button" onclick="addFurnitureItem()">Add Furniture Item</button>
+								<ul id="selectedFurnitureList"></ul>
+								<button class="clear-all-btn" onclick="clearAllFurnitureItems()">Clear Furniture Items</button>
+							</div>
+						</div>
 
-            <!-- Service Details Container (shows service details and note input) -->
-            <div id="servicedetailsContainer" style="display: none;"></div>
+						<!-- Service Details Container (shows service details and note input) -->
+						<div id="jobdetailsContainer" style="display: none;"></div>
 
-            <!-- Selected Services Summary -->
-            <div id="selectedServicesSection" style="display: none;">
-              <h4>Services Requested</h4>
-              <div id="selectedServicesList"></div>
-              <div id="estimateTotal" class="estimate-total" style="display: none;">
-                <span>Estimated Subtotal:</span>
-                <span id="totalAmount">$0</span>
-              </div>
-              <button class="final-book-button" onclick="bookServices()">Checkout</button>
-              <button class="clear-all-btn" onclick="clearAllServices()" style="background-color: grey;">Clear All</button>
-            </div>
-          </div>
-          <div class="card-invoices" style="color:#fff">
-            <h1 style="color:rgba(155,0,0,.99)">
-              <img src="https://tommichael88.github.io/booktomnyc/images/zohoinvoice?raw=true" alt="Zoho Invoice favicon" style="max-width:50px;height:auto;text-align:center;padding:2px;margin:10px">
-              <br>
-              <span style="font-size:2.5rem">
-                <b>INVOICES</b>
-              </span>
-            </h1>
-            <p style="font-size:1rem;padding:4px">view invoices • process payments • digital receipts • review quote estimates • share documents • transaction history • expense receipts</p>
-            <button class="client-login">🔐 𝗖𝗟𝗜𝗘𝗡𝗧 PORTAL</button>
-            <br>
-            <br>
+						<!-- Selected Services Summary -->
+						<div id="serviceRequestsSection" style="display: none;">
+							<h4>Services Requested</h4>
+							<div id="selectedServicesList"></div>
+							<div id="estimateTotal" class="estimate-total" style="display: none;">
+								<span>Estimated Subtotal:</span>
+								<span id="totalAmount">$0</span>
+							</div>
+							<div class="action-buttons">
+								<button class="book-button" onclick="showCategories()">➕ More Services</button>
+								<button class="final-book-button" onclick="bookServices()">Checkout</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="card-invoices" style="color:#fff">
+					<h1 style="color:rgba(155,0,0,.99)">
+						<img src="https://tommichael88.github.io/booktomnyc/images/zohoinvoice?raw=true" alt="Zoho Invoice favicon" style="max-width:50px;height:auto;text-align:center;padding:2px;margin:10px">
+						<br>
+						<span style="font-size:2.5rem">
+							<b>INVOICES</b>
+						</span>
+					</h1>
+					<p style="font-size:1rem;padding:4px">view invoices • process payments • digital receipts • review quote estimates • share documents • transaction history • expense receipts</p>
+					<button class="client-login">🔐 𝗖𝗟𝗜𝗘𝗡𝗧 PORTAL</button>
+					<br>
+					<br>
 
-          </div>
-      </div>
-    </div>
-  </div>
-  </div>
-  <footer>
-    <a href="https://tommichael88.github.io/booktomnyc/Privacy%20Policy">Privacy Policy</a> |
-    <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#annex-a">Service Scope</a> |
-    <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement">Service Agreement</a>
-  </footer>
+				</div>
+			</div>
+		</div>
+	</div>
+	</div>
+	<footer>
+		<a href="https://tommichael88.github.io/booktomnyc/Privacy%20Policy">Privacy Policy</a> |
+		<a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#annex-a">Service Scope</a> |
+		<a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement">Service Agreement</a>
+	</footer>
 
-  <script>
-    /* Global state and configuration */
-    const state = {
-      selectedServices: [],
-      furnitureItems: [],
-      currentView: 'categories' // 'categories' | 'services' | 'details' | 'summary'
-    };
-    const furnitureHourlyRate = 40;
-    /* --------------------------
-       IKEA Furniture Process
-       -------------------------- */
-    const ikeaFurniture = [{
-        category: "BEKANT",
-        items: ["Desk + Underframe"]
-      },
-      {
-        category: "BESTA",
-        items: ["Single frame, shelves/floor standing", "Single frame, door/drawer, floor standing", "Single frame/wall mounting"]
-      },
-      {
-        category: "BILLY",
-        items: ["Bookcase 1x frame"]
-      },
-      {
-        category: "BJURSTA",
-        items: ["Extendable table"]
-      },
-      {
-        category: "BRIMNES",
-        items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame & storage", "Headboard", "Wardrobe 2x doors", "Wardrobe 3x doors", "Nightstand", "Daybed 2x drawers"]
-      },
-      {
-        category: "BRUSALI",
-        items: ["Bed frame", "Bed + 4 storage boxes", "3 drawer chest", "Nightstand"]
-      },
-      {
-        category: "FINGAL",
-        items: ["Swivel chair"]
-      },
-      {
-        category: "FRIHETEN",
-        items: ["Sofa bed & chaise"]
-      },
-      {
-        category: "GALANT",
-        items: ["2x drawer", "3x drawer", "4x drawer", "Cabinet (sliding doors)"]
-      },
-      {
-        category: "HEMNES",
-        items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "Dresser 8x drawer", "Nightstand", "Daybed & 3 drawers"]
-      },
-      {
-        category: "KALLAX",
-        items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert + 2 drawers", "Insert + door"]
-      },
-      {
-        category: "LACK",
-        items: ["Side table", "Coffee table", "TV Unit"]
-      },
-      {
-        category: "LINNMON ADILS",
-        items: ["Table (table top and four legs)"]
-      },
-      {
-        category: "MALM",
-        items: ["Bed Frame", "Bed Frame + 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"]
-      },
-      {
-        category: "MICKE",
-        items: ["Desk + 1 Drawer", "Desk + Drawers & Storage", "Add-on unit"]
-      },
-      {
-        category: "MORVIK",
-        items: ["Wardrobe"]
-      },
-      {
-        category: "PAX",
-        items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"]
-      },
-      {
-        category: "SODERHAMN",
-        items: ["Sofa one seat section + cover"]
-      },
-      {
-        category: "TRYSIL",
-        items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"]
-      },
-      {
-        category: "OTHER NOT LISTED",
-        items: ["NOT LISTED or UNKNOWN"]
-      }
-    ];
+	<script>
+		/* Global state and configuration */
+		const state = {
+			selectedServices: [],
+			furnitureItems: [],
+			currentView: 'categories' // 'categories' | 'services' | 'details' | 'summary'
+		};
+		const furnitureHourlyRate = 40;
+		/* --------------------------
+		   IKEA Furniture Process
+		   -------------------------- */
+		const ikeaFurniture = [{
+				category: "BEKANT",
+				items: ["Desk + Underframe"]
+			},
+			{
+				category: "BESTA",
+				items: ["Single frame, shelves/floor standing", "Single frame, door/drawer, floor standing", "Single frame/wall mounting"]
+			},
+			{
+				category: "BILLY",
+				items: ["Bookcase 1x frame"]
+			},
+			{
+				category: "BJURSTA",
+				items: ["Extendable table"]
+			},
+			{
+				category: "BRIMNES",
+				items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame & storage", "Headboard", "Wardrobe 2x doors", "Wardrobe 3x doors", "Nightstand", "Daybed 2x drawers"]
+			},
+			{
+				category: "BRUSALI",
+				items: ["Bed frame", "Bed + 4 storage boxes", "3 drawer chest", "Nightstand"]
+			},
+			{
+				category: "FINGAL",
+				items: ["Swivel chair"]
+			},
+			{
+				category: "FRIHETEN",
+				items: ["Sofa bed & chaise"]
+			},
+			{
+				category: "GALANT",
+				items: ["2x drawer", "3x drawer", "4x drawer", "Cabinet (sliding doors)"]
+			},
+			{
+				category: "HEMNES",
+				items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "Dresser 8x drawer", "Nightstand", "Daybed & 3 drawers"]
+			},
+			{
+				category: "KALLAX",
+				items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert + 2 drawers", "Insert + door"]
+			},
+			{
+				category: "LACK",
+				items: ["Side table", "Coffee table", "TV Unit"]
+			},
+			{
+				category: "LINNMON ADILS",
+				items: ["Table (table top and four legs)"]
+			},
+			{
+				category: "MALM",
+				items: ["Bed Frame", "Bed Frame + 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"]
+			},
+			{
+				category: "MICKE",
+				items: ["Desk + 1 Drawer", "Desk + Drawers & Storage", "Add-on unit"]
+			},
+			{
+				category: "MORVIK",
+				items: ["Wardrobe"]
+			},
+			{
+				category: "PAX",
+				items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"]
+			},
+			{
+				category: "SODERHAMN",
+				items: ["Sofa one seat section + cover"]
+			},
+			{
+				category: "TRYSIL",
+				items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"]
+			},
+			{
+				category: "OTHER NOT LISTED",
+				items: ["NOT LISTED or UNKNOWN"]
+			}
+		];
 
-    function initFurnituredetails() {
-      const furnitureSelect = document.getElementById('furniture-select');
-      furnitureSelect.innerHTML = '<option value="">Select Here</option>';
-      ikeaFurniture.forEach(group => {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = group.category;
-        group.items.forEach(item => {
-          const option = document.createElement('option');
-          option.value = item;
-          option.textContent = item;
-          optgroup.appendChild(option);
-        });
-        furnitureSelect.appendChild(optgroup);
-      });
-    }
+		function initFurnituredetails() {
+			const furnitureSelect = document.getElementById('furniture-select');
+			furnitureSelect.innerHTML = '<option value="">Select Here</option>';
+			ikeaFurniture.forEach(group => {
+				const optgroup = document.createElement('optgroup');
+				optgroup.label = group.category;
+				group.items.forEach(item => {
+					const option = document.createElement('option');
+					option.value = item;
+					option.textContent = item;
+					optgroup.appendChild(option);
+				});
+				furnitureSelect.appendChild(optgroup);
+			});
+		}
 
-    function addFurnitureItem() {
-      const furnitureSelect = document.getElementById('furniture-select');
-      const selectedItem = furnitureSelect.value;
-      if (!selectedItem) return;
-      const selectedFurnitureList = document.getElementById('selectedFurnitureList');
-      const li = document.createElement('li');
-      li.textContent = selectedItem;
-      const button = document.createElement('button');
-      button.className = "remove-item";
-      button.innerHTML = '✕';
-      button.onclick = function() {
-        li.remove();
-        removeFurnitureItem(selectedItem);
-      };
-      li.appendChild(button);
-      selectedFurnitureList.appendChild(li);
-      state.furnitureItems.push(selectedItem);
-      furnitureSelect.value = "";
-    }
+		function addFurnitureItem() {
+			const furnitureSelect = document.getElementById('furniture-select');
+			const selectedItem = furnitureSelect.value;
+			if (!selectedItem) return;
+			const selectedFurnitureList = document.getElementById('selectedFurnitureList');
+			const li = document.createElement('li');
+			li.textContent = selectedItem;
+			const button = document.createElement('button');
+			button.className = "remove-item";
+			button.innerHTML = '✕';
+			button.onclick = function() {
+				li.remove();
+				removeFurnitureItem(selectedItem);
+			};
+			li.appendChild(button);
+			selectedFurnitureList.appendChild(li);
+			state.furnitureItems.push(selectedItem);
+			furnitureSelect.value = "";
+		}
 
-    function removeFurnitureItem(item) {
-      state.furnitureItems = state.furnitureItems.filter(i => i !== item);
-    }
+		function removeFurnitureItem(item) {
+			state.furnitureItems = state.furnitureItems.filter(i => i !== item);
+		}
 
-    function clearAllFurnitureItems() {
-      document.getElementById('selectedFurnitureList').innerHTML = "";
-      state.furnitureItems = [];
-    }
-    /* --------------------------
-       Service & Cart Functions
-       -------------------------- */
-    function updateCartDisplay() {
-      const count = state.selectedServices.length;
-      document.getElementById('fabCartCount').textContent = count;
-      document.getElementById('cartFab').style.display = count > 0 ? 'block' : 'none';
-    }
+		function clearAllFurnitureItems() {
+			document.getElementById('selectedFurnitureList').innerHTML = "";
+			state.furnitureItems = [];
+		}
+		/* --------------------------
+		   Service & Cart Functions
+		   -------------------------- */
+		function updateCartDisplay() {
+			const count = state.selectedServices.length;
+			document.getElementById('fabCartCount').textContent = count;
+			document.getElementById('cartFab').style.display = count > 0 ? 'block' : 'none';
+		}
 
-    function addToCart(serviceEntry) {
-      state.selectedServices.push(serviceEntry);
-      updateCartDisplay();
-      updateSelectedServices();
-    }
+		function addToCart(serviceEntry) {
+			state.selectedServices.push(serviceEntry);
+			updateCartDisplay();
+			updateServiceRequest();
+		}
 
-    function updateSelectedServices() {
-      const list = document.getElementById('selectedServicesList');
-      list.innerHTML = "";
-      let total = 0;
-      state.selectedServices.forEach(service => {
-        const priceVal = parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
-        total += priceVal;
-        const div = document.createElement('div');
-        div.className = 'selected-service-item';
-        div.innerHTML = `
+		function updateServiceRequest() {
+			const list = document.getElementById('selectedServicesList');
+			list.innerHTML = "";
+			let total = 0;
+			state.selectedServices.forEach(service => {
+				const priceVal = parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
+				total += priceVal;
+				const div = document.createElement('div');
+				div.className = 'selected-service-item';
+				div.innerHTML = `
             <div class="selected-service-icon">${service.icon}</div>
             <div class="selected-service-text">
               <h4>${service.name}</h4>
@@ -2413,451 +2431,451 @@
             <div class="selected-service-price">${service.price}</div>
             <button class="remove-service-btn" onclick="removeService('${service.id}')">✕</button>
           `;
-        list.appendChild(div);
-      });
-      document.getElementById('estimateTotal').style.display = 'flex';
-      document.getElementById('totalAmount').textContent = "$" + total.toFixed(2);
-      document.getElementById('selectedServicesSection').style.display = 'block';
-    }
+				list.appendChild(div);
+			});
+			document.getElementById('estimateTotal').style.display = 'flex';
+			document.getElementById('totalAmount').textContent = "$" + total.toFixed(2);
+			document.getElementById('serviceRequestsSection').style.display = 'block';
+		}
 
-    function removeService(id) {
-      state.selectedServices = state.selectedServices.filter(s => s.id !== id);
-      updateSelectedServices();
-      updateCartDisplay();
-      if (state.selectedServices.length === 0) {
-        showCategories();
-      }
-    }
+		function removeService(id) {
+			state.selectedServices = state.selectedServices.filter(s => s.id !== id);
+			updateServiceRequest();
+			updateCartDisplay();
+			if (state.selectedServices.length === 0) {
+				showCategories();
+			}
+		}
 
-    function showCategories() {
-      state.currentView = 'categories';
-      document.getElementById('categories-grid').style.display = 'grid';
-      document.getElementById('serviceSelectionContainer').style.display = 'none';
-      document.getElementById('servicedetailsContainer').style.display = 'none';
-      document.getElementById('selectedServicesSection').style.display = 'none';
-    }
+		function showCategories() {
+			state.currentView = 'categories';
+			document.getElementById('categories-grid').style.display = 'grid';
+			document.getElementById('serviceSelectionContainer').style.display = 'none';
+			document.getElementById('jobdetailsContainer').style.display = 'none';
+			document.getElementById('serviceRequestsSection').style.display = 'none';
+		}
 
-    function showCategoryServices(category) {
-      // Hide the categories grid
-      document.getElementById('categories-grid').style.display = 'none';
-      // Get the section to update
-      const section = document.getElementById('selectedSection');
-      section.innerHTML = ""; // Clear previous content
-      // Add the category heading
-      const h3 = document.createElement("h3");
-      h3.textContent = category + " Services";
-      section.appendChild(h3);
-      // Build the service grid
-      const grid = document.createElement('div');
-      grid.className = 'service-selection-grid';
-      // Defensive: Check if category exists
-      if (!serviceData[category]) {
-        const err = document.createElement('p');
-        err.textContent = "No services found for this category.";
-        section.appendChild(err);
-        return;
-      }
-      // Create a card for each service in this category
-      Object.keys(serviceData[category]).forEach(service => {
-        const info = serviceData[category][service];
-        const card = document.createElement('div');
-        card.className = 'service-selection-card';
-        // Icon (emoji, safe as text)
-        const iconDiv = document.createElement('div');
-        iconDiv.className = 'service-selection-icon';
-        iconDiv.textContent = info.icon;
-        // Service name
-        const h4 = document.createElement('h4');
-        h4.textContent = service;
-        // Description
-        const p = document.createElement('p');
-        p.textContent = info.description;
-        // Price
-        const priceDiv = document.createElement('div');
-        priceDiv.className = 'service-price';
-        priceDiv.textContent = info.price;
-        // Assemble the card
-        card.appendChild(iconDiv);
-        card.appendChild(h4);
-        card.appendChild(p);
-        card.appendChild(priceDiv);
-        // Add click event to show service details
-        card.addEventListener('click', () => {
-          showServicedetails(category, service);
-        });
-        grid.appendChild(card);
-      });
-      section.appendChild(grid);
-      // Back button
-      const backBtn = document.createElement('button');
-      backBtn.className = 'back-button';
-      backBtn.textContent = 'Back to Categories';
-      backBtn.onclick = showCategories;
-      section.appendChild(backBtn);
-      // Furniture details toggle
-      if (category === "Furniture Fixes & Assembly") {
-        document.getElementById('furnituredetailsSection').style.display = 'block';
-        initFurnituredetails();
-      } else {
-        document.getElementById('furnituredetailsSection').style.display = 'none';
-      }
-      document.getElementById('serviceSelectionContainer').style.display = 'block';
-      document.getElementById('servicedetailsContainer').style.display = 'none';
-    }
+		function showCategoryServices(category) {
+			// Hide the categories grid
+			document.getElementById('categories-grid').style.display = 'none';
+			// Get the section to update
+			const section = document.getElementById('servicesSection');
+			section.innerHTML = ""; // Clear previous content
+			// Add the category heading
+			const h3 = document.createElement("h3");
+			h3.textContent = category + " Services";
+			section.appendChild(h3);
+			// Build the service grid
+			const grid = document.createElement('div');
+			grid.className = 'service-grid';
+			// Defensive: Check if category exists
+			if (!serviceData[category]) {
+				const err = document.createElement('p');
+				err.textContent = "No services found for this category.";
+				section.appendChild(err);
+				return;
+			}
+			// Create a card for each service in this category
+			Object.keys(serviceData[category]).forEach(service => {
+				const info = serviceData[category][service];
+				const card = document.createElement('div');
+				card.className = 'service-card';
+				// Icon (emoji, safe as text)
+				const iconDiv = document.createElement('div');
+				iconDiv.className = 'service-icon';
+				iconDiv.textContent = info.icon;
+				// Service name
+				const h4 = document.createElement('h4');
+				h4.textContent = service;
+				// Description
+				const p = document.createElement('p');
+				p.textContent = info.description;
+				// Price
+				const priceDiv = document.createElement('div');
+				priceDiv.className = 'service-price';
+				priceDiv.textContent = info.price;
+				// Assemble the card
+				card.appendChild(iconDiv);
+				card.appendChild(h4);
+				card.appendChild(p);
+				card.appendChild(priceDiv);
+				// Add click event to show service details
+				card.addEventListener('click', () => {
+					showServicerequest(category, service);
+				});
+				grid.appendChild(card);
+			});
+			section.appendChild(grid);
+			// Back button
+			const backBtn = document.createElement('button');
+			backBtn.className = 'back-button';
+			backBtn.textContent = 'Back to Categories';
+			backBtn.onclick = showCategories;
+			section.appendChild(backBtn);
+			// Furniture details toggle
+			if (category === "Furniture Fixes & Assembly") {
+				document.getElementById('furnituredetailsSection').style.display = 'block';
+				initFurnituredetails();
+			} else {
+				document.getElementById('furnituredetailsSection').style.display = 'none';
+			}
+			document.getElementById('serviceSelectionContainer').style.display = 'block';
+			document.getElementById('jobdetailsContainer').style.display = 'none';
+		}
 
-    function showServicedetails(category, service, preselecteddetail) {
-      state.currentView = 'details';
-      document.getElementById('categories-grid').style.display = 'none';
-      document.getElementById('serviceSelectionContainer').style.display = 'none';
-      const container = document.getElementById('servicedetailsContainer');
-      container.innerHTML = "";
-      container.style.display = 'block';
-      const header = document.createElement('h3');
-      header.textContent = service;
-      container.appendChild(header);
-      const grid = document.createElement('div');
-      grid.className = 'details-grid';
-      const info = serviceData[category][service];
-      info.details.forEach(detail => {
-        const card = document.createElement('div');
-        card.className = 'detail-card';
-        card.textContent = detail;
-        card.addEventListener('click', () => {
-          Array.from(grid.children).forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          noteInput.style.display = 'block';
-        });
-        if (preselecteddetail && detail.toLowerCase().includes(preselecteddetail.toLowerCase()))
-          card.classList.add('selected');
-        grid.appendChild(card);
-      });
-      container.appendChild(grid);
-      const noteInput = document.createElement('textarea');
-      noteInput.id = 'serviceNoteInput';
-      noteInput.placeholder = 'Enter any additional details regarding the job...';
-      noteInput.className = 'service-input-area';
-      noteInput.style.display = 'none';
-      noteInput.addEventListener('input', function() {
-        addBtn.style.display = this.value.trim() ? 'block' : 'none';
-      });
-      container.appendChild(noteInput);
-      const addBtn = document.createElement('button');
-      addBtn.className = 'book-button';
-      addBtn.textContent = 'Add';
-      addBtn.style.display = 'none';
-      addBtn.addEventListener('click', () => {
-        const selectedDetail = grid.querySelector('.detail-card.selected');
-        if (!selectedDetail) {
-          alert('Please select a detail.');
-          return;
-        }
-        if (!noteInput.value.trim()) {
-          alert('Please enter job details.');
-          return;
-        }
-        let finalNotes = noteInput.value.trim(),
-          finalPrice = info.price;
-        if (category === "Furniture Fixes & Assembly" && service === "Furniture Assembly ⏲Hourly Service") {
-          if (state.furnitureItems.length === 0) {
-            alert('Please add at least one furniture item.');
-            return;
-          }
-          finalNotes += "\nFurniture Items: " + state.furnitureItems.join(", ");
-          finalPrice = "$" + (furnitureHourlyRate * state.furnitureItems.length) + "/hour";
-          clearAllFurnitureItems();
-        }
-        const entry = {
-          id: category + "-" + service + "-" + Date.now(),
-          category: category,
-          name: service,
-          price: finalPrice,
-          icon: info.icon,
-          detail: selectedDetail.textContent,
-          notes: finalNotes
-        };
-        addToCart(entry);
-        container.style.display = 'none';
-        document.getElementById('selectedServicesSection').style.display = 'block';
-      });
-      container.appendChild(addBtn);
-      const backBtn = document.createElement('button');
-      backBtn.className = 'back-button';
-      backBtn.textContent = 'Back';
-      backBtn.addEventListener('click', () => {
-        container.style.display = 'none';
-        showCategoryServices(category);
-      });
-      container.appendChild(backBtn);
-    }
+		function showServicerequest(category, service, preselecteddetail) {
+			state.currentView = 'details';
+			document.getElementById('categories-grid').style.display = 'none';
+			document.getElementById('serviceSelectionContainer').style.display = 'none';
+			const container = document.getElementById('jobdetailsContainer');
+			container.innerHTML = "";
+			container.style.display = 'block';
+			const header = document.createElement('h3');
+			header.textContent = service;
+			container.appendChild(header);
+			const grid = document.createElement('div');
+			grid.className = 'details-grid';
+			const info = serviceData[category][service];
+			info.details.forEach(detail => {
+				const card = document.createElement('div');
+				card.className = 'detail-card';
+				card.textContent = detail;
+				card.addEventListener('click', () => {
+					Array.from(grid.children).forEach(c => c.classList.remove('selected'));
+					card.classList.add('selected');
+					noteInput.style.display = 'block';
+				});
+				if (preselecteddetail && detail.toLowerCase().includes(preselecteddetail.toLowerCase()))
+					card.classList.add('selected');
+				grid.appendChild(card);
+			});
+			container.appendChild(grid);
+			const noteInput = document.createElement('textarea');
+			noteInput.id = 'serviceNoteInput';
+			noteInput.placeholder = 'Enter any additional details regarding the job...';
+			noteInput.className = 'service-input-area';
+			noteInput.style.display = 'none';
+			noteInput.addEventListener('input', function() {
+				addBtn.style.display = this.value.trim() ? 'block' : 'none';
+			});
+			container.appendChild(noteInput);
+			const addBtn = document.createElement('button');
+			addBtn.className = 'book-button';
+			addBtn.textContent = 'Add';
+			addBtn.style.display = 'none';
+			addBtn.addEventListener('click', () => {
+				const selectedDetail = grid.querySelector('.detail-card.selected');
+				if (!selectedDetail) {
+					alert('Please select a detail.');
+					return;
+				}
+				if (!noteInput.value.trim()) {
+					alert('Please enter job details.');
+					return;
+				}
+				let finalNotes = noteInput.value.trim(),
+					finalPrice = info.price;
+				if (category === "Furniture Fixes & Assembly" && service === "Furniture Assembly ⏲Hourly Service") {
+					if (state.furnitureItems.length === 0) {
+						alert('Please add at least one furniture item.');
+						return;
+					}
+					finalNotes += "\nFurniture Items: " + state.furnitureItems.join(", ");
+					finalPrice = "$" + (furnitureHourlyRate * state.furnitureItems.length) + "/hour";
+					clearAllFurnitureItems();
+				}
+				const entry = {
+					id: category + "-" + service + "-" + Date.now(),
+					category: category,
+					name: service,
+					price: finalPrice,
+					icon: info.icon,
+					detail: selectedDetail.textContent,
+					notes: finalNotes
+				};
+				addToCart(entry);
+				container.style.display = 'none';
+				document.getElementById('serviceRequestsSection').style.display = 'block';
+			});
+			container.appendChild(addBtn);
+			const backBtn = document.createElement('button');
+			backBtn.className = 'back-button';
+			backBtn.textContent = 'Back';
+			backBtn.addEventListener('click', () => {
+				container.style.display = 'none';
+				showCategoryServices(category);
+			});
+			container.appendChild(backBtn);
+		}
 
-    function bookServices() {
-      if (state.selectedServices.length === 0) {
-        alert("No services selected!");
-        return;
-      }
-      // (Insert appointment details collection if desired)
-      alert(`Booking confirmed!
+		function bookServices() {
+			if (state.selectedServices.length === 0) {
+				alert("No services selected!");
+				return;
+			}
+			// (Insert appointment details collection if desired)
+			alert(`Booking confirmed!
 Estimated Total: ${document.getElementById('totalAmount').textContent}
 Thank you!`);
-      clearAllServices();
-    }
+			clearAllServices();
+		}
 
-    function clearAllServices() {
-      state.selectedServices = [];
-      updateCartDisplay();
-      document.getElementById('selectedServicesSection').style.display = 'none';
-      showCategories();
-    }
-    /* --------------------------
-       Cart Modal Functions
-       -------------------------- */
-    function updateCartModal() {
-      const modalList = document.getElementById('modalServiceList');
-      modalList.innerHTML = "";
-      let total = 0;
-      state.selectedServices.forEach(service => {
-        const div = document.createElement('div');
-        div.className = 'service-item';
-        div.innerHTML = `<span>${service.name}</span>
+		function clearAllServices() {
+			state.selectedServices = [];
+			updateCartDisplay();
+			document.getElementById('serviceRequestsSection').style.display = 'none';
+			showCategories();
+		}
+		/* --------------------------
+		   Cart Modal Functions
+		   -------------------------- */
+		function updateCartModal() {
+			const modalList = document.getElementById('modalShoppingList');
+			modalList.innerHTML = "";
+			let total = 0;
+			state.selectedServices.forEach(service => {
+				const div = document.createElement('div');
+				div.className = 'service-item';
+				div.innerHTML = `<span>${service.name}</span>
             <span class="service-price">${service.price}</span>
             <button class="remove-btn" onclick="removeService('${service.id}')">✕</button>`;
-        modalList.appendChild(div);
-        total += parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
-      });
-      document.getElementById('serviceCount').textContent = state.selectedServices.length;
-      document.getElementById('modalTotal').textContent = "$" + total.toFixed(2);
-    }
+				modalList.appendChild(div);
+				total += parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
+			});
+			document.getElementById('serviceCount').textContent = state.selectedServices.length;
+			document.getElementById('modalTotal').textContent = "$" + total.toFixed(2);
+		}
 
-    function toggleCartModal() {
-      const modal = document.getElementById('modalOverlay');
-      if (modal.style.display === 'block') {
-        modal.style.display = 'none';
-      } else {
-        updateCartModal();
-        modal.style.display = 'block';
-      }
-    }
-    /* --------------------------
-       Search Modal Functions
-       -------------------------- */
-    function performSearch(query) {
-      const results = [];
-      query = query.toLowerCase().trim();
-      Object.keys(serviceData).forEach(category => {
-        Object.keys(serviceData[category]).forEach(service => {
-          const info = serviceData[category][service];
-          if (service.toLowerCase().includes(query) || info.description.toLowerCase().includes(query)) {
-            results.push({
-              category,
-              service,
-              matchdetail: null
-            });
-          } else {
-            info.details.forEach(detail => {
-              if (detail.toLowerCase().includes(query))
-                results.push({
-                  category,
-                  service,
-                  matchdetail: detail
-                });
-            });
-          }
-        });
-      });
-      return results;
-    }
+		function toggleCartModal() {
+			const modal = document.getElementById('modalCheckout');
+			if (modal.style.display === 'block') {
+				modal.style.display = 'none';
+			} else {
+				updateCartModal();
+				modal.style.display = 'block';
+			}
+		}
+		/* --------------------------
+		   Search Modal Functions
+		   -------------------------- */
+		function performSearch(query) {
+			const results = [];
+			query = query.toLowerCase().trim();
+			Object.keys(serviceData).forEach(category => {
+				Object.keys(serviceData[category]).forEach(service => {
+					const info = serviceData[category][service];
+					if (service.toLowerCase().includes(query) || info.description.toLowerCase().includes(query)) {
+						results.push({
+							category,
+							service,
+							matchdetail: null
+						});
+					} else {
+						info.details.forEach(detail => {
+							if (detail.toLowerCase().includes(query))
+								results.push({
+									category,
+									service,
+									matchdetail: detail
+								});
+						});
+					}
+				});
+			});
+			return results;
+		}
 
-    function openSearchModal() {
-      document.getElementById('searchModal').style.display = 'flex';
-      document.getElementById('modalSearchInput').focus();
-    }
+		function openSearchModal() {
+			document.getElementById('searchModal').style.display = 'flex';
+			document.getElementById('modalSearchInput').focus();
+		}
 
-    function closeSearchModal() {
-      document.getElementById('searchModal').style.display = 'none';
-    }
-    document.getElementById('modalSearchInput').addEventListener('input', function(e) {
-      const results = performSearch(e.target.value);
-      const container = document.getElementById('modalSearchResults');
-      container.innerHTML = "";
-      results.forEach(result => {
-        const div = document.createElement('div');
-        div.className = 'service-item';
-        div.textContent =
-          result.category +
-          " > " +
-          result.service +
-          (result.matchdetail ? " (detail: " + result.matchdetail + ")" : "");
-        div.onclick = () => {
-          closeSearchModal();
-          showServicedetails(result.category, result.service, result.matchdetail);
-        };
-        container.appendChild(div);
-      });
-    });
-    /* --------------------------
-       Hardcoded Service Data (migrated from your original mapping)
-       -------------------------- */
-    window.serviceData = {
-      "Minor Home Repairs": {
-        "Appliances ⏲Hourly Service": {
-          price: "$70/hour",
-          description: "Hourly rate for appliance maintenance, repair, assessment. Excludes specialized service.",
-          icon: "🎛️",
-          details: ["Maintenance", "Repair", "Assessment"]
-        },
-        "Door Handles & Locks Installation": {
-          price: "$70",
-          description: "Flat-rate for door knob, lock installation. Hardware provided by client.",
-          icon: "🔒",
-          details: ["Standard door", "Security lock", "Smart lock"]
-        },
-        "Furniture Repair ⏲Hourly Service": {
-          price: "$70/hour",
-          description: "Hourly charge for repairing damaged furniture.",
-          icon: "🪑",
-          details: ["Wood furniture", "Upholstery", "Metal furniture"]
-        },
-        "Hollow Door Repair": {
-          price: "$125",
-          description: "Flat-rate patch & paint for interior door damage. Materials included.",
-          icon: "🚪",
-          details: ["Patch & paint", "Hinge repair", "Frame adjustment"]
-        },
-        "Wall Repair - Patch & Paint": {
-          price: "$70",
-          description: "Flat-rate interior wall patch & paint repairs. Materials included.",
-          icon: "🧱",
-          details: ["Small holes", "Large holes", "Cracks"]
-        }
-      },
-      "Wall Mounting": {
-        "Curtains/Drapes w. Single Rod Installation": {
-          price: "$50",
-          description: "Single-rod installation of standard curtains or drapes.",
-          icon: "🪟",
-          details: ["Standard rod", "Tension rod", "Decorative rod"]
-        },
-        "Frame/Shelf Mounting ⏲Hourly Service": {
-          price: "$60/hour",
-          description: "Hourly service for wall mounting frames and shelves.",
-          icon: "📚",
-          details: ["Picture frames", "Shelves", "Wall art"]
-        },
-        "TV Mounting (Under 60\") + Concealed Cables": {
-          price: "$150",
-          description: "Flat-rate for TV mounting under 60\" with concealed cables.",
-          icon: "📺",
-          details: ["Drywall", "Concrete", "Brick"]
-        },
-        "TV Mounting (Under 60\") standard": {
-          price: "$60",
-          description: "Flat-rate for TV mounting under 60\". Additional hardware costs may apply.",
-          icon: "📺",
-          details: ["Basic mounting", "Tilt mount", "Swivel mount"]
-        }
-      },
-      "Computer Repairs": {
-        "Data Transfer / Data Back-Up": {
-          price: "$99",
-          description: "Copy data or create backups. Excludes additional hardware.",
-          icon: "💾",
-          details: ["External drive", "Cloud backup", "Network transfer"]
-        },
-        "Part Replacement/Upgrade": {
-          price: "$125",
-          description: "Replace/upgrade PC hardware parts. Client-provided or expensed parts.",
-          icon: "💻",
-          details: ["RAM", "SSD", "Graphics card"]
-        },
-        "PC Diagnostic Service": {
-          price: "$75",
-          description: "Diagnose hardware or software issues. Fee credited toward repair services.",
-          icon: "🔍",
-          details: ["Hardware", "Software", "Performance"]
-        },
-        "Software Install/Update/Removal": {
-          price: "$50",
-          description: "Install, update, or remove up to 4 software applications.",
-          icon: "📀",
-          details: ["Operating system", "Applications", "Drivers"]
-        },
-        "System Restore": {
-          price: "$125",
-          description: "Restore PC back to an earlier version of Windows.",
-          icon: "⏮️",
-          details: ["Factory reset", "Recovery partition", "Backup restore"]
-        },
-        "Virus/Malware Removal": {
-          price: "$125",
-          description: "Remove malicious programs while preserving OS.",
-          icon: "🛡️",
-          details: ["Scan & remove", "System cleanup", "Prevention setup"]
-        }
-      },
-      "Electrical Help": {
-        "Light Fixture Swap": {
-          price: "$60",
-          description: "Flat-rate to replace an existing light fixture (excluding ceiling fans).",
-          icon: "💡",
-          details: ["Ceiling light", "Wall sconce", "Pendant light"]
-        }
-      },
-      "Furniture Fixes & Assembly": {
-        "Furniture Assembly ⏲Hourly Service": {
-          price: "$40/hour",
-          description: "Hourly charge for assembling furniture. Utilize furniture items added below.",
-          icon: "🛋️",
-          details: ["IKEA furniture", "Office furniture", "Outdoor furniture"]
-        },
-        "Furniture Repair ⏲Hourly Service": {
-          price: "$70/hour",
-          description: "Hourly charge for repairing damaged furniture.",
-          icon: "🔨",
-          details: ["Wood repair", "Upholstery", "Structural repair"]
-        }
-      },
-      "Plumbing Help": {
-        "Bidet Accessory Install/Removal": {
-          price: "$70",
-          description: "Flat-rate for bidet attachment install/removal. Excludes specialized toilets.",
-          icon: "🚽",
-          details: ["Standard bidet", "Smart bidet", "Add-on"]
-        },
-        "Fixture Swap (Cosmetic)": {
-          price: "$70",
-          description: "Flat-rate for swapping sink faucet or shower head.",
-          icon: "🚰",
-          details: ["Faucet", "Shower head", "Drain cover"]
-        },
-        "Leak Under Sink Repair": {
-          price: "$75",
-          description: "Flat-rate repair for a minor leak under the sink.",
-          icon: "💧",
-          details: ["Pipe leak", "Drain leak", "Supply line"]
-        },
-        "Unclog Sink/Shower/Toilet (Minor)": {
-          price: "$70",
-          description: "Flat-rate for non-major clog removal.",
-          icon: "🪠",
-          details: ["Plunger", "Drain snake", "Chemical treatment"]
-        }
-      }
-    };
-    /* --------------------------
-       DOMContentLoaded – wire up category taps, etc.
-       -------------------------- */
-    document.addEventListener('DOMContentLoaded', () => {
-      initFurnituredetails();
-      document.querySelectorAll('.category-tile').forEach(tile => {
-        tile.addEventListener('click', function() {
-          const category = this.getAttribute('data-category');
-          this.classList.add('tap-animate');
-          setTimeout(() => this.classList.remove('tap-animate'), 300);
-          showCategoryServices(category);
-        });
-      });
-    });
-  </script>
+		function closeSearchModal() {
+			document.getElementById('searchModal').style.display = 'none';
+		}
+		document.getElementById('modalSearchInput').addEventListener('input', function(e) {
+			const results = performSearch(e.target.value);
+			const container = document.getElementById('modalSearchResults');
+			container.innerHTML = "";
+			results.forEach(result => {
+				const div = document.createElement('div');
+				div.className = 'service-item';
+				div.textContent =
+					result.category +
+					" > " +
+					result.service +
+					(result.matchdetail ? " (detail: " + result.matchdetail + ")" : "");
+				div.onclick = () => {
+					closeSearchModal();
+					showServicerequest(result.category, result.service, result.matchdetail);
+				};
+				container.appendChild(div);
+			});
+		});
+		/* --------------------------
+		   Hardcoded Service Data (migrated from your original mapping)
+		   -------------------------- */
+		window.serviceData = {
+			"Minor Home Repairs": {
+				"Appliances ⏲Hourly Service": {
+					price: "$70/hour",
+					description: "Hourly rate for appliance maintenance, repair, assessment. Excludes specialized service.",
+					icon: "🎛️",
+					details: ["Maintenance", "Repair", "Assessment"]
+				},
+				"Door Handles & Locks Installation": {
+					price: "$70",
+					description: "Flat-rate for door knob, lock installation. Hardware provided by client.",
+					icon: "🔒",
+					details: ["Standard door", "Security lock", "Smart lock"]
+				},
+				"Furniture Repair ⏲Hourly Service": {
+					price: "$70/hour",
+					description: "Hourly charge for repairing damaged furniture.",
+					icon: "🪑",
+					details: ["Wood furniture", "Upholstery", "Metal furniture"]
+				},
+				"Hollow Door Repair": {
+					price: "$125",
+					description: "Flat-rate patch & paint for interior door damage. Materials included.",
+					icon: "🚪",
+					details: ["Patch & paint", "Hinge repair", "Frame adjustment"]
+				},
+				"Wall Repair - Patch & Paint": {
+					price: "$70",
+					description: "Flat-rate interior wall patch & paint repairs. Materials included.",
+					icon: "🧱",
+					details: ["Small holes", "Large holes", "Cracks"]
+				}
+			},
+			"Wall Mounting": {
+				"Curtains/Drapes w. Single Rod Installation": {
+					price: "$50",
+					description: "Single-rod installation of standard curtains or drapes.",
+					icon: "🪟",
+					details: ["Standard rod", "Tension rod", "Decorative rod"]
+				},
+				"Frame/Shelf Mounting ⏲Hourly Service": {
+					price: "$60/hour",
+					description: "Hourly service for wall mounting frames and shelves.",
+					icon: "📚",
+					details: ["Picture frames", "Shelves", "Wall art"]
+				},
+				"TV Mounting (Under 60\") + Concealed Cables": {
+					price: "$150",
+					description: "Flat-rate for TV mounting under 60\" with concealed cables.",
+					icon: "📺",
+					details: ["Drywall", "Concrete", "Brick"]
+				},
+				"TV Mounting (Under 60\") standard": {
+					price: "$60",
+					description: "Flat-rate for TV mounting under 60\". Additional hardware costs may apply.",
+					icon: "📺",
+					details: ["Basic mounting", "Tilt mount", "Swivel mount"]
+				}
+			},
+			"Computer Repairs": {
+				"Data Transfer / Data Back-Up": {
+					price: "$99",
+					description: "Copy data or create backups. Excludes additional hardware.",
+					icon: "💾",
+					details: ["External drive", "Cloud backup", "Network transfer"]
+				},
+				"Part Replacement/Upgrade": {
+					price: "$125",
+					description: "Replace/upgrade PC hardware parts. Client-provided or expensed parts.",
+					icon: "💻",
+					details: ["RAM", "SSD", "Graphics card"]
+				},
+				"PC Diagnostic Service": {
+					price: "$75",
+					description: "Diagnose hardware or software issues. Fee credited toward repair services.",
+					icon: "🔍",
+					details: ["Hardware", "Software", "Performance"]
+				},
+				"Software Install/Update/Removal": {
+					price: "$50",
+					description: "Install, update, or remove up to 4 software applications.",
+					icon: "📀",
+					details: ["Operating system", "Applications", "Drivers"]
+				},
+				"System Restore": {
+					price: "$125",
+					description: "Restore PC back to an earlier version of Windows.",
+					icon: "⏮️",
+					details: ["Factory reset", "Recovery partition", "Backup restore"]
+				},
+				"Virus/Malware Removal": {
+					price: "$125",
+					description: "Remove malicious programs while preserving OS.",
+					icon: "🛡️",
+					details: ["Scan & remove", "System cleanup", "Prevention setup"]
+				}
+			},
+			"Electrical Help": {
+				"Light Fixture Swap": {
+					price: "$60",
+					description: "Flat-rate to replace an existing light fixture (excluding ceiling fans).",
+					icon: "💡",
+					details: ["Ceiling light", "Wall sconce", "Pendant light"]
+				}
+			},
+			"Furniture Fixes & Assembly": {
+				"Furniture Assembly ⏲Hourly Service": {
+					price: "$40/hour",
+					description: "Hourly charge for assembling furniture. Utilize furniture items added below.",
+					icon: "🛋️",
+					details: ["IKEA furniture", "Office furniture", "Outdoor furniture"]
+				},
+				"Furniture Repair ⏲Hourly Service": {
+					price: "$70/hour",
+					description: "Hourly charge for repairing damaged furniture.",
+					icon: "🔨",
+					details: ["Wood repair", "Upholstery", "Structural repair"]
+				}
+			},
+			"Plumbing Help": {
+				"Bidet Accessory Install/Removal": {
+					price: "$70",
+					description: "Flat-rate for bidet attachment install/removal. Excludes specialized toilets.",
+					icon: "🚽",
+					details: ["Standard bidet", "Smart bidet", "Add-on"]
+				},
+				"Fixture Swap (Cosmetic)": {
+					price: "$70",
+					description: "Flat-rate for swapping sink faucet or shower head.",
+					icon: "🚰",
+					details: ["Faucet", "Shower head", "Drain cover"]
+				},
+				"Leak Under Sink Repair": {
+					price: "$75",
+					description: "Flat-rate repair for a minor leak under the sink.",
+					icon: "💧",
+					details: ["Pipe leak", "Drain leak", "Supply line"]
+				},
+				"Unclog Sink/Shower/Toilet (Minor)": {
+					price: "$70",
+					description: "Flat-rate for non-major clog removal.",
+					icon: "🪠",
+					details: ["Plunger", "Drain snake", "Chemical treatment"]
+				}
+			}
+		};
+		/* --------------------------
+		   DOMContentLoaded – wire up category taps, etc.
+		   -------------------------- */
+		document.addEventListener('DOMContentLoaded', () => {
+			initFurnituredetails();
+			document.querySelectorAll('.category-tile').forEach(tile => {
+				tile.addEventListener('click', function() {
+					const category = this.getAttribute('data-category');
+					this.classList.add('tap-animate');
+					setTimeout(() => this.classList.remove('tap-animate'), 300);
+					showCategoryServices(category);
+				});
+			});
+		});
+	</script>
 </body>
 
 </html>
