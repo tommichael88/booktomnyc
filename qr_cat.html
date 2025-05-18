@@ -359,7 +359,7 @@
     .container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 1.5rem;
+      padding: 1rem;
       position: relative;
     }
 
@@ -368,105 +368,174 @@
       padding: 0;
     }
 
-    .menu-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
     #categories-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 0.1rem;
-      padding: 0.1rem;
-      box-sizing: border-box;
+      gap: 4px;
+      margin: 1px;
+      padding-bottom: 5px;
     }
 
     .category-tile {
-      background: rgba(169, 169, 169, .45);
-      border: 1px outset rgba(0, 0, 0, 0.9);
-      color: #454547;
-      padding: 1.25rem;
-      border-radius: 12px;
+      background: rgba(166, 166, 166, 0.5);
+      color: #000;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 -1px 1px rgba(255, 255, 255, 0.3);
+      border: 2px inset #c0c0c0;
+      border-radius: 0;
+      padding: 20px 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-height: 120px;
       display: flex;
       flex-direction: column;
-      align-items: center;
       justify-content: center;
-      text-align: center;
-      aspect-ratio: 1/1;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      position: relative;
-      overflow: hidden;
-      cursor: pointer;
-    }
-
-    .category-tile::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(222, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-    }
-
-    .category-tile:hover::before,
-    .category-tile:active::before {
-      opacity: 0.6;
-    }
-
-    .category-tile:hover,
-    .category-tile:active {
-      transform: translateY(-4px) scale(1.03);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-      border-color: #de0000;
-      color: #000;
-    }
-
-    .category-tile h2 {
-      position: relative;
-      margin: 0;
-      padding: 0 0;
+      align-items: center;
       font-size: 1rem;
-      transition: text-shadow 0.3s ease;
+      position: relative;
+      text-align: center;
     }
 
-    .category-tile h2::after {
+    /* Underline Animation */
+    .category-tile::after {
       content: '';
       position: absolute;
-      bottom: -5px;
       left: 0;
+      bottom: 15px;
       width: 0;
       height: 2px;
-      background: var(--accent);
-      transition: width 0.3s ease;
+      background: linear-gradient(25deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: center;
+      margin: 0 auto;
+      right: 0;
     }
 
-    .category-tile:hover h2::after,
-    .category-tile:active h2::after {
-      width: 100%;
+    .category-tile:hover::after {
+      width: 80%;
+      left: 10%;
     }
 
+    /* Text Glow Effect */
+    .category-tile:hover h2 {
+      text-shadow: 0 0 8px rgba(222, 0, 0, 0.6),
+        0 0 12px rgba(222, 0, 0, 0.4),
+        0 0 16px rgba(222, 0, 0, 0.2);
+      color: #fff;
+    }
+
+    /* Icon Styling */
     .category-icon {
       font-size: 2rem;
-      margin-bottom: 1rem;
-      background: linear-gradient(6deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
+      margin-bottom: 4px;
+      background: linear-gradient(25deg, #000 10%, #de0000 60%, #de0000 70%, #8a0615 60%, #de0000 95%);
       -webkit-background-clip: text;
       background-clip: text;
-      color: transparent;
-      transition: transform 0.3s ease;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.6), 1px 1px 0 rgba(255, 255, 255, 0.2);
+      transition: all 0.4s ease-out;
+    }
+
+    /* Hover Effects */
+    .category-tile:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 15px rgba(222, 0, 0, 0.2);
+      border-color: var(--accent);
     }
 
     .category-tile:hover .category-icon {
       transform: scale(1.1);
     }
 
-    .service-category:hover::after {
+    /* Animations */
+    @keyframes underlineExpand {
+      0% {
+        width: 0;
+        left: 50%;
+      }
+
+      100% {
+        width: 80%;
+        left: 10%;
+      }
+    }
+
+    .category-tile:hover::after {
       animation: underlineExpand 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* Existing animations kept below */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes tapAnimation {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(0.95);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      20%,
+      60% {
+        transform: translateX(-5px);
+      }
+
+      40%,
+      80% {
+        transform: translateX(5px);
+      }
+    }
+
+    @keyframes backgroundPulse {
+      0% {
+        opacity: 0;
+        transform: scaleX(0);
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scaleX(1);
+      }
+
+      100% {
+        opacity: 0;
+      }
     }
 
     .search-btn {
@@ -1080,127 +1149,126 @@
             </div>
 
             <!-- Categories Grid -->
-            <div class="page-container">
-              <div class="menu-container" id="categories-grid">
-                <div class="category-tile" data-category="Minor Home Repairs">
-                  <div class="category-icon">🏠</div>
-                  <h2>Minor Home Repairs</h2>
-                </div>
-                <div class="category-tile" data-category="Furniture Fixes &amp; Assembly">
-                  <div class="category-icon">🛋️</div>
-                  <h2>Furniture Fixes</h2>
 
-                </div>
-                <div class="category-tile" data-category="Wall Mounting">
-                  <div class="category-icon">🖼️</div>
-                  <h2>Wall Mounting</h2>
-
-                </div>
-                <div class="category-tile" data-category="Electrical Help">
-                  <div class="category-icon">💡</div>
-                  <h2>Electrical Help</h2>
-                </div>
-                <div class="category-tile" data-category="Plumbing Help">
-                  <div class="category-icon">🚿</div>
-                  <h2>Plumbing Help</h2>
-
-                </div>
-                <div class="category-tile" data-category="Computer Repairs">
-                  <div class="category-icon">💻</div>
-                  <h2>Computer Repairs</h2>
-                </div>
+            <div class="menu-container" id="categories-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:0">
+              <div class="category-tile" data-category="Minor Home Repairs">
+                <div class="category-icon">🏠</div>
+                <h2>Minor Home Repairs</h2>
               </div>
-            </div> <!-- Floating Cart FAB (hidden if no items) -->
-            <div id="cartFab" class="fab-container" style="display: none;">
-              <button class="fab" onclick="toggleCartModal()">
-                📃 <span id="fabCartCount">0</span>
-              </button>
-            </div>
-            <!-- Search Modal -->
-            <div id="searchModal" class="modal-overlay">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2 class="modal-title">Search Services</h2>
-                  <button class="close-btn" onclick="closeSearchModal()">×</button>
-                </div>
-                <input type="text" class="search-input" id="modalSearchInput" placeholder="" />
-                <div id="modalSearchResults" class="service-list"></div>
+              <div class="category-tile" data-category="Furniture Fixes &amp; Assembly">
+                <div class="category-icon">🛋️</div>
+                <h2>Furniture Fixes</h2>
+
+              </div>
+              <div class="category-tile" data-category="Wall Mounting">
+                <div class="category-icon">🖼️</div>
+                <h2>Wall Mounting</h2>
+
+              </div>
+              <div class="category-tile" data-category="Electrical Help">
+                <div class="category-icon">💡</div>
+                <h2>Electrical Help</h2>
+              </div>
+              <div class="category-tile" data-category="Plumbing Help">
+                <div class="category-icon">🚿</div>
+                <h2>Plumbing Help</h2>
+
+              </div>
+              <div class="category-tile" data-category="Computer Repairs">
+                <div class="category-icon">💻</div>
+                <h2>Computer Repairs</h2>
               </div>
             </div>
-
-            <!-- Cart Modal -->
-            <div id="modalOverlay" class="modal-overlay">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2 class="modal-title">Your Selected Services</h2>
-                  <button class="close-btn" onclick="toggleCartModal()">×</button>
-                </div>
-                <div id="modalServiceList" class="service-list"></div>
-                <div class="summary-section">
-                  <div class="subtotal">
-                    <span>Subtotal (<span id="serviceCount">0</span> items):</span>
-                    <span id="modalTotal">$0</span>
-                  </div>
-                </div>
-                <div class="action-buttons">
-                  <button class="book-button" onclick="showCategories()">➕ More Services</button>
-                  <button class="final-book-button" onclick="bookServices()">Checkout</button>
-                </div>
+          </div> <!-- Floating Cart FAB (hidden if no items) -->
+          <div id="cartFab" class="fab-container" style="display: none;">
+            <button class="fab" onclick="toggleCartModal()">
+              📃 <span id="fabCartCount">0</span>
+            </button>
+          </div>
+          <!-- Search Modal -->
+          <div id="searchModal" class="modal-overlay">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2 class="modal-title">Search Services</h2>
+                <button class="close-btn" onclick="closeSearchModal()">×</button>
               </div>
-            </div>
-            <!-- Service Selection Container (for chosen category) -->
-            <div id="serviceSelectionContainer" style="display: none;">
-              <div id="selectedSection"></div>
-              <!-- Furniture Details (if applicable) -->
-              <div class="task-details" id="furnituredetailsSection" style="display: none;">
-                <h4>Select Your Furniture Item</h4>
-                <div>
-                  <label>
-                    <input type="radio" name="furnitureType" value="ikea" checked> IKEA
-                  </label>
-                  <label>
-                    <input type="radio" name="furnitureType" value="generic"> Non‑IKEA
-                  </label>
-                </div>
-                <select id="furniture-select">
-                  <option value="">Select Here</option>
-                </select>
-                <button class="book-button" onclick="addFurnitureItem()">Add Furniture Item</button>
-                <ul id="selectedFurnitureList"></ul>
-                <button class="clear-all-btn" onclick="clearAllFurnitureItems()">Clear Furniture Items</button>
-              </div>
-            </div>
-
-            <!-- Service Details Container (shows service details and note input) -->
-            <div id="servicedetailsContainer" style="display: none;"></div>
-
-            <!-- Selected Services Summary -->
-            <div id="selectedServicesSection" style="display: none;">
-              <h4>Services Requested</h4>
-              <div id="selectedServicesList"></div>
-              <div id="estimateTotal" class="estimate-total" style="display: none;">
-                <span>Estimated Subtotal:</span>
-                <span id="totalAmount">$0</span>
-              </div>
-              <button class="final-book-button" onclick="bookServices()">Checkout</button>
-              <button class="clear-all-btn" onclick="clearAllServices()" style="background-color: grey;">Clear All</button>
+              <input type="text" class="search-input" id="modalSearchInput" placeholder="" />
+              <div id="modalSearchResults" class="service-list"></div>
             </div>
           </div>
 
-          <div class="card-invoices" style="color:#fff">
-            <h1 style="color:rgba(155,0,0,.99)">
-              <img src="https://tommichael88.github.io/booktomnyc/images/zohoinvoice?raw=true" alt="Zoho Invoice favicon" style="max-width:50px;height:auto;text-align:center;padding:2px;margin:10px">
-              <br>
-              <span style="font-size:2.5rem">
-                <b>INVOICES</b>
-              </span>
-            </h1>
-            <p style="font-size:1rem;padding:4px">view invoices • process payments • digital receipts • review quote estimates • share documents • transaction history • expense receipts</p>
-            <button class="client-login">🔐 𝗖𝗟𝗜𝗘𝗡𝗧 PORTAL</button>
-            <br>
-            <br>
-
+          <!-- Cart Modal -->
+          <div id="modalOverlay" class="modal-overlay">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2 class="modal-title">Your Selected Services</h2>
+                <button class="close-btn" onclick="toggleCartModal()">×</button>
+              </div>
+              <div id="modalServiceList" class="service-list"></div>
+              <div class="summary-section">
+                <div class="subtotal">
+                  <span>Subtotal (<span id="serviceCount">0</span> items):</span>
+                  <span id="modalTotal">$0</span>
+                </div>
+              </div>
+              <div class="action-buttons">
+                <button class="book-button" onclick="showCategories()">➕ More Services</button>
+                <button class="final-book-button" onclick="bookServices()">Checkout</button>
+              </div>
+            </div>
           </div>
+          <!-- Service Selection Container (for chosen category) -->
+          <div id="serviceSelectionContainer" style="display: none;">
+            <div id="selectedSection"></div>
+            <!-- Furniture Details (if applicable) -->
+            <div class="task-details" id="furnituredetailsSection" style="display: none;">
+              <h4>Select Your Furniture Item</h4>
+              <div>
+                <label>
+                  <input type="radio" name="furnitureType" value="ikea" checked> IKEA
+                </label>
+                <label>
+                  <input type="radio" name="furnitureType" value="generic"> Non‑IKEA
+                </label>
+              </div>
+              <select id="furniture-select">
+                <option value="">Select Here</option>
+              </select>
+              <button class="book-button" onclick="addFurnitureItem()">Add Furniture Item</button>
+              <ul id="selectedFurnitureList"></ul>
+              <button class="clear-all-btn" onclick="clearAllFurnitureItems()">Clear Furniture Items</button>
+            </div>
+          </div>
+
+          <!-- Service Details Container (shows service details and note input) -->
+          <div id="servicedetailsContainer" style="display: none;"></div>
+
+          <!-- Selected Services Summary -->
+          <div id="selectedServicesSection" style="display: none;">
+            <h4>Services Requested</h4>
+            <div id="selectedServicesList"></div>
+            <div id="estimateTotal" class="estimate-total" style="display: none;">
+              <span>Estimated Subtotal:</span>
+              <span id="totalAmount">$0</span>
+            </div>
+            <button class="final-book-button" onclick="bookServices()">Checkout</button>
+            <button class="clear-all-btn" onclick="clearAllServices()" style="background-color: grey;">Clear All</button>
+          </div>
+        </div>
+
+        <div class="card-invoices" style="color:#fff">
+          <h1 style="color:rgba(155,0,0,.99)">
+            <img src="https://tommichael88.github.io/booktomnyc/images/zohoinvoice?raw=true" alt="Zoho Invoice favicon" style="max-width:50px;height:auto;text-align:center;padding:2px;margin:10px">
+            <br>
+            <span style="font-size:2.5rem">
+              <b>INVOICES</b>
+            </span>
+          </h1>
+          <p style="font-size:1rem;padding:4px">view invoices • process payments • digital receipts • review quote estimates • share documents • transaction history • expense receipts</p>
+          <button class="client-login">🔐 𝗖𝗟𝗜𝗘𝗡𝗧 PORTAL</button>
+          <br>
+          <br>
+
         </div>
       </div>
     </div>
