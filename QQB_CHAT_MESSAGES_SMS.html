@@ -3,15 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!--
-    Content Security Policy:
-    - default-src 'self'             ← block all external resources by default
-    - script-src 'self' 'unsafe-inline' ← allow only your inline <script> block
-    - style-src 'self' 'unsafe-inline'  ← allow your inline <style>
-  -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" />
-  <title>🤖 Secure Chat</title>
+  <title>Messaging 🤖</title>
   <style>
     html, body {
       margin: 0; padding: 0;
@@ -30,19 +24,28 @@
       background: #fff;
       overflow: hidden;
     }
+    /* sticky header */
     #header {
       position: sticky; top: 0; z-index: 2;
       display: flex; align-items: center; justify-content: center;
       padding: 8px; background: #f0f0f0; border-bottom: 1px solid #ddd;
     }
-    #header h1 { font-size: 16px; margin: 0; color: #454545; }
+    #header h1 {
+      font-size: 16px; margin: 0; color: #454545;
+    }
+    /* replaced trash icon with plus */
     #clearChat {
       position: absolute; right: 12px;
       background: none; border: none;
-      font-size: 16px; cursor: pointer; opacity: 0.5;
-      transition: opacity .2s;
+      padding: 4px;
+      color: #454545;
+      cursor: pointer;
+      transition: color .2s;
     }
-    #clearChat:hover { opacity: 1; }
+    #clearChat:hover {
+      color: #007aff;
+    }
+    /* rest of chat layout unchanged */
     #chat-container {
       flex: 1; display: flex; flex-direction: column; overflow: hidden;
     }
@@ -50,24 +53,18 @@
       flex: 1; padding: 16px; overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
-    .message {
-      display: flex; align-items: flex-end; margin-bottom: 12px;
-    }
+    .message { display: flex; align-items: flex-end; margin-bottom: 12px; }
     .user-message { justify-content: flex-end; }
     .message-content {
       padding: 10px 14px; border-radius: 18px;
       max-width: 70%; word-wrap: break-word;
     }
-    .bot-message .message-content {
-      background: #e5e5ea; color: #000;
-    }
-    .user-message .message-content {
-      background: #007aff; color: #fff;
-    }
+    .bot-message .message-content { background: #e5e5ea; color: #000; }
+    .user-message .message-content { background: #007aff; color: #fff; }
     .timestamp {
-      font-size: 10px; color: #999; margin-left: 6px;
-      white-space: nowrap;
+      font-size: 10px; color: #999; margin-left: 6px; white-space: nowrap;
     }
+    /* sticky input */
     #input-container {
       position: sticky; bottom: 0; z-index: 2;
       display: flex; align-items: center;
@@ -101,7 +98,15 @@
     <div id="header">
       <span style="font-size:24px; margin-right:8px;">🤖</span>
       <h1>QuickQuoteBot</h1>
-      <button id="clearChat" title="Clear chat">🗑️</button>
+      <!-- new-thread button: plus icon -->
+      <button id="clearChat" aria-label="New chat" title="New chat">
+        <svg width="20" height="20" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5"  y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
     </div>
 
     <div id="chat-container">
@@ -134,7 +139,9 @@
       ];
 
       function now() {
-        return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        return new Date().toLocaleTimeString([], {
+          hour: '2-digit', minute: '2-digit'
+        });
       }
 
       function appendMessage(text, isUser) {
@@ -173,7 +180,7 @@
 
         typingEl.style.display = 'block';
         setTimeout(() => {
-          const reply = botReplies[Math.floor(Math.random()*botReplies.length)];
+          const reply = botReplies[Math.floor(Math.random() * botReplies.length)];
           appendMessage('🤖 ' + reply, false);
           typingEl.style.display = 'none';
         }, 3000);
