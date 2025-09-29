@@ -3,102 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    CSP only allows same-origin CSS/JS.
+    No 'unsafe-inline' means we moved all CSS to style.css and JS to script.js.
+  -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" />
-  <title>Messaging 🤖</title>
-  <style>
-    html, body {
-      margin: 0; padding: 0;
-      height: 100%;
-      background: #f4f4f4;
-    }
-    #conversation {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100%;
-      max-width: 400px;
-      margin: 0 auto;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      border-radius: 20px;
-      background: #fff;
-      overflow: hidden;
-    }
-    /* sticky header */
-    #header {
-      position: sticky; top: 0; z-index: 2;
-      display: flex; align-items: center; justify-content: center;
-      padding: 8px; background: #f0f0f0; border-bottom: 1px solid #ddd;
-    }
-    #header h1 {
-      font-size: 16px; margin: 0; color: #454545;
-    }
-    /* replaced trash icon with plus */
-    #clearChat {
-      position: absolute; right: 12px;
-      background: none; border: none;
-      padding: 4px;
-      color: #454545;
-      cursor: pointer;
-      transition: color .2s;
-    }
-    #clearChat:hover {
-      color: #007aff;
-    }
-    /* rest of chat layout unchanged */
-    #chat-container {
-      flex: 1; display: flex; flex-direction: column; overflow: hidden;
-    }
-    #messages {
-      flex: 1; padding: 16px; overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    .message { display: flex; align-items: flex-end; margin-bottom: 12px; }
-    .user-message { justify-content: flex-end; }
-    .message-content {
-      padding: 10px 14px; border-radius: 18px;
-      max-width: 70%; word-wrap: break-word;
-    }
-    .bot-message .message-content { background: #e5e5ea; color: #000; }
-    .user-message .message-content { background: #007aff; color: #fff; }
-    .timestamp {
-      font-size: 10px; color: #999; margin-left: 6px; white-space: nowrap;
-    }
-    /* sticky input */
-    #input-container {
-      position: sticky; bottom: 0; z-index: 2;
-      display: flex; align-items: center;
-      padding: 8px; background: #f4f4f4; border-top: 1px solid #ddd;
-    }
-    #userInput {
-      flex: 1; padding: 10px 14px; font-size: 16px;
-      border: none; border-radius: 20px; outline: none; background: #fff;
-    }
-    #sendButton {
-      width: 40px; height: 40px; margin-left: 10px;
-      background: #007aff; border: none; border-radius: 50%;
-      color: #fff; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .typing-indicator {
-      display: none; padding: 8px 16px;
-      font-size: 14px; color: #999;
-    }
-    .typing-indicator span {
-      display: inline-block; animation: blink 1.4s infinite both;
-      margin-right: 2px;
-    }
-    @keyframes blink {
-      0%,100% { opacity: 0.2; } 50% { opacity: 1; }
-    }
-  </style>
+        content="
+          default-src 'self';
+          script-src  'self';
+          style-src   'self';
+          img-src     'self';
+          font-src    'self';
+          connect-src 'self';
+        " />
+  <title>Messaging 🤖t</title>
+  <link rel="stylesheet" href="./qqb_convo_style.css" />
 </head>
 <body>
-  <div id="conversation">
+  <div id="conversation" role="application" aria-labelledby="chat-title">
     <div id="header">
-      <span style="font-size:24px; margin-right:8px;">🤖</span>
+      <span id="chat-title" style="font-size:24px; margin-right:8px;">🤖</span>
       <h1>QuickQuoteBot</h1>
-      <!-- new-thread button: plus icon -->
       <button id="clearChat" aria-label="New chat" title="New chat">
         <svg width="20" height="20" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="2"
@@ -110,95 +35,23 @@
     </div>
 
     <div id="chat-container">
-      <div id="messages"></div>
-      <div id="bot-typing" class="typing-indicator">
+      <div id="messages" role="log" aria-live="polite"></div>
+      <div id="bot-typing" class="typing-indicator" aria-hidden="true">
         <span style="font-size:20px; margin-right:10px;">🤖</span>
-        <span>.</span><span>.</span><span>.</span>
+        <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
       </div>
       <div id="input-container">
-        <input type="text" id="userInput" placeholder="Type your message…" />
-        <button id="sendButton" title="Send">➤</button>
+        <input type="text"
+               id="userInput"
+               autocomplete="off"
+               placeholder="Type your message…"
+               aria-label="Message input" />
+        <button id="sendButton" title="Send" aria-label="Send message">➤</button>
       </div>
+      <div id="error" role="alert" aria-live="assertive"></div>
     </div>
   </div>
 
-  <script>
-    (function(){
-      const messagesEl = document.getElementById('messages');
-      const inputEl    = document.getElementById('userInput');
-      const sendBtn    = document.getElementById('sendButton');
-      const clearBtn   = document.getElementById('clearChat');
-      const typingEl   = document.getElementById('bot-typing');
-
-      const botReplies = [
-        "Interesting! Can you tell me more?",
-        "I see. How can I assist you further?",
-        "That's a great question! Let me think...",
-        "Got it. Here's what I can suggest:",
-        "Hmm, let me process that for a moment."
-      ];
-
-      function now() {
-        return new Date().toLocaleTimeString([], {
-          hour: '2-digit', minute: '2-digit'
-        });
-      }
-
-      function appendMessage(text, isUser) {
-        const wrap = document.createElement('div');
-        wrap.className = 'message ' + (isUser ? 'user-message' : 'bot-message');
-
-        const bubble = document.createElement('div');
-        bubble.className = 'message-content';
-        bubble.textContent = text;
-        wrap.appendChild(bubble);
-
-        const ts = document.createElement('div');
-        ts.className = 'timestamp';
-        ts.textContent = now();
-        wrap.appendChild(ts);
-
-        messagesEl.appendChild(wrap);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-      }
-
-      function clearChat() {
-        messagesEl.innerHTML = '';
-        appendMessage('🤖 Hello! How can I help you today?', false);
-      }
-
-      function sendMessage() {
-        const txt = inputEl.value.trim();
-        if (!txt) {
-          alert('Please type a message before sending.');
-          inputEl.focus();
-          return;
-        }
-        appendMessage(txt, true);
-        inputEl.value = '';
-        inputEl.focus();
-
-        typingEl.style.display = 'block';
-        setTimeout(() => {
-          const reply = botReplies[Math.floor(Math.random() * botReplies.length)];
-          appendMessage('🤖 ' + reply, false);
-          typingEl.style.display = 'none';
-        }, 3000);
-      }
-
-      clearBtn.addEventListener('click', clearChat);
-      sendBtn.addEventListener('click', sendMessage);
-      inputEl.addEventListener('keypress', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-        }
-      });
-
-      // initialize
-      clearChat();
-      inputEl.focus();
-    })();
-  </script>
+  <script defer src="./qqb_convo_code.js"></script>
 </body>
 </html>
