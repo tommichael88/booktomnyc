@@ -14,20 +14,17 @@
     "Hmm, let me process that for a moment."
   ];
 
-  // Returns localized HH:MM
   function now() {
     return new Date().toLocaleTimeString([], {
-      hour: '2-digit',
+      hour:   '2-digit',
       minute: '2-digit'
     });
   }
 
-  // Append either user or bot message, injecting icon for bot
   function appendMessage(text, isUser) {
     const wrap = document.createElement('div');
-    wrap.className = 'message ' + (isUser ? 'user-message' : 'bot-message');
+    wrap.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
 
-    // For bot: insert icon outside the bubble
     if (!isUser) {
       const icon = document.createElement('span');
       icon.className = 'robot-icon';
@@ -49,14 +46,12 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  // Clears thread and seeds greeting
   function clearChat() {
     messagesEl.innerHTML = '';
-    errorEl.textContent = '';
+    errorEl.textContent   = '';
     appendMessage('Hello! How can I help you today?', false);
   }
 
-  // Sends user message, shows typing, then bot reply
   function sendMessage() {
     errorEl.textContent = '';
     const txt = inputEl.value.trim();
@@ -65,6 +60,7 @@
       inputEl.focus();
       return;
     }
+
     appendMessage(txt, true);
     inputEl.value = '';
     inputEl.focus();
@@ -72,10 +68,10 @@
     typingEl.setAttribute('aria-hidden', 'false');
 
     setTimeout(() => {
-      typingEl.setAttribute('aria-hidden', 'true');
       const reply = botReplies[
         Math.floor(Math.random() * botReplies.length)
       ];
+      typingEl.setAttribute('aria-hidden', 'true');
       appendMessage(reply, false);
     }, 1500 + Math.random() * 1500);
   }
