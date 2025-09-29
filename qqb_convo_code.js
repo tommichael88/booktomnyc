@@ -1,4 +1,6 @@
 (() => {
+  'use strict';
+
   const messagesEl = document.getElementById('messages');
   const inputEl    = document.getElementById('userInput');
   const sendBtn    = document.getElementById('sendButton');
