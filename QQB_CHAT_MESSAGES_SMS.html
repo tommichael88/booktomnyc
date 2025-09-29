@@ -1,281 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 Messages</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🤖 Messages</title>
+  <style>
+    /* Reset and full-screen container */
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%;
+      background: #f4f4f4;
+    }
 
-        #header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 4px;
-            background-color: #f0f0f0;
-            border-bottom: 1px solid #ddd;
-            flex-shrink: 0;
-            position: relative;
-        }
+    /* Chat wrapper fills screen and centers */
+    #conversation {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      border-radius: 20px;
+      background: #fff;
+      overflow: hidden;
+    }
 
-        #header h1 {
-            font-size: 16px;
-            margin: 0;
-            color: #454545;
-        }
+    /* Sticky header */
+    #header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      background: #f0f0f0;
+      border-bottom: 1px solid #ddd;
+    }
 
-        #clearChat {
-            position: absolute;
-            right: 10px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            opacity: 0.5;
-            transition: opacity 0.2s;
-        }
+    #header h1 {
+      font-size: 16px;
+      margin: 0;
+      color: #454545;
+    }
 
-        #clearChat:hover {
-            opacity: 1;
-        }
+    #clearChat {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      opacity: 0.5;
+      transition: opacity .2s;
+    }
 
-        #conversation {
-            width: 100%;
-            max-width: 400px;
-            height: 80vh;
-            background-color: #ffffff;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-        }
+    #clearChat:hover {
+      opacity: 1;
+    }
 
-        #chat-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+    /* Chat messages grow and scroll */
+    #chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-        #messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
+    #messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
 
-        .message {
-            margin-bottom: 15px;
-            display: flex;
-            align-items: flex-end;
-            max-width: 100%;
-        }
+    .message {
+      display: flex;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
 
-        .user-message {
-            justify-content: flex-end;
-        }
+    .user-message {
+      justify-content: flex-end;
+    }
 
-        .message-content {
-            border-radius: 18px;
-            padding: 10px 15px;
-            max-width: 70%;
-            position: relative;
-        }
+    .message-content {
+      padding: 10px 14px;
+      border-radius: 18px;
+      max-width: 70%;
+      word-wrap: break-word;
+    }
 
-        .bot-message .message-content {
-            background-color: #e5e5ea;
-            color: #000;
-        }
+    .bot-message .message-content {
+      background: #e5e5ea;
+      color: #000;
+    }
 
-        .user-message .message-content {
-            background-color: #007aff;
-            color: #fff;
-        }
+    .user-message .message-content {
+      background: #007aff;
+      color: #fff;
+    }
 
-        .timestamp {
-            font-size: 10px;
-            color: #999;
-            margin-left: 8px;
-            align-self: flex-end;
-            white-space: nowrap;
-        }
+    .timestamp {
+      font-size: 10px;
+      color: #999;
+      margin-left: 6px;
+      white-space: nowrap;
+    }
 
-        #input-container {
-            padding: 10px;
-            background-color: #f4f4f4;
-            border-top: 1px solid #ddd;
-            display: flex;
-            align-items: center;
-            flex-shrink: 0;
-        }
+    /* Sticky input at bottom */
+    #input-container {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      background: #f4f4f4;
+      border-top: 1px solid #ddd;
+    }
 
-        #userInput {
-            flex-grow: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 20px;
-            outline: none;
-            font-size: 16px;
-            background-color: #fff;
-        }
+    #userInput {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 20px;
+      outline: none;
+      background: #fff;
+    }
 
-        #sendButton {
-            width: 40px;
-            height: 40px;
-            background-color: #007aff;
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            margin-left: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    #sendButton {
+      width: 40px; height: 40px;
+      margin-left: 10px;
+      background: #007aff;
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-        .typing-indicator {
-            display: none;
-            padding: 10px;
-            font-size: 14px;
-            color: #999;
-        }
+    /* Typing indicator stays in flow */
+    .typing-indicator {
+      display: none;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: #999;
+    }
 
-        .typing-indicator span {
-            display: inline-block;
-            animation: blink 1.4s infinite both;
-            margin-right: 2px;
-        }
+    .typing-indicator span {
+      display: inline-block;
+      animation: blink 1.4s infinite both;
+      margin-right: 2px;
+    }
 
-        @keyframes blink {
-            0%, 100% {
-                opacity: 0.2;
-            }
-            50% {
-                opacity: 1;
-            }
-        }
-    </style>
+    @keyframes blink {
+      0%,100% { opacity: 0.2; }
+      50%     { opacity: 1; }
+    }
+  </style>
 </head>
 
 <body>
-    <div id="conversation">
-        <div id="header">
-            <span style="font-size: 24px; margin-right: 8px;">🤖</span>
-            <h1>QuickQuoteBot</h1>
-            <button id="clearChat" onclick="clearChat()">🗑️</button>
-        </div>
-        <div id="chat-container">
-            <div id="messages">
-                <div class="message bot-message">
-                    <div class="message-content">
-                        <span style="margin-right: 8px;">🤖</span> Hello! How can I help you today?
-                    </div>
-                    <div class="timestamp">12:00 PM</div>
-                </div>
-            </div>
-            <div id="bot-typing" class="typing-indicator">
-                <span class="bot-emoji" style="font-size: 20px; margin-right: 10px;">🤖</span>
-                <span>.</span><span>.</span><span>.</span>
-            </div>
-            <div id="input-container">
-                <input type="text" id="userInput" placeholder="Type your message..." autofocus>
-                <button id="sendButton" onclick="sendMessage()">➤</button>
-            </div>
-        </div>
+  <div id="conversation">
+    <div id="header">
+      <span style="font-size:24px; margin-right:8px;">🤖</span>
+      <h1>QuickQuoteBot</h1>
+      <button id="clearChat" onclick="clearChat()">🗑️</button>
     </div>
-    <script>
-        const botResponses = [
-            "Interesting! Can you tell me more?",
-            "I see. How can I assist you further?",
-            "That's a great question! Let me think...",
-            "Got it. Here's what I can suggest:",
-            "Hmm, let me process that for a moment."
-        ];
 
-        function getRandomResponse() {
-            return botResponses[Math.floor(Math.random() * botResponses.length)];
+    <div id="chat-container">
+      <div id="messages">
+        <div class="message bot-message">
+          <div class="message-content">
+            <span style="margin-right:8px;">🤖</span>Hello! How can I help you today?
+          </div>
+          <div class="timestamp">12:00 PM</div>
+        </div>
+      </div>
+
+      <div id="bot-typing" class="typing-indicator">
+        <span style="font-size:20px; margin-right:10px;">🤖</span>
+        <span>.</span><span>.</span><span>.</span>
+      </div>
+
+      <div id="input-container">
+        <input type="text" id="userInput" placeholder="Type your message…" autofocus>
+        <button id="sendButton" onclick="sendMessage()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const botResponses = [
+      "Interesting! Can you tell me more?",
+      "I see. How can I assist you further?",
+      "That's a great question! Let me think...",
+      "Got it. Here's what I can suggest:",
+      "Hmm, let me process that for a moment."
+    ];
+
+    function getRandomResponse() {
+      return botResponses[Math.floor(Math.random() * botResponses.length)];
+    }
+
+    function getCurrentTime() {
+      const now = new Date();
+      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function clearChat() {
+      const messages = document.getElementById('messages');
+      messages.innerHTML = `
+        <div class="message bot-message">
+          <div class="message-content">
+            <span style="margin-right:8px;">🤖</span>Hello! How can I help you today?
+          </div>
+          <div class="timestamp">${getCurrentTime()}</div>
+        </div>`;
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('userInput');
+      if (!input.value.trim()) {
+        alert("Please type a message before sending.");
+        input.focus();
+        return;
+      }
+
+      const messages = document.getElementById('messages');
+      // User bubble
+      const userDiv = document.createElement('div');
+      userDiv.className = 'message user-message';
+      userDiv.innerHTML = `
+        <div class="message-content">${input.value}</div>
+        <div class="timestamp">${getCurrentTime()}</div>`;
+      messages.appendChild(userDiv);
+      messages.scrollTop = messages.scrollHeight;
+
+      // Bot typing…
+      document.getElementById('bot-typing').style.display = 'block';
+
+      setTimeout(() => {
+        const botDiv = document.createElement('div');
+        botDiv.className = 'message bot-message';
+        botDiv.innerHTML = `
+          <div class="message-content">
+            <span style="margin-right:8px;">🤖</span>${getRandomResponse()}
+          </div>
+          <div class="timestamp">${getCurrentTime()}</div>`;
+        messages.appendChild(botDiv);
+        document.getElementById('bot-typing').style.display = 'none';
+        messages.scrollTop = messages.scrollHeight;
+        input.focus();
+      }, 3000);
+
+      input.value = '';
+    }
+
+    document.getElementById('userInput')
+      .addEventListener('keypress', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
         }
+      });
 
-        function getCurrentTime() {
-            const now = new Date();
-            return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-
-        function clearChat() {
-            var messagesDiv = document.getElementById('messages');
-            messagesDiv.innerHTML = `
-                <div class="message bot-message">
-                    <div class="message-content">
-                        <span style="margin-right: 8px;">🤖</span> Hello! How can I help you today?
-                    </div>
-                    <div class="timestamp">12:00 PM</div>
-                </div>
-            `;
-        }
-
-        function sendMessage() {
-            var userInput = document.getElementById('userInput');
-            if (userInput.value.trim() !== '') {
-                var messagesDiv = document.getElementById('messages');
-                var userMessageDiv = document.createElement('div');
-                userMessageDiv.className = 'message user-message';
-                const userMessageContent = document.createElement('div');
-                userMessageContent.className = 'message-content';
-                userMessageContent.textContent = userInput.value;
-                const userMessageTimestamp = document.createElement('div');
-                userMessageTimestamp.className = 'timestamp';
-                userMessageTimestamp.textContent = getCurrentTime();
-                userMessageDiv.appendChild(userMessageContent);
-                userMessageDiv.appendChild(userMessageTimestamp);
-                messagesDiv.appendChild(userMessageDiv);
-
-                document.getElementById('bot-typing').style.display = "block";
-
-                setTimeout(() => {
-                    var botMessageDiv = document.createElement('div');
-                    botMessageDiv.className = 'message bot-message';
-                    botMessageDiv.innerHTML = `
-                        <div class="message-content">
-                            <span style="margin-right: 8px;">🤖</span> ${getRandomResponse()}
-                        </div>
-                        <div class="timestamp">${getCurrentTime()}</div>
-                    `;
-                    messagesDiv.appendChild(botMessageDiv);
-                    document.getElementById('bot-typing').style.display = "none";
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                    userInput.focus();
-                }, 3000); // Longer typing animation (3 seconds)
-
-                userInput.value = '';
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            } else {
-                alert("Please type a message before sending.");
-                userInput.focus();
-            }
-        }
-
-        document.getElementById('userInput').addEventListener('keypress', function(event) {
-            if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
-            }
-        });
-
-        window.onload = function() {
-            document.getElementById('userInput').focus();
-        };
-    </script>
+    window.onload = () => document.getElementById('userInput').focus();
+  </script>
 </body>
-
 </html>
