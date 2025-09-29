@@ -14,7 +14,6 @@
     "Hmm, let me process that for a moment."
   ];
 
-  // returns localized HH:MM
   function now() {
     return new Date().toLocaleTimeString([], {
       hour:   '2-digit',
@@ -22,10 +21,16 @@
     });
   }
 
-  // injects safe text
   function appendMessage(text, isUser) {
-    const wrap   = document.createElement('div');
+    const wrap = document.createElement('div');
     wrap.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+
+    if (!isUser) {
+      const icon = document.createElement('span');
+      icon.className = 'robot-icon';
+      icon.textContent = '🤖';
+      wrap.appendChild(icon);
+    }
 
     const bubble = document.createElement('div');
     bubble.className = 'message-content';
@@ -41,10 +46,9 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  // clear and seed
   function clearChat() {
     messagesEl.innerHTML = '';
-    errorEl.textContent    = '';
+    errorEl.textContent   = '';
     appendMessage('Hello! How can I help you today?', false);
   }
 
@@ -61,16 +65,14 @@
     inputEl.value = '';
     inputEl.focus();
 
-    typingEl.style.display = 'flex';
     typingEl.setAttribute('aria-hidden', 'false');
 
     setTimeout(() => {
       const reply = botReplies[
         Math.floor(Math.random() * botReplies.length)
       ];
-      appendMessage(`🤖 ${reply}`, false);
-      typingEl.style.display = 'none';
       typingEl.setAttribute('aria-hidden', 'true');
+      appendMessage(reply, false);
     }, 1500 + Math.random() * 1500);
   }
 
@@ -83,7 +85,7 @@
     }
   });
 
-  // kick it off
+  // initialize
   clearChat();
   inputEl.focus();
 })();
