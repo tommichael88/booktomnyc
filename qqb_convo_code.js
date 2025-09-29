@@ -68,10 +68,10 @@
     typingEl.setAttribute('aria-hidden', 'false');
 
     setTimeout(() => {
+      typingEl.setAttribute('aria-hidden', 'true');
       const reply = botReplies[
         Math.floor(Math.random() * botReplies.length)
       ];
-      typingEl.setAttribute('aria-hidden', 'true');
       appendMessage(reply, false);
     }, 1500 + Math.random() * 1500);
   }
