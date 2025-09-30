@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0" />
-  <!-- Strict CSP: no inline scripts/styles, only self-hosted assets -->
+
+  <!--
+    Strict CSP: no inline scripts/styles, only self-hosted assets.
+  -->
   <meta http-equiv="Content-Security-Policy"
         content="
           default-src 'self';
@@ -17,22 +20,37 @@
           base-uri    'self';
           form-action 'none';
         " />
+
   <title>🤖 Messages</title>
   <link rel="stylesheet" href="./qqb_convo_style.css" />
 </head>
 <body>
   <div id="conversation" role="application" aria-labelledby="chat-title">
     <div id="header">
-      <span id="chat-title">🤖</span>
-      <h1>QuickQuoteBot</h1>
-      <button id="clearChat" aria-label="New chat" title="New chat">
-        <svg width="20" height="20" viewBox="0 0 24 24"
-             fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5"  y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
+      <div class="header-left">
+        <span id="chat-title">🤖</span>
+        <h1>QuickQuoteBot</h1>
+      </div>
+      <div class="header-right">
+        <button id="clearChat" aria-label="Clear chat" title="Clear chat">
+          <svg width="20" height="20" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+        <button id="menuToggle" aria-label="Open menu" title="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6"  x2="21" y2="6"  />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div id="chat-container">
@@ -49,17 +67,57 @@
       </div>
 
       <div id="input-container">
-        <input type="text"
-               id="userInput"
-               autocomplete="off"
-               placeholder="Write message…"
-               aria-label="Message input" />
-        <button id="sendButton"
-                title="Send"
-                aria-label="Send message">➤</button>
+        <input
+          type="text"
+          id="userInput"
+          autocomplete="off"
+          placeholder="Write message…"
+          aria-label="Message input"
+          maxlength="500" />
+        <button
+          id="sendButton"
+          title="Send"
+          aria-label="Send message">➤</button>
       </div>
 
       <div id="error" role="alert" aria-live="assertive"></div>
+    </div>
+  </div>
+
+  <!-- Side Panel + Overlay -->
+  <div id="panelOverlay"></div>
+  <div id="sidePanel">
+    <div class="panel-header">
+      <h2 class="panel-title">Settings</h2>
+      <button id="closePanel" aria-label="Close menu">✕</button>
+    </div>
+    <div class="panel-section">
+      <h3>Chat Options</h3>
+      <div class="panel-option" id="clearChatOption">
+        <div class="option-text">
+          <span class="option-icon">🗑️</span>
+          <span>Clear Chat</span>
+        </div>
+      </div>
+      <div class="panel-option" id="exportChatOption">
+        <div class="option-text">
+          <span class="option-icon">📤</span>
+          <span>Export Chat</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>Appearance</h3>
+      <div class="panel-option">
+        <div class="option-text">
+          <span class="option-icon">🌙</span>
+          <span>Dark Mode</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="darkModeToggle" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
   </div>
 
