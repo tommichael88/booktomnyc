@@ -16,13 +16,13 @@
         currentTitleIndex = (currentTitleIndex + 1) % (messages.length + 2);
         if (currentTitleIndex === 0) {
             document.title = messageOne;
-            document.querySelector('link[rel="icon"]').href = 'https://tommichael88.github.io/booktomnyc/images/tomshandylogo_newest.webp?raw=true';
+            document.querySelector('link[rel="icon"]').href = 'https://tommichael88.github.io/booktomnyc/images/TomsHandyTech_logo_today_lowres_nobg.png?raw=true';
         } else if (currentTitleIndex === 1) {
             document.title = messageTwo;
             document.querySelector('link[rel="icon"]').href = originalFavicon;
         } else {
             document.title = messages[currentTitleIndex - 2];
-            document.querySelector('link[rel="icon"]').href = 'https://tommichael88.github.io/booktomnyc/images/invoicelogo_tomkongerslev_nobg__.webp?raw=true';
+            document.querySelector('link[rel="icon"]').href = 'https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true';
         }
     }
 
