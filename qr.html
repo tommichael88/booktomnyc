@@ -157,7 +157,14 @@
       justify-content: space-between;
       padding: 10px 15px;
       gap: 2%;
-      background: linear-gradient(255deg, silver 8%, #000 40%, #474747 70%, #474747 80%, #FFF 95%);
+      background: radial-gradient(circle at 20% 30%, 
+    #fff 0%,        /* Deep anodized red */
+    #f5f5f5 10%,       /* Bright red */
+    #C0C0C0 45%,       /* Silver metallic */
+    #454547 70%,       /* Dark silver */
+    #474747 90%,       /* Gunmetal */
+    transparent 100%
+);
       box-shadow: 0 4px 0 rgba(169, 169, 169, .95);
       overflow: hidden;
       position: relative;
@@ -235,66 +242,135 @@
     .contactModal {
       display: none;
       position: fixed;
-      z-index: 2;
+      z-index: 10000;
       left: 0;
       top: 0;
       width: 100%;
       height: 100%;
       overflow: auto;
-      background-color: rgba(1, 1, 1, .45);
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      animation: fadeIn 0.3s ease;
     }
 
     .contactModal-content {
-      background-color: rgba(1, 0, 0, .75);
-      color: silver;
-      margin: 10%;
-      padding: 20px;
-      border-radius: 10px;
-      width: 80%;
-      max-width: 600px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, .2);
-      animation: fadeIn .3s ease;
+      background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+      color: var(--text-primary);
+      margin: 10% auto;
+      padding: 2rem;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(222, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .contactModal-content::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), #8a0615, var(--accent));
+    }
+
+    .contactModal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(222, 0, 0, 0.2);
     }
 
     .contactModalClose {
-      color: #aaa;
-      float: right;
+      color: var(--text-primary);
       font-size: 28px;
       font-weight: 700;
       cursor: pointer;
       transition: color .3s ease;
+      background: rgba(222, 0, 0, 0.2);
+      border: 1px solid rgba(222, 0, 0, 0.3);
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .contactModalClose:hover {
-      color: #fff;
+      background: var(--accent);
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
     }
 
     .contactModal-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      padding: 1rem 0;
+    }
+
+    .actionButton {
       display: flex;
-      justify-content: space-around;
+      flex-direction: column;
       align-items: center;
+      padding: 1.5rem 1rem;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: var(--text-primary);
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .actionButton::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(222, 0, 0, 0.1), transparent);
+      transition: left 0.6s ease;
+    }
+
+    .actionButton:hover::before {
+      left: 100%;
+    }
+
+    .actionButton:hover {
+      background: linear-gradient(135deg, rgba(222, 0, 0, 0.15) 0%, rgba(138, 6, 21, 0.1) 100%);
+      border-color: rgba(222, 0, 0, 0.3);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(222, 0, 0, 0.2);
     }
 
     .iconImage {
-      width: 50px;
-      height: 50px;
+      width: 60px;
+      height: 60px;
       object-fit: contain;
+      margin-bottom: 0.8rem;
+      filter: brightness(0) invert(1);
+      transition: transform 0.3s ease;
     }
 
-    .contact-option-btn {
-      display: inline-block;
-      width: 50%;
-      padding: 10px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 10px;
-      font-size: 8px;
-      cursor: pointer;
-      transition: background-color .3s ease;
+    .actionButton:hover .iconImage {
+      transform: scale(1.1);
     }
 
-    .contact-option-btn:hover {
-      background-color: #e0e0e0;
+    .actionButton font {
+      color: var(--text-primary) !important;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     /* ========== SERVICE SCHEDULE CARD ========== */
@@ -510,6 +586,160 @@
       padding: 2rem;
       color: var(--text-secondary);
       display: none;
+    }
+
+    /* ========== MODAL SYSTEM ========== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      display: none;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+      color: var(--text-primary);
+      border-radius: 16px;
+      border: 1px solid rgba(222, 0, 0, 0.3);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 450px;
+      position: relative;
+    }
+
+    .modal-content::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), #8a0615, var(--accent));
+    }
+
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(222, 0, 0, 0.2);
+      position: relative;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 1.2rem;
+      right: 1.2rem;
+      background: rgba(222, 0, 0, 0.2);
+      border: 1px solid rgba(222, 0, 0, 0.3);
+      border-radius: 8px;
+      color: var(--text-primary);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .close-btn:hover {
+      background: var(--accent);
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(222, 0, 0, 0.3);
+    }
+
+    .service-list {
+      padding: 1.5rem;
+      flex: 1;
+      overflow-y: auto;
+      max-height: 300px;
+    }
+
+    .service-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      margin-bottom: 0.8rem;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .service-item:hover {
+      background: linear-gradient(135deg, rgba(222, 0, 0, 0.1) 0%, rgba(138, 6, 21, 0.05) 100%);
+      border-color: rgba(222, 0, 0, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .service-item .service-price {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .remove-btn {
+      background: rgba(222, 0, 0, 0.2);
+      border: 1px solid rgba(222, 0, 0, 0.3);
+      border-radius: 6px;
+      color: var(--text-primary);
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+    }
+
+    .remove-btn:hover {
+      background: var(--accent);
+      transform: scale(1.1);
+    }
+
+    .summary-section {
+      padding: 1.5rem;
+      border-top: 1px solid rgba(222, 0, 0, 0.2);
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .subtotal {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    #modalTotal {
+      color: var(--accent);
+      font-size: 1.4rem;
+      font-weight: 900;
     }
 
     /* ========== SERVICE SELECTION & DETAILS ========== */
@@ -813,6 +1043,8 @@
       font-style: italic;
     }
 
+    /* ========== FURNITURE SELECTION - MODERNIZED ========== */
+
     /* ========== TASK & FURNITURE DETAILS ========== */
     .task-details {
       margin-top: 1rem;
@@ -852,150 +1084,119 @@
       margin-top: 0.5rem;
     }
 
-    .furniture-type-selection {
-      margin: 1rem 0;
-      padding: 1rem;
-      background: var(--bg-card);
-      border-radius: var(--border-radius);
-    }
-
-    .furniture-type-selection label {
-      margin-right: 1.5rem;
-    }
-
-    #furniture-select {
-      width: 100%;
-      margin: 1rem 0;
-    }
-
     #furnitureSelect,
     #furnituredetailsSection {
       display: none;
       margin-bottom: 1.5rem;
     }
 
-    #furnituredetailsSection button {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 0.5rem;
-      transition: all 0.2s ease;
-    }
 
-    #furnituredetailsSection button:hover {
-      background-color: var(--accent);
-    }
+        /* ========== FURNITURE SELECTION LAYOUT ========== */
+        .furniture-selection-section {
+            margin: 1.5rem 0;
+            padding: 0;
+        }
 
-    #selectedFurnitureList {
-      list-style: none;
-      margin: 1rem 0;
-    }
+        .furniture-type-selection {
+            margin-bottom: 1.5rem;
+        }
 
-    #selectedFurnitureList li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      background: var(--bg-card);
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-    }
+        .furniture-type-selection h4 {
+            margin-bottom: 1rem;
+            color:#474747;
+            font-size: 1.1rem;
+        }
 
-    #servicedetailsContainer {
-      color: #474747;
-    }
+        .radio-group {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
 
-    /* ========== MODAL STYLES ========== */
-    .modal-overlay {
-      position: fixed;
-      top: 70px;
-      right: 20px;
-      width: 380px;
-      max-height: calc(100vh - 100px);
-      background: transparent;
-      display: none;
-      z-index: 1000;
-      animation: fadeIn 0.3s ease;
-    }
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            color: #454545;
+        }
 
-    .modal-content {
-      background: rgba(30, 30, 30, 0.98);
-      color: #c0c0c0;
-      backdrop-filter: blur(12px);
-      border-radius: 12px;
-      border: 1px solid rgba(222, 0, 0, 0.3);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-      overflow: hidden;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-    }
+        .furniture-item-selection {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
 
-    .modal-header {
-      padding: 1.2rem;
-      border-bottom: 1px solid rgba(222, 0, 0, 0.2);
-      position: relative;
-      background: rgba(0, 0, 0, 0.2);
-    }
+        .furniture-item-selection select {
+            flex: 1;
+            min-width: 200px;
+        }
 
-    .modal-title {
-      margin: 0;
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
+        .selected-furniture-section {
+            margin-top: 1.5rem;
+        }
 
-    .close-btn {
-      position: absolute;
-      top: 1.2rem;
-      right: 1.2rem;
-      border: none;
-      color: #000;
-      font-size: 1.5rem;
-      cursor: pointer;
-      transition: color 0.2s;
-      opacity: 0.9;
-    }
+        .selected-furniture-section h5 {
+            margin-bottom: 1rem;
+            color: #454547;
+            font-size: 1rem;
+        }
 
-    .close-btn:hover {
-      color: var(--accent);
-      opacity: 1;
-    }
+        .selected-furniture-list {
+            list-style: none;
+            margin: 1rem 0;
+            padding: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
 
-    .summary-section {
-      border: 2px solid white;
-      margin-top: 2rem;
-      margin-bottom: 2rem;
-      padding: 1.2rem;
-      border-top: 1px solid rgba(222, 0, 0, 0.2);
-      background: rgba(0, 0, 0, 0.2);
-    }
+        .selected-furniture-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #474747;
+            transition: all 0.3s ease;
+        }
+
+        .selected-furniture-list li:hover {
+            background: linear-gradient(135deg, rgba(222, 0, 0, 0.1) 0%, rgba(138, 6, 21, 0.05) 100%);
+            border-color: rgba(222, 0, 0, 0.3);
+            transform: translateX(5px);
+        }
 
     /* ========== ACTION BUTTONS ========== */
+    
+    #action-buttons, 
     .action-buttons {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
+                  aspect-ratio: 3 / 1 ;
       gap: 1rem;
-      padding: 0;
-      margin-top: 1.5rem;
+      padding: 8px;
+      margin: 1rem;
+
     }
 
     .clear-all-btn {
       background: linear-gradient(135deg, #666 0%, #8a8a8a 100%);
       color: white;
       border: none;
-      padding: 1rem 1.5rem;
+      padding: .5rem .5rem;
       border-radius: 10px;
-      font-weight: 700;
+      font-weight: 400;
       cursor: pointer;
       transition: all 0.3s ease;
-      font-size: 0.9rem;
+      font-size: 0.7rem;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.1px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
@@ -1007,19 +1208,19 @@
 
     .book-more-button {
       background: linear-gradient(135deg, #ffffff 0%, #e8e8e8 100%);
-      font-weight: 800;
+      font-weight: 700;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
       color: #2a2a2a;
       border: 2px solid rgba(222, 0, 0, 0.3);
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1),
         inset 0 1px 2px rgba(255, 255, 255, 0.8);
-      padding: 1rem 1.5rem;
-      font-size: 0.9rem;
+      padding: auto;
+      font-size: 12px;
       cursor: pointer;
       border-radius: 10px;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.15px;
       position: relative;
       overflow: hidden;
     }
@@ -1043,21 +1244,67 @@
       background: linear-gradient(135deg, #f8f8f8 0%, #ffffff 100%);
       transform: translateY(-2px);
       box-shadow: 0 8px 25px rgba(222, 0, 0, 0.15);
-      border-color: var(--accent);
+      border-color: #474747;
       color: var(--accent);
     }
 
-    .checkout-button,
-    .client-login {
-      background: radial-gradient(circle, silver 5%, #de0000 40%, #8a0615 60%, #8a0615 90%);
+    .checkout-button {
+      background: radial-gradient(circle, transparent 5%, #de0000 40%, #8a0615 60%, #8a0615 90%);
       font-weight: 700;
       color: #fff;
-      border: 4px outset #000;
-      padding: 12px 40px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      padding: 1rem 2rem;
       font-size: 16px;
-      margin-top: 20px;
-      border-radius: 5px;
+      margin: 1rem;
+      border-radius: 10px;
       cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+      justify-content: middle;
+    }
+
+    .client-login {
+      background: radial-gradient(circle, #454545 5%, #de0000 40%, #8a0615 60%, #8a0615 90%);
+      font-weight: 700;
+      color: #fff;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      padding: 1rem 2rem;
+      font-size: 16px;
+      margin-top: 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+      justify: center;
+
+    }
+
+    .client-login::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.6s ease;
+    }
+
+    .client-login:hover::before {
+      left: 100%;
+    }
+
+    .client-login:hover {
+      background: linear-gradient(135deg, #8a0615 0%, #de0000 40%, #c0c0c0 60%, silver 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(222, 0, 0, 0.4);
+      border-color: rgba(255, 255, 255, 0.5);
     }
 
     .book-more-button:hover,
@@ -1272,8 +1519,9 @@
         padding: 1rem;
       }
       .action-buttons {
-        grid-template-columns: 1fr;
-        gap: 0.8rem;
+        grid-template-columns: 1fr 1fr;
+                    aspect-ratio: 2/1;
+        gap: 2px;
       }
       .selected-service-text h4 {
         font-size: 0.9rem;
@@ -1281,6 +1529,32 @@
       .selected-service-price {
         font-size: 1.1rem;
         padding: 0.4rem 0.7rem;
+      }
+      .contactModal-actions {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+      }
+      .actionButton {
+        padding: 1.2rem 1rem;
+      }
+      .actionButton .iconImage {
+        width: 50px;
+        height: 50px;
+      }
+      .radio-group {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .furniture-item-selection {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .furniture-item-selection select {
+        min-width: auto;
+      }
+      .modal-content {
+        margin: 5%;
+        width: 90%;
       }
     }
 
@@ -1298,8 +1572,7 @@
         margin: 12px auto;
       }
     }
-  </style>
-  
+  </style>  
   
   <script src="https://tommichael88.github.io/booktomnyc/js/marquee.js" defer></script>
   </head>`
@@ -1318,7 +1591,7 @@
           <span class="highlight-box">
             <img class="thandylogo" src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/TomsHandyTech_logo_today_lowres_nobg.png" alt="HandyTech logo">
             <div class="tom_kongerslev">
-              <img src="https://tommichael88.github.io/booktomnyc/images/tmk_ai_signature2b.png?raw=true" alt="Tom Kongerslev signature">
+              <img src="https://tommichael88.github.io/booktomnyc/images/tmk_ai_signature_2b2.png?raw=true" alt="Tom Kongerslev signature">
             </div>
             <button id="contactBtn" class="contact-button">CONTACT ≣</button>
           </span>
@@ -1440,10 +1713,9 @@
                   <span id="modalTotal">$0</span>
                 </div>
               </div>
-              <div class="action-buttons">
-                <button class="book-more-button" onclick="showCategories()">➕ More Services</button>
-                <button class="checkout-button" onclick="bookServices()">★ BOOK ★</button>
-              </div>
+              <span class="action-buttons">
+                <button class="book-more-button" onclick="showCategories()">➕ More Services</button><button class="checkout-button" onclick="bookServices()">★ BOOK ★</button>
+              </span>
             </div>
           </div>
           <!-- Service Selection Container (for chosen category) -->
@@ -1453,11 +1725,12 @@
             <div class="task-details" id="furnituredetailsSection" style="display: none;">
               <h4>Select Your Furniture Item</h4>
               <div>
+                
                 <label>
-                  <input type="radio" name="furnitureType" value="ikea" checked> IKEA
+                  <input type="radio" name="furnitureType" value="generic"> Furniture [Not IKEA]
                 </label>
                 <label>
-                  <input type="radio" name="furnitureType" value="generic"> Non‑IKEA
+                  <input type="radio" name="furnitureType" value="ikea" checked> IKEA Collection
                 </label>
               </div>
               <select id="furniture-select">
@@ -1465,7 +1738,7 @@
               </select>
               <button class="book-more-button" onclick="addFurnitureItem()">Add Furniture Item</button>
               <ul id="selectedFurnitureList"></ul>
-              <button class="clear-all-btn" onclick="clearAllFurnitureItems()">Clear Furniture Items</button>
+              <button class="clear-all-btn" onclick="clearAllFurnitureItems()">Clear All Furniture</button>
             </div>
           </div>
           <!-- Service Details Container (shows service details and note input) -->
@@ -1479,11 +1752,11 @@
               <span>Estimated Subtotal:</span>
               <span id="totalAmount">$0</span>
             </div>
-            <div class="action-buttons">
-              <button class="clear-all-btn" style="width: 25%; margin-right: 50%; background-color: grey;" onclick="clearAllServices()">Clear All</button>
+            <span class="action-buttons">
+              <button class="clear-all-btn" onclick="clearAllServices()">Clear All</button>
               <button class="book-more-button" onclick="showCategories()">➕ More Services</button>
               <button class="checkout-button" onclick="bookServices()">★ BOOK ★</button>
-            </div>
+            </span>
           </div>
         </div>
       </div>
@@ -1512,688 +1785,883 @@
     <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement">Service Agreement</a>
   </footer>
 
-    <script>
-    /* Global state and configuration */
+
+<script>
+    /* ========== GLOBAL STATE AND CONFIGURATION ========== */
     const state = {
       selectedServices: [],
       furnitureItems: [],
-      currentView: 'categories' // 'categories' | 'services' | 'details' | 'summary'
+      currentView: 'categories'
     };
+
     const furnitureHourlyRate = 40;
-    /* --------------------------
-       IKEA Furniture Process
-       -------------------------- */
-    const ikeaFurniture = [{
-        category: "BEKANT",
-        items: ["Desk + Underframe"]
-      },
-      {
-        category: "BESTA",
-        items: ["Single frame, shelves/floor standing", "Single frame, door/drawer, floor standing", "Single frame/wall mounting"]
-      },
-      {
-        category: "BILLY",
-        items: ["Bookcase 1x frame"]
-      },
-      {
-        category: "BJURSTA",
-        items: ["Extendable table"]
-      },
-      {
-        category: "BRIMNES",
-        items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame & storage", "Headboard", "Wardrobe 2x doors", "Wardrobe 3x doors", "Nightstand", "Daybed 2x drawers"]
-      },
-      {
-        category: "BRUSALI",
-        items: ["Bed frame", "Bed + 4 storage boxes", "3 drawer chest", "Nightstand"]
-      },
-      {
-        category: "FINGAL",
-        items: ["Swivel chair"]
-      },
-      {
-        category: "FRIHETEN",
-        items: ["Sofa bed & chaise"]
-      },
-      {
-        category: "GALANT",
-        items: ["2x drawer", "3x drawer", "4x drawer", "Cabinet (sliding doors)"]
-      },
-      {
-        category: "HEMNES",
-        items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "Dresser 8x drawer", "Nightstand", "Daybed & 3 drawers"]
-      },
-      {
-        category: "KALLAX",
-        items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert + 2 drawers", "Insert + door"]
-      },
-      {
-        category: "LACK",
-        items: ["Side table", "Coffee table", "TV Unit"]
-      },
-      {
-        category: "LINNMON ADILS",
-        items: ["Table (table top and four legs)"]
-      },
-      {
-        category: "MALM",
-        items: ["Bed Frame", "Bed Frame + 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"]
-      },
-      {
-        category: "MICKE",
-        items: ["Desk + 1 Drawer", "Desk + Drawers & Storage", "Add-on unit"]
-      },
-      {
-        category: "MORVIK",
-        items: ["Wardrobe"]
-      },
-      {
-        category: "PAX",
-        items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"]
-      },
-      {
-        category: "SODERHAMN",
-        items: ["Sofa one seat section + cover"]
-      },
-      {
-        category: "TRYSIL",
-        items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"]
-      },
-      {
-        category: "OTHER NOT LISTED",
-        items: ["NOT LISTED or UNKNOWN"]
-      }
-    ];
-    const genericFurniture = [
-      "Desk", "Chair", "Bookcase", "Dresser", "Bed Frame",
-      "Sofa", "Table", "Cabinet", "Shelving Unit", "Wardrobe"
+
+    /* ========== FURNITURE DATA ========== */
+    const ikeaFurniture = [
+        { category: "BEKANT", items: ["Desk + Underframe"] },
+        { category: "BESTA", items: ["Single frame, shelves/floor standing", "Single frame, door/drawer, floor standing", "Single frame/wall mounting"] },
+        { category: "BILLY", items: ["Bookcase 1x frame"] },
+        { category: "BJURSTA", items: ["Extendable table"] },
+        { category: "BRIMNES", items: ["Bed frame", "2 drawer chest", "3 drawer chest", "4 drawer chest", "Bed frame & storage", "Headboard", "Wardrobe 2x doors", "Wardrobe 3x doors", "Nightstand", "Daybed 2x drawers"] },
+        { category: "BRUSALI", items: ["Bed frame", "Bed + 4 storage boxes", "3 drawer chest", "Nightstand"] },
+        { category: "FINGAL", items: ["Swivel chair"] },
+        { category: "FRIHETEN", items: ["Sofa bed & chaise"] },
+        { category: "GALANT", items: ["2x drawer", "3x drawer", "4x drawer", "Cabinet (sliding doors)"] },
+        { category: "HEMNES", items: ["Bed frame", "2 drawer chest", "3 drawer chest", "6 drawer chest", "Dresser 8x drawer", "Nightstand", "Daybed & 3 drawers"] },
+        { category: "KALLAX", items: ["Shelving unit 5x5", "Shelving unit 4x4", "Shelving unit 2x4", "Shelving unit 1x4", "Shelving unit 2x2", "Insert + 2 drawers", "Insert + door"] },
+        { category: "LACK", items: ["Side table", "Coffee table", "TV Unit"] },
+        { category: "LINNMON ADILS", items: ["Table (table top and four legs)"] },
+        { category: "MALM", items: ["Bed Frame", "Bed Frame + 4 Storage boxes", "2 Drawer Chest", "3 Drawer Chest", "4 Drawer Chest", "6 Drawer Chest", "6 Drawer Dresser", "Lift bed"] },
+        { category: "MICKE", items: ["Desk + 1 Drawer", "Desk + Drawers & Storage", "Add-on unit"] },
+        { category: "MORVIK", items: ["Wardrobe"] },
+        { category: "PAX", items: ["One frame, hinged doors, up to 3 addons", "Two frames, sliding doors, up to 5 addons"] },
+        { category: "SODERHAMN", items: ["Sofa one seat section + cover"] },
+        { category: "TRYSIL", items: ["Bed Frame", "3 Drawer Chest", "Nightstand", "Wardrobe"] },
+        { category: "OTHER NOT LISTED", items: ["NOT LISTED or UNKNOWN"] }
     ];
 
-    function initFurnituredetails() {
-      const furnitureSelect = document.getElementById('furniture-select');
-      const isIKEA = document.querySelector('input[name="furnitureType"]:checked').value === 'ikea';
-      furnitureSelect.innerHTML = '<option value="">Select Here</option>';
-      if (isIKEA) {
-        ikeaFurniture.forEach(group => {
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = group.category;
-          group.items.forEach(item => {
-            const option = document.createElement('option');
-            option.value = `${group.category} - ${item}`;
-            option.textContent = item;
-            optgroup.appendChild(option);
-          });
-          furnitureSelect.appendChild(optgroup);
+    const genericFurniture = [
+        "Desk", "Chair", "Bookcase", "Dresser", "Bed Frame",
+        "Sofa", "Table", "Cabinet", "Shelving Unit", "Wardrobe"
+    ];
+
+    /* ========== FURNITURE SELECTION FUNCTIONS ========== */
+    function initFurnitureSelection(context = document) {
+        console.log('Initializing furniture selection in context:', context);
+        
+        const furnitureSelect = context.querySelector('#furniture-select');
+        console.log('Found furniture select:', furnitureSelect);
+        
+        if (!furnitureSelect) {
+            console.error('Furniture select element not found');
+            return;
+        }
+
+        const furnitureTypeRadios = context.querySelectorAll('input[name="furnitureType"]');
+        console.log('Found furniture type radios:', furnitureTypeRadios.length);
+        
+        let isIKEA = true;
+        furnitureTypeRadios.forEach(radio => {
+            if (radio.checked) {
+                isIKEA = radio.value === 'ikea';
+            }
         });
-      } else {
-        genericFurniture.forEach(item => {
-          const option = document.createElement('option');
-          option.value = item;
-          option.textContent = item;
-          furnitureSelect.appendChild(option);
-        });
-      }
+        
+        console.log('Furniture type:', isIKEA ? 'IKEA' : 'Non-IKEA');
+        
+        // Clear and populate the dropdown
+        furnitureSelect.innerHTML = '<option value="">Select Furniture Item</option>';
+        
+        if (isIKEA) {
+            console.log('Populating IKEA furniture:', ikeaFurniture.length + ' categories');
+            ikeaFurniture.forEach(group => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = group.category;
+                group.items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = `${group.category} - ${item}`;
+                    option.textContent = item;
+                    optgroup.appendChild(option);
+                });
+                furnitureSelect.appendChild(optgroup);
+            });
+        } else {
+            console.log('Populating generic furniture:', genericFurniture.length + ' items');
+            genericFurniture.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                option.textContent = item;
+                furnitureSelect.appendChild(option);
+            });
+        }
+        
+        console.log('Furniture selection initialized successfully');
     }
 
     function addFurnitureItem() {
-      const furnitureSelect = document.getElementById('furniture-select');
-      const selectedItem = furnitureSelect.value;
-      if (!selectedItem) return;
-      const selectedFurnitureList = document.getElementById('selectedFurnitureList');
-      const li = document.createElement('li');
-      li.textContent = selectedItem;
-      const button = document.createElement('button');
-      button.className = "remove-item";
-      button.innerHTML = '✕';
-      button.onclick = function() {
-        li.remove();
-        removeFurnitureItem(selectedItem);
-      };
-      li.appendChild(button);
-      selectedFurnitureList.appendChild(li);
-      state.furnitureItems.push(selectedItem);
-      furnitureSelect.value = "";
+        console.log('Adding furniture item...');
+        
+        // Find the furniture select in the current context
+        const serviceDetailsContainer = document.getElementById('servicedetailsContainer');
+        const furnitureSelect = serviceDetailsContainer ? 
+            serviceDetailsContainer.querySelector('#furniture-select') : 
+            document.querySelector('#furniture-select');
+            
+        console.log('Found furniture select for adding:', furnitureSelect);
+        
+        if (!furnitureSelect) {
+            console.error('Furniture select not found');
+            alert('Furniture selection not available.');
+            return;
+        }
+
+        const selectedItem = furnitureSelect.value;
+        
+        if (!selectedItem) {
+            alert('Please select a furniture item first.');
+            return;
+        }
+        
+        // Find the furniture list in the current context
+        const selectedFurnitureList = serviceDetailsContainer ?
+            serviceDetailsContainer.querySelector('#selectedFurnitureList') :
+            document.querySelector('#selectedFurnitureList');
+            
+        console.log('Found furniture list:', selectedFurnitureList);
+        
+        if (!selectedFurnitureList) {
+            console.error('Selected furniture list not found');
+            return;
+        }
+
+        const li = document.createElement('li');
+        
+        li.innerHTML = `
+            <span>${selectedItem}</span>
+            <button class="remove-item" onclick="removeFurnitureItem(this)">✕</button>
+        `;
+        
+        selectedFurnitureList.appendChild(li);
+        furnitureSelect.value = "";
+        
+        // Update the furniture items in state
+        if (!state.furnitureItems) state.furnitureItems = [];
+        state.furnitureItems.push(selectedItem);
+        
+        console.log('Furniture item added:', selectedItem);
+        console.log('Current furniture items:', state.furnitureItems);
     }
 
-    function removeFurnitureItem(item) {
-      state.furnitureItems = state.furnitureItems.filter(i => i !== item);
+    function removeFurnitureItem(button) {
+        const li = button.parentElement;
+        const itemText = li.querySelector('span').textContent;
+        
+        console.log('Removing furniture item:', itemText);
+        
+        // Remove from state
+        state.furnitureItems = state.furnitureItems.filter(item => item !== itemText);
+        li.remove();
+        
+        console.log('Remaining furniture items:', state.furnitureItems);
     }
 
     function clearAllFurnitureItems() {
-      document.getElementById('selectedFurnitureList').innerHTML = "";
-      state.furnitureItems = [];
-    }
-    /* --------------------------
-       Service & Cart Functions
-       -------------------------- */
-    function updateCartDisplay() {
-      const count = state.selectedServices.length;
-      document.getElementById('fabCartCount').textContent = count;
-      document.getElementById('cartFab').style.display = count > 0 ? 'block' : 'none';
-    }
-
-    function addToCart(serviceEntry) {
-      state.selectedServices.push(serviceEntry);
-      updateCartDisplay();
-      updateSelectedServices();
+        console.log('Clearing all furniture items');
+        
+        // Clear from both possible locations
+        const serviceDetailsContainer = document.getElementById('servicedetailsContainer');
+        const selectedFurnitureList1 = serviceDetailsContainer ?
+            serviceDetailsContainer.querySelector('#selectedFurnitureList') : null;
+        const selectedFurnitureList2 = document.querySelector('#selectedFurnitureList');
+        
+        if (selectedFurnitureList1) selectedFurnitureList1.innerHTML = "";
+        if (selectedFurnitureList2) selectedFurnitureList2.innerHTML = "";
+        
+        state.furnitureItems = [];
+        console.log('All furniture items cleared');
     }
 
-    function updateSelectedServices() {
-      const list = document.getElementById('selectedServicesList');
-      list.innerHTML = "";
-      let total = 0;
-      state.selectedServices.forEach(service => {
-        const priceVal = parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
-        total += priceVal;
-        const div = document.createElement('div');
-        div.className = 'selected-service-item';
-        div.innerHTML = `
-    <div class="selected-service-icon">${service.icon}</div>
-    <div class="selected-service-text">
-      <h4>${service.name}</h4>
-      <div>${service.detail}</div>
-      ${service.notes ? `<div class="service-notes">${service.notes}</div>` : ''}
-      ${service.furnitureItems?.length > 0 ? 
-        `<div class="furniture-items">
-          <strong>Items:</strong> ${service.furnitureItems.join(', ')}
-         </div>` : ''}
-    </div>
-    <div class="selected-service-price">${service.price}</div>
-    <button class="remove-service-btn" onclick="removeService('${service.id}')">🗑️</button>
-  `;
-        list.appendChild(div);
-      });
-      document.getElementById('estimateTotal').style.display = 'flex';
-      document.getElementById('totalAmount').textContent = "$" + total.toFixed(2);
-      document.getElementById('selectedServicesSection').style.display = 'block';
-    }
+    /* ========== SERVICE DATA ========== */
+    window.serviceData = {
+        "Minor Home Repairs": {
+            "Appliances": {
+                price: "$70/hour",
+                description: "Appliance assessment, maintenance, and repair ⏲Hourly Service. Excludes specialized services.",
+                icon: "🎛️",
+                details: ["Maintenance", "Repair", "Assessment"]
+            },
+            "Handles & Locks Installation": {
+                price: "$70",
+                description: "Installation of door knobs, handles, or locks. Hardware is invoiced separately.",
+                icon: "🔒",
+                details: ["Standard door", "Security lock", "Smart lock"]
+            },
+            "Furniture Repair ⏲Hourly Service": {
+                price: "$70/hour",
+                description: "Hourly furniture repair service.",
+                icon: "🪑",
+                details: ["Wood furniture", "Upholstery", "Metal furniture"]
+            },
+            "Door Damage Repair": {
+                price: "$125",
+                description: "Patch and paint interior door damage (baseball-sized or smaller, materials included). Larger damage and solid-core doors may incur a minor excess-materials fee.",
+                icon: "🚪",
+                details: ["Patch & paint", "Hinge repair", "Frame adjustment"]
+            },
+            "Drywall Repair : Patch & Paint": {
+                price: "$70",
+                description: "Interior wall patch and paint repairs. Materials included for damage up to baseball-sized; larger damage may incur a small additional cost.",
+                icon: "⬜",
+                details: ["Small ⚾ hole", "Large 🏀 hole", "📈Crack Repair"]
+            }
+        },
+        "Furniture Fixes & Assembly": {
+            "Assembly": {
+                price: "$40/hour",
+                description: "Professional furniture assembly service",
+                icon: "🛠️",
+                details: ["Standard Assembly"],
+                requiresFurnitureSelection: true
+            },
+            "Repair": {
+                price: "$70/hour",
+                description: "Furniture repair and restoration service",
+                icon: "🔨",
+                details: ["Standard Repair"],
+                requiresFurnitureSelection: true
+            }
+        },
+        "Wall Mounting": {
+            "Curtains/Drapes w. Single Rod Installation": {
+                price: "$50",
+                description: "Installation of standard curtains or drapes with a single rod.",
+                icon: "🪟",
+                details: ["Standard rod", "Tension rod", "Decorative rod"]
+            },
+            "Frame/Shelf Mounting ⏲Hourly Service": {
+                price: "$60/hour",
+                description: "Hourly wall mounting service for frames and shelves.",
+                icon: "📚",
+                details: ["Picture frames", "Shelves", "Wall art"]
+            },
+            "TV Mounting (Under 60\") + Concealed Cables": {
+                price: "$150",
+                description: "TV mounting for TVs under 60 inches, with concealed cables.",
+                icon: "📺",
+                details: ["Drywall", "Concrete", "Brick"]
+            },
+            "TV Mounting (Under 60\") standard": {
+                price: "$60",
+                description: "TV mounting for TVs under 60 inches. Additional hardware costs may apply.",
+                icon: "📺",
+                details: ["Basic mounting", "Tilt mount", "Swivel mount"]
+            }
+        },
+        "Computer Repairs": {
+            "Data": {
+                price: "$99",
+                description: "Data copying or backup creation. Additional hardware is not included.",
+                icon: "💾",
+                details: ["External drive", "Cloud backup", "Network transfer"]
+            },
+            "Diagnostic Service": {
+                price: "$75",
+                description: "Diagnosis of hardware or software issues. This fee is credited towards repair services.",
+                icon: "🔍",
+                details: ["Part", "Upgrade", "Software", "Performance"]
+            },
+            "Hardware": {
+                price: "$125",
+                description: "Replacement or upgrade of PC hardware parts. Parts can be client-provided or expensed.",
+                icon: "🪫",
+                details: ["RAM", "SSD", "Graphics card"]
+            },
+            "Maleware & Virus": {
+                price: "$125",
+                description: "Removal of malicious programs while preserving your operating system.",
+                icon: "🦠",
+                details: ["Scan & remove", "System cleanup", "Prevention setup"]
+            },
+            "Software": {
+                price: "$50",
+                description: "Installation, update, or removal of up to four software applications.",
+                icon: "📀",
+                details: ["Operating system", "Applications", "Drivers"]
+            },
+            "System Recovery": {
+                price: "$125",
+                description: "Bring back your PC to the state it was in before problems started.",
+                icon: "⏮️",
+                details: ["Factory reset", "Recovery partition", "Backup restore"]
+            }
+        },
+        "Electrical Help": {
+            "Light Fixture Swap": {
+                price: "$60",
+                description: "Replacement of an existing light fixture (ceiling fans excluded).",
+                icon: "💡",
+                details: ["Ceiling light", "Wall sconce", "Pendant light"]
+            }
+        },
+        "Plumbing Help": {
+            "Bidet Accessory Install/Removal": {
+                price: "$70",
+                description: "Bidet attachment installation or removal. Excludes specialized toilets.",
+                icon: "🚽",
+                details: ["Standard bidet", "Smart bidet", "Add-on"]
+            },
+            "Fixture Swap (Cosmetic)": {
+                price: "$70",
+                description: "Swapping a sink faucet or shower head.",
+                icon: "🚰",
+                details: ["Faucet", "Shower head", "Drain cover"]
+            },
+            "Leak Under Sink Repair": {
+                price: "$75",
+                description: "Repair for minor leaks under the sink.",
+                icon: "💧",
+                details: ["Pipe leak", "Drain leak", "Supply line"]
+            },
+            "Unclog Sink/Shower/Toilet (Minor)": {
+                price: "$70",
+                description: "Minor clog removal.",
+                icon: "🪠",
+                details: ["Plunger", "Drain snake", "Chemical treatment"]
+            }
+        }
+    };
 
-    function removeService(id) {
-      state.selectedServices = state.selectedServices.filter(s => s.id !== id);
-      updateSelectedServices();
-      updateCartDisplay();
-      if (state.selectedServices.length === 0) {
-        showCategories();
-      }
-    }
-
+    /* ========== VIEW MANAGEMENT ========== */
     function showCategories() {
-      state.currentView = 'categories';
-      document.getElementById('categories-grid').style.display = 'grid';
-      document.getElementById('serviceSelectionContainer').style.display = 'none';
-      document.getElementById('servicedetailsContainer').style.display = 'none';
-      document.getElementById('selectedServicesSection').style.display = 'none';
+        console.log('Showing categories');
+        state.currentView = 'categories';
+        
+        const categoriesGrid = document.getElementById('categories-grid');
+        const serviceSelectionContainer = document.getElementById('serviceSelectionContainer');
+        const servicedetailsContainer = document.getElementById('servicedetailsContainer');
+        const selectedServicesSection = document.getElementById('selectedServicesSection');
+        const furnituredetailsSection = document.getElementById('furnituredetailsSection');
+        const modalOverlay = document.getElementById('modalOverlay');
+        
+        if (categoriesGrid) categoriesGrid.style.display = 'grid';
+        if (serviceSelectionContainer) serviceSelectionContainer.style.display = 'none';
+        if (servicedetailsContainer) servicedetailsContainer.style.display = 'none';
+        if (selectedServicesSection) selectedServicesSection.style.display = 'none';
+        if (furnituredetailsSection) furnituredetailsSection.style.display = 'none';
+        if (modalOverlay) modalOverlay.style.display = 'none';
+        
+        // Show FAB if there are services
+        updateFabVisibility();
     }
 
     function showCategoryServices(category) {
-      // Hide the categories grid
-      document.getElementById('categories-grid').style.display = 'none';
-      // Get the section to update
-      const section = document.getElementById('selectedSection');
-      section.innerHTML = ""; // Clear previous content
-      // Add the category heading
-      const h3 = document.createElement("h3");
-      h3.textContent = category + " Services";
-      section.appendChild(h3);
-      // Build the service grid
-      const grid = document.createElement('div');
-      grid.className = 'service-selection-grid';
-      // Defensive: Check if category exists
-      if (!serviceData[category]) {
-        const err = document.createElement('p');
-        err.textContent = "No services found for this category.";
-        section.appendChild(err);
-        return;
-      }
-      // Create a card for each service in this category
-      Object.keys(serviceData[category]).forEach(service => {
-        const info = serviceData[category][service];
-        const card = document.createElement('div');
-        card.className = 'service-selection-card';
-        // Icon (emoji, safe as text)
-        const iconDiv = document.createElement('div');
-        iconDiv.className = 'service-selection-icon';
-        iconDiv.textContent = info.icon;
-        // Service name
-        const h4 = document.createElement('h4');
-        h4.textContent = service;
-        // Description
-        const p = document.createElement('p');
-        p.textContent = info.description;
-        // Price
-        const priceDiv = document.createElement('div');
-        priceDiv.className = 'service-price';
-        priceDiv.textContent = info.price;
-        // Assemble the card
-        card.appendChild(iconDiv);
-        card.appendChild(h4);
-        card.appendChild(p);
-        card.appendChild(priceDiv);
-        // Add click event to show service details
-        card.addEventListener('click', () => {
-          showServicedetails(category, service);
-        });
-        grid.appendChild(card);
-      });
-      section.appendChild(grid);
-      // Back button
-      const backBtn = document.createElement('button');
-      backBtn.className = 'back-button';
-      backBtn.textContent = 'Back to Categories';
-      backBtn.onclick = showCategories;
-      section.appendChild(backBtn);
-      // Furniture details toggle
-      if (category === "Furniture Fixes & Assembly") {
-        document.getElementById('furnituredetailsSection').style.display = 'block';
-        initFurnituredetails();
-      } else {
-        document.getElementById('furnituredetailsSection').style.display = 'none';
-      }
-      document.getElementById('serviceSelectionContainer').style.display = 'block';
-      document.getElementById('servicedetailsContainer').style.display = 'none';
-      // Scroll to the service selection container
-      document.getElementById('serviceSelectionContainer').scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }
-
-    function showServicedetails(category, service, preselecteddetail) {
-      state.currentView = 'details';
-      document.getElementById('categories-grid').style.display = 'none';
-      document.getElementById('serviceSelectionContainer').style.display = 'none';
-      const container = document.getElementById('servicedetailsContainer');
-      container.innerHTML = "";
-      container.style.display = 'block';
-      const header = document.createElement('h3');
-      header.textContent = service;
-      container.appendChild(header);
-      const grid = document.createElement('div');
-      grid.className = 'details-grid';
-      const info = serviceData[category][service];
-      // Create detail cards
-      info.details.forEach(detail => {
-        const card = document.createElement('div');
-        card.className = 'detail-card';
-        card.textContent = detail;
-        card.addEventListener('click', () => {
-          Array.from(grid.children).forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          noteInput.style.display = 'block';
-          // Show furniture selection only after detail is selected
-          if (info.requiresFurnitureSelection) {
-            furnitureSelection.style.display = 'block';
-          }
-        });
-        if (preselecteddetail && detail.toLowerCase().includes(preselecteddetail.toLowerCase())) {
-          card.classList.add('selected');
-        }
-        grid.appendChild(card);
-      });
-      container.appendChild(grid);
-      // Create furniture selection elements
-      const furnitureSelection = document.createElement('div');
-      furnitureSelection.style.display = 'none';
-      furnitureSelection.innerHTML = `
-    <div class="furniture-type-selection">
-      <label><input type="radio" name="furnitureType" value="ikea" checked> IKEA</label>
-      <label><input type="radio" name="furnitureType" value="generic"> Non-IKEA</label>
-    </div>
-    <select id="furniture-select">
-      <option value="">Select Furniture Item</option>
-    </select>
-    <button class="add-item-btn" onclick="addFurnitureItem()">Add Item</button>
-    <ul id="selectedFurnitureList"></ul>
-  `;
-      // Only add furniture selection for relevant services
-      if (info.requiresFurnitureSelection) {
-        container.appendChild(furnitureSelection);
-        initFurnituredetails();
-        // Handle radio button changes
-        document.querySelectorAll('input[name="furnitureType"]').forEach(radio => {
-          radio.addEventListener('change', () => {
-            initFurnituredetails();
-            clearAllFurnitureItems();
-          });
-        });
-      }
-      const noteInput = document.createElement('textarea');
-      noteInput.id = 'serviceNoteInput';
-      noteInput.placeholder = 'To proceed, type additional notes about this job here';
-      noteInput.className = 'service-input-area';
-      noteInput.style.display = 'none';
-      container.appendChild(noteInput);
-      const addBtn = document.createElement('button');
-      addBtn.className = 'book-more-button';
-      addBtn.textContent = 'Add to Cart';
-      addBtn.style.display = 'none';
-      addBtn.addEventListener('click', () => {
-        const selectedDetail = grid.querySelector('.detail-card.selected');
-        if (!selectedDetail) {
-          alert('Please select a detail.');
-          return;
-        }
-        if (!noteInput.value.trim()) {
-          alert('Please enter job details.');
-          return;
-        }
-        let finalNotes = noteInput.value.trim();
-        let finalPrice = info.price;
-        if (info.requiresFurnitureSelection) {
-          if (state.furnitureItems.length === 0) {
-            alert('Please add at least one furniture item.');
+        if (!category) {
+            console.error('No category provided');
             return;
-          }
-          finalNotes += "\nFurniture Items: " + state.furnitureItems.join(", ");
-          finalPrice = `$${furnitureHourlyRate * state.furnitureItems.length}/hour`;
-          clearAllFurnitureItems();
         }
-        const entry = {
-          id: `${category}-${service}-${Date.now()}`,
-          category: category,
-          name: service,
-          price: finalPrice,
-          icon: info.icon,
-          detail: selectedDetail.textContent,
-          notes: finalNotes,
-          furnitureItems: [...state.furnitureItems]
-        };
-        addToCart(entry);
-        container.style.display = 'none';
-        document.getElementById('selectedServicesSection').style.display = 'block';
-      });
-      noteInput.addEventListener('input', function() {
-        addBtn.style.display = this.value.trim() ? 'block' : 'none';
-      });
-      container.appendChild(addBtn);
-      const backBtn = document.createElement('button');
-      backBtn.className = 'back-button';
-      backBtn.textContent = 'Back';
-      backBtn.addEventListener('click', () => {
-        container.style.display = 'none';
-        showCategoryServices(category);
-      });
-      container.appendChild(backBtn);
+        
+        console.log('Showing category services:', category);
+        
+        // Hide the categories grid and selected services
+        const categoriesGrid = document.getElementById('categories-grid');
+        const selectedServicesSection = document.getElementById('selectedServicesSection');
+        if (categoriesGrid) categoriesGrid.style.display = 'none';
+        if (selectedServicesSection) selectedServicesSection.style.display = 'none';
+        
+        // Get the section to update
+        const section = document.getElementById('selectedSection');
+        if (!section) return;
+        
+        section.innerHTML = "";
+        
+        // Add the category heading
+        const h3 = document.createElement("h3");
+        h3.textContent = category + " Services";
+        section.appendChild(h3);
+        
+        // Build the service grid
+        const grid = document.createElement('div');
+        grid.className = 'service-selection-grid';
+        
+        // Defensive: Check if category exists
+        if (!serviceData[category]) {
+            const err = document.createElement('p');
+            err.textContent = "No services found for this category.";
+            section.appendChild(err);
+            return;
+        }
+        
+        // Create a card for each service in this category
+        Object.keys(serviceData[category]).forEach(service => {
+            const info = serviceData[category][service];
+            const card = document.createElement('div');
+            card.className = 'service-selection-card';
+            
+            // Icon
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'service-selection-icon';
+            iconDiv.textContent = info.icon || '🔧';
+            
+            // Service name
+            const h4 = document.createElement('h4');
+            h4.textContent = service;
+            
+            // Description
+            const p = document.createElement('p');
+            p.textContent = info.description;
+            
+            // Price
+            const priceDiv = document.createElement('div');
+            priceDiv.className = 'service-price';
+            priceDiv.textContent = info.price;
+            
+            // Assemble the card
+            card.appendChild(iconDiv);
+            card.appendChild(h4);
+            card.appendChild(p);
+            card.appendChild(priceDiv);
+            
+            // Add click event to show service details
+            card.addEventListener('click', () => {
+                showServiceDetails(category, service);
+            });
+            
+            grid.appendChild(card);
+        });
+        
+        section.appendChild(grid);
+        
+        // Back button
+        const backBtn = document.createElement('button');
+        backBtn.className = 'back-button';
+        backBtn.textContent = 'Back to Categories';
+        backBtn.onclick = showCategories;
+        section.appendChild(backBtn);
+        
+        // IMPORTANT: Hide furniture selection in category view
+        const furnituredetailsSection = document.getElementById('furnituredetailsSection');
+        if (furnituredetailsSection) {
+            furnituredetailsSection.style.display = 'none';
+        }
+        
+        const serviceSelectionContainer = document.getElementById('serviceSelectionContainer');
+        const servicedetailsContainer = document.getElementById('servicedetailsContainer');
+        
+        if (serviceSelectionContainer) serviceSelectionContainer.style.display = 'block';
+        if (servicedetailsContainer) servicedetailsContainer.style.display = 'none';
+        
+        // Scroll to the service selection container
+        if (serviceSelectionContainer) {
+            serviceSelectionContainer.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
     }
 
-    function bookServices() {
-      if (state.selectedServices.length === 0) {
-        alert("No services selected!");
-        return;
-      }
-      // (Insert appointment details collection if desired)
-      alert(`Booking confirmed!
-Estimated Total: ${document.getElementById('totalAmount').textContent}
-Thank you!`);
-      clearAllServices();
+    function showServiceDetails(category, service, preselectedDetail) {
+        if (!category || !service) {
+            console.error('Missing category or service');
+            return;
+        }
+        
+        console.log('Showing service details:', category, service);
+        
+        state.currentView = 'details';
+        
+        // Reset furniture items when starting a new service
+        state.furnitureItems = [];
+        
+        const categoriesGrid = document.getElementById('categories-grid');
+        const serviceSelectionContainer = document.getElementById('serviceSelectionContainer');
+        const servicedetailsContainer = document.getElementById('servicedetailsContainer');
+        const selectedServicesSection = document.getElementById('selectedServicesSection');
+        
+        if (categoriesGrid) categoriesGrid.style.display = 'none';
+        if (serviceSelectionContainer) serviceSelectionContainer.style.display = 'none';
+        if (selectedServicesSection) selectedServicesSection.style.display = 'none';
+        if (!servicedetailsContainer) return;
+        
+        servicedetailsContainer.innerHTML = "";
+        servicedetailsContainer.style.display = 'block';
+        
+        const header = document.createElement('h3');
+        header.textContent = service;
+        servicedetailsContainer.appendChild(header);
+        
+        const info = serviceData[category][service];
+        if (!info) {
+            servicedetailsContainer.innerHTML += '<p>Service information not found.</p>';
+            return;
+        }
+        
+        // Create detail cards for non-furniture services
+        if (!info.requiresFurnitureSelection) {
+            const grid = document.createElement('div');
+            grid.className = 'details-grid';
+            
+            info.details.forEach(detail => {
+                const card = document.createElement('div');
+                card.className = 'detail-card';
+                card.textContent = detail;
+                card.addEventListener('click', () => {
+                    Array.from(grid.children).forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    noteInput.style.display = 'block';
+                    addBtn.style.display = 'block';
+                });
+                
+                if (preselectedDetail && detail.toLowerCase().includes(preselectedDetail.toLowerCase())) {
+                    card.classList.add('selected');
+                }
+                grid.appendChild(card);
+            });
+            servicedetailsContainer.appendChild(grid);
+        }
+        
+        // Create furniture selection for furniture services
+        if (info.requiresFurnitureSelection) {
+            const furnitureSection = document.createElement('div');
+            furnitureSection.className = 'furniture-selection-section';
+            furnitureSection.innerHTML = `
+                <div class="furniture-type-selection">
+                    <h4>Select Furniture Type</h4>
+                    <div class="radio-group">
+                        
+                        <label>
+                            <input type="radio" name="furnitureType" value="generic" checked> 
+                            <span class="radio-custom"></span>
+                            Furniture [Not IKEA]
+                        </label>
+                        <label>
+                            <input type="radio" name="furnitureType" value="ikea" > 
+                            <span class="radio-custom"></span>
+                            IKEA Collection
+                        </label>
+                    </div>
+                </div>
+                <div class="furniture-item-selection">
+                    <select id="furniture-select">
+                        <option value="">Select Furniture Item</option>
+                    </select>
+                    <button class="add-item-btn" onclick="addFurnitureItem()">Add Item</button>
+                </div>
+                <br>
+                <div class="selected-furniture-section">
+                    <h5><b>Your Furniture List</b></h5>
+                    <ul id="selectedFurnitureList" class="selected-furniture-list"></ul>
+                    <button class="clear-all-btn" onclick="clearAllFurnitureItems()">Remove All Furniture</button>
+                </div>
+            `;
+            servicedetailsContainer.appendChild(furnitureSection);
+            
+            // Initialize furniture selection immediately after adding to DOM
+            setTimeout(() => {
+                initFurnitureSelection(servicedetailsContainer);
+            }, 0);
+            
+            // Handle radio button changes
+            setTimeout(() => {
+                const radioButtons = servicedetailsContainer.querySelectorAll('input[name="furnitureType"]');
+                radioButtons.forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        console.log('Furniture type changed to:', radio.value);
+                        initFurnitureSelection(servicedetailsContainer);
+                    });
+                });
+            }, 0);
+        }
+        
+        // Note input (for all services)
+        const noteInput = document.createElement('textarea');
+        noteInput.id = 'serviceNoteInput';
+        noteInput.placeholder = info.requiresFurnitureSelection 
+            ? 'Add any additional notes about the furniture assembly/repair here...' 
+            : 'Add job details and notes here...';
+        noteInput.className = 'service-input-area';
+        noteInput.style.display = info.requiresFurnitureSelection ? 'block' : 'none';
+        servicedetailsContainer.appendChild(noteInput);
+        
+        // Add to Cart button - FIXED VERSION
+        const addBtn = document.createElement('button');
+        addBtn.className = 'book-more-button';
+        addBtn.textContent = 'Add to Cart';
+        addBtn.style.display = info.requiresFurnitureSelection ? 'block' : 'none';
+
+        addBtn.addEventListener('click', function() {
+            console.log('Add to Cart button clicked');
+            
+            let selectedDetail = '';
+            let finalNotes = noteInput.value.trim();
+            
+            // Validation for non-furniture services
+            if (!info.requiresFurnitureSelection) {
+                const selectedCard = servicedetailsContainer.querySelector('.detail-card.selected');
+                if (!selectedCard) {
+                    alert('Please select a service detail.');
+                    return;
+                }
+                selectedDetail = selectedCard.textContent;
+                
+                if (!finalNotes) {
+                    alert('Please enter job details.');
+                    return;
+                }
+            }
+            
+            // Validation for furniture services
+            if (info.requiresFurnitureSelection) {
+                if (!state.furnitureItems || state.furnitureItems.length === 0) {
+                    alert('Please add at least one furniture item.');
+                    return;
+                }
+                
+                // Add furniture items to notes if we have them
+                if (state.furnitureItems.length > 0) {
+                    finalNotes += (finalNotes ? "\n" : "") + "Furniture Items: " + state.furnitureItems.join(", ");
+                }
+                
+                selectedDetail = 'Furniture Service';
+            }
+            
+            const entry = {
+                id: `${category}-${service}-${Date.now()}`,
+                category: category,
+                name: service,
+                price: info.price,
+                icon: info.icon || '🔧',
+                detail: selectedDetail,
+                notes: finalNotes,
+                furnitureItems: info.requiresFurnitureSelection ? [...state.furnitureItems] : []
+            };
+            
+            console.log('Adding to cart:', entry);
+            addToCart(entry);
+            
+            // Reset and navigate
+            servicedetailsContainer.style.display = 'none';
+            state.furnitureItems = [];
+            
+            // Show the selected services section and update UI
+            const selectedServicesSection = document.getElementById('selectedServicesSection');
+            if (selectedServicesSection) {
+                selectedServicesSection.style.display = 'block';
+                updateSelectedServicesUI();
+                updateFabVisibility();
+            }
+        });
+
+        servicedetailsContainer.appendChild(addBtn);
+
+        // Show/hide logic for non-furniture services
+        if (!info.requiresFurnitureSelection) {
+            // Initially hide the add button for non-furniture services
+            addBtn.style.display = 'none';
+            
+            // Show button when both detail is selected and notes are entered
+            const checkAddButtonVisibility = () => {
+                const selectedCard = servicedetailsContainer.querySelector('.detail-card.selected');
+                const hasNotes = noteInput.value.trim().length > 0;
+                addBtn.style.display = (selectedCard && hasNotes) ? 'block' : 'none';
+            };
+            
+            // Listen for detail selection
+            const detailCards = servicedetailsContainer.querySelectorAll('.detail-card');
+            detailCards.forEach(card => {
+                card.addEventListener('click', checkAddButtonVisibility);
+            });
+            
+            // Listen for note input
+            noteInput.addEventListener('input', checkAddButtonVisibility);
+        } else {
+            // For furniture services, show button immediately but validate on click
+            addBtn.style.display = 'block';
+            noteInput.style.display = 'block';
+        }
+        
+        // Back button
+        const backBtn = document.createElement('button');
+        backBtn.className = 'back-button';
+        backBtn.textContent = 'Back to Services';
+        backBtn.addEventListener('click', () => {
+            servicedetailsContainer.style.display = 'none';
+            showCategoryServices(category);
+        });
+        servicedetailsContainer.appendChild(backBtn);
+    }
+
+    /* ========== CART MANAGEMENT ========== */
+    function addToCart(serviceEntry) {
+        console.log('Adding service to cart:', serviceEntry);
+        state.selectedServices.push(serviceEntry);
+        
+        // Update UI to show selected services
+        updateSelectedServicesUI();
+        updateFabVisibility();
+        
+        alert('Service added to cart!');
+    }
+
+    function updateSelectedServicesUI() {
+        const selectedServicesList = document.getElementById('selectedServicesList');
+        const estimateTotal = document.getElementById('estimateTotal');
+        const totalAmount = document.getElementById('totalAmount');
+        
+        if (!selectedServicesList) return;
+        
+        selectedServicesList.innerHTML = '';
+        
+        let total = 0;
+        
+        state.selectedServices.forEach(service => {
+            const serviceItem = document.createElement('div');
+            serviceItem.className = 'selected-service-item';
+            
+            // Extract price for total calculation
+            const priceMatch = service.price.match(/\$?(\d+)/);
+            if (priceMatch) {
+                total += parseInt(priceMatch[1]);
+            }
+            
+            serviceItem.innerHTML = `
+                <div class="selected-service-icon">${service.icon}</div>
+                <div class="selected-service-text">
+                    <h4>${service.name}</h4>
+                    <div class="service-detail">${service.detail}</div>
+                    ${service.notes ? `<div class="service-notes">${service.notes}</div>` : ''}
+                </div>
+                <div class="selected-service-price">${service.price}</div>
+                <button class="remove-service-btn" onclick="removeServiceFromCart('${service.id}')">✕</button>
+            `;
+            
+            selectedServicesList.appendChild(serviceItem);
+        });
+        
+        // Update total
+        if (state.selectedServices.length > 0) {
+            estimateTotal.style.display = 'flex';
+            totalAmount.textContent = `$${total}.00`;
+        } else {
+            estimateTotal.style.display = 'none';
+        }
+        
+        // Show the selected services section if there are services
+        const selectedServicesSection = document.getElementById('selectedServicesSection');
+        if (selectedServicesSection && state.selectedServices.length > 0) {
+            selectedServicesSection.style.display = 'block';
+        }
+    }
+
+    function removeServiceFromCart(serviceId) {
+        state.selectedServices = state.selectedServices.filter(service => service.id !== serviceId);
+        updateSelectedServicesUI();
+        updateFabVisibility();
+        
+        // Hide selected services section if no services left
+        if (state.selectedServices.length === 0) {
+            const selectedServicesSection = document.getElementById('selectedServicesSection');
+            if (selectedServicesSection) {
+                selectedServicesSection.style.display = 'none';
+            }
+            showCategories();
+        }
     }
 
     function clearAllServices() {
-      state.selectedServices = [];
-      updateCartDisplay();
-      document.getElementById('selectedServicesSection').style.display = 'none';
-      showCategories();
+        state.selectedServices = [];
+        updateSelectedServicesUI();
+        updateFabVisibility();
+        showCategories();
     }
-    /* --------------------------
-       Cart Modal Functions
-       -------------------------- */
-    function updateCartModal() {
-      const modalList = document.getElementById('modalServiceList');
-      modalList.innerHTML = "";
-      let total = 0;
-      state.selectedServices.forEach(service => {
-        const div = document.createElement('div');
-        div.className = 'service-item';
-        div.innerHTML = `<span>${service.name}</span>
-            <span class="service-price">${service.price}</span>
-            <button class="remove-btn" onclick="removeService('${service.id}')">✕</button>`;
-        modalList.appendChild(div);
-        total += parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0;
-      });
-      document.getElementById('serviceCount').textContent = state.selectedServices.length;
-      document.getElementById('modalTotal').textContent = "$" + total.toFixed(2);
+
+    function updateFabVisibility() {
+        const cartFab = document.getElementById('cartFab');
+        const fabCartCount = document.getElementById('fabCartCount');
+        
+        if (state.selectedServices.length > 0) {
+            cartFab.style.display = 'block';
+            fabCartCount.textContent = state.selectedServices.length;
+        } else {
+            cartFab.style.display = 'none';
+        }
     }
 
     function toggleCartModal() {
-      const modal = document.getElementById('modalOverlay');
-      if (modal.style.display === 'block') {
-        modal.style.display = 'none';
-      } else {
-        updateCartModal();
-        modal.style.display = 'block';
-      }
-    }
-    /* --------------------------
-       Search Modal Functions
-       -------------------------- */
-    function performSearch(query) {
-      const results = [];
-      query = query.toLowerCase().trim();
-      Object.keys(serviceData).forEach(category => {
-        Object.keys(serviceData[category]).forEach(service => {
-          const info = serviceData[category][service];
-          if (service.toLowerCase().includes(query) || info.description.toLowerCase().includes(query)) {
-            results.push({
-              category,
-              service,
-              matchdetail: null
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalServiceList = document.getElementById('modalServiceList');
+        const serviceCount = document.getElementById('serviceCount');
+        const modalTotal = document.getElementById('modalTotal');
+        
+        if (modalOverlay.style.display === 'block') {
+            modalOverlay.style.display = 'none';
+        } else {
+            // Update modal content
+            modalServiceList.innerHTML = '';
+            serviceCount.textContent = state.selectedServices.length;
+            
+            let total = 0;
+            
+            state.selectedServices.forEach(service => {
+                const serviceElement = document.createElement('div');
+                serviceElement.className = 'selected-service-item';
+                
+                // Extract price for total calculation
+                const priceMatch = service.price.match(/\$?(\d+)/);
+                if (priceMatch) {
+                    total += parseInt(priceMatch[1]);
+                }
+                
+                serviceElement.innerHTML = `
+                    <div class="selected-service-icon">${service.icon}</div>
+                    <div class="selected-service-text">
+                        <h4>${service.name}</h4>
+                        <div class="service-detail">${service.detail}</div>
+                        ${service.notes ? `<div class="service-notes">${service.notes}</div>` : ''}
+                    </div>
+                    <div class="selected-service-price">${service.price}</div>
+                    <button class="remove-service-btn" onclick="removeServiceFromCart('${service.id}')">✕</button>
+                `;
+                modalServiceList.appendChild(serviceElement);
             });
-          } else {
-            info.details.forEach(detail => {
-              if (detail.toLowerCase().includes(query))
-                results.push({
-                  category,
-                  service,
-                  matchdetail: detail
+            
+            modalTotal.textContent = `$${total}.00`;
+            modalOverlay.style.display = 'block';
+        }
+    }
+
+    function bookServices() {
+        if (state.selectedServices.length === 0) {
+            alert('Please add at least one service before booking.');
+            return;
+        }
+        
+        // Here you would typically redirect to a booking page or show a booking form
+        alert('Proceeding to booking with ' + state.selectedServices.length + ' services!');
+        console.log('Booking services:', state.selectedServices);
+    }
+
+    /* ========== INITIALIZATION ========== */
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing event listeners...');
+        
+        // Initialize category tiles
+        const categoryTiles = document.querySelectorAll('.category-tile');
+        console.log('Found category tiles:', categoryTiles.length);
+        
+        categoryTiles.forEach(tile => {
+            tile.addEventListener('click', function() {
+                console.log('Category tile clicked');
+                const category = this.getAttribute('data-category');
+                console.log('Category:', category);
+                
+                if (category) {
+                    this.classList.add('tap-animate');
+                    setTimeout(() => this.classList.remove('tap-animate'), 300);
+                    showCategoryServices(category);
+                } else {
+                    console.error('No category found on tile');
+                }
+            });
+        });
+        
+        // Initialize static furniture section if visible
+        const staticFurnitureSection = document.getElementById('furnituredetailsSection');
+        if (staticFurnitureSection && staticFurnitureSection.style.display !== 'none') {
+            console.log('Initializing static furniture section');
+            initFurnitureSelection();
+            
+            // Add event listeners for static furniture radio buttons
+            const staticRadios = document.querySelectorAll('#furnituredetailsSection input[name="furnitureType"]');
+            staticRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    console.log('Static furniture type changed to:', this.value);
+                    initFurnitureSelection();
                 });
             });
-          }
-        });
-      });
-      return results;
-    }
-
-    function openSearchModal() {
-      document.getElementById('searchModal').style.display = 'flex';
-      document.getElementById('modalSearchInput').focus();
-    }
-
-    function closeSearchModal() {
-      document.getElementById('searchModal').style.display = 'none';
-    }
-    document.getElementById('modalSearchInput').addEventListener('input', function(e) {
-      const results = performSearch(e.target.value);
-      const container = document.getElementById('modalSearchResults');
-      container.innerHTML = "";
-      results.forEach(result => {
-        const div = document.createElement('div');
-        div.className = 'service-item';
-        div.textContent =
-          result.category +
-          " > " +
-          result.service +
-          (result.matchdetail ? " (detail: " + result.matchdetail + ")" : "");
-        div.onclick = () => {
-          closeSearchModal();
-          showServicedetails(result.category, result.service, result.matchdetail);
-        };
-        container.appendChild(div);
-      });
+        }
+        
+        console.log('Initialization complete');
     });
-    /* --------------------------
-       Hardcoded Service Data (migrated from your original mapping)
-       -------------------------- */
-    window.serviceData = {
-      "Minor Home Repairs": {
-        "Appliances": {
-          price: "$70/hour",
-          description: "Appliance assessment, maintenance, and repair ⏲Hourly Service. Excludes specialized services.",
-          icon: "🎛️",
-          details: ["Maintenance", "Repair", "Assessment"]
-        },
-        "Handles & Locks Installation": {
-          price: "$70",
-          description: "Installation of door knobs, handles, or locks. Hardware is invoiced separately.",
-          icon: "🔒",
-          details: ["Standard door", "Security lock", "Smart lock"]
-        },
-        "Furniture Repair ⏲Hourly Service": {
-          price: "$70/hour",
-          description: "Hourly furniture repair service.",
-          icon: "🪑",
-          details: ["Wood furniture", "Upholstery", "Metal furniture"]
-        },
-        "Door Damage Repair": {
-          price: "$125",
-          description: "Patch and paint interior door damage (baseball-sized or smaller, materials included). Larger damage and solid-core doors may incur a minor excess-materials fee.",
-          icon: "🚪",
-          details: ["Patch & paint", "Hinge repair", "Frame adjustment"]
-        },
-        "Drywall Repair : Patch & Paint": {
-          price: "$70",
-          description: "Interior wall patch and paint repairs. Materials included for damage up to baseball-sized; larger damage may incur a small additional cost.",
-          icon: "⬜",
-          details: ["Small ⚾ hole", "Large 🏀 hole", "📈Crack Repair"]
-        }
-      },
-      "Wall Mounting": {
-        "Curtains/Drapes w. Single Rod Installation": {
-          price: "$50",
-          description: "Installation of standard curtains or drapes with a single rod.",
-          icon: "🪟",
-          details: ["Standard rod", "Tension rod", "Decorative rod"]
-        },
-        "Frame/Shelf Mounting ⏲Hourly Service": {
-          price: "$60/hour",
-          description: "Hourly wall mounting service for frames and shelves.",
-          icon: "📚",
-          details: ["Picture frames", "Shelves", "Wall art"]
-        },
-        "TV Mounting (Under 60\") + Concealed Cables": {
-          price: "$150",
-          description: "TV mounting for TVs under 60 inches, with concealed cables.",
-          icon: "📺",
-          details: ["Drywall", "Concrete", "Brick"]
-        },
-        "TV Mounting (Under 60\") standard": {
-          price: "$60",
-          description: "TV mounting for TVs under 60 inches. Additional hardware costs may apply.",
-          icon: "📺",
-          details: ["Basic mounting", "Tilt mount", "Swivel mount"]
-        }
-      },
-      "Computer Repairs": {
-        "Data": {
-          price: "$99",
-          description: "Data copying or backup creation. Additional hardware is not included.",
-          icon: "💾",
-          details: ["External drive", "Cloud backup", "Network transfer"]
-        },
-        "Diagnostic Service": {
-          price: "$75",
-          description: "Diagnosis of hardware or software issues. This fee is credited towards repair services.",
-          icon: "🔍",
-          details: ["Part", "Upgrade", "Software", "Performance"]
-        },
-        "Hardware": {
-          price: "$125",
-          description: "Replacement or upgrade of PC hardware parts. Parts can be client-provided or expensed.",
-          icon: "🪫",
-          details: ["RAM", "SSD", "Graphics card"]
-        },
-        "Maleware & Virus": {
-          price: "$125",
-          description: "Removal of malicious programs while preserving your operating system.",
-          icon: "🦠",
-          details: ["Scan & remove", "System cleanup", "Prevention setup"]
-        },
-        "Software": {
-          price: "$50",
-          description: "Installation, update, or removal of up to four software applications.",
-          icon: "📀",
-          details: ["Operating system", "Applications", "Drivers"]
-        },
-        "System Recovery": {
-          price: "$125",
-          description: "Bring back your PC to the state it was in before problems started.",
-          icon: "⏮️",
-          details: ["Factory reset", "Recovery partition", "Backup restore"]
-        }
-      },
-      "Electrical Help": {
-        "Light Fixture Swap": {
-          price: "$60",
-          description: "Replacement of an existing light fixture (ceiling fans excluded).",
-          icon: "💡",
-          details: ["Ceiling light", "Wall sconce", "Pendant light"]
-        }
-      },
-      "Furniture Fixes & Assembly": {
-        "Assembly": {
-          price: "$40/hour",
-          description: "Furniture assembly service.",
-          icon: "🛠️",
-          details: ["Select furniture type"],
-          requiresFurnitureSelection: true
-        },
-        "Repair": {
-          price: "$70/hour",
-          description: "Furniture repair service.",
-          icon: "🔨",
-          details: ["Select repair type"],
-          requiresFurnitureSelection: true
-        }
-      },
-      "Plumbing Help": {
-        "Bidet Accessory Install/Removal": {
-          price: "$70",
-          description: "Bidet attachment installation or removal. Excludes specialized toilets.",
-          icon: "🚽",
-          details: ["Standard bidet", "Smart bidet", "Add-on"]
-        },
-        "Fixture Swap (Cosmetic)": {
-          price: "$70",
-          description: "Swapping a sink faucet or shower head.",
-          icon: "🚰",
-          details: ["Faucet", "Shower head", "Drain cover"]
-        },
-        "Leak Under Sink Repair": {
-          price: "$75",
-          description: "Repair for minor leaks under the sink.",
-          icon: "💧",
-          details: ["Pipe leak", "Drain leak", "Supply line"]
-        },
-        "Unclog Sink/Shower/Toilet (Minor)": {
-          price: "$70",
-          description: "Minor clog removal.",
-          icon: "🪠",
-          details: ["Plunger", "Drain snake", "Chemical treatment"]
-        }
-      }
-    };
-    /* --------------------------
-       DOMContentLoaded – wire up category taps, etc.
-       -------------------------- */
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('input[name="furnitureType"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-          initFurnituredetails();
-          clearAllFurnitureItems();
-        });
-      });
-    });
-    document.addEventListener('DOMContentLoaded', () => {
-      initFurnituredetails();
-      document.querySelectorAll('.category-tile').forEach(tile => {
-        tile.addEventListener('click', function() {
-          const category = this.getAttribute('data-category');
-          this.classList.add('tap-animate');
-          setTimeout(() => this.classList.remove('tap-animate'), 300);
-          showCategoryServices(category);
-        });
-      });
-    });
-  </script>
- </body>
-
+</script>
+</body>
 </html>
