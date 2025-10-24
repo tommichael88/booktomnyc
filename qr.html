@@ -2053,24 +2053,25 @@
           </span>
 
           <!-- Contact Toolbar -->
-          <div id="contactToolbar" class="contact-toolbar">
-            <a href="mailto:booktom@icloud.com" class="contact-toolbar-item">
-              <div class="contact-toolbar-icon">@</div>
-              <div class="contact-toolbar-label"></div>
-            </a>
-            <a href="tel:+19292563252" class="contact-toolbar-item">
-              <div class="contact-toolbar-icon">📞</div>
-              <div class="contact-toolbar-label"></div>
-            </a>
-            <a href="#" id="contactCardButton" class="contact-toolbar-item">
-              <div class="contact-toolbar-icon"><font size=5rem">+</font>👤</div>
-              <div class="contact-toolbar-label"></div>
-            </a>
-            <a href="sms:+19292563252" class="contact-toolbar-item">
-              <div class="contact-toolbar-icon">💬</div>
-              <div class="contact-toolbar-label"></div>
-            </a>
-          </div>
+<div id="contactToolbar" class="contact-toolbar">
+  <a href="#" class="contact-toolbar-item contact-mail" data-email="Ym9va3RvbUBpY2xvdWQuY29t" aria-label="Email">
+    <div class="contact-toolbar-icon">@</div>
+    <div class="contact-toolbar-label"></div>
+  </a>
+  <a href="#" class="contact-toolbar-item contact-phone" data-phone="+19292563252" aria-label="Call">
+    <div class="contact-toolbar-icon">📞</div>
+    <div class="contact-toolbar-label"></div>
+  </a>
+  <a href="#" id="contactCardButton" class="contact-toolbar-item">
+    <div class="contact-toolbar-icon"><font size="5rem">+</font>👤</div>
+    <div class="contact-toolbar-label"></div>
+  </a>
+  <a href="#" class="contact-toolbar-item contact-sms" data-sms="+19292563252" aria-label="SMS">
+    <div class="contact-toolbar-icon">💬</div>
+    <div class="contact-toolbar-label"></div>
+  </a>
+</div>
+
 
           <div class="card-schedule-service">
             <h1 style="color:#454545;text-align:center;font-size:2rem;line-height:.85; margin-bottom:2.5rem;margin-top:3rem;">
@@ -3168,7 +3169,7 @@
   </script>
 
 <script defer src="https://tommichael88.github.io/booktomnyc/js/marquee.js"
-  integrity="sha384-sO/JQTm9KwYvAECgBW5DJPh2b4kkN4l5dOAPLzLFiikVDMiyWaQWG/Sg4Ke3PnKy"
+  integrity="sha384-7//zdweCcfo80/Y70qOzb0hIkXYMts+gxdP4GTqu1P6KwMpylj6uKy8I5PkiEvN0"
   crossorigin="anonymous"></script>
 
 <script type="module">
@@ -3179,6 +3180,65 @@
     const speed = isMobile ? 0.03 : 0.06;
     if (window.Marquee) el._marqueeInstance = new Marquee(el, { speed, pauseOnHover: true });
   });
+</script>
+<script>
+(function () {
+  'use strict';
+
+  function decodeB64(s) {
+    try { return atob(s); } catch (e) { return ''; }
+  }
+
+  function safePhone(s) {
+    return (s || '').replace(/[^+\d\s\-()]/g,'').trim();
+  }
+
+  function safeEmail(s) {
+    // allow common email characters only
+    return (s || '').replace(/[^A-Za-z0-9@._+\-]/g,'').trim();
+  }
+
+  function openMail(el) {
+    var b64 = el.getAttribute('data-email') || '';
+    var email = safeEmail(decodeB64(b64));
+    if (!email) return;
+    // optionally prefill subject/body
+    var subject = encodeURIComponent('Inquiry from website');
+    var body = encodeURIComponent('');
+    window.location.href = 'mailto:' + email + '?subject=' + subject + '&body=' + body;
+  }
+
+  function openTel(el) {
+    var raw = el.getAttribute('data-phone') || '';
+    var num = safePhone(raw);
+    if (!num) return;
+    window.location.href = 'tel:' + num;
+  }
+
+  function openSms(el) {
+    var raw = el.getAttribute('data-sms') || '';
+    var num = safePhone(raw);
+    if (!num) return;
+    window.location.href = 'sms:' + num;
+  }
+
+  // Wire handlers
+  document.querySelectorAll('.contact-mail').forEach(function (el) {
+    el.addEventListener('click', function (ev) { ev.preventDefault(); openMail(el); }, { passive: false });
+    el.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openMail(el); } });
+  });
+
+  document.querySelectorAll('.contact-phone').forEach(function (el) {
+    el.addEventListener('click', function (ev) { ev.preventDefault(); openTel(el); }, { passive: false });
+    el.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openTel(el); } });
+  });
+
+  document.querySelectorAll('.contact-sms').forEach(function (el) {
+    el.addEventListener('click', function (ev) { ev.preventDefault(); openSms(el); }, { passive: false });
+    el.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openSms(el); } });
+  });
+
+})();
 </script>
 
 </body>
