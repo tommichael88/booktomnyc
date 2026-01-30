@@ -23,7 +23,6 @@
 
     <style>
         /* ========== CORE ELEMENTS & VARIABLES ========== */
-        /* ========== CORE ELEMENTS & VARIABLES ========== */
         :root {
             --bg-card: #1e1e1e;
             --bg-card-hover: #2a2a2a;
@@ -383,33 +382,92 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        /* INLINE CART BUTTON STYLING */
+        /* ============================================
+   SERVICE CART BUTTON — WHITE STAR OVERLAY
+   ============================================ */
+
         .cartFab {
-            background: linear-gradient(135deg, #de0000 0%, #8a0615 100%);
-            color: #FFF;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: .75rem;
-            font-weight: 700;
-            cursor: pointer;
+            position: relative;
             display: flex;
             align-items: center;
-            gap: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            height: 100%;
-            white-space: nowrap;
+            justify-content: center;
+            padding: 8px 12px;
+            border-radius: 10px;
+            overflow: visible;
+            z-index: 1;
         }
+
+        /* STAR BACKDROP — CENTERED BEHIND ICON */
+        .cartFab::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 5rem;
+            height: 5rem;
+            border: 2px dashed gold;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 40%, rgba(255, 255, 255, 0.2) 100%);
+            clip-path: polygon(50% 0%,
+                    60% 20%,
+                    80% 20%,
+                    65% 35%,
+                    75% 55%,
+                    50% 45%,
+                    25% 55%,
+                    35% 35%,
+                    20% 20%,
+                    40% 20%);
+            filter: blur(1px) drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+            z-index: 0;
+        }
+
+        /* ICON — CENTERED ABOVE STAR */
+        .cartFab img {
+            position: relative;
+            width: 2.4rem;
+            height: 2.4rem;
+            object-fit: contain;
+            z-index: 0;
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+        }
+
+
+        /* ============================================
+   ITEM COUNT — FLOATING TO THE RIGHT
+   ============================================ */
+
+        #fabCartCount {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: #fff;
+            color: #8a0615;
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 12px;
+            box-shadow:
+                0 0 4px rgba(255, 255, 255, 0.4),
+                0 0 8px rgba(255, 0, 0, 0.3);
+            z-index: 3;
+        }
+
+        /* ============================================
+   INTERACTION STATES
+   ============================================ */
 
         .cartFab:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 8px rgba(222, 0, 0, 0.4);
+            transform: scale(1.75);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
-        .cartFab.visible {
-            animation: popIn 0.3s ease forwards;
+        .cartFab:active {
+            transform: scale(0.97);
+            box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
         }
+
+
 
         /* ========== CATEGORIES GRID ========== */
         .menu-container {
@@ -2095,11 +2153,12 @@
                         <div class="new-service-request-grid-topper" style="display:flex;justify-content:space-between;align-items:center;font-size:1rem;background: linear-gradient(25deg,#000 1%,#8a0615 20%,#de0000 40%,#8a0615 60%,#000 95%);color:#fff;"><a href="https://tommichael88.github.io/booktomnyc/cat.html" style="text-decoration: none; color: inherit;">
                                 <span><u>ᴺᵉʷ</u> <b>Service Request ▼</b></span></a>
 
-                            <button class="reschedule-service-button" id="manageVisitBtn"><img src="https://github.com/tommichael88/booktomnyc/blob/main/images/Copilot_20251010_033614.png?raw=true" style="max-height:1.25rem;max-width:auto">Edit</button>
+                            <button class="reschedule-service-button" id="manageVisitBtn"><img src="https://github.com/tommichael88/booktomnyc/blob/main/images/Copilot_20251010_033614.png?raw=true" style="max-height:1.25rem;max-width:auto" alt="Edit visit">Edit</button>
 
-                            <div id="cartFab" class="cartFab" style="display:none">
-                                📃 <span id="fabCartCount">0</span>
-                                </button>
+                            <div id="cartFab" class="cartFab star" style="display:none">
+                                <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/checkout.png?raw=true" alt="checkout">
+                                <span id="fabCartCount">0</span>
+
                             </div>
                         </div>
                         <!-- Category tiles etc (kept as in QR.txt) -->
