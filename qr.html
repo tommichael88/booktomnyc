@@ -3215,6 +3215,7 @@
                             };
                         })();
 
+
                         /* ---------- Small billing helpers (pure functions) ---------- */
                         function computeFurnitureCharge(itemsMinutes) {
                             if (!Array.isArray(itemsMinutes) || itemsMinutes.length === 0) return {
@@ -3222,15 +3223,69 @@
                                 price: 0,
                                 minutes: 0
                             };
+
+                            // Sum all minutes from all furniture items
                             const totalMinutes = itemsMinutes.reduce((a, b) => a + b, 0);
-                            let hours = (totalMinutes < 60) ? 1 : (totalMinutes / 60);
+
+                            // Apply your business rules:
+                            // 1. If total minutes is 0, return 0
+                            // 2. If total minutes is less than 60 minutes, charge for 1 hour
+                            // 3. If total minutes is 60+ minutes, use the exact total
+
+                            let hours = 0;
+                            if (totalMinutes > 0) {
+                                // Convert minutes to hours (with 2 decimal places)
+                                hours = totalMinutes / 60;
+
+                                // Apply minimum 1 hour only if total is less than 60 minutes
+                                if (hours < 1) {
+                                    hours = 1;
+                                }
+                                // If 60+ minutes, use exact hours (no rounding up)
+                            }
+
+                            // Round to 2 decimal places for display
                             const hoursRounded = Math.round(hours * 100) / 100;
+
+                            // Calculate price at $40/hour
                             const price = Math.round(hoursRounded * window.SERVICE_DATA.RATE_PER_HOUR * 100) / 100;
+
                             return {
                                 hours: hoursRounded,
                                 price,
                                 minutes: totalMinutes
                             };
+                        }
+
+                        // Helper function to organize IKEA furniture
+                        function organizeIkeaFurniture() {
+                            const organized = {};
+
+                            Object.keys(window.SERVICE_DATA.FURNITURE_MINUTES).forEach(key => {
+                                // Look for the dash that separates collection from item
+                                const dashIndex = key.indexOf(' - ');
+                                if (dashIndex !== -1) {
+                                    const collection = key.substring(0, dashIndex);
+                                    const itemName = key.substring(dashIndex + 3); // Skip " - "
+
+                                    if (!organized[collection]) {
+                                        organized[collection] = [];
+                                    }
+
+                                    organized[collection].push({
+                                        fullKey: key,
+                                        name: itemName,
+                                        minutes: window.SERVICE_DATA.FURNITURE_MINUTES[key]
+                                    });
+                                }
+                            });
+
+                            // Sort each collection's items alphabetically
+                            Object.keys(organized).forEach(collection => {
+                                organized[collection].sort((a, b) => a.name.localeCompare(b.name));
+                            });
+
+                            return organized;
                         }
 
                         function computeRepairCharge(hoursInput) {
@@ -3519,28 +3574,30 @@
                         function removeFurnitureItemFromService(serviceId, itemIndex) {
                             const svc = State.serviceRequest.find(s => s.id === serviceId);
                             if (!svc || !Array.isArray(svc.furnitureItems)) return;
-                            svc.furnitureItems.splice(itemIndex, 1);
-                            svc.notes = svc.furnitureItems.length ? 'Furniture Items: ' + svc.furnitureItems.map(f => f.label).join(', ') : svc.notes;
-                            const isRepair = svc.name && (svc.name.toLowerCase() === 'repair' || svc.name.toLowerCase().includes('repair'));
 
-                            if (isRepair) {
-                                const charge = computeRepairCharge(1);
+                            // Remove the specific furniture item
+                            svc.furnitureItems.splice(itemIndex, 1);
+
+                            // If this is an Assembly service and no furniture items left, remove the entire service
+                            if (svc.name === "Assembly" && svc.furnitureItems.length === 0) {
+                                removeServiceFromCart(serviceId);
+                                return;
+                            }
+
+                            // Recalculate the assembly total with remaining items
+                            if (svc.name === "Assembly") {
+                                const itemsMinutes = svc.furnitureItems.map(fi =>
+                                    fi.minutes || (window.SERVICE_DATA.FURNITURE_MINUTES[fi.key] ||
+                                        window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES[fi.label] || 60)
+                                );
+                                const charge = computeFurnitureCharge(itemsMinutes);
+
                                 svc.estimatedHours = charge.hours;
                                 svc.estimatedPrice = charge.price;
                                 svc.price = `$${charge.price.toFixed(2)}`;
-                            } else {
-                                if (svc.furnitureItems && svc.furnitureItems.length > 0) {
-                                    const minutes = svc.furnitureItems.map(fi => fi.minutes || (window.SERVICE_DATA.FURNITURE_MINUTES[fi.key] || window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES[fi.label] || 60));
-                                    const charge = computeFurnitureCharge(minutes);
-                                    svc.estimatedHours = charge.hours;
-                                    svc.estimatedPrice = charge.price;
-                                    svc.price = `$${charge.price.toFixed(2)}`;
-                                    svc.notes = (svc.notes || '') + ` Est: ${charge.hours} hr • $${charge.price.toFixed(2)}`;
-                                } else {
-                                    svc.estimatedHours = 0;
-                                    svc.estimatedPrice = 0;
-                                }
+                                svc.notes = `Furniture Items: ${svc.furnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
                             }
+
                             persistCartPlain(State.serviceRequest);
                             updateserviceRequestUI();
                             updateFabVisibility();
@@ -3548,6 +3605,45 @@
 
                         function addToCart(entry) {
                             if (!entry || !entry.id) return;
+
+                            // SPECIAL CASE: For Furniture Assembly services, combine them into one
+                            if (entry.category === "Furniture Fixes & Assembly" && entry.name === "Assembly") {
+                                // Check if there's already an Assembly service in the cart
+                                const existingAssembly = State.serviceRequest.find(s =>
+                                    s.category === "Furniture Fixes & Assembly" && s.name === "Assembly"
+                                );
+
+                                if (existingAssembly) {
+                                    // Merge furniture items into the existing assembly service
+                                    if (entry.furnitureItems && entry.furnitureItems.length > 0) {
+                                        existingAssembly.furnitureItems = [
+                                            ...(existingAssembly.furnitureItems || []),
+                                            ...entry.furnitureItems
+                                        ];
+
+                                        // Recalculate the total for the combined assembly
+                                        const allMinutes = existingAssembly.furnitureItems.map(fi =>
+                                            fi.minutes || (window.SERVICE_DATA.FURNITURE_MINUTES[fi.key] ||
+                                                window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES[fi.label] || 60)
+                                        );
+
+                                        const charge = computeFurnitureCharge(allMinutes);
+                                        existingAssembly.estimatedHours = charge.hours;
+                                        existingAssembly.estimatedPrice = charge.price;
+                                        existingAssembly.price = `$${charge.price.toFixed(2)}`;
+                                        existingAssembly.notes = `Furniture Items: ${existingAssembly.furnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
+
+                                        // Remove the new entry since we merged it
+                                        // Just update the UI and persist
+                                        updateserviceRequestUI();
+                                        updateFabVisibility();
+                                        persistCartPlain(State.serviceRequest);
+                                        return; // Don't push the new entry
+                                    }
+                                }
+                            }
+
+                            // Default behavior for non-assembly services or first assembly service
                             State.serviceRequest.push(entry);
                             updateserviceRequestUI();
                             updateFabVisibility();
