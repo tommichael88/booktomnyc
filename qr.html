@@ -160,7 +160,7 @@ body {
     justify-content: space-between;
     padding: 12px 15px;
     gap: 2%;
-    background: rgba(255, 255, 255, .0);
+    background: rgba(169, 169, 169, 0);
     backdrop-filter: blur(10px);
     box-shadow: var(--shadow-lg);
     overflow: hidden;
@@ -180,7 +180,6 @@ body {
     width: auto;
     flex: 0 0 auto;
     object-fit: contain;
-    box-shadow: var(--shadow-md);
     z-index: 1;
     transition: var(--transition);
 }
@@ -325,17 +324,17 @@ body {
 .contact-button:hover {
     transform: scale(1.4) rotate(5deg);
     text-shadow:
-        0 0 12px rgba(222, 222, 222, 0.8),
-        0 0 20px rgba(222, 222, 222, 0.4),
-        0 0 30px rgba(222, 222, 222, 0.2);
+        0 0 12px rgba(222, 0, 0, 0.8),
+        0 0 20px rgba(222, 0, 0, 0.4),
+        0 0 30px rgba(222, 0, 0, 0.2);
     color: #FFF;
     background: radial-gradient(circle at 10% 60%, #8a0615 0%, #de0000 40%, #de0000 60%, #8a0615 90%);
     box-shadow:
         0 4px 20px rgba(138, 6, 21, 0.4),
         0 0 0 1px rgba(255, 255, 255, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.2),
-        0 0 30px rgba(255, 215, 0, 0.3);
-    border-color: rgba(255, 215, 0, 0.3);
+        0 0 30px rgba(255, 0, 0, 0.3); /* Changed from gold to red */
+    border-color: rgba(255, 0, 0, 0.3); /* Changed from gold to red */
 }
 
 .contact-button:hover::before {
@@ -407,8 +406,8 @@ body {
 /* CONTACT TOOLBAR */
 .contact-toolbar {
     display: none;
-    background: rgba(0, 0, 0, .0);
-    backdrop-filter: blur(1px);
+    background: rgba(169, 169, 169, 0);
+    backdrop-filter: blur(10px);
     border: 2px outset rgba(169, 169, 169, 0.9);
     border-radius: var(--border-radius);
     padding: 12px 8px;
@@ -502,9 +501,9 @@ body {
 .contact-toolbar.active .contact-toolbar-item {
     position: relative;
     overflow: hidden;
-    opacity: 0.3;
-    background: rgba(255, 255, 255, 0.5);
-    transform: scale(0.9);
+    opacity: 0.7; /* Changed from 0.3 to 0.7 for better visibility */
+    background: rgba(255, 255, 255, 0.7); /* Changed from 0.5 to 0.7 */
+    transform: scale(0.95); /* Changed from 0.9 to 0.95 */
     transition: none;
 }
 
@@ -518,6 +517,27 @@ body {
     animation:
         lightUpItem 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards,
         itemPulse 2s ease-in-out 1.4s infinite;
+
+}
+
+/* Replace the existing .contact-toolbar-item.lighting::before section (around line 338) with: */
+.contact-toolbar-item.lighting::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, 
+            rgba(255, 0, 0, 0.95) 0%,
+            rgba(200, 0, 0, 0.8) 30%,
+            rgba(150, 0, 0, 0.6) 50%,
+            transparent 70%);
+    transform: translate(-50%, -50%) scale(0);
+    border-radius: 50%;
+    animation: itemSparkle 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    z-index: 1;
+    itemPulse 2s ease-in-out 1.4s infinite;
 }
 
 .contact-toolbar.active .contact-toolbar-item:nth-child(3) {
@@ -548,6 +568,7 @@ body {
         itemGlow 4s ease-in-out infinite;
 }
 
+
 .contact-toolbar.active::before {
     content: '';
     position: absolute;
@@ -557,9 +578,9 @@ body {
     background: linear-gradient(90deg,
             #8a0615 0%,
             #de0000 25%,
-            #ffd700 50%,
-            #de0000 75%,
-            #8a0615 100%);
+            #ff0000 50%,
+            #8a0000 75%,
+            #000000 100%);
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     animation: progressFill 1.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     z-index: 1;
@@ -574,14 +595,19 @@ body {
     width: 100%;
     background: linear-gradient(90deg,
             transparent 0%,
-            rgba(255, 255, 255, 0.8) 50%,
+            rgba(255, 0, 0, 0.9) 15%,        /* Bright anodized red */
+            rgba(220, 0, 0, 0.9) 30%,        /* Medium red */
+            rgba(180, 0, 0, 0.8) 50%,        /* Darker red */
+            rgba(100, 0, 0, 0.7) 70%,        /* Very dark red */
+            rgba(0, 0, 0, 0.9) 85%,          /* Black */
             transparent 100%);
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     animation: sparkleTrail 1.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     z-index: 2;
-    filter: blur(1px);
+    filter: blur(0.8px) brightness(1.1);
 }
 
+/* Replace the existing .contact-toolbar-item.lighting::before section (around line 338) with: */
 .contact-toolbar-item.lighting::before {
     content: '';
     position: absolute;
@@ -589,7 +615,11 @@ body {
     left: 50%;
     width: 20px;
     height: 20px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, transparent 70%);
+    background: radial-gradient(circle, 
+            rgba(255, 0, 0, 0.95) 0%,
+            rgba(200, 0, 0, 0.8) 30%,
+            rgba(150, 0, 0, 0.6) 50%,
+            transparent 70%);
     transform: translate(-50%, -50%) scale(0);
     border-radius: 50%;
     animation: itemSparkle 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
@@ -2151,65 +2181,121 @@ footer a {
 
 @keyframes itemGlow {
     0%, 100% {
-        border-color: rgba(169, 169, 169, 0.2);
+        border-color: rgba(50, 0, 0, 0.3);
+        box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
     }
     33% {
-        border-color: rgba(222, 0, 0, 0.2);
+        border-color: rgba(255, 0, 0, 0.5);
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.4),
+                    0 0 25px rgba(200, 0, 0, 0.2);
     }
     66% {
-        border-color: rgba(255, 215, 0, 0.2);
+        border-color: rgba(100, 0, 0, 0.7);
+        box-shadow: 0 0 5px rgba(100, 0, 0, 0.3);
     }
 }
 
+/* Replace the existing @keyframes progressFill section (around line 368) with: */
 @keyframes progressFill {
     0% {
         width: 0%;
-        opacity: 0.8;
+        opacity: 1;
+        background: linear-gradient(90deg,
+            rgba(255, 0, 0, 0.95) 0%,        /* Bright red */
+            rgba(255, 50, 50, 0.9) 25%,      /* Lighter red */
+            rgba(255, 100, 100, 0.85) 50%,   /* Even lighter */
+            rgba(255, 150, 150, 0.8) 75%,    /* Pinkish */
+            rgba(255, 200, 200, 0.75) 100%   /* Very light pink */
+        );
+        box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
     }
     25% {
         width: 25%;
         opacity: 1;
+        background: linear-gradient(90deg,
+            rgba(255, 0, 0, 0.95),
+            rgba(255, 50, 50, 0.9)
+        );
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
     }
     50% {
         width: 50%;
         opacity: 1;
+        background: linear-gradient(90deg,
+            rgba(255, 0, 0, 0.95),
+            rgba(255, 50, 50, 0.9),
+            rgba(255, 100, 100, 0.85)
+        );
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.9);
     }
     75% {
         width: 75%;
         opacity: 1;
+        background: linear-gradient(90deg,
+            rgba(255, 0, 0, 0.95),
+            rgba(255, 50, 50, 0.9),
+            rgba(255, 100, 100, 0.85),
+            rgba(255, 150, 150, 0.8)
+        );
+        box-shadow: 0 0 25px rgba(255, 0, 0, 1);
     }
     100% {
         width: 100%;
         opacity: 0;
+        background: linear-gradient(90deg,
+            rgba(255, 0, 0, 0.95),
+            rgba(255, 50, 50, 0.9),
+            rgba(255, 100, 100, 0.85),
+            rgba(255, 150, 150, 0.8),
+            rgba(255, 200, 200, 0.75)
+        );
+        box-shadow: 0 0 30px rgba(255, 0, 0, 1);
     }
 }
 
+/* Replace the existing @keyframes sparkleTrail section (around line 389) with: */
 @keyframes sparkleTrail {
     0% {
         left: -100%;
         opacity: 0;
+        filter: blur(0.5px) brightness(1.5) drop-shadow(0 0 5px rgba(255, 0, 0, 0.8));
+    }
+    20% {
+        opacity: 1;
+        filter: blur(0.8px) brightness(2) drop-shadow(0 0 10px rgba(255, 0, 0, 1));
     }
     50% {
-        opacity: 0.8;
+        opacity: 1;
+        filter: blur(1px) brightness(2.5) drop-shadow(0 0 15px rgba(255, 0, 0, 1));
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);contact-toolbar.active
+    }
+    80% {
+        opacity: 0.9;
+        filter: blur(1.2px) brightness(2) drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
     }
     100% {
         left: 100%;
         opacity: 0;
+        filter: blur(1.5px) brightness(1.5) drop-shadow(0 0 5px rgba(255, 0, 0, 0.5));
     }
 }
 
+/* Replace the existing @keyframes itemSparkle section (around line 403) with: */
 @keyframes itemSparkle {
     0% {
         transform: translate(-50%, -50%) scale(0);
         opacity: 0;
+        filter: brightness(1.5);
     }
     50% {
         transform: translate(-50%, -50%) scale(1.5);
         opacity: 1;
+        filter: brightness(1.2);
     }
     100% {
         transform: translate(-50%, -50%) scale(2);
         opacity: 0;
+        filter: brightness(0.8);
     }
 }
 
@@ -5104,7 +5190,104 @@ footer a {
                         if (!email) return;
                         // optionally prefill subject/body
                         var subject = encodeURIComponent('Inquiry from website');
-                        var body = encodeURIComponent('');
+                        var body = encodeURIComponent('');@keyframes itemGlow {
+    0%, 100% {
+        border-color: rgba(50, 0, 0, 0.3);
+        box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+    }
+    33% {
+        border-color: rgba(255, 0, 0, 0.5);
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.4),
+                    0 0 25px rgba(200, 0, 0, 0.2);
+    }
+    66% {
+        border-color: rgba(100, 0, 0, 0.7);
+        box-shadow: 0 0 5px rgba(100, 0, 0, 0.3);
+    }
+}
+
+/* Replace the existing @keyframes progressFill section (around line 368) with: */
+@keyframes progressFill {
+    0% {
+        width: 0%;
+        opacity: 0.8;
+        background: linear-gradient(90deg,
+            rgba(255, 0, 0, 0.9),
+            rgba(200, 0, 0, 0.8));
+    }
+    25% {
+        width: 25%;
+        opacity: 1;
+        background: linear-gradient(90deg,
+            rgba(255, 0, 0, 0.9),
+            rgba(180, 0, 0, 0.8));
+    }
+    50% {
+        width: 50%;
+        opacity: 1;
+        background: linear-gradient(90deg,
+            rgba(220, 0, 0, 0.9),
+            rgba(150, 0, 0, 0.8));
+    }
+    75% {
+        width: 75%;
+        opacity: 1;
+        background: linear-gradient(90deg,
+            rgba(200, 0, 0, 0.9),
+            rgba(100, 0, 0, 0.8));
+    }
+    100% {
+        width: 100%;
+        opacity: 0;
+        background: linear-gradient(90deg,
+            rgba(150, 0, 0, 0.9),
+            rgba(0, 0, 0, 0.8));
+    }
+}
+
+/* Replace the existing @keyframes sparkleTrail section (around line 389) with: */
+@keyframes sparkleTrail {
+    0% {
+        left: -100%;
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.9;
+        filter: blur(0.8px) brightness(1.3);
+    }
+    50% {
+        opacity: 1;
+        filter: blur(0.8px) brightness(1.1);
+    }
+    80% {
+        opacity: 0.8;
+        filter: blur(1px) brightness(0.9);
+    }
+    100% {
+        left: 100%;
+        opacity: 0;
+        filter: blur(1.2px) brightness(0.7);
+    }
+}
+
+/* Replace the existing @keyframes itemSparkle section (around line 403) with: */
+@keyframes itemSparkle {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+        filter: brightness(1.5);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 1;
+        filter: brightness(1.2);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+        filter: brightness(0.8);
+    }
+}
                         window.location.href = 'mailto:' + email + '?subject=' + subject + '&body=' + body;
                     }
 
