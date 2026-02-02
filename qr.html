@@ -1395,7 +1395,7 @@
             padding: 8px 12px;
             border-bottom: 1px solid #eee;
         }
-
+renderInvoiceOverlay
         .remove-item {
             background: rgba(222, 0, 0, 0.1);
             border: 1px solid rgba(222, 0, 0, 0.3);
@@ -4249,21 +4249,25 @@
                             const newClearBtn = clearBtn.cloneNode(true);
                             clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
 
-                            newClearBtn.addEventListener("click", () => {
-                                // Visual feedback
-                                newClearBtn.style.opacity = "0.7";
-                                setTimeout(() => {
-                                    newClearBtn.style.opacity = "";
-                                }, 200);
-
-                                State.serviceRequest = [];
-                                persistCartPlain(State.serviceRequest);
-                                updateserviceRequestUI();
-                                updateFabVisibility();
-                                renderInvoiceOverlay(); // Update overlay immediately
-
-                                toast("All services cleared");
-                            });
+                            // In renderInvoiceOverlay function, update the Clear All button event listener:
+newClearBtn.addEventListener("click", () => {
+    // Visual feedback
+    newClearBtn.style.opacity = "0.7";
+    setTimeout(() => {
+        newClearBtn.style.opacity = "";
+    }, 200);
+    
+    State.serviceRequest = [];
+    persistCartPlain(State.serviceRequest);
+    updateserviceRequestUI();
+    updateFabVisibility();
+    
+    // Close the overlay and show categories
+    closeInvoiceOverlay();
+    showCategories();
+    
+    toast("All services cleared from cart");
+});
                         }
 
                         // Wire Close button in overlay
@@ -4955,9 +4959,7 @@
                             console.error("Error handling category select:", e);
                         }
                     }
-                    /* ---------- detailed service view ---------- */
-                    /* ---------- UPDATED UI: Service Details & Intake ---------- */
-                    /* ---------- detailed service view ---------- */
+   
                     /* ---------- UPDATED UI: Service Details & Intake ---------- */
                     function showServiceDetails(category, svc) {
                         try {
@@ -5096,13 +5098,13 @@
                             // Notes Field (Always present)
                             const notesLabel = create("span", {
                                 class: "intake-label",
-                                text: "Additional Notes / Job Details"
+                                text: "Additional Details"
                             });
                             inputContainer.appendChild(notesLabel);
 
                             const notes = create("textarea", {
                                 class: "service-input-area",
-                                placeholder: "Type additional details here...",
+                                placeholder: "Include specific notes here...",
                                 rows: "3"
                             });
                             // Initially hidden until a detail is selected or user starts typing (for non-detail services)
@@ -5518,42 +5520,40 @@
                             }
                         });
                         // Wire clear all buttons
-                        qAll(".clear-all-btn").forEach((b) => {
-                            if (
-                                b.id !== "clearAllFurnitureInline" &&
-                                b.id !== "clearAllServicesBtn"
-                            ) {
-                                b.addEventListener(
-                                    "click",
-                                    () => {
-                                        State.serviceRequest = [];
-                                        persistCartPlain(State.serviceRequest);
-                                        updateserviceRequestUI();
-                                        updateFabVisibility();
-                                    }, {
-                                        passive: true
-                                    }
-                                );
-                            }
-                        });
+                        // Wire clear all buttons (for other potential clear buttons)
+qAll('.clear-all-btn').forEach(b => {
+    if (b.id !== 'clearAllFurnitureInline' && b.id !== 'clearAllServicesBtn') {
+        b.addEventListener("click", () => {
+            State.serviceRequest = [];
+            persistCartPlain(State.serviceRequest);
+            updateserviceRequestUI();
+            updateFabVisibility();
+            
+            // Show categories and toast
+            showCategories();
+            toast("All services cleared");
+        }, {
+            passive: true
+        });
+    }
+});
                         // Wire specific clear all services button
-                        const clearAllServicesBtn = q("#clearAllServicesBtn");
-                        if (clearAllServicesBtn) {
-                            clearAllServicesBtn.addEventListener(
-                                "click",
-                                () => {
-                                    State.serviceRequest = [];
-                                    persistCartPlain(State.serviceRequest);
-                                    updateserviceRequestUI();
-                                    updateFabVisibility();
-                                    if (DOM.serviceRequestSection)
-                                        DOM.serviceRequestSection.style.display = "none";
-                                    showCategories();
-                                }, {
-                                    passive: true
-                                }
-                            );
-                        }
+const clearAllServicesBtn = q('#clearAllServicesBtn');
+if (clearAllServicesBtn) {
+    clearAllServicesBtn.addEventListener("click", () => {
+        State.serviceRequest = [];
+        persistCartPlain(State.serviceRequest);
+        updateserviceRequestUI();
+        updateFabVisibility();
+        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "none";
+        
+        // Show categories and toast
+        showCategories();
+        toast("All services cleared");
+    }, {
+        passive: true
+    });
+}
                         // Wire all "More Services" buttons to showCategories
                         qAll(".book-more-button").forEach((btn) => {
                             if (
