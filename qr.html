@@ -3697,184 +3697,425 @@ renderInvoiceOverlay
                             const RATE_PER_HOUR = 40.0;
                             const REPAIR_RATE_PER_HOUR = 70.0;
 
-                            const serviceData = {
-                                "Minor Home Repairs": {
-                                    Appliances: {
-                                        price: "$70/hour",
-                                        description: "Assessment & Repair",
-                                        icon: "🎛️",
-                                        details: ["Maintenance", "Repair", "Assessment"]
-                                    },
-                                    "Handles & Locks Installation": {
-                                        price: "$70",
-                                        description: "Install door hardware.",
-                                        icon: "🔒",
-                                        details: ["Standard door", "Security lock", "Smart lock"]
-                                    },
-                                    "Furniture Repair ⏲Hourly Service": {
-                                        price: "$70/hour",
-                                        description: "Repair and restoration.",
-                                        icon: "🪑",
-                                        details: ["Wood furniture", "Upholstery", "Metal furniture"]
-                                    },
-                                    "Door Damage Repair": {
-                                        price: "$125",
-                                        description: "Repair and painting.",
-                                        icon: "🚪",
-                                        details: ["Patch & paint", "Hinge repair", "Frame adjustment"]
-                                    },
-                                    "Drywall Repair : Patch & Paint": {
-                                        price: "$70",
-                                        description: "Patching and painting included.",
-                                        icon: "⬜",
-                                        // NEW: INTAKE CONFIG
-                                        intakeConfig: [{
-                                                id: "dmg",
-                                                label: "Damage Type",
-                                                options: [
-                                                    "Nail Holes",
-                                                    "Doorknob Hole",
-                                                    "Crack",
-                                                    "Water Damage",
-                                                    "Large Hole"
-                                                ]
-                                            },
-                                            {
-                                                id: "tex",
-                                                label: "Wall Texture",
-                                                options: ["Smooth", "Orange Peel", "Knockdown", "Popcorn"]
-                                            }
-                                        ],
-                                        details: ["Small holes", "Large holes", "Crack Repair"]
-                                    }
-                                },
-                                "Furniture Fixes & Assembly": {
-                                    Assembly: {
-                                        price: "$40/hour",
-                                        description: "Professional assembly.",
-                                        icon: "🛠️",
-                                        details: ["Standard Assembly"],
-                                        requiresFurnitureSelection: true
-                                    },
-                                    Repair: {
-                                        price: "$70/hour",
-                                        description: "Furniture repair.",
-                                        icon: "🔨",
-                                        details: ["Standard Repair"],
-                                        requiresFurnitureSelection: true
-                                    }
-                                },
-                                "Wall Mounting": {
-                                    "Curtains/Drapes w. Single Rod Installation": {
-                                        price: "$50",
-                                        description: "Rod installation.",
-                                        icon: "🪟",
-                                        details: ["Standard rod", "Tension rod", "Decorative rod"]
-                                    },
-                                    "Frame/Shelf Mounting ⏲Hourly Service": {
-                                        price: "$60/hour",
-                                        description: "Frames and shelves.",
-                                        icon: "📚",
-                                        details: ["Picture frames", "Shelves", "Wall art"]
-                                    },
-                                    'TV Mounting (Under 60") + Concealed Cables': {
-                                        price: "$150",
-                                        description: "Mounting with hidden cables.",
-                                        icon: "📺",
-                                        intakeConfig: [{
-                                                id: "wall",
-                                                label: "Wall Type",
-                                                options: ["Drywall", "Brick/Concrete", "Plaster", "Not Sure"]
-                                            },
-                                            {
-                                                id: "mount",
-                                                label: "Do you have the mount?",
-                                                options: ["Yes", "No (Provide Estimate)"]
-                                            }
-                                        ],
-                                        details: ["Drywall", "Concrete", "Brick"]
-                                    },
-                                    'TV Mounting (Under 60") standard': {
-                                        price: "$60",
-                                        description: "Basic mounting.",
-                                        icon: "📺",
-                                        details: ["Basic mounting", "Tilt mount", "Swivel mount"]
-                                    }
-                                },
-                                "Computer Repairs": {
-                                    Data: {
-                                        price: "$99",
-                                        description: "Backup & Transfer",
-                                        icon: "💾",
-                                        details: ["External drive", "Cloud backup"]
-                                    },
-                                    "Diagnostic Service": {
-                                        price: "$75",
-                                        description: "Diagnostics",
-                                        icon: "🔍",
-                                        details: ["Hardware", "Software"]
-                                    },
-                                    Hardware: {
-                                        price: "$125",
-                                        description: "Replacement/Upgrades",
-                                        icon: "🪫",
-                                        details: ["RAM", "SSD", "GPU"]
-                                    },
-                                    "Maleware & Virus": {
-                                        price: "$125",
-                                        description: "Virus removal",
-                                        icon: "🦠",
-                                        details: ["Scan & remove", "System cleanup"]
-                                    },
-                                    Software: {
-                                        price: "$50",
-                                        description: "Install & Updates",
-                                        icon: "📀",
-                                        details: ["OS", "Apps", "Drivers"]
-                                    },
-                                    "System Recovery": {
-                                        price: "$125",
-                                        description: "Restoration",
-                                        icon: "⏮️",
-                                        details: ["Factory reset", "Backup restore"]
-                                    }
-                                },
-                                "Electrical Help": {
-                                    "Light Fixture Swap": {
-                                        price: "$60",
-                                        description: "Fixture replacement.",
-                                        icon: "💡",
-                                        title: "Choose fixture type",
-                                        details: ["Ceiling light", "Wall sconce", "Pendant light"]
-                                    }
-                                },
-                                "Plumbing Help": {
-                                    "Bidet Accessory Install/Removal": {
-                                        price: "$70",
-                                        description: "Install/Remove.",
-                                        icon: "🚽",
-                                        details: ["Standard bidet", "Smart bidet"]
-                                    },
-                                    "Fixture Swap (Cosmetic)": {
-                                        price: "$70",
-                                        description: "Faucet/Shower head.",
-                                        icon: "🚰",
-                                        details: ["Faucet", "Shower head"]
-                                    },
-                                    "Leak Under Sink Repair": {
-                                        price: "$75",
-                                        description: "Leak repair.",
-                                        icon: "💧",
-                                        details: ["Pipe leak", "Drain leak"]
-                                    },
-                                    "Unclog Sink/Shower/Toilet (Minor)": {
-                                        price: "$70",
-                                        description: "Drain clearing.",
-                                        icon: "🪠",
-                                        details: ["Plunger", "Drain snake"]
-                                    }
-                                }
-                            };
+const serviceData = {
+    "Minor Home Repairs": {
+        Appliances: {
+            price: "$70/hour",
+            description: "Assessment & Repair",
+            icon: "🎛️",
+            details: ["Maintenance", "Repair", "Assessment"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "app_type",
+                    label: "Which appliance needs service?",
+                    options: ["Refrigerator", "Oven/Range", "Dishwasher", "Washer/Dryer", "Microwave", "Other"]
+                },
+                {
+                    id: "issue",
+                    label: "What is the main problem?",
+                    options: ["Not turning on", "Making strange noise", "Leaking water", "Not heating/cooling", "Error code on display"]
+                },
+                {
+                    id: "age",
+                    label: "How old is the appliance?",
+                    options: ["Under 5 years", "5-10 years", "Over 10 years", "Not sure"]
+                }
+            ]
+        },
+        "Handles & Locks Installation": {
+            price: "$70",
+            description: "Install door hardware.",
+            icon: "🔒",
+            details: ["Standard door", "Security lock", "Smart lock"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "lock_type",
+                    label: "What type of lock/handle?",
+                    options: ["Standard interior door handle", "Exterior door deadbolt", "Smart lock/doorbell", "Cabinet/cupboard hardware"]
+                },
+                {
+                    id: "material",
+                    label: "What is the door made of?",
+                    options: ["Hollow wood (interior)", "Solid wood", "Metal/steel", "Glass patio door", "Not sure"]
+                }
+            ]
+        },
+        "Furniture Repair ⏲Hourly Service": {
+            price: "$70/hour",
+            description: "Repair and restoration.",
+            icon: "🪑",
+            details: ["Wood furniture", "Upholstery", "Metal furniture"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "furn_type",
+                    label: "What needs repair?",
+                    options: ["Wooden chair/table", "Upholstered chair/sofa", "Metal furniture", "Plastic/outdoor furniture", "Antique/heirloom"]
+                },
+                {
+                    id: "issue",
+                    label: "What's the main problem?",
+                    options: ["Broken leg/joint", "Loose wobble", "Surface scratches/damage", "Fabric tear/upholstery", "Hardware/drawers stuck"]
+                }
+            ]
+        },
+        "Door Damage Repair": {
+            price: "$125",
+            description: "Repair and painting.",
+            icon: "🚪",
+            details: ["Patch & paint", "Hinge repair", "Frame adjustment"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "door_type",
+                    label: "What type of door?",
+                    options: ["Hollow core interior", "Solid wood interior", "Exterior door", "Patio/glass door", "Not sure"]
+                },
+                {
+                    id: "dmg_type",
+                    label: "What's damaged?",
+                    options: ["Holes/dents in door surface", "Broken/misaligned hinges", "Frame/door jamb damage", "Sticking/won't close", "Bottom weather seal"]
+                }
+            ]
+        },
+        "Drywall Repair : Patch & Paint": {
+            price: "$70",
+            description: "Patching and painting included.",
+            icon: "⬜",
+            // UPDATED: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "dmg",
+                    label: "What best describes the damage?",
+                    options: [
+                        "Small holes/nail pops",
+                        "Doorknob-sized hole",
+                        "Crack in the wall",
+                        "Water stain/damage",
+                        "Large hole (bigger than a plate)"
+                    ]
+                },
+                {
+                    id: "tex",
+                    label: "What is your wall's finish?",
+                    options: ["Smooth", "Textured (Orange Peel/Knockdown)", "Popcorn Ceiling", "Not Sure"]
+                },
+                {
+                    id: "paint",
+                    label: "Do you have matching paint for touch-up?",
+                    options: ["Yes, I have the can", "No, I need color matching", "Will repaint the whole wall"]
+                }
+            ],
+            details: ["Small holes", "Large holes", "Crack Repair"]
+        }
+    },
+    "Furniture Fixes & Assembly": {
+        Assembly: {
+            price: "$40/hour",
+            description: "Professional assembly.",
+            icon: "🛠️",
+            details: ["Standard Assembly"],
+            requiresFurnitureSelection: true,
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "furn_item",
+                    label: "What are you assembling?",
+                    options: ["Bed frame", "Desk/office furniture", "Shelving/bookcase", "Wardrobe/cabinet", "Flat-pack living room set"]
+                },
+                {
+                    id: "prep",
+                    label: "Are parts organized and space clear?",
+                    options: ["Yes, ready to go", "Parts are in boxes", "Need help clearing space first", "Missing hardware/some parts"]
+                },
+                {
+                    id: "instructions",
+                    label: "Do you have assembly instructions?",
+                    options: ["Yes, manual/QR code", "No, but it's simple", "No, need professional expertise"]
+                }
+            ]
+        },
+        Repair: {
+            price: "$70/hour",
+            description: "Furniture repair.",
+            icon: "🔨",
+            details: ["Standard Repair"],
+            requiresFurnitureSelection: true,
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "furn_item",
+                    label: "What needs repair?",
+                    options: ["Bed frame", "Desk/office furniture", "Shelving/bookcase", "Wardrobe/cabinet", "Chair/sofa frame"]
+                },
+                {
+                    id: "issue",
+                    label: "What's the main problem?",
+                    options: ["Wobble/loose joints", "Broken part/piece", "Drawers/doors not working", "Surface damage/scratch", "Structural collapse"]
+                },
+                {
+                    id: "material",
+                    label: "Main material?",
+                    options: ["Solid wood", "Particle board/MDF", "Metal frame", "Plastic/composite", "Mixed materials"]
+                }
+            ]
+        }
+    },
+    "Wall Mounting": {
+        "Curtains/Drapes w. Single Rod Installation": {
+            price: "$50",
+            description: "Rod installation.",
+            icon: "🪟",
+            details: ["Standard rod", "Tension rod", "Decorative rod"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "window_type",
+                    label: "What type of window?",
+                    options: ["Standard wall-to-wall", "Inside window frame/recess", "Bay/angled window", "Sliding glass door", "Wall space only (no window)"]
+                },
+                {
+                    id: "wall_type",
+                    label: "What is above the window?",
+                    options: ["Standard drywall", "Brick/concrete", "Metal/steel framing", "Crown molding present", "Not sure"]
+                }
+            ]
+        },
+        "Frame/Shelf Mounting ⏲Hourly Service": {
+            price: "$60/hour",
+            description: "Frames and shelves.",
+            icon: "📚",
+            details: ["Picture frames", "Shelves", "Wall art"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "items",
+                    label: "What are you mounting?",
+                    options: ["Single shelf", "Multiple shelves/wall unit", "Picture frames/art", "Heavy mirror", "Mixed items"]
+                },
+                {
+                    id: "wall_type",
+                    label: "What is your wall made of?",
+                    options: ["Standard drywall", "Brick/concrete", "Plaster", "Tile/paneling", "Not sure"]
+                },
+                {
+                    id: "weight",
+                    label: "Approximate weight per item?",
+                    options: ["Light (<10 lbs)", "Medium (10-25 lbs)", "Heavy (25-50 lbs)", "Very heavy (>50 lbs)"]
+                }
+            ]
+        },
+        'TV Mounting (Under 60") + Concealed Cables': {
+            price: "$150",
+            description: "Mounting with hidden cables.",
+            icon: "📺",
+            // UPDATED: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "wall",
+                    label: "What is your wall made of?",
+                    options: ["Standard Drywall", "Brick, Stone, or Concrete", "Plaster", "Not Sure"]
+                },
+                {
+                    id: "mount",
+                    label: "TV Mount & Cables",
+                    options: ["I have the mount and cables", "I have the mount, need cables/hardware", "Need help choosing/buying a mount"]
+                },
+                {
+                    id: "power",
+                    label: "Is there a power outlet behind the TV?",
+                    options: ["Yes", "No, cables will run to the side", "No, need an outlet installed (separate service)"]
+                }
+            ],
+            details: ["Drywall", "Concrete", "Brick"]
+        },
+        'TV Mounting (Under 60") standard': {
+            price: "$60",
+            description: "Basic mounting.",
+            icon: "📺",
+            details: ["Basic mounting", "Tilt mount", "Swivel mount"]
+        }
+    },
+    "Computer Repairs": {
+        Data: {
+            price: "$99",
+            description: "Backup & Transfer",
+            icon: "💾",
+            details: ["External drive", "Cloud backup"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "from_device",
+                    label: "Where is your data now?",
+                    options: ["Working computer (old)", "Broken computer (won't turn on)", "External hard drive", "Old phone/tablet", "Multiple sources"]
+                },
+                {
+                    id: "data_type",
+                    label: "What needs transferring?",
+                    options: ["Documents/photos", "Everything (full backup)", "Specific folders only", "Email/contacts", "Program settings"]
+                },
+                {
+                    id: "to_device",
+                    label: "Where should it go?",
+                    options: ["New computer", "External hard drive", "Cloud service", "Multiple destinations", "Not sure"]
+                }
+            ]
+        },
+        "Diagnostic Service": {
+            price: "$75",
+            description: "Diagnostics",
+            icon: "🔍",
+            details: ["Hardware", "Software"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "device_type",
+                    label: "What device needs diagnosis?",
+                    options: ["Desktop computer", "Laptop", "All-in-one", "Windows PC", "Mac", "Other"]
+                },
+                {
+                    id: "symptom",
+                    label: "What's happening?",
+                    options: ["Won't turn on", "Slow performance", "Blue/error screen", "Overheating/noisy", "Random shutdowns"]
+                }
+            ]
+        },
+        Hardware: {
+            price: "$125",
+            description: "Replacement/Upgrades",
+            icon: "🪫",
+            details: ["RAM", "SSD", "GPU"]
+        },
+        "Maleware & Virus": {
+            price: "$125",
+            description: "Virus removal",
+            icon: "🦠",
+            details: ["Scan & remove", "System cleanup"]
+        },
+        Software: {
+            price: "$50",
+            description: "Install & Updates",
+            icon: "📀",
+            details: ["OS", "Apps", "Drivers"]
+        },
+        "System Recovery": {
+            price: "$125",
+            description: "Restoration",
+            icon: "⏮️",
+            details: ["Factory reset", "Backup restore"]
+        }
+    },
+    "Electrical Help": {
+        "Light Fixture Swap": {
+            price: "$60",
+            description: "Fixture replacement.",
+            icon: "💡",
+            title: "Choose fixture type",
+            details: ["Ceiling light", "Wall sconce", "Pendant light"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "fixture",
+                    label: "What are you replacing?",
+                    options: ["Old ceiling light", "Wall sconce", "Pendant/Chandelier", "Just swapping bulbs for LEDs"]
+                },
+                {
+                    id: "setup",
+                    label: "What's the existing setup?",
+                    options: ["Wires are in place, just need to connect new fixture", "Need a new junction box installed", "Converting from a ceiling fan to a light"]
+                },
+                {
+                    id: "switch",
+                    label: "Does it currently work with a wall switch?",
+                    options: ["Yes, single switch", "Yes, multiple switches (3-way)", "No switch (pull-chain only)"]
+                }
+            ]
+        }
+    },
+    "Plumbing Help": {
+        "Bidet Accessory Install/Removal": {
+            price: "$70",
+            description: "Install/Remove.",
+            icon: "🚽",
+            details: ["Standard bidet", "Smart bidet"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "bidet_type",
+                    label: "What type of bidet?",
+                    options: ["Simple seat attachment", "Electric smart bidet", "Handheld sprayer", "Removing old unit"]
+                },
+                {
+                    id: "toilet_type",
+                    label: "What type of toilet?",
+                    options: ["Standard two-piece", "Wall-mounted", "Elongated bowl", "Round bowl", "Not sure"]
+                },
+                {
+                    id: "access",
+                    label: "Is there an outlet/water supply nearby?",
+                    options: ["Yes, within reach", "Water only (no outlet)", "Neither nearby", "Not sure - need assessment"]
+                }
+            ]
+        },
+        "Fixture Swap (Cosmetic)": {
+            price: "$70",
+            description: "Faucet/Shower head.",
+            icon: "🚰",
+            details: ["Faucet", "Shower head"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "fixture",
+                    label: "What are you replacing?",
+                    options: ["Kitchen faucet", "Bathroom faucet", "Shower head", "Toilet handle/tank parts"]
+                },
+                {
+                    id: "supply",
+                    label: "Do you have the new fixture?",
+                    options: ["Yes, have new fixture", "No, need purchase advice", "Just need removal of old"]
+                },
+                {
+                    id: "shutoff",
+                    label: "Can you access water shutoff valves?",
+                    options: ["Yes, under sink/toilet", "No, need main shutoff", "Not sure - need help finding"]
+                }
+            ]
+        },
+        "Leak Under Sink Repair": {
+            price: "$75",
+            description: "Leak repair.",
+            icon: "💧",
+            details: ["Pipe leak", "Drain leak"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "leak_loc",
+                    label: "Where is the leak coming from?",
+                    options: ["Pipe connections", "Drain pipe (U-shape)", "Shut-off valve", "Bottom of the sink cabinet", "Not sure - just see water"]
+                },
+                {
+                    id: "severity",
+                    label: "How bad is the leak?",
+                    options: ["Slow drip", "Steady trickle", "Active spraying (Turned water off!)"]
+                },
+                {
+                    id: "access",
+                    label: "Is the area under the sink clear for work?",
+                    options: ["Yes, cleared out", "No, needs clearing", "It's a tight/awkward space"]
+                }
+            ]
+        },
+        "Unclog Sink/Shower/Toilet (Minor)": {
+            price: "$70",
+            description: "Drain clearing.",
+            icon: "🪠",
+            details: ["Plunger", "Drain snake"],
+            // NEW: INTAKE CONFIG
+            intakeConfig: [{
+                    id: "location",
+                    label: "What's clogged?",
+                    options: ["Kitchen sink", "Bathroom sink", "Shower/tub", "Toilet", "Multiple drains"]
+                },
+                {
+                    id: "severity",
+                    label: "How bad is it?",
+                    options: ["Slow drain", "Completely blocked", "Backing up/overflowing", "Gurgling sounds"]
+                },
+                {
+                    id: "attempted",
+                    label: "Have you tried to fix it?",
+                    options: ["No, untouched", "Plunger only", "Chemical drain cleaner", "Snake/drain tool (partial)"]
+                }
+            ]
+        }
+    }
+};
                             return {
                                 FURNITURE_MINUTES,
                                 GENERIC_FURNITURE_MINUTES,
