@@ -1395,6 +1395,7 @@
             padding: 8px 12px;
             border-bottom: 1px solid #eee;
         }
+renderInvoiceOverlay
         .remove-item {
             background: rgba(222, 0, 0, 0.1);
             border: 1px solid rgba(222, 0, 0, 0.3);
@@ -1426,7 +1427,7 @@
         .Requested-service-header {
             display: flex;
             justify-content: space-between;
-            align-items: left;
+            align-items: center;
             padding-bottom: 15px;
             border-bottom: 2px solid rgba(222, 0, 0, 0.1);
             margin-bottom: 20px;
@@ -1609,6 +1610,147 @@
         }
 
         /* ========== NEW: INTAKE & CHIPS UI ========== */
+        /* ========== CONVERSATIONAL INTAKE STYLES ========== */
+.conversational-intake {
+    margin: 20px 0;
+}
+
+.question-container {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.9) 100%);
+    border: 2px solid rgba(222, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 15px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.question-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2a2a2a;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
+.question-counter {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 600;
+    display: block;
+    text-align: center;
+    margin-top: 8px;
+}
+
+.options-grid-conversational {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.conversation-option-btn {
+    background: #f8f8f8;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    color: #2a2a2a;
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+}
+
+.conversation-option-btn:hover {
+    background: #f0f0f0;
+    border-color: #ccc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.conversation-option-btn.selected {
+    background: linear-gradient(135deg, #de0000 0%, #8a0615 100%);
+    color: white;
+    border-color: #de0000;
+    transform: scale(0.98);
+    box-shadow: 0 2px 12px rgba(222, 0, 0, 0.3);
+}
+
+.conversation-option-btn:active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
+}
+
+.conversation-option-btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(222, 0, 0, 0.1), transparent);
+    transition: left 0.6s ease;
+}
+
+.conversation-option-btn:hover::after {
+    left: 100%;
+}
+
+.conversation-nav-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.conversation-back-btn {
+    background: rgba(169, 169, 169, 0.1);
+    border: 2px solid rgba(169, 169, 169, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.conversation-back-btn:hover:not(:disabled) {
+    background: rgba(169, 169, 169, 0.2);
+    color: #2a2a2a;
+    transform: translateY(-1px);
+}
+
+.conversation-back-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Progress bar for conversational intake */
+.intake-progress {
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    height: 6px;
+    background: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #de0000, #8a0615);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+
         .intake-section {
             margin-bottom: 15px;
         }
@@ -1841,7 +1983,6 @@
             transition: all 0.2s ease;
             display: block;
             margin-top: 1rem;
-            width: 50%;
         }
 
         .back-button:hover {
@@ -1971,7 +2112,6 @@
             max-width: 450px;
             position: relative;
             animation: invoiceSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            object-fit: contain;
         }
 
         .invoice-content::before {
@@ -1996,7 +2136,7 @@
 
         .invoice-title {
             margin: 0;
-            font-size: 1rem;
+            font-size: 1.3rem;
             font-weight: 800;
             color: #2a2a2a;
             text-align: center;
@@ -2007,8 +2147,8 @@
             border: 1px solid rgba(222, 0, 0, 0.3);
             border-radius: 8px;
             color: #2a2a2a;
-            width: 45px;
-            height: 45px;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2026,7 +2166,7 @@
         }
 
         .service-list {
-            padding: .95rem;
+            padding: 1.5rem;
             flex: 1;
             overflow-y: auto;
             max-height: 400px;
@@ -2072,13 +2212,13 @@
         }
 
         .invoice-service-icon {
-            font-size: 1rem;
+            font-size: 1.2rem;
             width: 40px;
             height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #FFFFFF;
+            background: linear-gradient(135deg, var(--primary) 0%, #165165 100%);
             border-radius: 12px;
             flex-shrink: 1;
             box-shadow: var(--shadow-md);
@@ -2097,14 +2237,14 @@
 
         .invoice-service-text h4 {
             margin: 0 0 6px 0;
-            font-size: 1rem;
-            font-weight: 700;
+            font-size: 1.1rem;
+            font-weight: 800;
             color: #2a2a2a;
-            line-height: 1;
+            line-height: 1.2;
         }
 
         .invoice-service-detail {
-            font-size: .5rem;
+            font-size: 0.9rem;
             color: #666;
             font-weight: 600;
             margin-bottom: 8px;
@@ -3058,13 +3198,13 @@
             }
 
             .invoice-service-detail {
-                font-size: 1rem;
+                font-size: 0.8rem;
                 margin-bottom: 6px;
             }
 
             .invoice-service-notes {
                 font-size: 0.75rem;
-                padding: 6px 20px;
+                padding: 6px 10px;
                 max-height: 50px;
                 grid-column: 1 / -1;
             }
@@ -3224,7 +3364,23 @@
                 height: 20px;
                 padding: 2px 5px;
             }
-        }
+            /* Mobile optimizations for conversational intake */
+@media (max-width: 480px) {
+    .conversation-option-btn {
+        padding: 14px;
+        font-size: 0.95rem;
+    }
+    
+    .question-text {
+        font-size: 1rem;
+    }
+    
+    .question-container {
+        padding: 16px;
+    }
+}
+            
+        
 
         /* Medium devices (tablets, 768px and down) */
         @media (max-width: 768px) {
@@ -4280,161 +4436,6 @@ const serviceData = {
                     font-size: 1rem;
                 }
             }
-            /* ========== CONVERSATIONAL INTAKE STYLES ========== */
-.conversational-intake {
-    margin: 20px 0;
-}
-
-.question-container {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.9) 100%);
-    border: 2px solid rgba(222, 0, 0, 0.1);
-    border-radius: 12px;
-    padding: 20px;
-    margin: 15px 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.question-text {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #2a2a2a;
-    line-height: 1.4;
-    margin-bottom: 10px;
-}
-
-.question-counter {
-    font-size: 0.85rem;
-    color: #666;
-    font-weight: 600;
-    display: block;
-    text-align: center;
-    margin-top: 8px;
-}
-
-.options-grid-conversational {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin: 20px 0;
-}
-
-.conversation-option-btn {
-    background: #f8f8f8;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 16px;
-    font-size: 1rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    color: #2a2a2a;
-    font-weight: 500;
-    position: relative;
-    overflow: hidden;
-}
-
-.conversation-option-btn:hover {
-    background: #f0f0f0;
-    border-color: #ccc;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.conversation-option-btn.selected {
-    background: linear-gradient(135deg, #de0000 0%, #8a0615 100%);
-    color: white;
-    border-color: #de0000;
-    transform: scale(0.98);
-    box-shadow: 0 2px 12px rgba(222, 0, 0, 0.3);
-}
-
-.conversation-option-btn:active {
-    transform: scale(0.96);
-    transition: transform 0.1s ease;
-}
-
-.conversation-option-btn::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(222, 0, 0, 0.1), transparent);
-    transition: left 0.6s ease;
-}
-
-.conversation-option-btn:hover::after {
-    left: 100%;
-}
-
-.conversation-nav-buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.conversation-back-btn {
-    background: rgba(169, 169, 169, 0.1);
-    border: 2px solid rgba(169, 169, 169, 0.3);
-    border-radius: 8px;
-    padding: 12px 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    flex: 1;
-}
-
-.conversation-back-btn:hover:not(:disabled) {
-    background: rgba(169, 169, 169, 0.2);
-    color: #2a2a2a;
-    transform: translateY(-1px);
-}
-
-.conversation-back-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-/* Progress bar for conversational intake */
-.intake-progress {
-    margin-bottom: 20px;
-}
-
-.progress-bar {
-    height: 6px;
-    background: #eee;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #de0000, #8a0615);
-    width: 0%;
-    transition: width 0.3s ease;
-    border-radius: 3px;
-}
-
-/* Mobile optimizations for conversational intake */
-@media (max-width: 480px) {
-    .conversation-option-btn {
-        padding: 14px;
-        font-size: 0.95rem;
-    }
-    
-    .question-text {
-        font-size: 1rem;
-    }
-    
-    .question-container {
-        padding: 16px;
-    }
-}
                     `;
                             const s = document.createElement("style");
                             s.type = "text/css";
@@ -4761,8 +4762,6 @@ newClearBtn.addEventListener("click", () => {
                         ) {
                             tw.appendChild(
                                 create("div", {
-                                    class: "invoice-service-notes",
-                                    text: svc.notes
                                 })
                             );
                         }
@@ -4988,8 +4987,6 @@ newClearBtn.addEventListener("click", () => {
                                     if (svc.notes && svc.notes.trim().length > 0) {
                                         tw.appendChild(
                                             create("div", {
-                                                class: "service-notes",
-                                                text: svc.notes
                                             })
                                         );
                                     }
@@ -5359,7 +5356,6 @@ newClearBtn.addEventListener("click", () => {
    
                     /* ---------- UPDATED UI: Service Details & Intake ---------- */
 /* ---------- UPDATED: Service Details with Conversational Intake ---------- */
-/* ---------- UPDATED: Service Details with Conversational Intake ---------- */
 function showServiceDetails(category, svc) {
     try {
         if (!category || !svc) return;
@@ -5600,7 +5596,7 @@ function renderConversationalIntake(container, category, svc, info) {
     
     const backButton = create("button", {
         class: "conversation-back-btn",
-        text: "← previous",
+        text: "← Back",
         type: "button",
         disabled: true
     });
@@ -5608,7 +5604,7 @@ function renderConversationalIntake(container, category, svc, info) {
     // Submit button will be shown at the end
     const submitButton = create("button", {
         class: "book-more-button",
-        text: "Add to Cart",
+        text: "✓ Submit Details",
         type: "button",
         style: "display: none; width: 100%; margin-top: 15px;"
     });
@@ -5755,18 +5751,17 @@ function renderConversationalIntake(container, category, svc, info) {
         toast("Service added to cart!");
     });
 
+    // Back to services handler
     backToServices.addEventListener("click", () => {
         container.style.display = "none";
         handleCategorySelect(category);
     });
 
     // Initialize
-                     updateProgress();
-                    renderOptions();
-                    updateNavButtons();
+    updateProgress();
+    renderOptions();
+    updateNavButtons();
 }
-                    /* ---------- NEW HELPER: FURNITURE UI (Search, No Dropdown) ---------- */
-
 
 
                     function renderFurnitureSelection(container, category, svc, info) {
@@ -5940,6 +5935,7 @@ function renderConversationalIntake(container, category, svc, info) {
                                         price: `$${charge.price.toFixed(2)}`,
                                         icon: "🛋️",
                                         detail: "Furniture Service",
+                                        notes: `Items: ${State.furnitureItems.map((f) => f.label).join(", ")}`,
                                         furnitureItems: [...State.furnitureItems],
                                         estimatedHours: charge.hours,
                                         estimatedPrice: charge.price
@@ -5965,8 +5961,6 @@ function renderConversationalIntake(container, category, svc, info) {
                             }
                         }
                     } /* ---------- FAB wiring ---------- */
-
-
                     function wireContactToolbar() {
                         const contactBtn = q("#contactBtn");
                         const contactToolbar = q("#contactToolbar");
