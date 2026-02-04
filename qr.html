@@ -20,9 +20,7 @@
     <link rel="shortcut icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon">
     <link rel="apple-touch-icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true">
     <link rel="stylesheet" href="https://tommichael88.github.io/booktomnyc/External/styles.css">
-    <style>
-
-/* ========== CORE ELEMENTS & VARIABLES ========== */
+    <style>/* ========== CORE ELEMENTS & VARIABLES ========== */
 :root {
     --bg-card: #1e1e1e;
     --bg-card-hover: #2a2a2a;
@@ -1595,82 +1593,179 @@ body {
     text-shadow: 0 2px 8px rgba(222, 0, 0, 0.3);
 }
 
-/* ========== CONVERSATIONAL INTAKE STYLES ========== */
+/* ========== ENHANCED CONVERSATIONAL INTAKE STYLES ========== */
 .conversational-intake {
     margin: 20px 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 248, 248, 0.95) 100%);
+    border: 2px solid rgba(169, 169, 169, 0.3);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
 }
 
+/* Progress Indicator - Sliding Dots */
+.progress-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 25px;
+    padding: 10px 0;
+    position: relative;
+}
+
+.progress-indicator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 15%;
+    right: 15%;
+    height: 2px;
+    background: linear-gradient(90deg, #de0000, #8a0615, #de0000);
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+.progress-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #c0c0c0;
+    border: 2px solid #8a8a8a;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-dot.active {
+    background: #de0000;
+    border-color: #8a0615;
+    transform: scale(1.3);
+    box-shadow: 0 0 0 3px rgba(222, 0, 0, 0.2);
+}
+
+.progress-dot.completed {
+    background: #8a0615;
+    border-color: #de0000;
+    transform: scale(1.2);
+}
+
+.progress-dot:hover:not(.active) {
+    background: #a8a8a8;
+    transform: scale(1.1);
+}
+
+/* Current Step Indicator */
+.current-step-indicator {
+    position: absolute;
+    top: 50%;
+    left: 15%;
+    height: 2px;
+    background: linear-gradient(90deg, #de0000, #ff0000);
+    z-index: 1;
+    transition: all 0.4s ease;
+    transform: translateY(-50%);
+}
+
+/* Question Container - Redesigned */
 .question-container {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.9) 100%);
-    border: 2px solid rgba(222, 0, 0, 0.1);
+    border: 2px solid rgba(222, 0, 0, 0.15);
     border-radius: 12px;
-    padding: 20px;
-    margin: 15px 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.question-text {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #2a2a2a;
-    line-height: 1.4;
-    margin-bottom: 10px;
-}
-
-.question-counter {
-    font-size: 0.85rem;
-    color: #666;
-    font-weight: 600;
-    display: block;
-    text-align: center;
-    margin-top: 8px;
-}
-
-.options-grid-conversational {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
+    padding: 25px;
     margin: 20px 0;
-}
-
-.conversation-option-btn {
-    background: #f8f8f8;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 16px;
-    font-size: 1rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    color: #2a2a2a;
-    font-weight: 500;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
     position: relative;
     overflow: hidden;
 }
 
+.question-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background: linear-gradient(180deg, #de0000 0%, #8a0615 100%);
+}
+
+.question-text {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #2a2a2a;
+    line-height: 1.4;
+    margin-bottom: 20px;
+    padding-left: 10px;
+    position: relative;
+}
+
+.question-text::before {
+    content: 'Q:';
+    position: absolute;
+    left: -5px;
+    color: #de0000;
+    font-weight: 900;
+}
+
+/* Enhanced Options Grid */
+.options-grid-conversational {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.conversation-option-btn {
+    background: linear-gradient(135deg, #f8f8f8 0%, #f0f0f0 100%);
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 18px 20px;
+    font-size: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    color: #2a2a2a;
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
 .conversation-option-btn:hover {
-    background: #f0f0f0;
-    border-color: #ccc;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+    border-color: #de0000;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(222, 0, 0, 0.1);
+    color: #de0000;
 }
 
 .conversation-option-btn.selected {
     background: linear-gradient(135deg, #de0000 0%, #8a0615 100%);
     color: white;
     border-color: #de0000;
-    transform: scale(0.98);
-    box-shadow: 0 2px 12px rgba(222, 0, 0, 0.3);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(222, 0, 0, 0.2);
+}
+
+.conversation-option-btn.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .conversation-option-btn:active {
-    transform: scale(0.96);
+    transform: scale(0.98);
     transition: transform 0.1s ease;
 }
 
-.conversation-option-btn::after {
+.conversation-option-btn::before {
     content: '';
     position: absolute;
     top: 0;
@@ -1681,19 +1776,186 @@ body {
     transition: left 0.6s ease;
 }
 
-.conversation-option-btn:hover::after {
+.conversation-option-btn:hover::before {
     left: 100%;
 }
 
-.conversation-nav-buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
+/* Mini Back Button */
+.mini-back-button {
+    background: rgba(169, 169, 169, 0.15);
+    border: 1px solid rgba(169, 169, 169, 0.3);
+    border-radius: 8px;
+    padding: 8px 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    opacity: 0;
+    visibility: hidden;
+    position: relative;
+    overflow: hidden;
 }
 
-.conversation-back-btn {
-    background: rgba(169, 169, 169, 0.1);
-    border: 2px solid rgba(169, 169, 169, 0.3);
+.mini-back-button.visible {
+    opacity: 1;
+    visibility: visible;
+    animation: slideInFromLeft 0.3s ease;
+}
+
+.mini-back-button::before {
+    content: '←';
+    font-weight: bold;
+}
+
+.mini-back-button:hover:not(:disabled) {
+    background: rgba(169, 169, 169, 0.25);
+    color: #2a2a2a;
+    transform: translateX(-2px);
+    border-color: rgba(222, 0, 0, 0.3);
+}
+
+.mini-back-button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Question Counter */
+.question-counter {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 10px;
+    padding: 8px 0;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Summary View */
+.summary-view {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.9) 100%);
+    border: 2px solid rgba(222, 0, 0, 0.15);
+    border-radius: 12px;
+    padding: 25px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    animation: fadeIn 0.4s ease;
+}
+
+.summary-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #2a2a2a;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(222, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.summary-title::before {
+    content: '📋';
+    font-size: 1.2rem;
+}
+
+.summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.summary-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 15px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.9) 100%);
+    border: 1px solid rgba(169, 169, 169, 0.2);
+    border-radius: 10px;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.summary-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #de0000 0%, #8a0615 100%);
+}
+
+.summary-item:hover {
+    border-color: rgba(222, 0, 0, 0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.summary-question {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2a2a2a;
+    line-height: 1.3;
+    margin-bottom: 8px;
+}
+
+.summary-answer {
+    font-size: 0.95rem;
+    color: #666;
+    font-weight: 600;
+    line-height: 1.3;
+    background: rgba(222, 0, 0, 0.05);
+    padding: 10px 15px;
+    border-radius: 8px;
+    border-left: 3px solid var(--accent);
+}
+
+.summary-edit-btn {
+    background: rgba(222, 0, 0, 0.1);
+    border: 1px solid rgba(222, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 8px 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #2a2a2a;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.summary-edit-btn:hover {
+    background: var(--accent);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(222, 0, 0, 0.2);
+}
+
+/* Summary Action Buttons */
+.summary-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 2px solid rgba(222, 0, 0, 0.1);
+}
+
+.summary-back-btn {
+    background: rgba(169, 169, 169, 0.15);
+    border: 1px solid rgba(169, 169, 169, 0.3);
     border-radius: 8px;
     padding: 12px 20px;
     font-size: 0.9rem;
@@ -1704,133 +1966,41 @@ body {
     flex: 1;
 }
 
-.conversation-back-btn:hover:not(:disabled) {
-    background: rgba(169, 169, 169, 0.2);
+.summary-back-btn:hover:not(:disabled) {
+    background: rgba(169, 169, 169, 0.25);
     color: #2a2a2a;
     transform: translateY(-1px);
 }
 
-.conversation-back-btn:disabled {
+.summary-back-btn:disabled {
     opacity: 0.3;
     cursor: not-allowed;
 }
 
-.intake-progress {
-    margin-bottom: 20px;
-}
-
-.progress-bar {
-    height: 6px;
-    background: #eee;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #de0000, #8a0615);
-    width: 0%;
-    transition: width 0.3s ease;
-    border-radius: 3px;
-}
-
-.intake-section {
-    margin-bottom: 15px;
-}
-
-.intake-label {
-    font-size: 0.9rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    display: block;
-    color: #444;
-}
-
-.chip-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.chip-btn {
-    background: #f0f0f0;
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    padding: 8px 16px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.chip-btn:hover {
-    background: #e0e0e0;
-}
-
-.chip-btn.selected {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-    box-shadow: 0 2px 8px rgba(222, 0, 0, 0.4);
-}
-
-.furniture-search-input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    margin-bottom: 10px;
+.summary-submit-btn {
+    background: linear-gradient(135deg, #de0000 0%, #8a0615 100%);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    padding: 14px 25px;
     font-size: 1rem;
-}
-
-.furniture-list-container {
-    max-height: 250px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.5);
-}
-
-.furniture-list-item {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
+    font-weight: 700;
+    color: white;
     cursor: pointer;
-    font-size: 0.85rem;
+    transition: var(--transition);
+    flex: 2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(222, 0, 0, 0.3);
 }
 
-.furniture-list-item:last-child {
-    border-bottom: none;
+.summary-submit-btn:hover {
+    background: linear-gradient(135deg, #8a0615 0%, #de0000 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(222, 0, 0, 0.4);
 }
 
-.furniture-list-item:hover {
-    background: rgba(222, 0, 0, 0.05);
-}
-
-.terms-wrap {
-    margin: 15px 0;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.03);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-}
-
-.terms-wrap input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    margin-top: 2px;
-    accent-color: var(--accent);
-}
-
-.checkout-button:disabled {
-    background: #999;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+.summary-submit-btn:active {
+    transform: translateY(0);
 }
 
 /* ========== ACTION BUTTONS ========== */
@@ -2790,6 +2960,33 @@ footer a {
     }
 }
 
+/* New animations for conversational intake */
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulseDot {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(222, 0, 0, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(222, 0, 0, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(222, 0, 0, 0);
+    }
+}
+
 .tap-animate {
     animation: tapAnimation 0.3s ease;
 }
@@ -2800,6 +2997,10 @@ footer a {
 
 .shake-animate {
     animation: shake 0.5s ease;
+}
+
+.progress-dot.pulse {
+    animation: pulseDot 1.5s infinite;
 }
 
 /* ========== RESPONSIVE ADJUSTMENTS ========== */
@@ -2866,6 +3067,64 @@ footer a {
 
     .service-item-card p {
         font-size: 0.55rem;
+    }
+    
+    /* Conversational intake mobile adjustments */
+    .conversational-intake {
+        padding: 15px;
+    }
+    
+    .question-container {
+        padding: 20px 15px;
+    }
+    
+    .question-text {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+    
+    .options-grid-conversational {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .conversation-option-btn {
+        padding: 16px;
+        font-size: 0.95rem;
+    }
+    
+    .summary-view {
+        padding: 20px 15px;
+    }
+    
+    .summary-item {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 15px;
+    }
+    
+    .summary-edit-btn {
+        justify-self: start;
+    }
+    
+    .summary-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .summary-back-btn,
+    .summary-submit-btn {
+        width: 100%;
+    }
+    
+    .progress-dot {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .progress-indicator::before {
+        left: 10%;
+        right: 10%;
     }
 }
 
@@ -3256,17 +3515,62 @@ footer a {
         padding: 2px 5px;
     }
 
+    /* Conversational intake mobile adjustments */
+    .conversational-intake {
+        padding: 15px;
+    }
+    
+    .question-container {
+        padding: 20px 15px;
+    }
+    
+    .question-text {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+    
+    .options-grid-conversational {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
     .conversation-option-btn {
-        padding: 14px;
+        padding: 16px;
         font-size: 0.95rem;
     }
-
-    .question-text {
-        font-size: 1rem;
+    
+    .summary-view {
+        padding: 20px 15px;
     }
-
-    .question-container {
-        padding: 16px;
+    
+    .summary-item {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 15px;
+    }
+    
+    .summary-edit-btn {
+        justify-self: start;
+    }
+    
+    .summary-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .summary-back-btn,
+    .summary-submit-btn {
+        width: 100%;
+    }
+    
+    .progress-dot {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .progress-indicator::before {
+        left: 10%;
+        right: 10%;
     }
 }
 
@@ -3371,8 +3675,7 @@ footer a {
         width: 3px;
         height: 3px;
     }
-}
-    </style>
+}</style>
 </head>
 
 <body style="font-family:Roboto">
@@ -5390,224 +5693,353 @@ const serviceData = {
                     }
 
                     /* ---------- NEW: Conversational Intake System ---------- */
-                    function renderConversationalIntake(container, category, svc, info) {
-                        const intakeConfig = info.intakeConfig;
-                        let currentQuestionIndex = 0;
-                        const answers = {};
-
-                        // Create the conversational UI structure
-                        const conversationUI = create("div", {
-                            class: "conversational-intake"
-                        });
-
-                        // Progress Bar
-                        const progressContainer = create("div", {
-                            class: "intake-progress"
-                        });
-                        const progressBar = create("div", {
-                            class: "progress-bar"
-                        });
-                        const progressFill = create("div", {
-                            class: "progress-fill"
-                        });
-                        progressBar.appendChild(progressFill);
-                        progressContainer.appendChild(progressBar);
-
-                        const counter = create("span", {
-                            class: "question-counter",
-                            text: `Question 1 of ${intakeConfig.length}`
-                        });
-                        progressContainer.appendChild(counter);
-
-                        // Question Container
-                        const questionContainer = create("div", {
-                            class: "question-container"
-                        });
-                        const questionText = create("div", {
-                            class: "question-text",
-                            text: intakeConfig[0].label
-                        });
-                        questionContainer.appendChild(questionText);
-
-                        // Options Grid
-                        const optionsGrid = create("div", {
-                            class: "options-grid-conversational"
-                        });
-
-                        // Navigation Buttons (initially hidden)
-                        const navButtons = create("div", {
-                            class: "conversation-nav-buttons"
-                        });
-
-                        const backButton = create("button", {
-                            class: "conversation-back-btn",
-                            text: "← Back",
-                            type: "button",
-                            disabled: true
-                        });
-
-                        // Submit button will be shown at the end
-                        const submitButton = create("button", {
-                            class: "book-more-button",
-                            text: "✓ Submit Details",
-                            type: "button",
-                            style: "display: none; width: 100%; margin-top: 15px;"
-                        });
-
-                        navButtons.appendChild(backButton);
-                        conversationUI.appendChild(progressContainer);
-                        conversationUI.appendChild(questionContainer);
-                        conversationUI.appendChild(optionsGrid);
-                        conversationUI.appendChild(navButtons);
-                        conversationUI.appendChild(submitButton);
-
-                        // Back to Services Button
-                        const backToServices = create("button", {
-                            class: "back-button",
-                            text: "Back to Services",
-                            type: "button",
-                            style: "margin-top: 20px;"
-                        });
-
-                        container.appendChild(conversationUI);
-                        container.appendChild(backToServices);
-
-                        // Update progress
-                        function updateProgress() {
-                            const progress = ((currentQuestionIndex + 1) / intakeConfig.length) * 100;
-                            progressFill.style.width = `${progress}%`;
-                            counter.textContent = `Question ${currentQuestionIndex + 1} of ${intakeConfig.length}`;
-                            questionText.textContent = intakeConfig[currentQuestionIndex].label;
-                        }
-
-                        // Render options for current question
-                        function renderOptions() {
-                            optionsGrid.innerHTML = "";
-                            const currentQuestion = intakeConfig[currentQuestionIndex];
-
-                            currentQuestion.options.forEach((option) => {
-                                const optionBtn = create("button", {
-                                    class: "conversation-option-btn",
-                                    text: option,
-                                    type: "button"
-                                });
-
-                                optionBtn.addEventListener("click", () => {
-                                    // Store answer
-                                    answers[currentQuestion.id || currentQuestion.label] = option;
-
-                                    // Visual feedback
-                                    optionBtn.classList.add("selected");
-                                    setTimeout(() => {
-                                        optionBtn.classList.remove("selected");
-                                    }, 300);
-
-                                    // Auto-advance to next question
-                                    if (currentQuestionIndex < intakeConfig.length - 1) {
-                                        currentQuestionIndex++;
-                                        updateProgress();
-                                        renderOptions();
-                                        updateNavButtons();
-                                    } else {
-                                        // Last question answered, show submit button
-                                        submitButton.style.display = "";
-                                        submitButton.classList.add("pulse-animate");
-                                        setTimeout(() => submitButton.classList.remove("pulse-animate"), 1000);
-                                    }
-                                });
-
-                                // Touch support
-                                optionBtn.addEventListener("touchstart", (ev) => {
-                                    ev.preventDefault();
-                                    optionBtn.classList.add("tap-animate");
-                                }, {
-                                    passive: false
-                                });
-
-                                optionBtn.addEventListener("touchend", (ev) => {
-                                    ev.preventDefault();
-                                    optionBtn.classList.remove("tap-animate");
-                                    optionBtn.click();
-                                }, {
-                                    passive: false
-                                });
-
-                                optionsGrid.appendChild(optionBtn);
-                            });
-                        }
-
-                        // Update navigation buttons
-                        function updateNavButtons() {
-                            backButton.disabled = currentQuestionIndex === 0;
-
-                            // Hide/show submit button
-                            submitButton.style.display = currentQuestionIndex === intakeConfig.length - 1 ? "" : "none";
-                        }
-
-                        // Back button handler
-                        backButton.addEventListener("click", () => {
-                            if (currentQuestionIndex > 0) {
-                                currentQuestionIndex--;
-                                updateProgress();
-                                renderOptions();
-                                updateNavButtons();
-
-                                // Remove last answer if going back
-                                const prevQuestion = intakeConfig[currentQuestionIndex];
-                                if (prevQuestion && prevQuestion.id) {
-                                    delete answers[prevQuestion.id];
-                                }
-                            }
-                        });
-
-                        // Submit button handler
-                        submitButton.addEventListener("click", () => {
-                            // Build notes from answers
-                            let finalNotes = "INTAKE DETAILS: ";
-                            Object.keys(answers).forEach((key, index) => {
-                                const question = intakeConfig.find(q => (q.id === key) || (q.label === key));
-                                if (question) {
-                                    finalNotes += `${question.label}: ${answers[key]}`;
-                                    if (index < Object.keys(answers).length - 1) {
-                                        finalNotes += " • ";
-                                    }
-                                }
-                            });
-
-                            const entry = {
-                                id: `${category}-${svc}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                                category,
-                                name: svc,
-                                price: info.price || "$0",
-                                icon: info.icon || "🔧",
-                                detail: "Details provided",
-                                notes: finalNotes,
-                                furnitureItems: [],
-                                estimatedHours: 0,
-                                estimatedPrice: 0
-                            };
-
-                            addToCart(entry);
-                            container.style.display = "none";
-                            if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "block";
-                            updateserviceRequestUI();
-                            updateFabVisibility();
-                            persistCartPlain(State.serviceRequest);
-                            toast("Service added to cart!");
-                        });
-
-                        // Back to services handler
-                        backToServices.addEventListener("click", () => {
-                            container.style.display = "none";
-                            handleCategorySelect(category);
-                        });
-
-                        // Initialize
-                        updateProgress();
-                        renderOptions();
-                        updateNavButtons();
+/* ---------- ENHANCED CONVERSATIONAL INTAKE WITH PROGRESS INDICATOR ---------- */
+function renderConversationalIntake(container, category, svc, info) {
+    const intakeConfig = info.intakeConfig;
+    let currentQuestionIndex = 0;
+    const answers = {};
+    
+    // Clear container
+    container.innerHTML = '';
+    container.style.display = 'block';
+    
+    // Create conversational UI
+    const conversationUI = create('div', {
+        class: 'conversational-intake'
+    });
+    
+    // Create progress indicator with sliding dots
+    const progressContainer = create('div', {
+        class: 'progress-indicator'
+    });
+    
+    const dots = [];
+    for (let i = 0; i < intakeConfig.length; i++) {
+        const dot = create('button', {
+            class: 'progress-dot',
+            'data-index': i,
+            type: 'button',
+            'aria-label': `Question ${i + 1}`
+        });
+        
+        // Add click event to navigate to specific question
+        dot.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const targetIndex = parseInt(dot.dataset.index);
+            if (targetIndex <= currentQuestionIndex || answers[targetIndex]) {
+                currentQuestionIndex = targetIndex;
+                updateProgressIndicator();
+                renderQuestion();
+                updateMiniBackButton();
+            }
+        });
+        
+        dots.push(dot);
+        progressContainer.appendChild(dot);
+    }
+    
+    // Current step indicator (sliding line)
+    const currentStepIndicator = create('div', {
+        class: 'current-step-indicator'
+    });
+    progressContainer.appendChild(currentStepIndicator);
+    
+    // Mini back button (initially hidden)
+    const miniBackButton = create('button', {
+        class: 'mini-back-button',
+        type: 'button',
+        text: ' Back',
+        disabled: true
+    });
+    
+    miniBackButton.addEventListener('click', () => {
+        if (currentQuestionIndex > 0) {
+            currentQuestionIndex--;
+            updateProgressIndicator();
+            renderQuestion();
+            updateMiniBackButton();
+        }
+    });
+    
+    // Question container
+    const questionContainer = create('div', {
+        class: 'question-container'
+    });
+    
+    // Question counter
+    const questionCounter = create('div', {
+        class: 'question-counter',
+        text: `Question ${currentQuestionIndex + 1} of ${intakeConfig.length}`
+    });
+    
+    // Summary view (hidden initially)
+    const summaryView = create('div', {
+        class: 'summary-view',
+        style: 'display: none;'
+    });
+    
+    // Build conversation UI structure
+    conversationUI.appendChild(miniBackButton);
+    conversationUI.appendChild(progressContainer);
+    conversationUI.appendChild(questionContainer);
+    conversationUI.appendChild(questionCounter);
+    conversationUI.appendChild(summaryView);
+    
+    container.appendChild(conversationUI);
+    
+    // Update progress indicator function
+    function updateProgressIndicator() {
+        const totalQuestions = intakeConfig.length;
+        const completedQuestions = Object.keys(answers).length;
+        
+        // Update dots
+        dots.forEach((dot, index) => {
+            dot.classList.remove('active', 'completed', 'pulse');
+            
+            if (index === currentQuestionIndex) {
+                dot.classList.add('active', 'pulse');
+            } else if (answers[index]) {
+                dot.classList.add('completed');
+            }
+            
+            // Enable/disable click based on progress
+            dot.style.cursor = (index <= currentQuestionIndex || answers[index]) ? 'pointer' : 'default';
+        });
+        
+        // Update current step indicator position
+        const dotWidth = 14; // px
+        const dotGap = 10; // px
+        const progressWidth = (currentQuestionIndex / (totalQuestions - 1)) * 70; // 70% width between first and last dot
+        currentStepIndicator.style.width = `${progressWidth}%`;
+        
+        // Update question counter
+        questionCounter.textContent = `Question ${currentQuestionIndex + 1} of ${totalQuestions}`;
+    }
+    
+    // Update mini back button visibility
+    function updateMiniBackButton() {
+        if (currentQuestionIndex > 0) {
+            miniBackButton.classList.add('visible');
+            miniBackButton.disabled = false;
+        } else {
+            miniBackButton.classList.remove('visible');
+            miniBackButton.disabled = true;
+        }
+    }
+    
+    // Render current question
+    function renderQuestion() {
+        questionContainer.style.display = 'block';
+        summaryView.style.display = 'none';
+        
+        const currentQuestion = intakeConfig[currentQuestionIndex];
+        
+        // Clear question container
+        questionContainer.innerHTML = '';
+        
+        // Question text
+        const questionText = create('div', {
+            class: 'question-text',
+            text: currentQuestion.label
+        });
+        questionContainer.appendChild(questionText);
+        
+        // Options grid
+        const optionsGrid = create('div', {
+            class: 'options-grid-conversational'
+        });
+        
+        currentQuestion.options.forEach((option) => {
+            const optionBtn = create('button', {
+                class: 'conversation-option-btn',
+                text: option,
+                type: 'button'
+            });
+            
+            // Mark as selected if this was previously answered
+            if (answers[currentQuestionIndex] === option) {
+                optionBtn.classList.add('selected');
+            }
+            
+            optionBtn.addEventListener('click', () => {
+                // Store answer
+                answers[currentQuestionIndex] = option;
+                
+                // Visual feedback
+                optionBtn.classList.add('selected');
+                
+                // If this is the last question, show summary
+                if (currentQuestionIndex === intakeConfig.length - 1) {
+                    showSummary();
+                } else {
+                    // Move to next question
+                    currentQuestionIndex++;
+                    updateProgressIndicator();
+                    renderQuestion();
+                    updateMiniBackButton();
+                }
+            });
+            
+            // Touch support
+            optionBtn.addEventListener('touchstart', (ev) => {
+                ev.preventDefault();
+                optionBtn.classList.add('tap-animate');
+            }, { passive: false });
+            
+            optionBtn.addEventListener('touchend', (ev) => {
+                ev.preventDefault();
+                optionBtn.classList.remove('tap-animate');
+                optionBtn.click();
+            }, { passive: false });
+            
+            optionsGrid.appendChild(optionBtn);
+        });
+        
+        questionContainer.appendChild(optionsGrid);
+    }
+    
+    // Show summary view
+    function showSummary() {
+        questionContainer.style.display = 'none';
+        summaryView.style.display = 'block';
+        
+        // Clear summary view
+        summaryView.innerHTML = '';
+        
+        // Summary title
+        const summaryTitle = create('div', {
+            class: 'summary-title',
+            text: 'Review Your Answers'
+        });
+        summaryView.appendChild(summaryTitle);
+        
+        // Summary list
+        const summaryList = create('div', {
+            class: 'summary-list'
+        });
+        
+        intakeConfig.forEach((question, index) => {
+            const summaryItem = create('div', {
+                class: 'summary-item'
+            });
+            
+            const questionText = create('div', {
+                class: 'summary-question',
+                text: question.label
+            });
+            
+            const answerText = create('div', {
+                class: 'summary-answer',
+                text: answers[index] || 'Not answered'
+            });
+            
+            const editButton = create('button', {
+                class: 'summary-edit-btn',
+                type: 'button',
+                html: '✏️ Edit'
+            });
+            
+            editButton.addEventListener('click', () => {
+                currentQuestionIndex = index;
+                updateProgressIndicator();
+                renderQuestion();
+                updateMiniBackButton();
+            });
+            
+            summaryItem.appendChild(questionText);
+            summaryItem.appendChild(answerText);
+            summaryItem.appendChild(editButton);
+            summaryList.appendChild(summaryItem);
+        });
+        
+        summaryView.appendChild(summaryList);
+        
+        // Summary actions
+        const summaryActions = create('div', {
+            class: 'summary-actions'
+        });
+        
+        const summaryBackBtn = create('button', {
+            class: 'summary-back-btn',
+            type: 'button',
+            text: '← Back to Questions'
+        });
+        
+        summaryBackBtn.addEventListener('click', () => {
+            // Go to last answered question
+            const lastIndex = Math.max(...Object.keys(answers).map(Number));
+            currentQuestionIndex = lastIndex;
+            updateProgressIndicator();
+            renderQuestion();
+            updateMiniBackButton();
+        });
+        
+        const summarySubmitBtn = create('button', {
+            class: 'summary-submit-btn',
+            type: 'button',
+            text: '✓ Submit Answers'
+        });
+        
+        summarySubmitBtn.addEventListener('click', () => {
+            // Build notes from answers
+            let finalNotes = "INTAKE DETAILS: ";
+            Object.keys(answers).forEach((key, index) => {
+                const question = intakeConfig[key];
+                if (question) {
+                    finalNotes += `${question.label}: ${answers[key]}`;
+                    if (index < Object.keys(answers).length - 1) {
+                        finalNotes += " • ";
                     }
-
+                }
+            });
+            
+            const entry = {
+                id: `${category}-${svc}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                category,
+                name: svc,
+                price: info.price || "$0",
+                icon: info.icon || "🔧",
+                detail: "Details provided",
+                notes: finalNotes,
+                furnitureItems: [],
+                estimatedHours: 0,
+                estimatedPrice: 0
+            };
+            
+            addToCart(entry);
+            container.style.display = "none";
+            if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "block";
+            updateserviceRequestUI();
+            updateFabVisibility();
+            persistCartPlain(State.serviceRequest);
+            toast("Service added to cart!");
+        });
+        
+        summaryActions.appendChild(summaryBackBtn);
+        summaryActions.appendChild(summarySubmitBtn);
+        summaryView.appendChild(summaryActions);
+    }
+    
+    // Back to services button
+    const backToServices = create('button', {
+        class: 'back-button',
+        text: 'Back to Services',
+        type: 'button',
+        style: 'margin-top: 20px;'
+    });
+    
+    backToServices.addEventListener('click', () => {
+        container.style.display = 'none';
+        handleCategorySelect(category);
+    });
+    
+    container.appendChild(backToServices);
+    
+    // Initialize
+    updateProgressIndicator();
+    renderQuestion();
+    updateMiniBackButton();
+}
 
                     function renderFurnitureSelection(container, category, svc, info) {
                         const isRepair = svc.toLowerCase().includes("repair");
