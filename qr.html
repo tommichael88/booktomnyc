@@ -6385,7 +6385,7 @@ window.SERVICE_DATA =
                     const searchInput = create("input", {
                         type: "text",
                         class: "furniture-search-input",
-                        placeholder: 'Search furniture (e.g. "Desk")...'
+                        placeholder: 'Furniture type or Ikea Item by Collection)...'
                     });
                     const listContainer = create("div", {
                         class: "furniture-list-container"
@@ -6394,6 +6394,16 @@ window.SERVICE_DATA =
                     // Build Master List
                     let masterList = [];
                     if (!isRepair) {
+                        Object.keys(
+                            window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES
+                        ).forEach((key) =>
+                            masterList.push({
+                                key: key,
+                                label: "" + key, // Removed the word Generic for a simpler presentation of furrniture
+                                type: "Generic"
+                            })
+                        );
+                        
                         Object.keys(window.SERVICE_DATA.FURNITURE_MINUTES).forEach((key) =>
                             masterList.push({
                                 key: key,
@@ -6401,15 +6411,7 @@ window.SERVICE_DATA =
                                 type: "IKEA"
                             })
                         );
-                        Object.keys(
-                            window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES
-                        ).forEach((key) =>
-                            masterList.push({
-                                key: key,
-                                label: "Generic " + key,
-                                type: "Generic"
-                            })
-                        );
+                        
                     } else {
                         Object.keys(
                             window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES
@@ -6428,7 +6430,7 @@ window.SERVICE_DATA =
                         const filtered = masterList.filter((item) =>
                             item.label.toLowerCase().includes(term)
                         );
-                        const displaySet = filtered.slice(0, 50); // limit for perf
+                        const displaySet = filtered.slice(0, 200); // limit for perf
 
                         if (displaySet.length === 0) {
                             listContainer.appendChild(
