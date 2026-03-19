@@ -23,7 +23,7 @@
     <meta name="referrer" content="strict-origin-when-cross-origin">
 
     <link id="favicon" rel="icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon">
-    <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/tomshandytech_favicon.webp?raw=true" as="image">
+    <link rel="preload" href="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/tomshandytech_highresol_today.png?raw=true" as="image">
     <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" as="image">
     <link rel="preload" href="https://tommichael88.github.io/booktomnyc/js/marquee.js" as="script">
     <link rel="shortcut icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon">
@@ -1371,6 +1371,52 @@
             flex-direction: column;
             gap: 10px;
             margin: 10px 0;
+        }
+        
+        .pax-configurator {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--accent);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: var(--shadow-md);
+            animation: slideDown 0.3s ease;
+        }
+        
+        .pax-config-row {
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .pax-config-row label {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #2a2a2a;
+            margin-bottom: 5px;
+        }
+        
+        .pax-config-row select, .pax-config-row input {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+        
+        .pax-action-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .pax-action-btn:hover {
+            background: #8a0615;
         }
 
         .selected-furniture-list {
@@ -4475,8 +4521,7 @@ window.SERVICE_DATA =
             "NORDLI - Headboard": 25,
             "NORDLI - 6 drawer chest": 85,
             "OMAR - Shelving unit (wire, 4 shelves)": 35,
-            "PAX - One frame, hinged doors, up to 3 addons": 180,
-            "PAX - Two frames, sliding doors, up to 5 addons": 480,
+            "PAX Wardrobe System (Custom Configuration)": 0,
             "PLATSA - Open wardrobe combination (2 frames)": 120,
             "PLATSA - Cabinet with doors and shelves": 100,
             "POANG - Armchair frame": 15,
@@ -6378,14 +6423,14 @@ window.SERVICE_DATA =
                     updateMiniBackButton();
                 }
 
-                function renderFurnitureSelection(container, category, svc, info) {
+function renderFurnitureSelection(container, category, svc, info) {
                     const isRepair = svc.toLowerCase().includes("repair");
 
                     // Search Input
                     const searchInput = create("input", {
                         type: "text",
                         class: "furniture-search-input",
-                        placeholder: 'Furniture type or Ikea Item by Collection)...'
+                        placeholder: 'Furniture type or Ikea Item by Collection...'
                     });
                     const listContainer = create("div", {
                         class: "furniture-list-container"
@@ -6394,12 +6439,10 @@ window.SERVICE_DATA =
                     // Build Master List
                     let masterList = [];
                     if (!isRepair) {
-                        Object.keys(
-                            window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES
-                        ).forEach((key) =>
+                        Object.keys(window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES).forEach((key) =>
                             masterList.push({
                                 key: key,
-                                label: "" + key, // Removed the word Generic for a simpler presentation of furrniture
+                                label: "" + key,
                                 type: "Generic"
                             })
                         );
@@ -6413,9 +6456,7 @@ window.SERVICE_DATA =
                         );
                         
                     } else {
-                        Object.keys(
-                            window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES
-                        ).forEach((key) =>
+                        Object.keys(window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES).forEach((key) =>
                             masterList.push({
                                 key: key,
                                 label: key,
@@ -6447,13 +6488,22 @@ window.SERVICE_DATA =
                                 class: "furniture-list-item",
                                 text: item.label
                             });
+
+                            // --- CLICK LISTENER ---
                             row.addEventListener("click", () => {
+                                // 1. Intercept PAX Custom Configuration
+                                if (item.label === "PAX Wardrobe System (Custom Configuration)") {
+                                    renderPaxConfigurator(row); // Pass the clicked row so it renders underneath it
+                                    return; 
+                                }
+
+                                // 2. Standard Furniture Logic
                                 let minutes = 60;
-                                if (item.type === "IKEA")
+                                if (item.type === "IKEA") {
                                     minutes = window.SERVICE_DATA.FURNITURE_MINUTES[item.key] || 60;
-                                else
-                                    minutes =
-                                    window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES[item.key] || 60;
+                                } else {
+                                    minutes = window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES[item.key] || 60;
+                                }
 
                                 const entry = {
                                     key: item.key,
@@ -6467,9 +6517,11 @@ window.SERVICE_DATA =
                                 renderList("");
                                 toast(`Added ${item.label}`);
                             });
+                            
                             listContainer.appendChild(row);
                         });
                     };
+                    
                     renderList("");
                     searchInput.addEventListener("input", (e) => renderList(e.target.value));
 
@@ -6498,7 +6550,96 @@ window.SERVICE_DATA =
                         handleCategorySelect(category);
                     });
                     container.appendChild(back);
+                    
+                    // --- PAX CONFIGURATOR FUNCTION ---
+                    function renderPaxConfigurator(clickedElement) {
+                        // Prevent opening multiple configurators
+                        if (document.getElementById('pax-config-wrapper')) return;
 
+                        const wrapper = document.createElement('div');
+                        wrapper.id = 'pax-config-wrapper';
+                        wrapper.className = 'pax-configurator';
+
+                        wrapper.innerHTML = `
+                            <h4 style="color: var(--accent); margin-bottom: 10px;">Configure PAX System</h4>
+                            
+                            <div class="pax-config-row">
+                                <label>Number of Frames (Closet Units)</label>
+                                <input type="number" id="pax-frames" min="1" max="10" value="1">
+                            </div>
+
+                            <div class="pax-config-row">
+                                <label>Door Type</label>
+                                <select id="pax-doors">
+                                    <option value="hinged">Hinged Doors</option>
+                                    <option value="sliding">Sliding Doors (Pair)</option>
+                                    <option value="none">No Doors (Open Wardrobe)</option>
+                                </select>
+                            </div>
+
+                            <div class="pax-config-row">
+                                <label>Interior Organizers & Lighting (Total Qty)</label>
+                                <span style="font-size:0.75rem; color:#666; margin-bottom:4px;">Drawers, pull-out trays, shelves, clothes rails, integrated lighting</span>
+                                <input type="number" id="pax-accessories" min="0" max="50" value="0">
+                            </div>
+
+                            <button class="pax-action-btn" id="add-pax-btn">Add Configured PAX to List</button>
+                            <button class="pax-action-btn" id="cancel-pax-btn" style="background: #ccc; color: #2a2a2a;">Cancel</button>
+                        `;
+
+                        // Insert directly below the clicked item in the list
+                        clickedElement.parentNode.insertBefore(wrapper, clickedElement.nextSibling);
+
+                        // Handle Cancel
+                        document.getElementById('cancel-pax-btn').addEventListener('click', () => {
+                            wrapper.remove();
+                        });
+
+                        // Handle Add
+                        document.getElementById('add-pax-btn').addEventListener('click', () => {
+                            const frames = parseInt(document.getElementById('pax-frames').value) || 1;
+                            const doorType = document.getElementById('pax-doors').value;
+                            const accessories = parseInt(document.getElementById('pax-accessories').value) || 0;
+
+                            // Calculate Time
+                            let totalMinutes = 0;
+                            let doorText = "";
+
+                            totalMinutes += (frames * 60);
+
+                            if (doorType === 'hinged') {
+                                totalMinutes += (frames * 60); 
+                                doorText = "Hinged Doors";
+                            } else if (doorType === 'sliding') {
+                                totalMinutes += 100 + ((frames > 2 ? frames - 2 : 0) * 50); 
+                                doorText = "Sliding Doors";
+                            } else {
+                                doorText = "No Doors";
+                            }
+
+                            totalMinutes += (accessories * 30);
+
+                            const customLabel = `PAX System: ${frames}x Frames, ${doorText}, ${accessories}x Accessories`;
+
+                            // Use State.furnitureItems to match your app's flow perfectly
+                            const entry = {
+                                key: "PAX_CUSTOM",
+                                label: customLabel,
+                                minutes: totalMinutes,
+                                isIkea: true
+                            };
+                            
+                            State.furnitureItems.push(entry);
+                            updateSelectedFurnitureUI(container, category, svc, info);
+                            
+                            // Reset the list/search just like a normal item addition
+                            searchInput.value = "";
+                            renderList("");
+                            toast(`Added ${customLabel}`);
+                            
+                            wrapper.remove();
+                        });
+                    }
 
                     function updateSelectedFurnitureUI(container, category, svc, info) {
                         const wrapper = container.querySelector("#furniture-selection-wrapper");
@@ -6561,7 +6702,7 @@ window.SERVICE_DATA =
                                 State.furnitureItems = [];
                                 container.style.display = "none";
 
-                                // RESTORED: Show service request section instead of categories
+                                // Show service request section instead of categories
                                 if (DOM.serviceRequestSection) {
                                     DOM.serviceRequestSection.style.display = "block";
                                 }
