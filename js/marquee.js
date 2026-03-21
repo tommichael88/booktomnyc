@@ -21,7 +21,7 @@
   }
 
   const HIDE_INTERVAL_MS = 10000; // 10s between changes when hidden (keeps CPU low)
-  const ICON_TOM = 'https://tommichael88.github.io/booktomnyc/images/tomshandytech_favicon.webp?raw=true';
+  const ICON_TOM = 'https://tommichael88.github.io/booktomnyc/images/tht_logo.png?raw=true';
   const ICON_TOMK = 'https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true';
 
   const originalTitle = (typeof document !== 'undefined' && document.title) ? document.title : 'BookTom';
