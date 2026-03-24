@@ -697,20 +697,15 @@
     left: 0;
     right: 0;
     bottom: 0;
-
     width: 100vw;
     height: 100vh;
-
     margin: 0 !important;
     padding: 20px 12px 40px 12px;
-
     background: rgba(255,255,255,0.98);
     z-index: 99999;
-
     overflow-y: auto;
     border-radius: 0;
     box-shadow: none;
-
     animation: focusedSlideIn .25s ease-out;
 }
 
@@ -719,9 +714,8 @@ body.modal-active::before {
     content: "";
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(6px);
     z-index: 99998;
+    pointer-events: none !important;
 }
 
 /* Prevent background scroll */
@@ -6396,6 +6390,7 @@ body.modal-active {
 
                     // Render current question
                     function renderQuestion() {
+                        enterFocusedMode();
                         questionContainer.style.display = 'block';
                         summaryView.style.display = 'none';
 
@@ -6609,6 +6604,8 @@ body.modal-active {
                             updateFabVisibility();
                             persistCartPlain(State.serviceRequest);
                             toast("Service added to cart!");
+                                        exitFocusedMode();
+
                         });
 
                         summaryActions.appendChild(summaryBackBtn);
@@ -6625,8 +6622,10 @@ body.modal-active {
                     });
 
                     backToServices.addEventListener('click', () => {
+                        exitFocusedMode();
                         container.style.display = 'none';
                         handleCategorySelect(category);
+
                     });
 
                     container.appendChild(backToServices);
@@ -6779,6 +6778,7 @@ body.modal-active {
 
                     // --- PAX CONFIGURATOR FUNCTION ---
                     function renderPaxConfigurator(clickedElement) {
+                        enterFocusedMode();
                         // Prevent opening multiple configurators
                         if (document.getElementById('pax-config-wrapper')) return;
 
