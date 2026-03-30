@@ -24,6 +24,8 @@
 		<link rel="shortcut icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon">
 		<link rel="apple-touch-icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true">
 		<link rel="stylesheet" href="https://tommichael88.github.io/booktomnyc/External/styles.css">
+		<script defer="" src="https://tommichael88.github.io/booktomnyc/js/marquee.js" integrity="sha384-sO/QJtm9KwYvAECgBW5DJPh2b4kkN4l5dOAPLzLFiikVDMiyWaQWG/Sg4Ke3PnKy" crossorigin="anonymous"></script>
+
 		<style>
 			/* ========== CORE ELEMENTS & VARIABLES ========== */
 			:root {
@@ -4033,166 +4035,174 @@
 				</span>
 			</div>
 		</div>
-		<script defer="" src="https://tommichael88.github.io/booktomnyc/js/marquee.js" integrity="sha384-sO/QJtm9KwYvAECgBW5DJPh2b4kkN4l5dOAPLzLFiikVDMiyWaQWG/Sg4Ke3PnKy" crossorigin="anonymous"></script>
-		<script type="module">
-			document.addEventListener('DOMContentLoaded', () => {
-			    const el = document.querySelector('.marquee');
-			    if (!el) return;
-			    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-			    const speed = isMobile ? 0.03 : 0.06;
-			    if (window.Marquee) el._marqueeInstance = new Marquee(el, {
-			        speed,
-			        pauseOnHover: true
-			    });
-			});
-		</script>
-		<script>
-			(function() {
-			    'use strict';
-			    document.addEventListener('DOMContentLoaded', function() {
-			        var invoicesCard = document.querySelector('.card-invoices');
-			        if (!invoicesCard) return;
-			
-			        var header = invoicesCard.querySelector('.invoices-header');
-			        var toggle = invoicesCard.querySelector('.invoices-toggle');
-			
-			        if (!header || !toggle) return;
-			
-			        // Toggle functions
-			        function collapseInvoices() {
-			            invoicesCard.classList.add('collapsed');
-			            toggle.textContent = 'Invoices⇲';
-			        }
-			
-			        function expandInvoices() {
-			            invoicesCard.classList.remove('collapsed');
-			            toggle.textContent = '';
-			        }
-			
-			        function toggleInvoices() {
-			            if (invoicesCard.classList.contains('collapsed')) {
-			                expandInvoices();
-			            } else {
-			                collapseInvoices();
-			            }
-			        }
-			
-			        header.addEventListener('click', function(e) {
-			            e.stopPropagation();
-			            toggleInvoices();
-			        });
-			
-			        var categoryTiles = document.querySelectorAll('.category-tile');
-			        categoryTiles.forEach(function(tile) {
-			            tile.addEventListener('click', function() {
-			                collapseInvoices();
-			            });
-			            // Touch events
-			            tile.addEventListener('touchstart', function() {
-			                collapseInvoices();
-			            }, {
-			                passive: true
-			            });
-			        });
-			
-			        var rescheduleBtn = document.getElementById('manageVisitBtn');
-			        if (rescheduleBtn) {
-			            rescheduleBtn.addEventListener('click', function() {
-			                collapseInvoices();
-			            });
-			        }
-			    });
-			})();
-		</script>
-		<script>
-			(function() {
-			        'use strict';
-			
-			        function decodeB64(s) {
-			            try {
-			                return atob(s);
-			            } catch (e) {
-			                return '';
-			            }
-			        }
-			
-			        function safePhone(s) {
-			            return (s || '').replace(/[^+\d\s\-()]/g, '').trim();
-			        }
-			
-			        function safeEmail(s) {
-			            // allow common email characters only
-			            return (s || '').replace(/[^A-Za-z0-9@._+\-]/g, '').trim();
-			        }
-			
-			        function openMail(el) {
-			            var b64 = el.getAttribute('data-email') || '';
-			            var email = safeEmail(decodeB64(b64));
-			            if (!email) return;
-			            // optionally prefill subject/body
-			            var subject = encodeURIComponent('Inquiry from website');
-			            var body = encodeURIComponent('');
-			
-			
-			            function openTel(el) {
-			                var raw = el.getAttribute('data-phone') || '';
-			                var num = safePhone(raw);
-			                if (!num) return;
-			                window.location.href = 'tel:' + num;
-			            }
-			
-			            function openSms(el) {
-			                var raw = el.getAttribute('data-sms') || '';
-			                var num = safePhone(raw);
-			                if (!num) return;
-			                window.location.href = 'sms:' + num;
-			            }
-			            // Wire handlers
-			            document.querySelectorAll('.contact-mail').forEach(function(el) {
-			                el.addEventListener('click', function(ev) {
-			                    ev.preventDefault();
-			                    openMail(el);
-			                }, {
-			                    passive: false
-			                });
-			                el.addEventListener('keydown', function(ev) {
-			                    if (ev.key === 'Enter' || ev.key === ' ') {
-			                        ev.preventDefault();
-			                        openMail(el);
-			                    }
-			                });
-			            });
-			            document.querySelectorAll('.contact-phone').forEach(function(el) {
-			                el.addEventListener('click', function(ev) {
-			                    ev.preventDefault();
-			                    openTel(el);
-			                }, {
-			                    passive: false
-			                });
-			                el.addEventListener('keydown', function(ev) {
-			                    if (ev.key === 'Enter' || ev.key === ' ') {
-			                        ev.preventDefault();
-			                        openTel(el);
-			                    }
-			                });
-			            });
-			            document.querySelectorAll('.contact-sms').forEach(function(el) {
-			                el.addEventListener('click', function(ev) {
-			                    ev.preventDefault();
-			                    openSms(el);
-			                }, {
-			                    passive: false
-			                });
-			                el.addEventListener('keydown', function(ev) {
-			                    if (ev.key === 'Enter' || ev.key === ' ') {
-			                        ev.preventDefault();
-			                        openSms(el);
-			                    }
-			                });
-			            });
-			        })();
-		</script>
-		<script>
+
+            <!-- Subscripts Start -->
+                		<!-- CONTACT Toolbar Icon Functionaity -->
+                		<script>
+                			(function() {
+                			        'use strict';
+                			
+                			        function decodeB64(s) {
+                			            try {
+                			                return atob(s);
+                			            } catch (e) {
+                			                return '';
+                			            }
+                			        }
+                			
+                			        function safePhone(s) {
+                			            return (s || '').replace(/[^+\d\s\-()]/g, '').trim();
+                			        }
+                			
+                			        function safeEmail(s) {
+                			            // allow common email characters only
+                			            return (s || '').replace(/[^A-Za-z0-9@._+\-]/g, '').trim();
+                			        }
+                			
+                			        function openMail(el) {
+                			            var b64 = el.getAttribute('data-email') || '';
+                			            var email = safeEmail(decodeB64(b64));
+                			            if (!email) return;
+                			            // optionally prefill subject/body
+                			            var subject = encodeURIComponent('Inquiry from website');
+                			            var body = encodeURIComponent('');
+                			
+                			
+                			            function openTel(el) {
+                			                var raw = el.getAttribute('data-phone') || '';
+                			                var num = safePhone(raw);
+                			                if (!num) return;
+                			                window.location.href = 'tel:' + num;
+                			            }
+                			
+                			            function openSms(el) {
+                			                var raw = el.getAttribute('data-sms') || '';
+                			                var num = safePhone(raw);
+                			                if (!num) return;
+                			                window.location.href = 'sms:' + num;
+                			            }
+                			            // Wire handlers
+                			            document.querySelectorAll('.contact-mail').forEach(function(el) {
+                			                el.addEventListener('click', function(ev) {
+                			                    ev.preventDefault();
+                			                    openMail(el);
+                			                }, {
+                			                    passive: false
+                			                });
+                			                el.addEventListener('keydown', function(ev) {
+                			                    if (ev.key === 'Enter' || ev.key === ' ') {
+                			                        ev.preventDefault();
+                			                        openMail(el);
+                			                    }
+                			                });
+                			            });
+                			            document.querySelectorAll('.contact-phone').forEach(function(el) {
+                			                el.addEventListener('click', function(ev) {
+                			                    ev.preventDefault();
+                			                    openTel(el);
+                			                }, {
+                			                    passive: false
+                			                });
+                			                el.addEventListener('keydown', function(ev) {
+                			                    if (ev.key === 'Enter' || ev.key === ' ') {
+                			                        ev.preventDefault();
+                			                        openTel(el);
+                			                    }
+                			                });
+                			            });
+                			            document.querySelectorAll('.contact-sms').forEach(function(el) {
+                			                el.addEventListener('click', function(ev) {
+                			                    ev.preventDefault();
+                			                    openSms(el);
+                			                }, {
+                			                    passive: false
+                			                });
+                			                el.addEventListener('keydown', function(ev) {
+                			                    if (ev.key === 'Enter' || ev.key === ' ') {
+                			                        ev.preventDefault();
+                			                        openSms(el);
+                			                    }
+                			                });
+                			            });
+                			        })();
+                		</script>
+                		<!-- INVOICE Collapsible Menuing  -->
+                		<script>
+                			(function() {
+                			    'use strict';
+                			    document.addEventListener('DOMContentLoaded', function() {
+                			        var invoicesCard = document.querySelector('.card-invoices');
+                			        if (!invoicesCard) return;
+                			
+                			        var header = invoicesCard.querySelector('.invoices-header');
+                			        var toggle = invoicesCard.querySelector('.invoices-toggle');
+                			
+                			        if (!header || !toggle) return;
+                			
+                			        // Toggle functions
+                			        function collapseInvoices() {
+                			            invoicesCard.classList.add('collapsed');
+                			            toggle.textContent = 'Invoices⇲';
+                			        }
+                			
+                			        function expandInvoices() {
+                			            invoicesCard.classList.remove('collapsed');
+                			            toggle.textContent = '';
+                			        }
+                			
+                			        function toggleInvoices() {
+                			            if (invoicesCard.classList.contains('collapsed')) {
+                			                expandInvoices();
+                			            } else {
+                			                collapseInvoices();
+                			            }
+                			        }
+                			
+                			        header.addEventListener('click', function(e) {
+                			            e.stopPropagation();
+                			            toggleInvoices();
+                			        });
+                			
+                			        var categoryTiles = document.querySelectorAll('.category-tile');
+                			        categoryTiles.forEach(function(tile) {
+                			            tile.addEventListener('click', function() {
+                			                collapseInvoices();
+                			            });
+                			            // Touch events
+                			            tile.addEventListener('touchstart', function() {
+                			                collapseInvoices();
+                			            }, {
+                			                passive: true
+                			            });
+                			        });
+                			
+                			        var rescheduleBtn = document.getElementById('manageVisitBtn');
+                			        if (rescheduleBtn) {
+                			            rescheduleBtn.addEventListener('click', function() {
+                			                collapseInvoices();
+                			            });
+                			        }
+                			    });
+                			})();
+                		</script>
+                		<!-- MARQUEE -->
+                		<script type="module">
+                			document.addEventListener('DOMContentLoaded', () => {
+                			    const el = document.querySelector('.marquee');
+                			    if (!el) return;
+                			    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+                			    const speed = isMobile ? 0.03 : 0.06;
+                			    if (window.Marquee) el._marqueeInstance = new Marquee(el, {
+                			        speed,
+                			        pauseOnHover: true
+                			    });
+                			});
+                		</script>
+            <!-- Subscripts End Section -->
+
+
+<!-- QR Main Responsive UI -->
+	<script>
 			if (window.__booktom_qr_loaded) {} else {
 			    window.__booktom_qr_loaded = true;
 			    (function() {
@@ -4303,7 +4313,6 @@
 			        }
 			
 			        const contactLimiter = new RateLimiter(3, 60000);
-			
 			
 			        function toast(message) {
 			            const toastContainer = document.getElementById('toast-container') || (() => {
@@ -5662,34 +5671,43 @@
 			            }
 			        }
 			
-			        function updateFabVisibility() {
-			            try {
-			                if (!DOM.cartFab || !DOM.fabCount) return;
-			                const hasItems = State.serviceRequest.length > 0;
-			                if (hasItems) {
-			                    // Use flex to align icon and text correctly
-			                    DOM.cartFab.style.display = "flex";
-			                    DOM.cartFab.classList.add("visible");
-			                    safeText(DOM.fabCount, String(State.serviceRequest.length));
-			                    // Pulse animation
-			                    DOM.cartFab.classList.add("pulse-animate");
-			                    setTimeout(() => {
-			                        DOM.cartFab.classList.remove("pulse-animate");
-			                    }, 600);
-			                } else {
-			                    DOM.cartFab.style.display = "none";
-			                    DOM.cartFab.classList.remove("visible");
-			                }
-			                // Update other counters if they exist
-			                const otherCartCounts = qAll(".cart-count");
-			                otherCartCounts.forEach((el) => {
-			                    safeText(el, String(State.serviceRequest.length));
-			                });
-			            } catch (e) {
-			                console.error("Error updating FAB visibility:", e);
-			            }
-			        }
-			
+                    function updateManageVisitBtnVisibility() {
+  const manageBtn = q("#manageVisitBtn");
+  if (!manageBtn) return;
+  const hasItems = State.serviceRequest.length > 0;
+  manageBtn.style.display = hasItems ? "none" : "";
+}
+
+                    function updateFabVisibility() {
+  try {
+    if (!DOM.cartFab || !DOM.fabCount) return;
+    const hasItems = State.serviceRequest.length > 0;
+    if (hasItems) {
+      // Use flex to align icon and text correctly
+      DOM.cartFab.style.display = "flex";
+      DOM.cartFab.classList.add("visible");
+      safeText(DOM.fabCount, String(State.serviceRequest.length));
+      // Pulse animation
+      DOM.cartFab.classList.add("pulse-animate");
+      setTimeout(() => {
+        DOM.cartFab.classList.remove("pulse-animate");
+      }, 600);
+    } else {
+      DOM.cartFab.style.display = "none";
+      DOM.cartFab.classList.remove("visible");
+    }
+    // Update other counters if they exist
+    const otherCartCounts = qAll(".cart-count");
+    otherCartCounts.forEach((el) => {
+      safeText(el, String(State.serviceRequest.length));
+    });
+    // HIDE MANAGE VISIT BUTTON WHEN CART HAS ITEMS
+    updateManageVisitBtnVisibility();
+  } catch (e) {
+    console.error("Error updating FAB visibility:", e);
+  }
+}			
+
 			        function buildCategoryTiles() {
 			            const grid = DOM.categoriesGrid;
 			            if (!grid) return;
@@ -5753,135 +5771,142 @@
 			            closeInvoiceOverlay();
 			        }
 			
-			        function handleCategorySelect(category) {
-			            try {
-			                if (!category) return;
-			                // Close invoice overlay if open
-			                closeInvoiceOverlay();
-			                if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
-			                const sel = DOM.selectedSection;
-			                if (!sel) return;
-			                // Clear existing content safely
-			                while (sel.firstChild) sel.removeChild(sel.firstChild);
-			                sel.appendChild(
-			                    create("h3", {
-			                        text: `${category} Services`
-			                    })
-			                );
-			                const gridBox = create("div", {
-			                    class: "service-item-grid"
-			                });
-			                const cat = window.SERVICE_DATA.serviceData[category] || null;
-			                if (!cat) {
-			                    gridBox.appendChild(
-			                        create("p", {
-			                            text: "No services for this category."
-			                        })
-			                    );
-			                    sel.appendChild(gridBox);
-			                    return;
-			                }
-			                Object.keys(cat).forEach((svc) => {
-			                    const info = cat[svc];
-			                    const card = create("div", {
-			                        class: "service-item-card",
-			                        tabindex: "0",
-			                        role: "button",
-			                        "data-service": svc,
-			                        "aria-label": `Select ${svc} service`
-			                    });
-			                    card.appendChild(
-			                        create("div", {
-			                            class: "service-item-icon",
-			                            text: info.icon || "🔧"
-			                        })
-			                    );
-			                    card.appendChild(
-			                        create("h4", {
-			                            text: svc
-			                        })
-			                    );
-			                    card.appendChild(
-			                        create("p", {
-			                            text: info.description || ""
-			                        })
-			                    );
-			                    card.appendChild(
-			                        create("div", {
-			                            class: "service-price",
-			                            text: info.price || ""
-			                        })
-			                    );
-			                    // Add click event
-			                    card.addEventListener(
-			                        "click",
-			                        (ev) => {
-			                            ev.preventDefault();
-			                            ev.stopPropagation();
-			                            showServiceDetails(category, svc);
-			                        }, {
-			                            passive: false
-			                        }
-			                    );
-			                    // Add keyboard support
-			                    card.addEventListener("keydown", (ev) => {
-			                        if (ev.key === "Enter" || ev.key === " ") {
-			                            ev.preventDefault();
-			                            showServiceDetails(category, svc);
-			                        }
-			                    });
-			                    // Add touch support
-			                    card.addEventListener(
-			                        "touchstart",
-			                        (ev) => {
-			                            ev.preventDefault();
-			                            ev.stopPropagation();
-			                            card.classList.add("tap-animate");
-			                        }, {
-			                            passive: false
-			                        }
-			                    );
-			                    card.addEventListener(
-			                        "touchend",
-			                        (ev) => {
-			                            ev.preventDefault();
-			                            ev.stopPropagation();
-			                            card.classList.remove("tap-animate");
-			                            showServiceDetails(category, svc);
-			                        }, {
-			                            passive: false
-			                        }
-			                    );
-			                    gridBox.appendChild(card);
-			                });
-			                sel.appendChild(gridBox);
-			                const back = create("button", {
-			                    class: "back-button",
-			                    text: "Back to Categories",
-			                    type: "button"
-			                });
-			                back.addEventListener(
-			                    "click",
-			                    () => {
-			                        showCategories();
-			                    }, {
-			                        passive: true
-			                    }
-			                );
-			                sel.appendChild(back);
-			                if (DOM.serviceRequestContainer)
-			                    DOM.serviceRequestContainer.style.display = "block";
-			                if (DOM.servicedetailsContainer)
-			                    DOM.servicedetailsContainer.style.display = "none";
-			                sel.scrollIntoView({
-			                    behavior: "smooth",
-			                    block: "start"
-			                });
-			            } catch (e) {
-			                console.error("Error handling category select:", e);
-			            }
-			        }
-			
+                    function handleCategorySelect(category) {
+  try {
+    if (!category) return;
+    // ENTER FOCUSED MODE IMMEDIATELY ON CATEGORY TAP
+    enterFocusedMode();
+
+    // Close invoice overlay if open
+    closeInvoiceOverlay();
+    if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
+    const sel = DOM.selectedSection;
+    if (!sel) return;
+    // Clear existing content safely
+    while (sel.firstChild) sel.removeChild(sel.firstChild);
+    sel.appendChild(
+      create("h3", {
+        text: `${category} Services`
+      })
+    );
+    const gridBox = create("div", {
+      class: "service-item-grid"
+    });
+    const cat = window.SERVICE_DATA.serviceData[category] || null;
+    if (!cat) {
+      gridBox.appendChild(
+        create("p", {
+          text: "No services for this category."
+        })
+      );
+      sel.appendChild(gridBox);
+      return;
+    }
+    Object.keys(cat).forEach((svc) => {
+      const info = cat[svc];
+      const card = create("div", {
+        class: "service-item-card",
+        tabindex: "0",
+        role: "button",
+        "data-service": svc,
+        "aria-label": `Select ${svc} service`
+      });
+      card.appendChild(
+        create("div", {
+          class: "service-item-icon",
+          text: info.icon || "🔧"
+        })
+      );
+      card.appendChild(
+        create("h4", {
+          text: svc
+        })
+      );
+      card.appendChild(
+        create("p", {
+          text: info.description || ""
+        })
+      );
+      card.appendChild(
+        create("div", {
+          class: "service-price",
+          text: info.price || ""
+        })
+      );
+      // Add click event
+      card.addEventListener(
+        "click",
+        (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          showServiceDetails(category, svc);
+        },
+        {
+          passive: false
+        }
+      );
+      // Add keyboard support
+      card.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          showServiceDetails(category, svc);
+        }
+      });
+      // Add touch support
+      card.addEventListener(
+        "touchstart",
+        (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          card.classList.add("tap-animate");
+        },
+        {
+          passive: false
+        }
+      );
+      card.addEventListener(
+        "touchend",
+        (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          card.classList.remove("tap-animate");
+          showServiceDetails(category, svc);
+        },
+        {
+          passive: false
+        }
+      );
+      gridBox.appendChild(card);
+    });
+    sel.appendChild(gridBox);
+    const back = create("button", {
+      class: "back-button",
+      text: "Back to Categories",
+      type: "button"
+    });
+    back.addEventListener(
+      "click",
+      () => {
+        showCategories();
+      },
+      {
+        passive: true
+      }
+    );
+    sel.appendChild(back);
+    if (DOM.serviceRequestContainer)
+      DOM.serviceRequestContainer.style.display = "block";
+    if (DOM.servicedetailsContainer)
+      DOM.servicedetailsContainer.style.display = "none";
+    sel.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  } catch (e) {
+    console.error("Error handling category select:", e);
+  }
+}			
+
 			        function showServiceDetails(category, svc) {
 			            try {
 			                if (!category || !svc) return;
@@ -6478,320 +6503,341 @@
 			            updateMiniBackButton();
 			        }
 			
-			        function renderFurnitureSelection(container, category, svc, info) {
-			            const isRepair = svc.toLowerCase().includes("repair");
-			
-			            // Search Input
-			            const searchInput = create("input", {
-			                type: "text",
-			                class: "furniture-search-input",
-			                placeholder: 'Search by name or IKEA article number (e.g., 002.133.80)'
-			            });
-			            const listContainer = create("div", {
-			                class: "furniture-list-container"
-			            });
-			
-			            // Build Master List
-			            let masterList = [];
-			            if (!isRepair) {
-			                Object.keys(window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES).forEach((key) =>
-			                    masterList.push({
-			                        key: key,
-			                        label: "" + key,
-			                        type: "Generic",
-			                        articleNumber: null
-			                    })
-			                );
-			
-			                Object.keys(window.SERVICE_DATA.FURNITURE_MINUTES).forEach((key) => {
-			                    const article = window.SERVICE_DATA.FURNITURE_ARTICLE_NUMBERS[key] || null;
-			                    masterList.push({
-			                        key: key,
-			                        label: key,
-			                        type: "IKEA",
-			                        articleNumber: article
-			                    });
-			                });
-			
-			            } else {
-			                Object.keys(window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES).forEach((key) =>
-			                    masterList.push({
-			                        key: key,
-			                        label: key,
-			                        type: "Generic",
-			                        articleNumber: null
-			                    })
-			                );
-			            }
-			
-			            const renderList = (filterText) => {
-			                listContainer.innerHTML = "";
-			                const term = filterText.toLowerCase().trim();
-			                const filtered = masterList.filter((item) => {
-			                    // search by name or article number
-			                    const matchesName = item.label.toLowerCase().includes(term);
-			                    const matchesArticle = item.articleNumber ? item.articleNumber.toLowerCase().includes(term) : false;
-			                    return matchesName || matchesArticle;
-			                });
-			                const displaySet = filtered.slice(0, 200); // limit for perf
-			
-			                if (displaySet.length === 0) {
-			                    listContainer.appendChild(
-			                        create("div", {
-			                            text: "No items found",
-			                            style: "padding:10px;"
-			                        })
-			                    );
-			                    return;
-			                }
-			
-			                displaySet.forEach((item) => {
-			                    let displayText = item.label;
-			                    if (item.articleNumber) {
-			                        displayText += ` (${item.articleNumber})`;
-			                    }
-			                    const row = create("div", {
-			                        class: "furniture-list-item",
-			                        text: displayText
-			                    });
-			
-			                    // --- CLICK LISTENER ---
-			                    row.addEventListener("click", () => {
-			                        // 1. Intercept PAX Custom Configuration
-			                        if (item.label === "PAX Wardrobe System (Custom Configuration)") {
-			                            renderPaxConfigurator(row); // Pass the clicked row so it renders underneath it
-			                            return;
-			                        }
-			
-			                        // 2. Standard Furniture Logic
-			                        let minutes = 60;
-			                        if (item.type === "IKEA") {
-			                            minutes = window.SERVICE_DATA.FURNITURE_MINUTES[item.key] || 60;
-			                        } else {
-			                            minutes = window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES[item.key] || 60;
-			                        }
-			
-			                        const entry = {
-			                            key: item.key,
-			                            label: item.label,
-			                            minutes,
-			                            isIkea: item.type === "IKEA",
-			                            articleNumber: item.articleNumber
-			                        };
-			                        State.furnitureItems.push(entry);
-			                        updateSelectedFurnitureUI(container, category, svc, info);
-			                        searchInput.value = "";
-			                        renderList("");
-			                        toast(`Added ${item.label}`);
-			                    });
-			
-			                    listContainer.appendChild(row);
-			                });
-			            };
-			
-			            renderList("");
-			            searchInput.addEventListener("input", (e) => renderList(e.target.value));
-			
-			            container.appendChild(
-			                create("h4", {
-			                    text: isRepair ? "Search Item to Repair" : "Search Item to Assemble"
-			                })
-			            );
-			            container.appendChild(searchInput);
-			            container.appendChild(listContainer);
-			
-			            const selectionWrapper = create("div", {
-			                id: "furniture-selection-wrapper"
-			            });
-			            container.appendChild(selectionWrapper);
-			            updateSelectedFurnitureUI(container, category, svc, info); // init wrapper
-			
-			            const back = create("button", {
-			                class: "back-button",
-			                text: "Back",
-			                type: "button"
-			            });
-			            back.addEventListener("click", () => {
-			                State.furnitureItems = []; // clear temp on back
-			                container.style.display = "none";
-			                handleCategorySelect(category);
-			            });
-			            container.appendChild(back);
-			
-			            // --- PAX CONFIGURATOR FUNCTION ---
-			            function renderPaxConfigurator(clickedElement) {
-			                enterFocusedMode();
-			                // Prevent opening multiple configurators
-			                if (document.getElementById('pax-config-wrapper')) return;
-			
-			                const wrapper = document.createElement('div');
-			                wrapper.id = 'pax-config-wrapper';
-			                wrapper.className = 'pax-configurator';
-			
-			                wrapper.innerHTML = `
-			                <h4 style="color: var(--accent); margin-bottom: 10px;">Configure PAX System</h4>
-			                
-			                <div class="pax-config-row">
-			                    <label>Number of Frames (Closet Units)</label>
-			                    <input type="number" id="pax-frames" min="1" max="10" value="1">
-			                </div>
-			
-			                <div class="pax-config-row">
-			                    <label>Door Type</label>
-			                    <select id="pax-doors">
-			                        <option value="hinged">Hinged Doors</option>
-			                        <option value="sliding">Sliding Doors (Pair)</option>
-			                        <option value="none">No Doors (Open Wardrobe)</option>
-			                    </select>
-			                </div>
-			
-			                <div class="pax-config-row">
-			                    <label>Interior Organizers & Lighting (Total Qty)</label>
-			                    <span style="font-size:0.75rem; color:#666; margin-bottom:4px;">Drawers, pull-out trays, shelves, clothes rails, integrated lighting</span>
-			                    <input type="number" id="pax-accessories" min="0" max="50" value="0">
-			                </div>
-			
-			                <button class="pax-action-btn" id="add-pax-btn">Add Configured PAX to List</button>
-			                <button class="pax-action-btn" id="cancel-pax-btn" style="background: #ccc; color: #2a2a2a;">Cancel</button>
-			            `;
-			
-			                // Insert directly below the clicked item in the list
-			                clickedElement.parentNode.insertBefore(wrapper, clickedElement.nextSibling);
-			
-			                // Handle Cancel
-			                document.getElementById('cancel-pax-btn').addEventListener('click', () => {
-			                    wrapper.remove();
-			                });
-			
-			                // Handle Add
-			                document.getElementById('add-pax-btn').addEventListener('click', () => {
-			                    const frames = parseInt(document.getElementById('pax-frames').value) || 1;
-			                    const doorType = document.getElementById('pax-doors').value;
-			                    const accessories = parseInt(document.getElementById('pax-accessories').value) || 0;
-			
-			                    // Calculate Time
-			                    let totalMinutes = 0;
-			                    let doorText = "";
-			
-			                    totalMinutes += (frames * 60);
-			
-			                    if (doorType === 'hinged') {
-			                        totalMinutes += (frames * 60);
-			                        doorText = "Hinged Doors";
-			                    } else if (doorType === 'sliding') {
-			                        totalMinutes += 100 + ((frames > 2 ? frames - 2 : 0) * 50);
-			                        doorText = "Sliding Doors";
-			                    } else {
-			                        doorText = "No Doors";
-			                    }
-			
-			                    totalMinutes += (accessories * 30);
-			
-			                    const customLabel = `PAX System: ${frames}x Frames, ${doorText}, ${accessories}x Accessories`;
-			
-			                    // Use State.furnitureItems to match your app's flow perfectly
-			                    const entry = {
-			                        key: "PAX_CUSTOM",
-			                        label: customLabel,
-			                        minutes: totalMinutes,
-			                        isIkea: true,
-			                        articleNumber: null
-			                    };
-			
-			                    State.furnitureItems.push(entry);
-			                    updateSelectedFurnitureUI(container, category, svc, info);
-			
-			                    // Reset the list/search just like a normal item addition
-			                    searchInput.value = "";
-			                    renderList("");
-			                    toast(`Added ${customLabel}`);
-			
-			                    wrapper.remove();
-			                });
-			            }
-			
-			            function updateSelectedFurnitureUI(container, category, svc, info) {
-			                const wrapper = container.querySelector("#furniture-selection-wrapper");
-			                if (!wrapper) return;
-			                wrapper.innerHTML = "";
-			
-			                if (State.furnitureItems.length > 0) {
-			                    const h5 = create("h5", {
-			                        text: "Selected Items:",
-			                        style: "margin-top:15px;"
-			                    });
-			                    wrapper.appendChild(h5);
-			
-			                    const ul = create("ul", {
-			                        class: "selected-furniture-list"
-			                    });
-			
-			                    State.furnitureItems.forEach((item, idx) => {
-			                        const li = create("li");
-			                        let displayLabel = item.label;
-			                        if (item.articleNumber) {
-			                            displayLabel += ` (${item.articleNumber})`;
-			                        }
-			                        li.appendChild(create("span", {
-			                            text: displayLabel
-			                        }));
-			                        const btn = create("button", {
-			                            text: "✕",
-			                            class: "remove-item"
-			                        });
-			                        btn.addEventListener("click", () => {
-			                            State.furnitureItems.splice(idx, 1);
-			                            updateSelectedFurnitureUI(container, category, svc, info);
-			                        });
-			                        li.appendChild(btn);
-			                        ul.appendChild(li);
-			                    });
-			                    wrapper.appendChild(ul);
-			
-			                    // Create the "Add to Cart" button
-			                    const addBtn = create("button", {
-			                        class: "book-more-button",
-			                        text: "Add Items to Cart",
-			                        style: "width:100%; margin-top:10px;"
-			                    });
-			
-			                    addBtn.addEventListener("click", () => {
-			                        const itemsMinutes = State.furnitureItems.map((fi) => fi.minutes);
-			                        const charge = computeFurnitureCharge(itemsMinutes);
-			                        const entry = {
-			                            id: `${category}-${svc}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-			                            category,
-			                            name: svc,
-			                            price: `$${charge.price.toFixed(2)}`,
-			                            icon: "🛋️",
-			                            detail: "Furniture Service",
-			                            notes: `Items: ${State.furnitureItems.map((f) => f.label).join(", ")}`,
-			                            furnitureItems: [...State.furnitureItems],
-			                            estimatedHours: charge.hours,
-			                            estimatedPrice: charge.price
-			                        };
-			
-			                        addToCart(entry);
-			                        State.furnitureItems = [];
-			                        container.style.display = "none";
-			
-			                        // Show service request section instead of categories
-			                        if (DOM.serviceRequestSection) {
-			                            DOM.serviceRequestSection.style.display = "block";
-			                        }
-			
-			                        // Update UI
-			                        updateserviceRequestUI();
-			                        updateFabVisibility();
-			                        persistCartPlain(State.serviceRequest);
-			                        toast("Furniture added to cart!");
-			                    });
-			
-			                    wrapper.appendChild(addBtn);
-			                }
-			            }
-			        }
-			
+                    function renderFurnitureSelection(container, category, svc, info) {
+  const isRepair = svc.toLowerCase().includes("repair");
+
+  // Search Input
+  const searchInput = create("input", {
+    type: "text",
+    class: "furniture-search-input",
+    placeholder: "Search by name or IKEA article number (e.g., 002.133.80)"
+  });
+  const listContainer = create("div", {
+    class: "furniture-list-container"
+  });
+
+  // Build Master List
+  let masterList = [];
+  if (!isRepair) {
+    Object.keys(window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES).forEach(
+      (key) =>
+        masterList.push({
+          key: key,
+          label: "" + key,
+          type: "Generic",
+          articleNumber: null
+        })
+    );
+
+    Object.keys(window.SERVICE_DATA.FURNITURE_MINUTES).forEach((key) => {
+      const article =
+        window.SERVICE_DATA.FURNITURE_ARTICLE_NUMBERS[key] || null;
+      masterList.push({
+        key: key,
+        label: key,
+        type: "IKEA",
+        articleNumber: article
+      });
+    });
+  } else {
+    Object.keys(window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES).forEach(
+      (key) =>
+        masterList.push({
+          key: key,
+          label: key,
+          type: "Generic",
+          articleNumber: null
+        })
+    );
+  }
+
+  const renderList = (filterText) => {
+    listContainer.innerHTML = "";
+    const term = filterText.toLowerCase().trim();
+    const filtered = masterList.filter((item) => {
+      // search by name or article number
+      const matchesName = item.label.toLowerCase().includes(term);
+      const matchesArticle = item.articleNumber
+        ? item.articleNumber.toLowerCase().includes(term)
+        : false;
+      return matchesName || matchesArticle;
+    });
+    const displaySet = filtered.slice(0, 200); // limit for perf
+
+    if (displaySet.length === 0) {
+      listContainer.appendChild(
+        create("div", {
+          text: "No items found",
+          style: "padding:10px;"
+        })
+      );
+      return;
+    }
+
+    displaySet.forEach((item) => {
+      let displayText = item.label;
+      if (item.articleNumber) {
+        displayText += ` (${item.articleNumber})`;
+      }
+      const row = create("div", {
+        class: "furniture-list-item",
+        text: displayText
+      });
+
+      // --- CLICK LISTENER ---
+      row.addEventListener("click", () => {
+        // 1. Intercept PAX Custom Configuration
+        if (item.label === "PAX Wardrobe System (Custom Configuration)") {
+          renderPaxConfigurator(row); // Pass the clicked row so it renders underneath it
+          return;
+        }
+
+        // 2. Standard Furniture Logic
+        let minutes = 60;
+        if (item.type === "IKEA") {
+          minutes = window.SERVICE_DATA.FURNITURE_MINUTES[item.key] || 60;
+        } else {
+          minutes =
+            window.SERVICE_DATA.GENERIC_FURNITURE_MINUTES[item.key] || 60;
+        }
+
+        const entry = {
+          key: item.key,
+          label: item.label,
+          minutes,
+          isIkea: item.type === "IKEA",
+          articleNumber: item.articleNumber
+        };
+        State.furnitureItems.push(entry);
+        updateSelectedFurnitureUI(container, category, svc, info);
+        searchInput.value = "";
+        renderList("");
+        toast(`Added ${item.label}`);
+      });
+
+      listContainer.appendChild(row);
+    });
+  };
+
+  renderList("");
+  searchInput.addEventListener("input", (e) => renderList(e.target.value));
+
+  container.appendChild(
+    create("h4", {
+      text: isRepair ? "Search Item to Repair" : "Search Item to Assemble"
+    })
+  );
+  container.appendChild(searchInput);
+  container.appendChild(listContainer);
+
+  const selectionWrapper = create("div", {
+    id: "furniture-selection-wrapper"
+  });
+  container.appendChild(selectionWrapper);
+  updateSelectedFurnitureUI(container, category, svc, info); // init wrapper
+
+  const back = create("button", {
+    class: "back-button",
+    text: "Back",
+    type: "button"
+  });
+  back.addEventListener("click", () => {
+    State.furnitureItems = []; // clear temp on back
+    container.style.display = "none";
+    handleCategorySelect(category);
+  });
+  container.appendChild(back);
+
+  // --- PAX CONFIGURATOR FUNCTION (unchanged, but keep inside) ---
+  function renderPaxConfigurator(clickedElement) {
+    enterFocusedMode();
+    // Prevent opening multiple configurators
+    if (document.getElementById("pax-config-wrapper")) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.id = "pax-config-wrapper";
+    wrapper.className = "pax-configurator";
+
+    wrapper.innerHTML = `
+                    <h4 style="color: var(--accent); margin-bottom: 10px;">Configure PAX System</h4>
+                    
+                    <div class="pax-config-row">
+                        <label>Number of Frames (Closet Units)</label>
+                        <input type="number" id="pax-frames" min="1" max="10" value="1">
+                    </div>
+
+                    <div class="pax-config-row">
+                        <label>Door Type</label>
+                        <select id="pax-doors">
+                            <option value="hinged">Hinged Doors</option>
+                            <option value="sliding">Sliding Doors (Pair)</option>
+                            <option value="none">No Doors (Open Wardrobe)</option>
+                        </select>
+                    </div>
+
+                    <div class="pax-config-row">
+                        <label>Interior Organizers & Lighting (Total Qty)</label>
+                        <span style="font-size:0.75rem; color:#666; margin-bottom:4px;">Drawers, pull-out trays, shelves, clothes rails, integrated lighting</span>
+                        <input type="number" id="pax-accessories" min="0" max="50" value="0">
+                    </div>
+
+                    <button class="pax-action-btn" id="add-pax-btn">Add Configured PAX to List</button>
+                    <button class="pax-action-btn" id="cancel-pax-btn" style="background: #ccc; color: #2a2a2a;">Cancel</button>
+                `;
+
+    // Insert directly below the clicked item in the list
+    clickedElement.parentNode.insertBefore(
+      wrapper,
+      clickedElement.nextSibling
+    );
+
+    // Handle Cancel
+    document
+      .getElementById("cancel-pax-btn")
+      .addEventListener("click", () => {
+        wrapper.remove();
+      });
+
+    // Handle Add
+    document.getElementById("add-pax-btn").addEventListener("click", () => {
+      const frames =
+        parseInt(document.getElementById("pax-frames").value) || 1;
+      const doorType = document.getElementById("pax-doors").value;
+      const accessories =
+        parseInt(document.getElementById("pax-accessories").value) || 0;
+
+      // Calculate Time
+      let totalMinutes = 0;
+      let doorText = "";
+
+      totalMinutes += frames * 60;
+
+      if (doorType === "hinged") {
+        totalMinutes += frames * 60;
+        doorText = "Hinged Doors";
+      } else if (doorType === "sliding") {
+        totalMinutes += 100 + (frames > 2 ? frames - 2 : 0) * 50;
+        doorText = "Sliding Doors";
+      } else {
+        doorText = "No Doors";
+      }
+
+      totalMinutes += accessories * 30;
+
+      const customLabel = `PAX System: ${frames}x Frames, ${doorText}, ${accessories}x Accessories`;
+
+      // Use State.furnitureItems to match your app's flow perfectly
+      const entry = {
+        key: "PAX_CUSTOM",
+        label: customLabel,
+        minutes: totalMinutes,
+        isIkea: true,
+        articleNumber: null
+      };
+
+      State.furnitureItems.push(entry);
+      updateSelectedFurnitureUI(container, category, svc, info);
+
+      // Reset the list/search just like a normal item addition
+      searchInput.value = "";
+      renderList("");
+      toast(`Added ${customLabel}`);
+
+      wrapper.remove();
+    });
+  }
+
+  function updateSelectedFurnitureUI(container, category, svc, info) {
+    const wrapper = container.querySelector("#furniture-selection-wrapper");
+    if (!wrapper) return;
+    wrapper.innerHTML = "";
+
+    if (State.furnitureItems.length > 0) {
+      const h5 = create("h5", {
+        text: "Selected Items:",
+        style: "margin-top:15px;"
+      });
+      wrapper.appendChild(h5);
+
+      const ul = create("ul", {
+        class: "selected-furniture-list"
+      });
+
+      State.furnitureItems.forEach((item, idx) => {
+        const li = create("li");
+        let displayLabel = item.label;
+        if (item.articleNumber) {
+          displayLabel += ` (${item.articleNumber})`;
+        }
+        li.appendChild(
+          create("span", {
+            text: displayLabel
+          })
+        );
+        const btn = create("button", {
+          text: "✕",
+          class: "remove-item"
+        });
+        btn.addEventListener("click", () => {
+          State.furnitureItems.splice(idx, 1);
+          updateSelectedFurnitureUI(container, category, svc, info);
+        });
+        li.appendChild(btn);
+        ul.appendChild(li);
+      });
+      wrapper.appendChild(ul);
+
+      // Create the "Add to Cart" button
+      const addBtn = create("button", {
+        class: "book-more-button",
+        text: "Add Items to Cart",
+        style: "width:100%; margin-top:10px;"
+      });
+
+      addBtn.addEventListener("click", () => {
+        const itemsMinutes = State.furnitureItems.map((fi) => fi.minutes);
+        const charge = computeFurnitureCharge(itemsMinutes);
+        const entry = {
+          id: `${category}-${svc}-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`,
+          category,
+          name: svc,
+          price: `$${charge.price.toFixed(2)}`,
+          icon: "🛋️",
+          detail: "Furniture Service",
+          notes: `Items: ${State.furnitureItems
+            .map((f) => f.label)
+            .join(", ")}`,
+          furnitureItems: [...State.furnitureItems],
+          estimatedHours: charge.hours,
+          estimatedPrice: charge.price
+        };
+
+        addToCart(entry);
+        State.furnitureItems = [];
+        container.style.display = "none";
+
+        // EXIT FOCUSED MODE TO REMOVE WHITE OVERLAY
+        exitFocusedMode();
+
+        // Show service request section instead of categories
+        if (DOM.serviceRequestSection) {
+          DOM.serviceRequestSection.style.display = "block";
+        }
+
+        // Update UI
+        updateserviceRequestUI();
+        updateFabVisibility();
+        persistCartPlain(State.serviceRequest);
+        toast("Furniture added to cart!");
+      });
+
+      wrapper.appendChild(addBtn);
+    }
+  }
+}
+
 			        function wireContactToolbar() {
 			            const contactBtn = q("#contactBtn");
 			            const contactToolbar = q("#contactToolbar");
@@ -7055,6 +7101,13 @@
 			                        "block" :
 			                        "none";
 			                }
+			                    updateManageVisitBtnVisibility();   // <-- ADD THIS LINE
+                            if (DOM.serviceRequestSection) {
+      DOM.serviceRequestSection.style.display =
+        State.serviceRequest && State.serviceRequest.length > 0
+          ? "block"
+          : "none";
+    }
 			                buildCategoryTiles();
 			                wireGlobal();
 			                updateserviceRequestUI();
@@ -7105,5 +7158,6 @@
 			    })(); // End of IIFE
 			}
 		</script>
+
 	</body>
 </html>
