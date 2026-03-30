@@ -5720,152 +5720,164 @@
                 }
 
                 function showCategories() {
-                    // EXIT FOCUSED MODE WHEN RETURNING TO CATEGORY TILES
-                    exitFocusedMode();
+  // EXIT FOCUSED MODE WHEN RETURNING TO CATEGORY TILES
+  exitFocusedMode();
 
-                    if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "grid";
-                    if (DOM.serviceRequestContainer)
-                        DOM.serviceRequestContainer.style.display = "none";
-                    if (DOM.servicedetailsContainer)
-                        DOM.servicedetailsContainer.style.display = "none";
-                    if (DOM.selectedSection) DOM.selectedSection.innerHTML = "";
-                    if (DOM.serviceRequestSection)
-                        DOM.serviceRequestSection.style.display = "none";
-                    // Close invoice overlay if open
-                    closeInvoiceOverlay();
-                }
+  if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "grid";
+  if (DOM.serviceRequestContainer)
+    DOM.serviceRequestContainer.style.display = "none";
+  if (DOM.servicedetailsContainer)
+    DOM.servicedetailsContainer.style.display = "none";
+  if (DOM.selectedSection) DOM.selectedSection.innerHTML = "";
+  if (DOM.serviceRequestSection)
+    DOM.serviceRequestSection.style.display = "none";
+  // Close invoice overlay if open
+  closeInvoiceOverlay();
+
+  // RESTORE MANAGE VISIT BUTTON VISIBILITY (hidden only if cart has items)
+  updateManageVisitBtnVisibility();
+}
 
                 function handleCategorySelect(category) {
-                    try {
-                        if (!category) return;
-                        // ENTER FOCUSED MODE IMMEDIATELY ON CATEGORY TAP
-                        enterFocusedMode();
+  try {
+    if (!category) return;
 
-                        // Close invoice overlay if open
-                        closeInvoiceOverlay();
-                        if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
-                        const sel = DOM.selectedSection;
-                        if (!sel) return;
-                        // Clear existing content safely
-                        while (sel.firstChild) sel.removeChild(sel.firstChild);
-                        sel.appendChild(
-                            create("h3", {
-                                text: `${category} Services`
-                            })
-                        );
-                        const gridBox = create("div", {
-                            class: "service-item-grid"
-                        });
-                        const cat = window.SERVICE_DATA.serviceData[category] || null;
-                        if (!cat) {
-                            gridBox.appendChild(
-                                create("p", {
-                                    text: "No services for this category."
-                                })
-                            );
-                            sel.appendChild(gridBox);
-                            return;
-                        }
-                        Object.keys(cat).forEach((svc) => {
-                            const info = cat[svc];
-                            const card = create("div", {
-                                class: "service-item-card",
-                                tabindex: "0",
-                                role: "button",
-                                "data-service": svc,
-                                "aria-label": `Select ${svc} service`
-                            });
-                            card.appendChild(
-                                create("div", {
-                                    class: "service-item-icon",
-                                    text: info.icon || "🔧"
-                                })
-                            );
-                            card.appendChild(
-                                create("h4", {
-                                    text: svc
-                                })
-                            );
-                            card.appendChild(
-                                create("p", {
-                                    text: info.description || ""
-                                })
-                            );
-                            card.appendChild(
-                                create("div", {
-                                    class: "service-price",
-                                    text: info.price || ""
-                                })
-                            );
-                            // Add click event
-                            card.addEventListener(
-                                "click",
-                                (ev) => {
-                                    ev.preventDefault();
-                                    ev.stopPropagation();
-                                    showServiceDetails(category, svc);
-                                }, {
-                                    passive: false
-                                }
-                            );
-                            // Add keyboard support
-                            card.addEventListener("keydown", (ev) => {
-                                if (ev.key === "Enter" || ev.key === " ") {
-                                    ev.preventDefault();
-                                    showServiceDetails(category, svc);
-                                }
-                            });
-                            // Add touch support
-                            card.addEventListener(
-                                "touchstart",
-                                (ev) => {
-                                    ev.preventDefault();
-                                    ev.stopPropagation();
-                                    card.classList.add("tap-animate");
-                                }, {
-                                    passive: false
-                                }
-                            );
-                            card.addEventListener(
-                                "touchend",
-                                (ev) => {
-                                    ev.preventDefault();
-                                    ev.stopPropagation();
-                                    card.classList.remove("tap-animate");
-                                    showServiceDetails(category, svc);
-                                }, {
-                                    passive: false
-                                }
-                            );
-                            gridBox.appendChild(card);
-                        });
-                        sel.appendChild(gridBox);
-                        const back = create("button", {
-                            class: "back-button",
-                            text: "Back to Categories",
-                            type: "button"
-                        });
-                        back.addEventListener(
-                            "click",
-                            () => {
-                                showCategories();
-                            }, {
-                                passive: true
-                            }
-                        );
-                        sel.appendChild(back);
-                        if (DOM.serviceRequestContainer)
-                            DOM.serviceRequestContainer.style.display = "block";
-                        if (DOM.servicedetailsContainer)
-                            DOM.servicedetailsContainer.style.display = "none";
-                        sel.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start"
-                        });
-                    } catch (e) {
-                        console.error("Error handling category select:", e);
-                    }
-                }
+    // HIDE THE MANAGE VISIT BUTTON WHEN CATEGORY TILE IS TAPPED
+    const manageBtn = q("#manageVisitBtn");
+    if (manageBtn) manageBtn.style.display = "none";
+
+    // ENTER FOCUSED MODE IMMEDIATELY ON CATEGORY TAP
+    enterFocusedMode();
+
+    // Close invoice overlay if open
+    closeInvoiceOverlay();
+    if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
+    const sel = DOM.selectedSection;
+    if (!sel) return;
+    // Clear existing content safely
+    while (sel.firstChild) sel.removeChild(sel.firstChild);
+    sel.appendChild(
+      create("h3", {
+        text: `${category} Services`
+      })
+    );
+    const gridBox = create("div", {
+      class: "service-item-grid"
+    });
+    const cat = window.SERVICE_DATA.serviceData[category] || null;
+    if (!cat) {
+      gridBox.appendChild(
+        create("p", {
+          text: "No services for this category."
+        })
+      );
+      sel.appendChild(gridBox);
+      return;
+    }
+    Object.keys(cat).forEach((svc) => {
+      const info = cat[svc];
+      const card = create("div", {
+        class: "service-item-card",
+        tabindex: "0",
+        role: "button",
+        "data-service": svc,
+        "aria-label": `Select ${svc} service`
+      });
+      card.appendChild(
+        create("div", {
+          class: "service-item-icon",
+          text: info.icon || "🔧"
+        })
+      );
+      card.appendChild(
+        create("h4", {
+          text: svc
+        })
+      );
+      card.appendChild(
+        create("p", {
+          text: info.description || ""
+        })
+      );
+      card.appendChild(
+        create("div", {
+          class: "service-price",
+          text: info.price || ""
+        })
+      );
+      // Add click event
+      card.addEventListener(
+        "click",
+        (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          showServiceDetails(category, svc);
+        },
+        {
+          passive: false
+        }
+      );
+      // Add keyboard support
+      card.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          showServiceDetails(category, svc);
+        }
+      });
+      // Add touch support
+      card.addEventListener(
+        "touchstart",
+        (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          card.classList.add("tap-animate");
+        },
+        {
+          passive: false
+        }
+      );
+      card.addEventListener(
+        "touchend",
+        (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          card.classList.remove("tap-animate");
+          showServiceDetails(category, svc);
+        },
+        {
+          passive: false
+        }
+      );
+      gridBox.appendChild(card);
+    });
+    sel.appendChild(gridBox);
+    const back = create("button", {
+      class: "back-button",
+      text: "Back to Categories",
+      type: "button"
+    });
+    back.addEventListener(
+      "click",
+      () => {
+        showCategories();
+      },
+      {
+        passive: true
+      }
+    );
+    sel.appendChild(back);
+    if (DOM.serviceRequestContainer)
+      DOM.serviceRequestContainer.style.display = "block";
+    if (DOM.servicedetailsContainer)
+      DOM.servicedetailsContainer.style.display = "none";
+    sel.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  } catch (e) {
+    console.error("Error handling category select:", e);
+  }
+}
 
                 function showServiceDetails(category, svc) {
                     try {
@@ -6920,5 +6932,7 @@
             })(); // End of IIFE
         }
     </script>
+
 </body>
+
 </html>
