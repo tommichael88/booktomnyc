@@ -2575,6 +2575,34 @@
             -webkit-text-fill-color: transparent;
             text-shadow: 0 2px 8px rgba(222, 0, 0, 0.3);
         }
+        
+        /* Pagination controls */
+.invoice-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-top: 1px solid #eee;
+    margin-top: 10px;
+}
+.pagination-btn {
+    background: #de0000;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 24px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+.pagination-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+.pagination-info {
+    font-size: 0.9rem;
+    color: #555;
+}
 
         .invoice-action-buttons {
             display: grid;
@@ -4326,6 +4354,8 @@
                     showCategoriesBtn: null
                 };
                 const STORAGE_KEY = "booktom_cart_v1";
+                let invoiceCurrentPage = 1;
+                const ITEMS_PER_PAGE = 3;   // adjust as needed
 
                 const Security = {
                     sanitizeHTML(input) {
@@ -5123,6 +5153,33 @@
 			    transition: transform 0.1s ease;
 			}
 			
+			/* Pagination controls */
+.invoice-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-top: 1px solid #eee;
+    margin-top: 10px;
+}
+.pagination-btn {
+    background: #de0000;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 24px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+.pagination-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+.pagination-info {
+    font-size: 0.9rem;
+    color: #555;
+}
 			/* Better touch targets for mobile */
 			@media (max-width: 768px) {
 			    .close-btn, .invoice-remove-service-btn {
@@ -5169,6 +5226,7 @@
                 function openInvoiceOverlay() {
                     const ov = ensureInvoiceOverlayExists();
                     if (!ov) return;
+                    invoiceCurrentPage = 1;
                     ov.classList.add("open");
                     document.body.style.overflow = "hidden";
                     renderInvoiceOverlay();
@@ -5221,224 +5279,145 @@
                     }
                 }
 
-                function renderInvoiceOverlay() {
-                    const ov = DOM.invoiceOverlay;
-                    if (!ov) return;
-                    const list = DOM.invoiceServiceList;
-                    const totalEl = DOM.invoiceTotal;
-                    const countEl = DOM.serviceCount;
-                    const checkoutBtn = DOM.checkoutBtn;
+function renderInvoiceOverlay() {
+    const ov = DOM.invoiceOverlay;
+    if (!ov) return;
+    const list = DOM.invoiceServiceList;
+    const totalEl = DOM.invoiceTotal;
+    const countEl = DOM.serviceCount;
+    const checkoutBtn = DOM.checkoutBtn;
 
-                    list.innerHTML = "";
-                    let total = 0;
+    // Get all services
+    const allServices = State.serviceRequest;
+    const totalItems = allServices.length;
 
-                    State.serviceRequest.forEach((svc) => {
-                        const item = create("div", {
-                            class: "invoice-service-item"
-                        });
+    // Compute pagination
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (invoiceCurrentPage > totalPages && totalPages > 0) {
+        invoiceCurrentPage = totalPages;
+    }
+    if (totalPages === 0) invoiceCurrentPage = 1;
 
-                        item.appendChild(
-                            create("div", {
-                                class: "invoice-service-icon",
-                                text: svc.icon || "🔧"
-                            })
-                        );
+    // Slice services for current page
+    const startIdx = (invoiceCurrentPage - 1) * ITEMS_PER_PAGE;
+    const pageServices = allServices.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
-                        const tw = create("div", {
-                            class: "invoice-service-text"
-                        });
+    // Clear and rebuild the service list
+    list.innerHTML = "";
 
-                        tw.appendChild(create("h4", {
-                            text: svc.name
-                        }));
-                        tw.appendChild(
-                            create("div", {
-                                class: "invoice-service-detail",
-                                text: svc.detail || ""
-                            })
-                        );
+    // ✅ Calculate total across ALL services (not just current page)
+    const total = allServices.reduce((sum, svc) => sum + parsePriceToInt(svc.price), 0);
 
-                        if (svc.notes) {
-                            tw.appendChild(
-                                create("div", {
-                                    class: "invoice-service-notes",
-                                    text: svc.notes
-                                })
-                            );
-                        }
+    // Render only current page services
+    pageServices.forEach((svc) => {
+        const item = createInvoiceServiceItem(svc);
+        list.appendChild(item);
+    });
 
-                        // Handle furniture items if present
-                        if (svc.furnitureItems && svc.furnitureItems.length > 0) {
-                            const fwrap = create("div", {
-                                class: "requested-service-furniture"
-                            });
-                            svc.furnitureItems.forEach((fi, idx) => {
-                                const fitem = create("span", {
-                                    class: "f-item"
-                                });
+    safeText(countEl, String(totalItems));
+    safeText(totalEl, `$${total}.00`);
 
-                                // Create remove button first
-                                const rem = create("button", {
-                                    type: "button",
-                                    text: "✕",
-                                    class: "remove-furniture-btn"
-                                });
+    // --- Pagination controls (only if more than one page) ---
+    let paginationDiv = ov.querySelector('#invoicePagination');
+    if (!paginationDiv) {
+        paginationDiv = create('div', { id: 'invoicePagination', class: 'invoice-pagination' });
+        // Insert after the service list
+        list.parentNode.insertBefore(paginationDiv, list.nextSibling);
+    }
 
-                                // Add remove button before furniture item label
-                                fitem.appendChild(rem);
+    if (totalPages > 1) {
+        paginationDiv.style.display = 'flex';
+        paginationDiv.innerHTML = `
+            <button class="pagination-btn" id="prevPageBtn" ${invoiceCurrentPage === 1 ? 'disabled' : ''}>&lt; Prev</button>
+            <span class="pagination-info">Page ${invoiceCurrentPage} of ${totalPages}</span>
+            <button class="pagination-btn" id="nextPageBtn" ${invoiceCurrentPage === totalPages ? 'disabled' : ''}>Next &gt;</button>
+        `;
 
-                                // Add event listener for the remove button
-                                rem.addEventListener("click", () => {
-                                    removeFurnitureItemFromService(svc.id, idx);
-                                    // Immediately update the overlay
-                                    renderInvoiceOverlay();
-                                    updateserviceRequestUI();
-                                });
+        const prevBtn = paginationDiv.querySelector('#prevPageBtn');
+        const nextBtn = paginationDiv.querySelector('#nextPageBtn');
 
-                                // Add furniture item label after the remove button
-                                fitem.appendChild(create("span", {
-                                    text: fi.label
-                                }));
-
-                                fwrap.appendChild(fitem);
-                            });
-                            tw.appendChild(fwrap);
-                        }
-
-                        item.appendChild(tw);
-                        item.appendChild(
-                            create("div", {
-                                class: "invoice-service-price",
-                                text: svc.price || "$0"
-                            })
-                        );
-
-                        // FIX: Add immediate visual feedback and update
-                        const rem = create("button", {
-                            class: "invoice-remove-service-btn",
-                            text: "✕",
-                            type: "button"
-                        });
-
-                        rem.addEventListener("click", () => {
-                            // Add visual feedback
-                            rem.style.transform = "scale(0.9)";
-                            setTimeout(() => {
-                                rem.style.transform = "";
-                            }, 100);
-
-                            // Remove service and immediately update UI
-                            removeServiceFromCart(svc.id);
-
-                            // Re-render the overlay immediately
-                            renderInvoiceOverlay();
-
-                            // Also update main UI
-                            updateserviceRequestUI();
-
-                            toast("Service removed from cart");
-                        });
-
-                        item.appendChild(rem);
-                        list.appendChild(item);
-                        total += parsePriceToInt(svc.price);
-                    });
-
-                    safeText(countEl, String(State.serviceRequest.length));
-                    safeText(totalEl, `$${total}.00`);
-
-                    // Wire Clear All button in overlay
-                    const clearBtn = ov.querySelector('#clearAllServicesBtn');
-                    if (clearBtn) {
-                        // Remove existing listeners
-                        const newClearBtn = clearBtn.cloneNode(true);
-                        clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
-
-                        // In renderInvoiceOverlay function, update the Clear All button event listener:
-                        newClearBtn.addEventListener("click", () => {
-                            // Visual feedback
-                            newClearBtn.style.opacity = "0.7";
-                            setTimeout(() => {
-                                newClearBtn.style.opacity = "";
-                            }, 200);
-
-                            State.serviceRequest = [];
-                            persistCartPlain(State.serviceRequest);
-                            updateserviceRequestUI();
-                            updateFabVisibility();
-
-                            // Close the overlay and show categories
-                            closeInvoiceOverlay();
-                            showCategories();
-
-                            toast("All services cleared from cart");
-                        });
-                    }
-
-                    // Wire Close button in overlay
-                    const closeBtn = ov.querySelector('#closeInvoiceOverlay');
-                    if (closeBtn) {
-                        // Remove existing listeners
-                        const newCloseBtn = closeBtn.cloneNode(true);
-                        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-
-                        newCloseBtn.addEventListener("click", () => {
-                            closeInvoiceOverlay();
-                            restorePriorDisplays();
-                        });
-                    }
-
-                    // Wire More Services button
-                    const showCategoriesBtn = ov.querySelector('#showCategoriesBtn');
-                    if (showCategoriesBtn) {
-                        showCategoriesBtn.onclick = () => {
-                            closeInvoiceOverlay();
-                            showCategories();
-                        };
-                    }
-
-                    // CLICKWRAP TERMS LOGIC
-                    const oldTerms = ov.querySelector(".terms-wrap");
-                    if (oldTerms) oldTerms.remove();
-
-                    if (State.serviceRequest.length > 0) {
-                        const termsWrap = create("div", {
-                            class: "terms-wrap"
-                        });
-                        const checkbox = create("input", {
-                            type: "checkbox",
-                            id: "termsCheck"
-                        });
-                        const label = create("label", {
-                            for: "termsCheck",
-                            style: "cursor:pointer"
-                        });
-                        label.innerHTML =
-                            'I have reviewed and agree to the <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" target="_blank" style="text-decoration:underline;">Service Agreement</a>.';
-                        termsWrap.appendChild(checkbox);
-                        termsWrap.appendChild(label);
-
-                        const actionBtns =
-                            ov.querySelector(".action-buttons") ||
-                            ov.querySelector(".invoice-action-buttons");
-                        if (actionBtns)
-                            actionBtns.parentNode.insertBefore(termsWrap, actionBtns);
-
-                        if (checkoutBtn) {
-                            checkoutBtn.disabled = true;
-                            checkbox.addEventListener(
-                                "change",
-                                (e) => (checkoutBtn.disabled = !e.target.checked)
-                            );
-                            checkoutBtn.onclick = () => {
-                                if (!checkbox.checked) return toast("Please agree to the terms.");
-                                toast("Proceeding to booking...");
-                                // Implement final checkout navigation here
-                            };
-                        }
-                    }
+        if (prevBtn) {
+            prevBtn.onclick = () => {
+                if (invoiceCurrentPage > 1) {
+                    invoiceCurrentPage--;
+                    renderInvoiceOverlay();
                 }
+            };
+        }
+        if (nextBtn) {
+            nextBtn.onclick = () => {
+                if (invoiceCurrentPage < totalPages) {
+                    invoiceCurrentPage++;
+                    renderInvoiceOverlay();
+                }
+            };
+        }
+    } else {
+        paginationDiv.style.display = 'none';
+    }
 
+    // --- Clear All button (unchanged from original) ---
+    const clearBtn = ov.querySelector('#clearAllServicesBtn');
+    if (clearBtn) {
+        const newClearBtn = clearBtn.cloneNode(true);
+        clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
+        newClearBtn.addEventListener("click", () => {
+            newClearBtn.style.opacity = "0.7";
+            setTimeout(() => newClearBtn.style.opacity = "", 200);
+            State.serviceRequest = [];
+            persistCartPlain(State.serviceRequest);
+            updateserviceRequestUI();
+            updateFabVisibility();
+            closeInvoiceOverlay();
+            showCategories();
+            toast("All services cleared from cart");
+        });
+    }
+
+    // --- Close button (unchanged) ---
+    const closeBtn = ov.querySelector('#closeInvoiceOverlay');
+    if (closeBtn) {
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.addEventListener("click", () => {
+            closeInvoiceOverlay();
+            restorePriorDisplays();
+        });
+    }
+
+    // --- More Services button (unchanged) ---
+    const showCategoriesBtn = ov.querySelector('#showCategoriesBtn');
+    if (showCategoriesBtn) {
+        showCategoriesBtn.onclick = () => {
+            closeInvoiceOverlay();
+            showCategories();
+        };
+    }
+
+    // --- Terms & Conditions (unchanged) ---
+    const oldTerms = ov.querySelector(".terms-wrap");
+    if (oldTerms) oldTerms.remove();
+
+    if (State.serviceRequest.length > 0) {
+        const termsWrap = create("div", { class: "terms-wrap" });
+        const checkbox = create("input", { type: "checkbox", id: "termsCheck" });
+        const label = create("label", { for: "termsCheck", style: "cursor:pointer" });
+        label.innerHTML = 'I have reviewed and agree to the <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" target="_blank" style="text-decoration:underline;">Service Agreement</a>.';
+        termsWrap.appendChild(checkbox);
+        termsWrap.appendChild(label);
+        const actionBtns = ov.querySelector(".action-buttons") || ov.querySelector(".invoice-action-buttons");
+        if (actionBtns) actionBtns.parentNode.insertBefore(termsWrap, actionBtns);
+        if (checkoutBtn) {
+            checkoutBtn.disabled = true;
+            checkbox.addEventListener("change", (e) => checkoutBtn.disabled = !e.target.checked);
+            checkoutBtn.onclick = () => {
+                if (!checkbox.checked) return toast("Please agree to the terms.");
+                toast("Proceeding to booking...");
+                // Implement final checkout navigation here
+            };
+        }
+    }
+}
                 function createInvoiceServiceItem(svc) {
                     const el = create("div", {
                         class: "invoice-service-item"
@@ -5612,6 +5591,9 @@
                     updateserviceRequestUI();
                     updateFabVisibility();
                     persistCartPlain(State.serviceRequest);
+                    if (DOM.invoiceOverlay && DOM.invoiceOverlay.classList.contains('open')) {
+    renderInvoiceOverlay();
+}
                 }
 
                 function removeServiceFromCart(id) {
