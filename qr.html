@@ -5476,38 +5476,42 @@
                         };
                     }
 
-                    // --- Terms & Conditions (unchanged) ---
-                    const oldTerms = ov.querySelector(".terms-wrap");
-                    if (oldTerms) oldTerms.remove();
+    // Remove any existing terms wrapper to avoid duplicates
+const oldTerms = ov.querySelector(".terms-wrap");
+if (oldTerms) oldTerms.remove();
 
-                    if (State.serviceRequest.length > 0) {
-                        const termsWrap = create("div", {
-                            class: "terms-wrap"
-                        });
-                        const checkbox = create("input", {
-                            type: "checkbox",
-                            id: "termsCheck"
-                        });
-                        const label = create("label", {
-                            for: "termsCheck",
-                            style: "cursor:pointer"
-                        });
-                        label.innerHTML = 'I have reviewed and agree to the <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" target="_blank" style="text-decoration:underline;">Service Agreement</a>.';
-                        termsWrap.appendChild(checkbox);
-                        termsWrap.appendChild(label);
-                        const actionBtns = ov.querySelector(".action-buttons") || ov.querySelector(".invoice-action-buttons");
-                        if (actionBtns) actionBtns.parentNode.insertBefore(termsWrap, actionBtns);
-                        if (checkoutBtn) {
-                            checkoutBtn.disabled = true;
-                            checkbox.addEventListener("change", (e) => checkoutBtn.disabled = !e.target.checked);
-                            checkoutBtn.onclick = () => {
-                                if (!checkbox.checked) return toast("Please agree to the terms.");
-                                toast("Proceeding to booking...");
-                                // Implement final checkout navigation here
-                            };
-                        }
-                    }
-                }
+if (State.serviceRequest.length > 0) {
+    const termsWrap = document.createElement("div");
+    termsWrap.className = "terms-wrap";
+    termsWrap.style.margin = "16px 0";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "termsCheckbox";
+
+    const label = document.createElement("label");
+    label.htmlFor = "termsCheckbox";
+    label.style.cursor = "pointer";
+    label.innerHTML = `I agree to the <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" target="_blank" style="text-decoration:underline;font-weight:700;">Service Agreement</a>. Checking this box is my electronic signature and confirms that I have had the opportunity to review the terms and that I agree to be legally bound by them.`;
+
+    termsWrap.appendChild(checkbox);
+    termsWrap.appendChild(label);
+
+    // Insert before action buttons
+    const actionBtns = ov.querySelector(".action-buttons") || ov.querySelector(".invoice-action-buttons");
+    if (actionBtns) actionBtns.parentNode.insertBefore(termsWrap, actionBtns);
+
+    if (checkoutBtn) {
+        checkoutBtn.disabled = true;
+        checkbox.addEventListener("change", (e) => checkoutBtn.disabled = !e.target.checked);
+        checkoutBtn.onclick = () => {
+            if (!checkbox.checked) return toast("Please agree to the terms.");
+            toast("Proceeding to booking...");
+            // Proceed with booking
+        };
+    }
+}
+}
 
                 function createInvoiceServiceItem(svc) {
                     const el = create("div", {
