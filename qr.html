@@ -4580,7 +4580,7 @@
 
                     (async function loadAndInit() {
                         try {
-                            const response = await fetch('https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/services.json');
+                            const response = await fetch('https://tommichael88.github.io/booktomnyc/services.json');
                             if (!response.ok) throw new Error(`HTTP ${response.status}`);
                             const data = await response.json();
                             window.SERVICE_DATA = data;
@@ -4612,104 +4612,90 @@
                         return serviceInfo.materialsIncluded ? '📦' : '';
                     }
 
-
                     function showServiceDetailsModal(serviceName, serviceInfo, category) {
-                        // remove existing modal
-                        if (currentModal) currentModal.remove();
+    if (currentModal) currentModal.remove();
 
-                        const modal = document.createElement('div');
-                        modal.className = 'service-detail-modal';
-                        modal.innerHTML = `
-    <div class="modal-content">
-      <span class="modal-close">&times;</span>
-      <h3>${escapeHtml(serviceName)}</h3>
-      <p><strong>Price:</strong> ${serviceInfo.price || 'N/A'}</p>
-      <p><strong>Description:</strong> ${serviceInfo.description || 'No additional details provided.'}</p>
-      ${serviceInfo.estimatedHours ? `<p><strong>Est. time:</strong> ~${serviceInfo.estimatedHours} hr</p>` : ''}
-      ${serviceInfo.materialsIncluded ? '<p><strong>✓ Materials included</strong></p>' : ''}
-      <button class="book-more-button" style="margin-top:1rem;" id="modalAddToCart">Add to Cart</button>
-    </div>
-  `;
-                        document.body.appendChild(modal);
-                        currentModal = modal;
-                        modal.classList.add('active');
+    const modal = document.createElement('div');
+    modal.className = 'service-detail-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h3>${escapeHtml(serviceName)}</h3>
+            <p><strong>Price:</strong> ${serviceInfo.price || 'N/A'}</p>
+            <p><strong>Description:</strong> ${serviceInfo.description || 'No additional details provided.'}</p>
+            ${serviceInfo.estimatedHours ? `<p><strong>Est. time:</strong> ~${serviceInfo.estimatedHours} hr</p>` : ''}
+            ${serviceInfo.materialsIncluded ? '<p><strong>✓ Materials included</strong></p>' : ''}
+            <button class="book-more-button" style="margin-top:1rem;" id="modalAddToCart">Add to Cart</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    currentModal = modal;
+    modal.classList.add('active');
 
-                        const closeModal = () => modal.remove();
-                        modal.querySelector('.modal-close').addEventListener('click', closeModal);
-                        modal.addEventListener('click', (e) => {
-                            if (e.target === modal) closeModal();
-                        });
+    const closeModal = () => modal.remove();
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-                        // --- Direct Add to Cart logic ---
-                        const addBtn = modal.querySelector('#modalAddToCart');
-                        addBtn.addEventListener('click', () => {
-                            // Determine if hourly and calculate price
-                            let finalPrice = serviceInfo.price;
-                            let selectedHours = 1;
-                            let isHourly = serviceInfo.price && serviceInfo.price.includes('/hour');
-                            let pricePerHour = 0;
-                            if (isHourly) {
-                                const match = serviceInfo.price.match(/(\d+(?:\.\d+)?)/);
-                                if (match) pricePerHour = parseFloat(match[1]);
-                                let hourSelection = serviceInfo.hourSelection || "prompt";
-                                let defaultHours = serviceInfo.defaultHours || 1;
-                                if (hourSelection === "hidden") {
-                                    selectedHours = defaultHours;
-                                } else if (hourSelection === "optional") {
-                                    // You could add a small inline selector in the modal, or just use default
-                                    selectedHours = defaultHours;
-                                } else {
-                                    // Prompt – you could add a selector inside the modal, but for simplicity use default
-                                    selectedHours = defaultHours;
-                                }
-                                finalPrice = `$${(pricePerHour * selectedHours).toFixed(2)}`;
-                            }
+    const addBtn = modal.querySelector('#modalAddToCart');
+    addBtn.addEventListener('click', () => {
+        let finalPrice = serviceInfo.price;
+        let selectedHours = 1;
+        let isHourly = serviceInfo.price && serviceInfo.price.includes('/hour');
+        let pricePerHour = 0;
+        if (isHourly) {
+            const match = serviceInfo.price.match(/(\d+(?:\.\d+)?)/);
+            if (match) pricePerHour = parseFloat(match[1]);
+            let hourSelection = serviceInfo.hourSelection || "prompt";
+            let defaultHours = serviceInfo.defaultHours || 1;
+            if (hourSelection === "hidden") {
+                selectedHours = defaultHours;
+            } else if (hourSelection === "optional") {
+                selectedHours = defaultHours;
+            } else {
+                selectedHours = defaultHours;
+            }
+            finalPrice = `$${(pricePerHour * selectedHours).toFixed(2)}`;
+        }
 
-                            // Create cart entry (same structure as showServiceDetails)
-                            const entry = {
-                                id: `${category}-${serviceName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                                category: category,
-                                name: serviceName,
-                                price: finalPrice,
-                                icon: serviceInfo.icon || "🔧",
-                                detail: serviceInfo.detail || "Standard Service",
-                                notes: serviceInfo.description || "No details provided",
-                                furnitureItems: [],
-                                estimatedHours: isHourly ? selectedHours : 0,
-                                estimatedPrice: isHourly ? pricePerHour : 0,
-                                selectedHours: isHourly ? selectedHours : undefined
-                            };
+        const entry = {
+            id: `${category}-${serviceName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            category: category,
+            name: serviceName,
+            price: finalPrice,
+            icon: serviceInfo.icon || "🔧",
+            detail: serviceInfo.detail || "Standard Service",
+            notes: serviceInfo.description || "No details provided",
+            furnitureItems: [],
+            estimatedHours: isHourly ? selectedHours : 0,
+            estimatedPrice: isHourly ? pricePerHour : 0,
+            selectedHours: isHourly ? selectedHours : undefined
+        };
 
-                            // If the service requires furniture selection, we cannot add directly from modal.
-                            // In that case, fall back to the normal flow (or show a message).
-                            if (serviceInfo.requiresFurnitureSelection) {
-                                toast("Please select furniture items first.");
-                                closeModal();
-                                handleCategorySelect(category);
-                                setTimeout(() => {
-                                    const serviceCards = document.querySelectorAll('.service-item-card');
-                                    for (let card of serviceCards) {
-                                        if (card.textContent.includes(serviceName)) {
-                                            card.click();
-                                            break;
-                                        }
-                                    }
-                                }, 100);
-                                return;
-                            }
-
-                            // Add to cart
-                            addToCart(entry);
-                            closeModal();
-
-                            // Show the service request section and update UI
-                            if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "block";
-                            updateserviceRequestUI();
-                            updateFabVisibility();
-                            persistCartPlain(State.serviceRequest);
-                            toast(`${serviceName} added to cart!`);
-                        });
+        if (serviceInfo.requiresFurnitureSelection) {
+            toast("Please select furniture items first.");
+            closeModal();
+            handleCategorySelect(category);
+            setTimeout(() => {
+                const serviceCards = document.querySelectorAll('.service-item-card');
+                for (let card of serviceCards) {
+                    if (card.textContent.includes(serviceName)) {
+                        card.click();
+                        break;
                     }
+                }
+            }, 100);
+            return;
+        }
+
+        addToCart(entry);
+        closeModal();
+        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "block";
+        updateserviceRequestUI();
+        updateFabVisibility();
+        persistCartPlain(State.serviceRequest);
+        toast(`${serviceName} added to cart!`);
+    });
+}
 
                     function escapeHtml(str) {
                         if (!str) return '';
@@ -5150,16 +5136,11 @@
                         const tw = create("div", {
                             class: "invoice-service-text"
                         });
-                        const invNameSpan = create("h4", {
-                            text: svc.name
-                        });
-                        const invPriceType = svc.price && svc.price.includes('/hour') ? '⏰' : '🏷️';
-                        const invEmojiSpan = create("span", {
-                            class: "price-type-emojii",
-                            text: invPriceType
-                        });
-                        invNameSpan.appendChild(invEmojiSpan);
-                        tw.appendChild(invNameSpan);
+                        const invNameSpan = create("h4", { text: svc.name });
+const invPriceType = svc.price && svc.price.includes('/hour') ? '⏰' : '🏷️';
+const invEmojiSpan = create("span", { class: "price-type-emojii", text: invPriceType });
+invNameSpan.appendChild(invEmojiSpan);
+tw.appendChild(invNameSpan);
                         tw.appendChild(
                             create("div", {
                                 class: "invoice-service-detail",
@@ -5353,16 +5334,11 @@
                                 const tw = create("div", {
                                     class: "requested-service-text"
                                 });
-                                const nameSpan = create("h4", {
-                                    text: svc.name
-                                });
-                                const priceType = svc.price && svc.price.includes('/hour') ? '⏰' : '🏷️';
-                                const emojiSpan = create("span", {
-                                    class: "price-type-emojii",
-                                    text: priceType
-                                });
-                                nameSpan.appendChild(emojiSpan);
-                                tw.appendChild(nameSpan);
+                                const nameSpan = create("h4", { text: svc.name });
+const priceType = svc.price && svc.price.includes('/hour') ? '⏰' : '🏷️';
+const emojiSpan = create("span", { class: "price-type-emojii", text: priceType });
+nameSpan.appendChild(emojiSpan);
+tw.appendChild(nameSpan);
                                 tw.appendChild(
                                     create("div", {
                                         class: "service-detail",
@@ -5562,208 +5538,144 @@
                     // ==========================================
                     // RECURSIVE DYNAMIC NAVIGATION ENGINE
                     // ==========================================
+                    
                     const Navigation = {
-                        pathStack: [],
+    pathStack: [],
 
-                        goBack(categoryRoot) {
-                            if (this.pathStack.length === 0) {
-                                showCategories();
-                                return;
-                            }
-                            const prev = this.pathStack.pop();
-                            if (prev.isList) {
-                                this.renderServiceList(prev.title, prev.data, categoryRoot);
-                            } else {
-                                this.renderLevel(prev.title, prev.data, categoryRoot);
-                            }
-                        },
+    goBack(categoryRoot) {
+        if (this.pathStack.length === 0) {
+            showCategories();
+            return;
+        }
+        const prev = this.pathStack.pop();
+        if (prev.isList) {
+            this.renderServiceList(prev.title, prev.data, categoryRoot);
+        } else {
+            this.renderLevel(prev.title, prev.data, categoryRoot);
+        }
+    },
 
-                        renderLevel(title, data, categoryRoot) {
-                            const sel = DOM.selectedSection;
-                            if (!sel) return;
+    renderLevel(title, data, categoryRoot) {
+        const sel = DOM.selectedSection;
+        if (!sel) return;
 
-                            enterFocusedMode();
-                            if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
-                            if (DOM.servicedetailsContainer) DOM.servicedetailsContainer.style.display = "none";
-                            if (DOM.serviceRequestContainer) DOM.serviceRequestContainer.style.display = "block";
+        enterFocusedMode();
+        if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
+        if (DOM.servicedetailsContainer) DOM.servicedetailsContainer.style.display = "none";
+        if (DOM.serviceRequestContainer) DOM.serviceRequestContainer.style.display = "block";
 
-                            while (sel.firstChild) sel.removeChild(sel.firstChild);
+        while (sel.firstChild) sel.removeChild(sel.firstChild);
+        sel.appendChild(create("h3", { text: title }));
+        const grid = create("div", { class: "service-item-grid" });
 
-                            sel.appendChild(create("h3", {
-                                text: title
-                            }));
-                            const grid = create("div", {
-                                class: "service-item-grid"
-                            });
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+            Object.keys(data).forEach(key => {
+                const isServiceList = Array.isArray(data[key]);
+                const catData = window.SERVICE_DATA.serviceData[categoryRoot];
+                let icon = isServiceList ? "🔧" : "📁";
+                if (catData && catData._icons && catData._icons[key]) icon = catData._icons[key];
 
-                            if (data && typeof data === 'object' && !Array.isArray(data)) {
-                                Object.keys(data).forEach(key => {
-                                    const isServiceList = Array.isArray(data[key]);
-                                    const catData = window.SERVICE_DATA.serviceData[categoryRoot];
+                const card = create("div", { class: "service-item-card", tabindex: "0", role: "button" });
+                card.appendChild(create("div", { class: "service-item-icon", text: icon }));
+                card.appendChild(create("h4", { text: key }));
 
-                                    // Default icons
-                                    let icon = isServiceList ? "🔧" : "📁";
+                const trigger = (e) => {
+                    e.preventDefault();
+                    this.pathStack.push({ title, data, isList: false });
+                    if (isServiceList) {
+                        this.renderServiceList(key, data[key], categoryRoot);
+                    } else {
+                        this.renderLevel(key, data[key], categoryRoot);
+                    }
+                };
+                card.addEventListener("click", trigger);
+                card.addEventListener("touchstart", () => card.classList.add("tap-animate"), { passive: true });
+                card.addEventListener("touchend", (e) => {
+                    card.classList.remove("tap-animate");
+                    trigger(e);
+                }, { passive: false });
+                grid.appendChild(card);
+            });
+        }
+        sel.appendChild(grid);
+        this.addBackButton(sel, categoryRoot);
+        sel.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
 
-                                    // DATA-DRIVEN ICON OVERRIDE: Check if the dataset defines an icon for this folder
-                                    if (catData && catData._icons && catData._icons[key]) {
-                                        icon = catData._icons[key];
-                                    }
+    renderServiceList(listName, serviceNames, categoryRoot) {
+        const sel = DOM.selectedSection;
+        if (!sel) return;
 
-                                    const card = create("div", {
-                                        class: "service-item-card",
-                                        tabindex: "0",
-                                        role: "button"
-                                    });
-                                    card.appendChild(create("div", {
-                                        class: "service-item-icon",
-                                        text: icon
-                                    }));
-                                    card.appendChild(create("h4", {
-                                        text: key
-                                    }));
+        enterFocusedMode();
+        if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
+        if (DOM.servicedetailsContainer) DOM.servicedetailsContainer.style.display = "none";
+        if (DOM.serviceRequestContainer) DOM.serviceRequestContainer.style.display = "block";
 
-                                    const trigger = (e) => {
-                                        e.preventDefault();
-                                        this.pathStack.push({
-                                            title,
-                                            data,
-                                            isList: false
-                                        });
-                                        if (isServiceList) {
-                                            this.renderServiceList(key, data[key], categoryRoot);
-                                        } else {
-                                            this.renderLevel(key, data[key], categoryRoot);
-                                        }
-                                    };
+        while (sel.firstChild) sel.removeChild(sel.firstChild);
+        sel.appendChild(create("h3", { text: listName }));
 
-                                    card.addEventListener("click", trigger);
-                                    card.addEventListener("touchstart", () => card.classList.add("tap-animate"), {
-                                        passive: true
-                                    });
-                                    card.addEventListener("touchend", (e) => {
-                                        card.classList.remove("tap-animate");
-                                        trigger(e);
-                                    }, {
-                                        passive: false
-                                    });
+        const grid = create("div", { class: "service-item-grid" });
+        const catData = window.SERVICE_DATA.serviceData[categoryRoot];
 
-                                    grid.appendChild(card);
-                                });
-                            }
+        serviceNames.forEach(svcName => {
+            const info = catData[svcName];
+            if (!info) return;
 
-                            sel.appendChild(grid);
-                            this.addBackButton(sel, categoryRoot);
-                            sel.scrollIntoView({
-                                behavior: "smooth",
-                                block: "start"
-                            });
-                        },
+            const card = create("div", { class: "service-item-card", tabindex: "0", role: "button" });
+            const iconSpan = create("div", { class: "service-item-icon", text: info.icon || "🔧" });
+            const titleSpan = create("h4", { text: svcName });
 
-                        renderServiceList(listName, serviceNames, categoryRoot) {
-                            const sel = DOM.selectedSection;
-                            if (!sel) return;
+            const priceTypeEmoji = getPriceTypeEmoji(info.price);
+            const materialsEmoji = getMaterialsEmoji(info);
+            const priceSpan = create("div", { class: "service-price", text: info.price || "" });
+            if (priceSpan.textContent) {
+                const emojiSpan = create("span", { class: "price-type-emojii", text: `${priceTypeEmoji} ${materialsEmoji}` });
+                priceSpan.appendChild(emojiSpan);
+            }
 
-                            enterFocusedMode();
-                            if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
-                            if (DOM.servicedetailsContainer) DOM.servicedetailsContainer.style.display = "none";
-                            if (DOM.serviceRequestContainer) DOM.serviceRequestContainer.style.display = "block";
+            const infoBtn = create("button", { class: "service-info-btn", html: "ℹ️", title: "View details" });
+            infoBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const enrichedInfo = { ...info, _category: categoryRoot };
+                showServiceDetailsModal(svcName, enrichedInfo, categoryRoot);
+            });
 
-                            while (sel.firstChild) sel.removeChild(sel.firstChild);
-                            sel.appendChild(create("h3", {
-                                text: listName
-                            }));
+            card.appendChild(iconSpan);
+            card.appendChild(titleSpan);
+            card.appendChild(priceSpan);
+            card.appendChild(infoBtn);
 
-                            const grid = create("div", {
-                                class: "service-item-grid"
-                            });
-                            const catData = window.SERVICE_DATA.serviceData[categoryRoot];
+            const trigger = (e) => {
+                if (e.target === infoBtn) return;
+                e.preventDefault();
+                this.pathStack.push({ title: listName, data: serviceNames, isList: true });
+                showServiceDetails(categoryRoot, svcName);
+            };
+            card.addEventListener("click", trigger);
+            card.addEventListener("touchstart", () => card.classList.add("tap-animate"), { passive: true });
+            card.addEventListener("touchend", (e) => {
+                card.classList.remove("tap-animate");
+                trigger(e);
+            }, { passive: false });
 
-                            serviceNames.forEach(svcName => {
-                                    const info = catData[svcName];
-                                    if (!info) return;
+            grid.appendChild(card);
+        });
 
-                                    const card = create("div", {
-                                        class: "service-item-card",
-                                        tabindex: "0",
-                                        role: "button"
-                                    });
-                                    const iconSpan = create("div", {
-                                        class: "service-item-icon",
-                                        text: info.icon || "🔧"
-                                    });
-                                    const titleSpan = create("h4", {
-                                        text: svcName
-                                    });
+        sel.appendChild(grid);
+        this.addBackButton(sel, categoryRoot);
+        sel.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
 
-                                    // Price type emoji
-                                    const priceTypeEmoji = getPriceTypeEmoji(info.price);
-                                    const materialsEmoji = getMaterialsEmoji(info);
-                                    const priceSpan = create("div", {
-                                        class: "service-price",
-                                        text: info.price || ""
-                                    });
-                                    if (priceSpan.textContent) {
-                                        const emojiSpan = create("span", {
-                                            class: "price-type-emojii",
-                                            text: `${priceTypeEmoji} ${materialsEmoji}`
-                                        });
-                                        priceSpan.appendChild(emojiSpan);
-                                    }
-
-                                    // Info button
-                                    const infoBtn = create("button", {
-                                        class: "service-info-btn",
-                                        html: "ℹ️",
-                                        title: "View details"
-                                    });
-                                    infoBtn.addEventListener("click", (e) => {
-                                        e.stopPropagation();
-                                        // Pass category context
-                                        // Inside renderServiceList, where you call showServiceDetailsModal:
-                                        const enrichedInfo = {
-                                            ...info,
-                                            _category: categoryRoot
-                                        };
-                                        showServiceDetailsModal(svcName, enrichedInfo, categoryRoot);
-
-                                        card.appendChild(iconSpan);
-                                        card.appendChild(titleSpan);
-                                        card.appendChild(priceSpan);
-                                        card.appendChild(infoBtn);
-
-                                        const trigger = (e) => {
-                                            if (e.target === infoBtn) return;
-                                            e.preventDefault();
-                                            Navigation.pathStack.push({
-                                                title: listName,
-                                                data: serviceNames,
-                                                isList: true
-                                            });
-                                            showServiceDetails(categoryRoot, svcName);
-                                        };
-                                        card.addEventListener("click", trigger);
-                                        // ... touch handlers similarly
-                                        grid.appendChild(card);
-                                    });
-
-                                    sel.appendChild(grid);
-                                    this.addBackButton(sel, categoryRoot);
-                                    sel.scrollIntoView({
-                                        behavior: "smooth",
-                                        block: "start"
-                                    });
-                                },
-
-                                addBackButton(container, categoryRoot) {
-                                    const back = create("button", {
-                                        class: "back-button",
-                                        text: this.pathStack.length === 0 ? "Back to Categories" : "Back",
-                                        type: "button"
-                                    });
-                                    back.addEventListener("click", () => this.goBack(categoryRoot));
-                                    container.appendChild(back);
-                                }
-                            };
+    addBackButton(container, categoryRoot) {
+        const back = create("button", {
+            class: "back-button",
+            text: this.pathStack.length === 0 ? "Back to Categories" : "Back",
+            type: "button"
+        });
+        back.addEventListener("click", () => this.goBack(categoryRoot));
+        container.appendChild(back);
+    }
+};
 
                             // SINGLE, CLEAN ENTRY POINT
                             function handleCategorySelect(category) {
@@ -6810,8 +6722,6 @@
                                 DOM.showCategoriesBtn = q("#showCategoriesBtn");
                             }
 
-
-
                             function initAfterDataLoad() {
                                 try {
                                     initDomRefs();
@@ -6875,6 +6785,7 @@
                         })(); // End of IIFE
                 }
     </script>
+
 </body>
 
 </html>
