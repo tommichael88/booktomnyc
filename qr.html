@@ -836,7 +836,8 @@
 
         /* ========== SERVICE SCHEDULE CARD ========== */
         .card-schedule-service {
-            display: block;
+            display: flex;
+            flex-direction: column;
             border: 1px outset rgba(0, 0, 0, .75);
             width: 98%;
             background: rgba(255, 255, 255, 1);
@@ -1349,6 +1350,7 @@
     display: flex;
     justify-content: center;
     width: 100%;
+    height: 100%;
     padding: 0;
     margin: 0;
     border: 2px solid rgba(255, 255, 255, .25);
@@ -1364,6 +1366,7 @@
     max-width: 450px;
     margin: 0 auto;
     padding: 0;
+ 
 }
 
 /* Category tile – prevents inner elements from receiving pointer events */
@@ -1453,6 +1456,8 @@
             width: 100%;
             padding: 0;
             box-sizing: border-box;
+                   overflow-y: auto;
+    overflow-x: auto;
         }
 
         .service-item-card {
@@ -1620,6 +1625,8 @@
             color: #2a2a2a;
             position: relative;
             animation: slideDown 0.2s ease;
+                   overflow-y: auto;
+    overflow-x: auto;
         }
 
         .modal-content h3 {
@@ -1846,6 +1853,7 @@
         transition: var(--transition);
         background: rgba(0, 0, 0, 0.45);
         border-top: 4px solid var(--accent);
+
         }
 
         #serviceRequestSection {
@@ -1876,14 +1884,19 @@
 
         /* Main container background and spacing */
         #servicedetailsContainer {
+            display: flex;
             background: #fff;
             border-radius: 32px;
             padding: 20px 18px 28px;
             margin-top: 16px;
             box-shadow: 0 12px 28px rgba(0, 0, 0, .1);
             max-width: 550px;
-            margin-left: auto;
-            margin-right: auto
+                                   height: 100%;
+                   overflow-y: auto;
+                        margin: auto auto auto auto;
+ 
+
+
         }
         
         #servicedetailsContainer .service-input-area {
@@ -1897,8 +1910,8 @@
             color: #2a2a2a;
             resize: vertical;
             transition: all 0.2s;
-            margin-top: 0.5rem;
-            margin-bottom: 1rem;
+            
+
         }
 
         #servicedetailsContainer .service-input-area:focus {
@@ -3578,7 +3591,7 @@
                     <a href="https://tommichael88.github.io/booktomnyc/cat.html" style="text-decoration: none; color: inherit; flex-grow:1;"></a>
                     <div class="service-group">
                         <!-- Top action bar: new request + manage visit + cart -->
-                        <div class="new-service-request-grid-topper" style="position:relative; display:flex; justify-content:space-between; align-items:center; font-size:1rem; 
+                        <div class="new-service-request-grid-topper" style="position:relative; display:flex; justify-content:space-between; align-items:center; font-size:1.2rem; 
                          background: linear-gradient(75deg, #b30000 0%, #800000 40%, #4a0000 60%, #000000 100%); 
                          color:white; box-shadow: inset 0 1px 1px rgba(255,255,255,0.1);">
                             <!-- "Book New Service Request" link -->
@@ -3609,7 +3622,7 @@
                         </div>
 
                         <!-- Service category grid (6 tiles) -->
-                        <div class="service-card-container" id="categories-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5px;margin-bottom:.25px">
+                        <div class="service-card-container" id="categories-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.1px;margin-bottom:.1px">
                             <div class="category-tile" data-category="Minor Home Repairs" tabindex="0">
                                 <div class="category-icon">🏠 </div>
                                 <h2>Minor <br>Home Repairs </h2>
@@ -3640,7 +3653,7 @@
                     <div id="serviceRequestContainer" style="display:none;">
                         <div id="selectedSection"></div>
                         <div class="task-details" id="furnituredetailsSection" style="display:none;">
-                            <h4>Select Your Furniture Item</h4>
+                            <h4>Select Furniture</h4>
                             <div>
                                 <label><input type="radio" name="furnitureType" value="generic"> Furniture [Not IKEA]</label>
                                 <label><input type="radio" name="furnitureType" value="ikea" checked=""> IKEA Collection</label>
@@ -3648,9 +3661,9 @@
                             <select id="furniture-select">
                                 <option value="">Select Here</option>
                             </select>
-                            <button class="book-more-button" id="addFurnitureInline">Add Furniture Item</button>
+                            <button class="book-more-button" id="addFurnitureInline">Add Furniture</button>
                             <ul id="selectedFurnitureList"></ul>
-                            <button class="clear-all-btn" id="clearAllFurnitureInline">Clear All Furniture</button>
+                            <button class="clear-all-btn" id="clearAllFurnitureInline">Clear Selected</button>
                         </div>
                     </div>
                     <div id="servicedetailsContainer" style="display:none"></div>
@@ -3893,9 +3906,7 @@
                         bookMoreBtn: null,
                         showCategoriesBtn: null
                     };
-
                     let currentModal = null;
-
                     const STORAGE_KEY = "booktom_cart_v1";
                     let invoiceCurrentPage = 1;
                     const ITEMS_PER_PAGE = 2; // adjust as needed
@@ -3984,8 +3995,10 @@
                         };
                     }
 
-                    // ----- Dynamically load service data, then initialize UI -----
                     window.SERVICE_DATA = null;
+                    window.showServiceDetails = showServiceDetails;
+                    window.handleCategorySelect = handleCategorySelect;
+
 
                     (async function loadAndInit() {
                         try {
@@ -4944,10 +4957,6 @@ tw.appendChild(nameSpan);
                         updatemanageVisitBtnVisibility();
                     }
 
-                    // ==========================================
-                    // RECURSIVE DYNAMIC NAVIGATION ENGINE
-                    // ==========================================
-                    
                     const Navigation = {
     pathStack: [],
 
@@ -5086,7 +5095,6 @@ tw.appendChild(nameSpan);
     }
 };
 
-                            // SINGLE, CLEAN ENTRY POINT
                             function handleCategorySelect(category) {
                                 try {
                                     if (!category) return;
@@ -6189,11 +6197,273 @@ tw.appendChild(nameSpan);
                                     console.error("Error during initialization:", e);
                                 }
                             }
-
-                            // No other init calls – everything starts from the fetch above.
-                        })(); // End of IIFE
+                                                    })();
                 }
+                
     </script>
+    <script>
+(function() {
+    "use strict";
+
+    let SEARCH_INDEX = [];
+
+    // Load services and build index
+    async function loadServicesAndBuildIndex() {
+        try {
+            const response = await fetch('https://tommichael88.github.io/booktomnyc/services.json');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            window.SERVICE_DATA = data;
+            buildSearchIndex(data);
+            console.log('✅ Search index built');
+        } catch (err) {
+            console.warn('Could not load services.json, using existing window.SERVICE_DATA if available', err);
+            if (window.SERVICE_DATA && window.SERVICE_DATA.serviceData) {
+                buildSearchIndex(window.SERVICE_DATA);
+            }
+        }
+    }
+
+    // Expanded synonym map (covers common phrases, typos, natural language)
+    function getManualSynonyms(serviceName) {
+        const map = {
+            "Door Sticking or Damage Repair": ["door won't close", "sticky door", "door rubs", "door frame damaged", "door binds", "door hard to shut", "door scraping"],
+            "Door Lock or Handle Installation": ["replace door knob", "install deadbolt", "new door handle", "fix door lock", "change lock", "smart lock install"],
+            "Prehung Door Installation": ["install new door", "replace interior door", "hang door", "closet door install"],
+            "Wall Hole or Crack Repair": ["patch drywall", "fix hole in wall", "drywall repair", "crack in plaster", "sheetrock patch"],
+            "Squeaky Floor Repair": ["creaky floor", "floor squeaks", "fix squeaky floorboards", "noisy floor"],
+            "Flat‑Pack Furniture Assembly": ["assemble ikea", "build furniture", "flat pack assembly", "furniture assembly", "ikea pax assembly"],
+            "Flatscreen Display Mounting (Standard)": ["mount tv", "hang tv", "tv wall mount", "install flatscreen", "television mounting"],
+            "Shelf or Frame Mounting (Hourly)": ["hang shelf", "mount picture", "install mirror", "put up shelves", "floating shelf install"],
+            "Ceiling Fan Installation": ["install ceiling fan", "replace fan", "ceiling fan wiring", "new ceiling fan"],
+            "Light Fixture Replacement": ["change light fixture", "install chandelier", "replace pendant light", "dimmer switch install"],
+            "Toilet Flapper or Fill Valve Replacement": ["running toilet", "toilet keeps running", "replace toilet flapper", "toilet fill valve"],
+            "Faucet Repair (Drip)": ["leaky faucet", "dripping tap", "fix faucet drip", "kitchen sink drip"],
+            "Computer Diagnostic": ["computer slow", "pc won't start", "freezing computer", "computer diagnostic", "virus removal", "blue screen fix"],
+            "Wi‑Fi Extender Setup": ["wifi dead zone", "boost wifi signal", "install wifi extender", "wireless repeater", "mesh network setup"]
+        };
+        return map[serviceName] || [];
+    }
+
+    function buildSearchIndex(data) {
+        const serviceData = data?.serviceData;
+        if (!serviceData) return;
+        SEARCH_INDEX = [];
+        for (const [category, categoryContent] of Object.entries(serviceData)) {
+            if (category.startsWith('_')) continue;
+            const serviceNames = Object.keys(categoryContent).filter(key => !key.startsWith('_'));
+            for (const svcName of serviceNames) {
+                const svc = categoryContent[svcName];
+                if (!svc) continue;
+                const tokens = new Set();
+                // service name words
+                svcName.toLowerCase().split(/\s+/).forEach(w => tokens.add(w));
+                // synonyms
+                getManualSynonyms(svcName).forEach(phrase => {
+                    const lower = phrase.toLowerCase();
+                    tokens.add(lower);
+                    lower.split(/\s+/).forEach(word => { if (word.length > 2) tokens.add(word); });
+                });
+                SEARCH_INDEX.push({
+                    category: category,
+                    serviceName: svcName,
+                    displayPrice: svc.price || 'Call for quote',
+                    tokens: Array.from(tokens)
+                });
+            }
+        }
+    }
+
+    // Smart search ranking
+    function searchServices(query) {
+        const q = query.toLowerCase().trim();
+        if (q.length < 2) return [];
+        const queryWords = q.split(/\s+/);
+        const scored = SEARCH_INDEX.map(item => {
+            let score = 0;
+            let matchedAll = true;
+            for (const word of queryWords) {
+                let found = false;
+                for (const token of item.tokens) {
+                    if (token.includes(word) || word.includes(token)) {
+                        found = true;
+                        score += (Math.min(token.length, word.length) / Math.max(token.length, word.length)) * 1.5;
+                        break;
+                    }
+                }
+                if (!found) matchedAll = false;
+            }
+            if (matchedAll) score += 3;
+            if (item.serviceName.toLowerCase() === q) score += 10;
+            return score > 0 ? { item, score } : null;
+        }).filter(r => r).sort((a,b) => b.score - a.score).slice(0, 10).map(r => r.item);
+        return scored;
+    }
+
+    // Modal UI (clean, modern)
+    let modalOverlay = null;
+    let isOpen = false;
+
+    function createModal() {
+        if (modalOverlay) return modalOverlay;
+        modalOverlay = document.createElement('div');
+        modalOverlay.id = 'smartSearchOverlay';
+        Object.assign(modalOverlay.style, {
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+            display: 'none', justifyContent: 'center', alignItems: 'center',
+            zIndex: '20000', fontFamily: "'Roboto', system-ui, sans-serif"
+        });
+        const card = document.createElement('div');
+        Object.assign(card.style, {
+            background: '#fff', borderRadius: '36px', width: '90%', maxWidth: '560px',
+            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 30px 45px rgba(0,0,0,0.25)', overflow: 'hidden'
+        });
+        // Header
+        const header = document.createElement('div');
+        Object.assign(header.style, { padding: '20px 24px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #efefef' });
+        header.innerHTML = '<span style="font-weight:600; font-size:1.35rem;">Search service</span>';
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '✕';
+        Object.assign(closeBtn.style, { background: 'transparent', border: 'none', fontSize: '1.6rem', cursor: 'pointer', color: '#888', width: '36px', height: '36px', borderRadius: '40px' });
+        closeBtn.onmouseenter = () => { closeBtn.style.background = '#f0f0f0'; closeBtn.style.color = '#de0000'; };
+        closeBtn.onmouseleave = () => { closeBtn.style.background = 'transparent'; closeBtn.style.color = '#888'; };
+        closeBtn.onclick = closeModal;
+        header.appendChild(closeBtn);
+        card.appendChild(header);
+        // Search input
+        const inputWrapper = document.createElement('div');
+        inputWrapper.style.cssText = 'padding:16px 24px 8px; position:relative;';
+        const searchIcon = document.createElement('span');
+        searchIcon.innerHTML = '🔍︎︎ ︎︎';
+        searchIcon.style.cssText = 'position:absolute; left:36px; top:26px; opacity:0.7;';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'e.g., "tv mount", "leaky faucet", "door repair"';
+        Object.assign(input.style, {
+            width: '100%', padding: '14px 18px 14px 44px', border: '1px solid #e2e2e8',
+            borderRadius: '60px', fontSize: '1rem', outline: 'none', fontFamily: 'inherit'
+        });
+        input.onfocus = () => { input.style.borderColor = '#de0000'; input.style.boxShadow = '0 0 0 3px rgba(222,0,0,0.1)'; };
+        input.onblur = () => { input.style.borderColor = '#e2e2e8'; input.style.boxShadow = 'none'; };
+        inputWrapper.appendChild(searchIcon);
+        inputWrapper.appendChild(input);
+        card.appendChild(inputWrapper);
+        // Results
+        const resultsDiv = document.createElement('div');
+        resultsDiv.id = 'modalSearchResults';
+        Object.assign(resultsDiv.style, { overflowY: 'auto', padding: '8px 16px 20px', flex: 1 });
+        card.appendChild(resultsDiv);
+        // Footer
+        const footer = document.createElement('div');
+        Object.assign(footer.style, { padding: '8px 24px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
+        footer.innerHTML = '<div style="font-size:0.7rem; color:#888;">✨ Try "door  wont shut, "wifi dead zone"</div>';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Close';
+        Object.assign(cancelBtn.style, { background: '#f4f4f6', border: 'none', borderRadius: '40px', padding: '8px 20px', fontSize: '0.85rem', cursor: 'pointer' });
+        cancelBtn.onmouseenter = () => cancelBtn.style.background = '#e6e6ea';
+        cancelBtn.onmouseleave = () => cancelBtn.style.background = '#f4f4f6';
+        cancelBtn.onclick = closeModal;
+        footer.appendChild(cancelBtn);
+        card.appendChild(footer);
+        modalOverlay.appendChild(card);
+        document.body.appendChild(modalOverlay);
+
+        input.addEventListener('input', (e) => {
+            const query = e.target.value;
+            if (query.length < 2) {
+                resultsDiv.innerHTML = '<div style="text-align:center; padding:2rem; color:#aaa;">🔍︎︎︎︎ Type at least 2 letters...</div>';
+                return;
+            }
+            const matches = searchServices(query);
+            if (!matches.length) {
+                resultsDiv.innerHTML = '<div style="text-align:center; padding:2rem; color:#888;">😕 No matching services<br><small>Try "drywall patch" or "fan install"</small></div>';
+                return;
+            }
+            resultsDiv.innerHTML = matches.map(m => `
+                <div class="search-result-item" data-category="${escapeHtml(m.category)}" data-servicename="${escapeHtml(m.serviceName)}" style="
+                    background:#fff; border-radius:20px; padding:14px 16px; margin-bottom:10px;
+                    cursor:pointer; border:1px solid #f0f0f0; display:flex; justify-content:space-between;
+                    transition:0.18s; align-items:center;
+                " onmouseover="this.style.borderColor='#de0000';this.style.transform='translateX(4px)';this.style.backgroundColor='#fef6f6'"
+                   onmouseout="this.style.borderColor='#f0f0f0';this.style.transform='none';this.style.backgroundColor='#fff'">
+                    <div>
+                        <div style="font-weight:600;">${escapeHtml(m.serviceName)}</div>
+                        <div style="margin-top:6px;"><span style="background:#f2f2f5; border-radius:40px; padding:2px 10px; font-size:0.7rem;">${escapeHtml(m.category)}</span>
+                        <span style="margin-left:10px; color:#de0000; font-weight:500;">💰 ${escapeHtml(m.displayPrice)}</span></div>
+                    </div>
+                    <div style="color:#aaa;">→</div>
+                </div>
+            `).join('');
+            document.querySelectorAll('#modalSearchResults .search-result-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const category = el.dataset.category;
+                    const serviceName = el.dataset.servicename;
+                    if (typeof window.showServiceDetails === 'function') {
+                        window.showServiceDetails(category, serviceName);
+                    } else if (typeof showServiceDetails === 'function') {
+                        showServiceDetails(category, serviceName);
+                    } else {
+                        // fallback to category view
+                        if (typeof window.handleCategorySelect === 'function') window.handleCategorySelect(category);
+                        else alert('Navigation not available – ensure main script exposes showServiceDetails');
+                    }
+                    closeModal();
+                });
+            });
+        });
+        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+        return modalOverlay;
+    }
+
+    function openModal() {
+        if (!modalOverlay) createModal();
+        modalOverlay.style.display = 'flex';
+        isOpen = true;
+        const input = modalOverlay.querySelector('input');
+        if (input) { input.value = ''; input.focus(); }
+        const resultsDiv = document.getElementById('modalSearchResults');
+        if (resultsDiv) resultsDiv.innerHTML = '<div style="text-align:center; padding:2rem; color:#aaa;">✨ Search any service...</div>';
+    }
+    function closeModal() { if (modalOverlay) modalOverlay.style.display = 'none'; isOpen = false; }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen) closeModal(); });
+    function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
+
+    function addSearchButton() {
+        const headerDiv = document.querySelector('.card-schedule-service > div:first-child');
+        if (!headerDiv) { setTimeout(addSearchButton, 500); return; }
+        if (document.getElementById('smartSearchBtn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'smartSearchBtn';
+        btn.innerHTML = '🔍︎︎︎︎';
+        Object.assign(btn.style, {
+            background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.25)',
+            fontSize: '1.4rem', cursor: 'pointer', borderRadius: '60px', width: '44px', height: '44px',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'white',
+            transition: '0.2s', marginLeft: 'auto'
+        });
+        btn.title = 'Smart search';
+        btn.onmouseenter = () => { btn.style.background = '#de0000'; btn.style.borderColor = '#de0000'; btn.style.transform = 'scale(1.03)'; };
+        btn.onmouseleave = () => { btn.style.background = 'rgba(255,255,255,0.12)'; btn.style.borderColor = 'rgba(255,255,255,0.25)'; btn.style.transform = 'scale(1)'; };
+        btn.onclick = (e) => { e.stopPropagation(); openModal(); };
+        headerDiv.style.display = 'flex';
+        headerDiv.style.alignItems = 'center';
+        headerDiv.style.gap = '12px';
+        headerDiv.appendChild(btn);
+    }
+
+    async function init() {
+        await loadServicesAndBuildIndex();
+        createModal();
+        addSearchButton();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
+        // After the init() call, before the closing })();
+
+</script>
 
 </body>
 
