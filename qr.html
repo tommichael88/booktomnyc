@@ -1600,7 +1600,7 @@
 
         .service-detail {
             margin-bottom: 8px;
-            font-size: 0.9rem;
+            font-size: 1em;
             font-weight: 600;
             color: #666;
         }
@@ -1625,7 +1625,7 @@
             font-weight: 900;
             text-align: center;
             color: #2a2a2a;
-            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            background: linear-gradient(100deg, #f0f0f0, #e0e0e0);
             border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 10px;
             box-shadow: var(--shadow-sm);
@@ -1669,7 +1669,7 @@
             margin: 20px 0;
             padding: 18px 20px;
             font-size: 1.1rem;
-            font-weight: 700;
+            font-weight: 200;
             color: white;
             background: linear-gradient(135deg, #2a2a2a 0%, #1e1e1e 100%);
             border: 1px solid rgba(222, 0, 0, 0.3);
@@ -1677,14 +1677,50 @@
             box-shadow: var(--shadow-md);
         }
 
+        /* Make total amount glisten like contact sparkle */
         #totalAmount {
-            font-size: 1.3rem;
+            font-size: 1.9rem;
             font-weight: 900;
-            background: linear-gradient(135deg, #de0000, #8a0615);
+            color: #000;
+            background: linear-gradient(145deg, #fff, #ffcf40);
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0 2px 8px rgba(222, 0, 0, 0.3);
+            text-shadow: 2px 2px 8px rgba(255, 255, 255, 1);
+
+            /* ✨ Sparkle animation */
+            position: relative;
+            animation: shimmer 2.5s infinite linear, textGlowPulse 1.8s ease-in-out infinite;
+        }
+
+
+        /* Re-apply gradient with extra white streak for shimmer effect */
+        #totalAmount {
+            background-image: linear-gradient(115deg,
+                    rgba(255, 255, 255, 0) 30%,
+                    rgba(255, 255, 255, 0.8) 45%,
+                    rgba(255, 255, 255, 0) 60%);
+            background-size: 200% auto;
+            background-repeat: no-repeat;
+            /* Keep original gradient as base */
+            background-image: linear-gradient(145deg, #fff, #ffcf40),
+                linear-gradient(115deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.9) 45%, rgba(255, 255, 255, 0) 60%);
+            background-blend-mode: overlay;
+        }
+
+        /* Optional: subtle glow pulse */
+        @keyframes textGlowPulse {
+            0% {
+                text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.8);
+            }
+
+            50% {
+                text-shadow: 0 0 15px rgba(255, 215, 0, 0.9), 2px 2px 12px rgba(255, 255, 255, 1);
+            }
+
+            100% {
+                text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.8);
+            }
         }
 
         .action-buttons {
@@ -2136,6 +2172,200 @@
             gap: 12px;
             padding: 1.5rem;
             margin: 0;
+        }
+
+        /* ========== SMART SEARCH MODAL (FLOATING, TRANSLUCENT) ========== */
+        #smartSearchOverlay {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 380px;
+            max-width: calc(100vw - 40px);
+            background: rgba(30, 30, 35, 0.92);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            z-index: 20000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            font-family: 'Ubuntu', system-ui, sans-serif;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        #smartSearchOverlay.open {
+            display: flex;
+            animation: modalSlideUp 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+
+        @keyframes modalSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .search-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 18px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .search-modal-header span {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: #fff;
+            letter-spacing: -0.2px;
+        }
+
+        .search-modal-close {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 40px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #ddd;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-modal-close:hover {
+            background: #de0000;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .search-input-wrapper {
+            padding: 12px 18px;
+            position: relative;
+        }
+
+        .search-input-wrapper input {
+            width: 100%;
+            padding: 12px 16px 12px 42px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 60px;
+            font-size: 0.95rem;
+            color: #fff;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-input-wrapper input:focus {
+            border-color: #de0000;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(222, 0, 0, 0.3);
+        }
+
+        .search-input-wrapper input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.1rem;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .search-results-list {
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 8px 12px 20px;
+        }
+
+        .search-result-item {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.18s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid transparent;
+        }
+
+        .search-result-item:hover {
+            background: rgba(222, 0, 0, 0.2);
+            border-color: rgba(222, 0, 0, 0.5);
+            transform: translateX(4px);
+        }
+
+        .search-result-name {
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+
+        .search-result-meta {
+            margin-top: 6px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-result-category {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 40px;
+            padding: 2px 10px;
+            font-size: 0.7rem;
+            color: #ccc;
+        }
+
+        .search-result-price {
+            color: #ff8888;
+            font-weight: 500;
+            font-size: 0.8rem;
+        }
+
+        .search-result-arrow {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.1rem;
+        }
+
+        .search-modal-footer {
+            padding: 12px 18px 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .search-modal-footer button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 40px;
+            padding: 6px 16px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: #ddd;
+            transition: 0.2s;
+        }
+
+        .search-modal-footer button:hover {
+            background: rgba(222, 0, 0, 0.7);
+            color: white;
         }
 
         /* ========== INVOICE CARD ========== */
@@ -2804,69 +3034,76 @@
                 flex-direction: column;
                 gap: 10px;
             }
-        }
 
-        @media (max-width: 320px) {
-            body {
-                padding: 5px;
+            #smartSearchOverlay {
+                left: 10px;
+                right: 10px;
+                width: auto;
+                bottom: 10px;
+                max-width: none;
             }
 
-            .qrc_page_inner {
-                padding: 1px;
-            }
+            @media (max-width: 320px) {
+                body {
+                    padding: 5px;
+                }
 
-            .categories-grid,
-            #categories-grid {
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 4px;
-            }
+                .qrc_page_inner {
+                    padding: 1px;
+                }
 
-            .category-icon {
-                font-size: 1.5rem !important;
-            }
+                .categories-grid,
+                #categories-grid {
+                    grid-template-columns: repeat(3, 1fr) !important;
+                    gap: 4px;
+                }
 
-            .category-tile h2 {
-                font-size: 0.75rem !important;
-            }
+                .category-icon {
+                    font-size: 1.5rem !important;
+                }
 
-            .category-tile {
-                padding: 10px 4px;
-            }
+                .category-tile h2 {
+                    font-size: 0.75rem !important;
+                }
 
-            .invoice-header,
-            .requested-service-item {
-                grid-template-columns: 35px 1fr 1fr 65px 30px !important;
-                font-size: 0.6rem;
-            }
+                .category-tile {
+                    padding: 10px 4px;
+                }
 
-            .service-item-grid {
-                grid-template-columns: 1fr;
-                gap: 5px;
-            }
+                .invoice-header,
+                .requested-service-item {
+                    grid-template-columns: 35px 1fr 1fr 65px 30px !important;
+                    font-size: 0.6rem;
+                }
 
-            .service-item-card {
-                min-height: 100px;
-                padding: 0.4rem;
-            }
+                .service-item-grid {
+                    grid-template-columns: 1fr;
+                    gap: 5px;
+                }
 
-            .service-item-card h4 {
-                font-size: 0.75rem;
-            }
+                .service-item-card {
+                    min-height: 100px;
+                    padding: 0.4rem;
+                }
 
-            .service-item-card p {
-                font-size: 0.55rem;
-            }
+                .service-item-card h4 {
+                    font-size: 0.75rem;
+                }
 
-            .action-buttons {
-                gap: 0.6rem;
-                padding: 0.6rem;
-            }
+                .service-item-card p {
+                    font-size: 0.55rem;
+                }
 
-            .invoice-content {
-                width: 98%;
-                margin: 1%;
+                .action-buttons {
+                    gap: 0.6rem;
+                    padding: 0.6rem;
+                }
+
+                .invoice-content {
+                    width: 98%;
+                    margin: 1%;
+                }
             }
-        }
         }
     </style>
 </head>
@@ -3111,6 +3348,10 @@
         </div>
     </div>
     <!-- Subscripts -->
+
+
+    <!-- QR Main Responsive UI -->
+
     <script>
         // <!-- CONTACT Toolbar Icon Functionaity -->
         (function() {
@@ -6055,6 +6296,9 @@
             else init();
         })();
     </script>
+
+
+
 
 </body>
 
