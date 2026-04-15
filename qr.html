@@ -44,7 +44,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: Ubuntu, -apple-system, BlinkMacSystemFont, sans-serif
+            font-family: Ubuntu, -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         html {
@@ -55,14 +55,13 @@
         body,
         html {
             min-height: 100vh;
-            color: var(--text-primary);
-            overflow-x: hidden
+            overflow-x: hidden;
         }
 
         body {
             padding: 10px;
             margin: auto;
-            max-width: 468px;
+            max-width: 50%;
             position: relative
         }
 
@@ -92,13 +91,6 @@
             background-size: cover;
             background-attachment: fixed;
             background-position: center top;
-            will-change: transform
-        }
-
-        .pg_background::after {
-            content: '';
-            position: absolute;
-            inset: 0;
         }
 
         .qrc_page_wrapper {
@@ -179,6 +171,8 @@
             justify-content: space-between;
             padding: 12px 15px;
             gap: 2%;
+            background: rgba(0, 0, 0, 0);
+            backdrop-filter: blur(3px);
             box-shadow: inset 0 1px 2px rgba(255, 255, 255, .25), inset 0 -1px 2px rgba(0, 0, 0, .4);
             overflow: visible;
             object-fit: contain;
@@ -551,6 +545,7 @@
             flex-direction: column;
             width: 98%;
             background: rgba(255, 255, 255, 1);
+            backdrop-filter: blur(3px);
             box-shadow: inset 0 1px 2px rgba(255, 255, 255, .25), inset 0 -1px 2px rgba(0, 0, 0, .4);
             border-radius: var(--border-radius);
             text-align: center;
@@ -1769,7 +1764,7 @@
             padding: 18px 20px;
             font-size: 1.1rem;
             font-weight: 200;
-            color: #fff;
+            color: #FFF;
             background: linear-gradient(135deg, #2a2a2a 0, #1e1e1e 100%);
             border: 1px solid rgba(222, 0, 0, .3);
             border-radius: 12px;
@@ -1777,19 +1772,36 @@
         }
 
         #totalAmount {
-            font-size: 1.9rem;
+            font-size: 2rem;
             font-weight: 900;
-            color: #000;
-            background: linear-gradient(145deg, #fff, #ffcf40);
+            color: #D4AF37;
+            text-shadow:
+                1px 1px 0 #FFF8DC,
+                -1px -1px 0 #B8860B,
+                0 0 3px rgba(255, 215, 0, 0.6);
+            background: linear-gradient(120deg, #D4AF37 0%, #FFF4B0 30%, #D4AF37 50%, #FFE066 70%, #D4AF37 100%);
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 2px 2px 8px rgba(255, 255, 255, 1);
-            animation: shimmer 2.5s infinite linear, textGlowPulse 1.8s ease-in-out infinite;
-            background-image: linear-gradient(115deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .8) 45%, rgba(255, 255, 255, 0) 60%);
+            animation: glisten 2s infinite ease;
             background-size: 200% auto;
-            background-repeat: no-repeat;
-            background-blend-mode: overlay
+        }
+
+        @keyframes glisten {
+            0% {
+                background-position: 0% 0;
+                text-shadow: 1px 1px 0 #FFF8DC, -1px -1px 0 #B8860B, 0 0 2px rgba(255, 215, 0, 0.4);
+            }
+
+            50% {
+                background-position: 100% 0;
+                text-shadow: 1px 1px 0 #FFFFFF, -1px -1px 0 #DAA520, 0 0 5px rgba(255, 220, 100, 0.8);
+            }
+
+            100% {
+                background-position: 0% 0;
+                text-shadow: 1px 1px 0 #FFF8DC, -1px -1px 0 #B8860B, 0 0 2px rgba(255, 215, 0, 0.4);
+            }
         }
 
         .action-buttons {
@@ -2427,11 +2439,12 @@
             display: flex;
             flex-direction: column;
             width: 98%;
-            background: #FFFFFF;
+            background: rgba(255, 255, 255, 1);
+            backdrop-filter: blur(3px);
             box-shadow: inset 0 1px 2px rgba(255, 255, 255, .25), inset 0 -1px 2px rgba(0, 0, 0, .4);
             border-radius: var(--border-radius);
             text-align: center;
-            color: #FFFFFF;
+            color: #455555;
             padding: 20px;
             margin: 15px auto;
             overflow: hidden;
@@ -2441,12 +2454,12 @@
         }
 
         .card-invoices h1 {
-            color: #FFFFFF;
+            color: #455555;
             font-size: 5vw
         }
 
         .card-invoices p {
-            color: #FFFFFF
+            color: #454545
         }
 
         .card-invoices-header-img {
@@ -2816,6 +2829,20 @@
             margin: 2% 2%;
             color: #fff;
             font-weight: 200
+        }
+
+        button,
+        .category-tile,
+        .service-item-card,
+        .contact-toolbar-item {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        button:active,
+        .category-tile:active,
+        .service-item-card:active {
+            transform: scale(0.97);
         }
 
         @keyframes starSpin {
@@ -3510,89 +3537,27 @@
             }
         }
 
-        /* === PERFORMANCE PATCHES (desktop optimizations) === */
-
-        /* 1. Disable expensive backdrop filters on non‑touch devices */
-        @media (hover: hover) and (pointer: fine) {
-
-            .highlight-box,
-            .card-schedule-service,
-            .card-invoices,
-            #invoiceOverlay .invoice-content {
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-                background: rgba(30, 30, 30, 0.85) !important;
+        @media (hover: none) {
+            *:hover {
+                transform: none !important;
             }
-        }
 
-        /* 2. Stop infinite animations when idle – only animate on hover */
-        .cartFab::before,
-        .cartFab::after,
-        .cartFab .glow-ring,
-        .contact-button::before,
-        .contact-button::after,
-        .contact-button .contact-glow-ring {
-            animation: none !important;
+            .contact-button:hover,
+            .category-tile:hover,
+            .service-item-card:hover,
+            .contact-toolbar-item:hover,
+            .cartFab:hover {
+                transform: none !important;
+                box-shadow: inherit !important;
+            }
+            .page-hidden .cartFab::before,
+            .page-hidden .cartFab::after,
+            .page-hidden .cartFab .glow-ring,
+            .page-hidden .contact-button::before,
+            .page-hidden .contact-button::after,
+            .page-hidden .contact-button .contact-glow-ring {
+                animation: none !important;
         }
-
-        .cartFab:hover::before {
-            animation: starSpin 8s linear infinite, starPulse 2s ease-in-out infinite !important;
-        }
-
-        .cartFab:hover::after {
-            animation: starSpinReverse 12s linear infinite, innerShimmer 3s ease-in-out infinite !important;
-        }
-
-        .cartFab:hover .glow-ring {
-            animation: ringPulse 3s ease-in-out infinite !important;
-        }
-
-        .contact-button:hover::before {
-            animation: starSpin 8s linear infinite, contactStarPulse 2s ease-in-out infinite, contactStarGlitter 1.5s infinite !important;
-        }
-
-        .contact-button:hover::after {
-            animation: starSpinReverse 12s linear infinite, contactInnerShimmer 3s ease-in-out infinite !important;
-        }
-
-        .contact-button:hover .contact-glow-ring {
-            animation: contactRingPulse 3s ease-in-out infinite !important;
-        }
-
-        /* 3. GPU acceleration for interactive elements */
-        .category-tile,
-        .service-item-card,
-        .contact-button,
-        .cartFab {
-            will-change: transform;
-            transform: translateZ(0);
-        }
-
-        /* 4. Off‑screen containment for hidden containers */
-        #newServiceRequestSummaryContainer,
-        #selectDetailsContainer,
-        #serviceRequestSection,
-        #invoiceOverlay {
-            content-visibility: auto;
-            contain-intrinsic-size: auto 500px;
-        }
-
-        /* 5. Immediate active feedback */
-        .category-tile:active,
-        .service-item-card:active,
-        button:active {
-            transform: scale(0.97) !important;
-            transition: transform 0.05s !important;
-        }
-
-        /* 6. Pause animations when page is hidden */
-        .page-hidden .cartFab::before,
-        .page-hidden .cartFab::after,
-        .page-hidden .cartFab .glow-ring,
-        .page-hidden .contact-button::before,
-        .page-hidden .contact-button::after,
-        .page-hidden .contact-button .contact-glow-ring {
-            animation: none !important;
         }
     </style>
 </head>
@@ -3690,6 +3655,7 @@
                     </div><span class=action-buttons><button class=clear-all-btn id=clearAllServicesBtn style=width:75% alt="Clear cart">Clear All 🗑</button><button class=book-more-button id=showCategoriesBtn alt="Add Services">➕ More Services</button><button class=checkout-button id=checkoutBtn alt="Book Now">★ BOOK ★</button></span>
                 </div>
             </div>
+
             <script>
                 (function() {
                     'use strict';
@@ -5582,23 +5548,161 @@
                         window.showServiceDetails = showServiceDetails;
                         window.handleCategorySelect = handleCategorySelect;
 
+                        // ---------- TRANSFORMER: new JSON → old SERVICE_DATA format ----------
+                        function transformNewToOld(newData) {
+                            // Base structure
+                            const old = {
+                                RATE_PER_HOUR: newData.meta.rate_per_hour || 85,
+                                REPAIR_RATE_PER_HOUR: newData.meta.repair_rate_per_hour || 110,
+                                FURNITURE_PRODUCTS: [],
+                                FURNITURE_MINUTES: {},
+                                IKEA_SKUS: {},
+                                FURNITURE_ARTICLE_NUMBERS: {},
+                                GENERIC_FURNITURE_MINUTES: {},
+                                serviceData: {}
+                            };
+
+                            // ---- 1. Process furniture items ----
+                            (newData.furniture_items || []).forEach(item => {
+                                const name = item.name;
+                                const minutes = item.minutes;
+                                const article = item.article;
+                                const brand = item.brand;
+
+                                // FURNITURE_PRODUCTS
+                                old.FURNITURE_PRODUCTS.push({
+                                    name,
+                                    minutes,
+                                    article
+                                });
+
+                                // FURNITURE_MINUTES and GENERIC_FURNITURE_MINUTES
+                                if (brand === 'IKEA') {
+                                    old.FURNITURE_MINUTES[name] = minutes;
+                                    if (article) {
+                                        old.IKEA_SKUS[article] = name;
+                                        old.FURNITURE_ARTICLE_NUMBERS[name] = article;
+                                    }
+                                } else {
+                                    old.GENERIC_FURNITURE_MINUTES[name] = minutes;
+                                }
+                            });
+
+                            // Ensure PAX entry exists (it's already there, but minutes=0 is correct)
+
+                            // ---- 2. Build category & group maps ----
+                            const categoryMap = {};
+                            (newData.categories || []).forEach(cat => {
+                                categoryMap[cat.id] = cat.name;
+                                old.serviceData[cat.name] = {
+                                    _group: {},
+                                    _icons: {},
+                                    _icon: cat.icon // category-level icon
+                                };
+                            });
+
+                            const groupMap = {};
+                            (newData.groups || []).forEach(grp => {
+                                const catName = categoryMap[grp.category];
+                                if (!catName) return;
+
+                                groupMap[grp.id] = {
+                                    name: grp.name,
+                                    icon: grp.icon,
+                                    category: catName
+                                };
+
+                                // Initialize _group array for this group
+                                if (!old.serviceData[catName]._group[grp.name]) {
+                                    old.serviceData[catName]._group[grp.name] = [];
+                                }
+                                // Store group icon
+                                old.serviceData[catName]._icons[grp.name] = grp.icon;
+                            });
+
+                            // ---- 3. Process services ----
+                            (newData.services || []).forEach(svc => {
+                                const grp = groupMap[svc.group];
+                                if (!grp) return;
+
+                                const catName = grp.category;
+                                const groupName = grp.name;
+
+                                // Determine price string
+                                let priceStr;
+                                if (svc.price_per_hour) {
+                                    priceStr = `$${svc.price_per_hour}/hour`;
+                                } else if (svc.price) {
+                                    priceStr = `$${svc.price}`;
+                                } else {
+                                    // fallback: estimate from minutes
+                                    const mins = svc.minutes || 60;
+                                    const estPrice = Math.ceil((mins / 60) * old.RATE_PER_HOUR);
+                                    priceStr = `$${estPrice}`;
+                                }
+
+                                // Build service info object (old format)
+                                const serviceInfo = {
+                                    price: priceStr,
+                                    description: svc.description || '',
+                                    icon: svc.icon || '🔧',
+                                    materialsIncluded: svc.materials_included || false,
+                                    requiresFurnitureSelection: svc.requires_furniture_selection || false,
+                                    intakeConfig: svc.intake || null,
+                                    hourSelection: svc.hour_selection || null,
+                                    defaultHours: svc.default_hours || 1,
+                                    details: svc.details || [],
+                                    detail_prompt: svc.detail_prompt || ''
+                                };
+
+                                // Add to group's service list
+                                old.serviceData[catName]._group[groupName].push(svc.name);
+                                // Store service definition directly under category
+                                old.serviceData[catName][svc.name] = serviceInfo;
+                            });
+
+                            // ---- 4. Handle nested groups (like Appliances with Installation/Repair subcategories) ----
+                            // The old format had nested groups inside _group (e.g., Appliances: { Installation: [...], Repair: [...] })
+                            // In the new JSON, groups are flat. We need to detect services that belong to sub-groups.
+                            // We can infer from service names or add a "subgroup" field in the future.
+                            // For now, we'll leave them as flat groups; the existing navigation will work fine.
+                            // If you need the exact nested structure, we can add custom mapping here.
+
+                            // Add category order (optional, not strictly required)
+                            old._category_order = newData.categories.map(c => c.name);
+
+                            return old;
+                        }
+
+                        // ---------- Updated loadAndInit ----------
                         (async function loadAndInit() {
                             try {
-                                const response = await fetch('https://tommichael88.github.io/booktomnyc/services.json');
+                                // Load the NEW JSON file
+                                const response = await fetch('https://tommichael88.github.io/booktomnyc/new_services.json');
                                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                                window.SERVICE_DATA = await response.json();
+                                const newData = await response.json();
+
+                                // Transform to old format
+                                window.SERVICE_DATA = transformNewToOld(newData);
+
                             } catch (err) {
-                                console.error('Failed to load services.json:', err);
+                                console.error('Failed to load or transform services.json:', err);
+                                // Fallback minimal structure (keep your existing fallback)
                                 window.SERVICE_DATA = {
                                     FURNITURE_PRODUCTS: [],
                                     GENERIC_FURNITURE_MINUTES: {},
-                                    RATE_PER_HOUR: 40,
-                                    REPAIR_RATE_PER_HOUR: 70,
+                                    RATE_PER_HOUR: 85,
+                                    REPAIR_RATE_PER_HOUR: 110,
                                     serviceData: {}
                                 };
                             }
-                            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAfterDataLoad);
-                            else initAfterDataLoad();
+
+                            // Proceed with initialization (same as before)
+                            if (document.readyState === 'loading') {
+                                document.addEventListener('DOMContentLoaded', initAfterDataLoad);
+                            } else {
+                                initAfterDataLoad();
+                            }
                         })();
                     })();
                 }
@@ -5861,17 +5965,6 @@
                     else init();
                 })();
             </script>
-        </div>
-    </div>
-    <script>
-        (function() {
-            'use strict';
-            document.addEventListener('visibilitychange', function() {
-                document.body.classList.toggle('page-hidden', document.hidden);
-            });
-        })();
-    </script>
-
 </body>
 
 </html>
