@@ -1127,24 +1127,24 @@
             margin-left: 5px;
             vertical-align: middle
         }
-        
+
         .furniture-list-container {
-    max-height: 250px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.5);
-    margin-bottom: 15px;
-}
-        
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.5);
+            margin-bottom: 15px;
+        }
+
         .furniture-search-input {
             position: sticky !important;
             top: 0 !important;
             background: #fff !important;
             z-index: 2 !important
         }
-        
-              .pax-calc-module {
+
+        .pax-calc-module {
             max-width: 100% !important;
             margin: 10px 0 !important;
             padding: 20px 16px 24px !important
@@ -1333,7 +1333,7 @@
             box-sizing: border-box !important
         }
 
-         #selectDetailsContainer .service-input-area {
+        #selectDetailsContainer .service-input-area {
             width: 100%;
             background: rgba(255, 255, 255, .9);
             border: 1px solid rgba(0, 0, 0, .2);
@@ -1647,8 +1647,8 @@
             word-break: break-word;
             margin: 2px 0 0
         }
-        
-        
+
+
         .service-detail-modal {
             position: fixed;
             top: 0;
@@ -3661,173 +3661,235 @@
     </div>
 
 
-<script>
-            if (!window.__booktom_qr_loaded) {
-                window.__booktom_qr_loaded = true;
-                (function() {
-                    "use strict";
+    <script>
+        if (!window.__booktom_qr_loaded) {
+            window.__booktom_qr_loaded = true;
+            (function() {
+                "use strict";
 
-                    // ---------- DOM Utilities ----------
-                    const q = (sel, ctx = document) => (ctx || document).querySelector(sel);
-                    const qAll = (sel, ctx = document) => Array.from((ctx || document).querySelectorAll(sel));
-                    const create = (tag, props = {}, children = []) => {
-                        const el = document.createElement(tag);
-                        for (const k of Object.keys(props || {})) {
-                            if (k === "class") el.className = props[k];
-                            else if (k === "text") el.textContent = props[k];
-                            else if (k === "html") el.innerHTML = props[k];
-                            else el.setAttribute(k, props[k]);
-                        }
-                        for (const c of children || []) {
-                            if (typeof c === "string") el.appendChild(document.createTextNode(c));
-                            else if (c instanceof Node) el.appendChild(c);
-                        }
-                        return el;
-                    };
-                    const safeText = (n, t) => { if (n) n.textContent = t; };
-                    const parsePriceToInt = (s) => {
-                        if (!s || typeof s !== "string") return 0;
-                        const m = s.match(/(\d+(?:\.\d+)?)/);
-                        return m ? Math.round(parseFloat(m[1])) : 0;
-                    };
-
-                    // ---------- Security & Sanitization ----------
-                    const Security = {
-                        sanitizeHTML(input) {
-                            const temp = document.createElement('div');
-                            temp.textContent = input;
-                            return temp.innerHTML;
-                        },
-                        sanitizeInput(input, maxLength = 500) {
-                            if (typeof input !== 'string') return '';
-                            let sanitized = input.replace(/<script[^>]*>.*?<\/script>/gi, '').replace(/<iframe[^>]*>.*?<\/iframe>/gi, '').replace(/on\w+\s*=/gi, '').trim();
-                            if (sanitized.length > maxLength) sanitized = sanitized.substring(0, maxLength);
-                            return this.sanitizeHTML(sanitized);
-                        },
-                        getCsrfToken() {
-                            return document.querySelector('meta[name="csrf-token"]')?.content || '';
-                        }
-                    };
-
-                    // ---------- Rate Limiter ----------
-                    class RateLimiter {
-                        constructor(maxRequests = 5, windowMs = 60000) {
-                            this.maxRequests = maxRequests;
-                            this.windowMs = windowMs;
-                            this.requests = new Map();
-                        }
-                        isAllowed(key) {
-                            const now = Date.now();
-                            const userRequests = this.requests.get(key) || [];
-                            const recentRequests = userRequests.filter(time => now - time < this.windowMs);
-                            if (recentRequests.length >= this.maxRequests) return false;
-                            recentRequests.push(now);
-                            this.requests.set(key, recentRequests);
-                            return true;
-                        }
+                // ---------- DOM Utilities ----------
+                const q = (sel, ctx = document) => (ctx || document).querySelector(sel);
+                const qAll = (sel, ctx = document) => Array.from((ctx || document).querySelectorAll(sel));
+                const create = (tag, props = {}, children = []) => {
+                    const el = document.createElement(tag);
+                    for (const k of Object.keys(props || {})) {
+                        if (k === "class") el.className = props[k];
+                        else if (k === "text") el.textContent = props[k];
+                        else if (k === "html") el.innerHTML = props[k];
+                        else el.setAttribute(k, props[k]);
                     }
-                    const contactLimiter = new RateLimiter(3, 60000);
+                    for (const c of children || []) {
+                        if (typeof c === "string") el.appendChild(document.createTextNode(c));
+                        else if (c instanceof Node) el.appendChild(c);
+                    }
+                    return el;
+                };
+                const safeText = (n, t) => {
+                    if (n) n.textContent = t;
+                };
+                const parsePriceToInt = (s) => {
+                    if (!s || typeof s !== "string") return 0;
+                    const m = s.match(/(\d+(?:\.\d+)?)/);
+                    return m ? Math.round(parseFloat(m[1])) : 0;
+                };
 
-                    // ---------- Contact Handlers ----------
-                    function decodeB64(s) {
-                        try { return atob(s); } catch (e) { return ''; }
+                // ---------- Security & Sanitization ----------
+                const Security = {
+                    sanitizeHTML(input) {
+                        const temp = document.createElement('div');
+                        temp.textContent = input;
+                        return temp.innerHTML;
+                    },
+                    sanitizeInput(input, maxLength = 500) {
+                        if (typeof input !== 'string') return '';
+                        let sanitized = input.replace(/<script[^>]*>.*?<\/script>/gi, '').replace(/<iframe[^>]*>.*?<\/iframe>/gi, '').replace(/on\w+\s*=/gi, '').trim();
+                        if (sanitized.length > maxLength) sanitized = sanitized.substring(0, maxLength);
+                        return this.sanitizeHTML(sanitized);
+                    },
+                    getCsrfToken() {
+                        return document.querySelector('meta[name="csrf-token"]')?.content || '';
                     }
-                    function safePhone(s) { return (s || '').replace(/[^+\d\s\-()]/g, '').trim(); }
-                    function safeEmail(s) { return (s || '').replace(/[^A-Za-z0-9@._+\-]/g, '').trim(); }
+                };
 
-                    function openMail(el) {
-                        if (!contactLimiter.isAllowed('mail')) { toast('Please wait a moment before trying again.'); return; }
-                        const b64 = el.getAttribute('data-email') || '';
-                        const email = safeEmail(decodeB64(b64));
-                        if (!email) return;
-                        window.location.href = `mailto:${email}?subject=${encodeURIComponent('Inquiry from website')}&body=`;
+                // ---------- Rate Limiter ----------
+                class RateLimiter {
+                    constructor(maxRequests = 5, windowMs = 60000) {
+                        this.maxRequests = maxRequests;
+                        this.windowMs = windowMs;
+                        this.requests = new Map();
                     }
-                    function openTel(el) {
-                        if (!contactLimiter.isAllowed('tel')) { toast('Please wait a moment before trying again.'); return; }
-                        const raw = el.getAttribute('data-phone') || '';
-                        const num = safePhone(raw);
-                        if (!num) return;
-                        window.location.href = 'tel:' + num;
+                    isAllowed(key) {
+                        const now = Date.now();
+                        const userRequests = this.requests.get(key) || [];
+                        const recentRequests = userRequests.filter(time => now - time < this.windowMs);
+                        if (recentRequests.length >= this.maxRequests) return false;
+                        recentRequests.push(now);
+                        this.requests.set(key, recentRequests);
+                        return true;
                     }
-                    function openSms(el) {
-                        if (!contactLimiter.isAllowed('sms')) { toast('Please wait a moment before trying again.'); return; }
-                        const raw = el.getAttribute('data-sms') || '';
-                        const num = safePhone(raw);
-                        if (!num) return;
-                        window.location.href = 'sms:' + num;
-                    }
+                }
+                const contactLimiter = new RateLimiter(3, 60000);
 
-                    function wireContactElements() {
-                        qAll('.contact-mail').forEach(el => {
-                            el.addEventListener('click', (ev) => { ev.preventDefault(); openMail(el); });
-                            el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openMail(el); } });
+                // ---------- Contact Handlers ----------
+                function decodeB64(s) {
+                    try {
+                        return atob(s);
+                    } catch (e) {
+                        return '';
+                    }
+                }
+
+                function safePhone(s) {
+                    return (s || '').replace(/[^+\d\s\-()]/g, '').trim();
+                }
+
+                function safeEmail(s) {
+                    return (s || '').replace(/[^A-Za-z0-9@._+\-]/g, '').trim();
+                }
+
+                function openMail(el) {
+                    if (!contactLimiter.isAllowed('mail')) {
+                        toast('Please wait a moment before trying again.');
+                        return;
+                    }
+                    const b64 = el.getAttribute('data-email') || '';
+                    const email = safeEmail(decodeB64(b64));
+                    if (!email) return;
+                    window.location.href = `mailto:${email}?subject=${encodeURIComponent('Inquiry from website')}&body=`;
+                }
+
+                function openTel(el) {
+                    if (!contactLimiter.isAllowed('tel')) {
+                        toast('Please wait a moment before trying again.');
+                        return;
+                    }
+                    const raw = el.getAttribute('data-phone') || '';
+                    const num = safePhone(raw);
+                    if (!num) return;
+                    window.location.href = 'tel:' + num;
+                }
+
+                function openSms(el) {
+                    if (!contactLimiter.isAllowed('sms')) {
+                        toast('Please wait a moment before trying again.');
+                        return;
+                    }
+                    const raw = el.getAttribute('data-sms') || '';
+                    const num = safePhone(raw);
+                    if (!num) return;
+                    window.location.href = 'sms:' + num;
+                }
+
+                function wireContactElements() {
+                    qAll('.contact-mail').forEach(el => {
+                        el.addEventListener('click', (ev) => {
+                            ev.preventDefault();
+                            openMail(el);
                         });
-                        qAll('.contact-phone').forEach(el => {
-                            el.addEventListener('click', (ev) => { ev.preventDefault(); openTel(el); });
-                            el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openTel(el); } });
+                        el.addEventListener('keydown', (ev) => {
+                            if (ev.key === 'Enter' || ev.key === ' ') {
+                                ev.preventDefault();
+                                openMail(el);
+                            }
                         });
-                        qAll('.contact-sms').forEach(el => {
-                            el.addEventListener('click', (ev) => { ev.preventDefault(); openSms(el); });
-                            el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openSms(el); } });
+                    });
+                    qAll('.contact-phone').forEach(el => {
+                        el.addEventListener('click', (ev) => {
+                            ev.preventDefault();
+                            openTel(el);
                         });
-                    }
+                        el.addEventListener('keydown', (ev) => {
+                            if (ev.key === 'Enter' || ev.key === ' ') {
+                                ev.preventDefault();
+                                openTel(el);
+                            }
+                        });
+                    });
+                    qAll('.contact-sms').forEach(el => {
+                        el.addEventListener('click', (ev) => {
+                            ev.preventDefault();
+                            openSms(el);
+                        });
+                        el.addEventListener('keydown', (ev) => {
+                            if (ev.key === 'Enter' || ev.key === ' ') {
+                                ev.preventDefault();
+                                openSms(el);
+                            }
+                        });
+                    });
+                }
 
-                    // ---------- Debounce ----------
-                    function debounce(fn, wait = 220) {
-                        let timeout = null, raf = null;
-                        return function(...args) {
-                            const ctx = this;
-                            if (timeout) clearTimeout(timeout);
-                            if (raf) cancelAnimationFrame(raf);
-                            if (wait <= 16) raf = requestAnimationFrame(() => fn.apply(ctx, args));
-                            else timeout = setTimeout(() => fn.apply(ctx, args), wait);
-                        };
-                    }
-
-                    // ---------- State ----------
-                    const STORAGE_KEY = "booktom_cart_v1";
-                    function loadCartPlain() {
-                        try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]"); } catch (_) { return []; }
-                    }
-                    const State = {
-                        serviceRequest: loadCartPlain(),
-                        furnitureItems: []
+                // ---------- Debounce ----------
+                function debounce(fn, wait = 220) {
+                    let timeout = null,
+                        raf = null;
+                    return function(...args) {
+                        const ctx = this;
+                        if (timeout) clearTimeout(timeout);
+                        if (raf) cancelAnimationFrame(raf);
+                        if (wait <= 16) raf = requestAnimationFrame(() => fn.apply(ctx, args));
+                        else timeout = setTimeout(() => fn.apply(ctx, args), wait);
                     };
+                }
+                // Viewport height fix for mobile browser address bar
+                function setViewportHeight() {
+                    requestAnimationFrame(() => {
+                        const vh = window.innerHeight * 0.01;
+                        document.documentElement.style.setProperty('--vh', `${vh}px`);
+                    });
+                }
 
-                    // ---------- DOM References ----------
-                    const DOM = {
-                        categoriesGrid: null,
-                        cartFab: null,
-                        fabCount: null,
-                        invoiceOverlay: null,
-                        invoiceServiceList: null,
-                        invoiceTotal: null,
-                        serviceCount: null,
-                        serviceRequestList: null,
-                        estimateTotal: null,
-                        totalAmount: null,
-                        newServiceRequestSummaryContainer: null,
-                        selectDetailsContainer: null,
-                        selectServiceSection: null,
-                        serviceRequestSection: null,
-                        checkoutBtn: null,
-                        bookMoreBtn: null,
-                        showCategoriesBtn: null,
-                        overlayCheckoutBtn: null
-                    };
-                    let invoiceCurrentPage = 1;
-                    const ITEMS_PER_PAGE = 2;
 
-                    // ---------- Data Maps ----------
-                    let SERVICE_DATA = null;
-                    const categoryMap = new Map();
-                    const groupMap = new Map();
-                    const servicesByGroup = new Map();
-                    const serviceMap = new Map();
-                    const furnitureMap = new Map();
+                // ---------- State ----------
+                const STORAGE_KEY = "booktom_cart_v1";
 
-                    // ---------- Toast ----------
-                    function toast(message) {
+                function loadCartPlain() {
+                    try {
+                        return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
+                    } catch (_) {
+                        return [];
+                    }
+                }
+                const State = {
+                    serviceRequest: loadCartPlain(),
+                    furnitureItems: []
+                };
+
+                // ---------- DOM References ----------
+                const DOM = {
+                    categoriesGrid: null,
+                    cartFab: null,
+                    fabCount: null,
+                    invoiceOverlay: null,
+                    invoiceServiceList: null,
+                    invoiceTotal: null,
+                    serviceCount: null,
+                    serviceRequestList: null,
+                    estimateTotal: null,
+                    totalAmount: null,
+                    newServiceRequestSummaryContainer: null,
+                    selectDetailsContainer: null,
+                    selectServiceSection: null,
+                    serviceRequestSection: null,
+                    checkoutBtn: null,
+                    bookMoreBtn: null,
+                    showCategoriesBtn: null,
+                    overlayCheckoutBtn: null
+                };
+                let invoiceCurrentPage = 1;
+                const ITEMS_PER_PAGE = 2;
+
+                // ---------- Data Maps ----------
+                let SERVICE_DATA = null;
+                const categoryMap = new Map();
+                const groupMap = new Map();
+                const servicesByGroup = new Map();
+                const serviceMap = new Map();
+                const furnitureMap = new Map();
+
+                // ---------- Toast ----------
+                function toast(message) {
+                    requestAnimationFrame(() => {
                         const container = document.getElementById('toast-container') || (() => {
                             const c = document.createElement('div');
                             c.id = 'toast-container';
@@ -3836,85 +3898,131 @@
                             return c;
                         })();
                         const el = document.createElement('div');
-                        el.style.cssText = 'background:rgba(0,0,0,0.9); color:white; padding:12px 20px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.3); font-size:14px; max-width:300px;';
+                        el.style.cssText = 'background:rgba(0,0,0,0.9); color:white; padding:12px 20px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.3); font-size:14px; max-width:300px; transition:opacity 0.3s;';
                         el.textContent = Security.sanitizeHTML(message);
                         container.appendChild(el);
-                        setTimeout(() => el.remove(), 3000);
-                    }
+                        setTimeout(() => {
+                            el.style.opacity = '0';
+                            setTimeout(() => el.remove(), 300);
+                        }, 3000);
+                    });
+                }
 
-                    // ---------- Cart Persistence ----------
-                    function persistCartPlain(state) {
-                        try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state || [])); } catch (_) {}
-                    }
-                    let persistInterval = setInterval(() => persistCartPlain(State.serviceRequest), 10000);
-                    window.addEventListener("beforeunload", () => { persistCartPlain(State.serviceRequest); clearInterval(persistInterval); });
+                // ---------- Cart Persistence ----------
+                function persistCartPlain(state) {
+                    try {
+                        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state || []));
+                    } catch (_) {}
+                }
+                let persistInterval = setInterval(() => persistCartPlain(State.serviceRequest), 10000);
+                window.addEventListener("beforeunload", () => {
+                    persistCartPlain(State.serviceRequest);
+                    clearInterval(persistInterval);
+                });
 
-                    // ---------- PAX Config ----------
-                    const PAX_COEFF_B64 = "eyJwcmljZVBlckhvdXIiOjg1LCJzdGFydEZlZSI6MCwiY29lZmZpY2llbnRzIjp7ImNhYmluZXQiOjEuMywic3RhbmRhcmREb29yIjowLjYsInNsaWRpbmdEb29yIjowLjksImluc2lkZUl0ZW0iOjAuMzV9fQ==";
-                    function decodePaxConfig(b64) {
-                        try { return JSON.parse(atob(b64)); } catch (e) {
-                            return { pricePerHour: 85, startFee: 0, coefficients: { cabinet: 1.3, standardDoor: 0.6, slidingDoor: 0.9, insideItem: 0.35 } };
-                        }
-                    }
-                    const PAX_CONFIG = decodePaxConfig(PAX_COEFF_B64);
-                    const PRICE_PER_HOUR = PAX_CONFIG.pricePerHour;
-                    const START_FEE = PAX_CONFIG.startFee;
-                    const COEFF = PAX_CONFIG.coefficients;
+                // ---------- PAX Config ----------
+                const PAX_COEFF_B64 = "eyJwcmljZVBlckhvdXIiOjg1LCJzdGFydEZlZSI6MCwiY29lZmZpY2llbnRzIjp7ImNhYmluZXQiOjEuMywic3RhbmRhcmREb29yIjowLjYsInNsaWRpbmdEb29yIjowLjksImluc2lkZUl0ZW0iOjAuMzV9fQ==";
 
-                    function computeFurnitureCharge(itemsMinutes) {
-                        if (!Array.isArray(itemsMinutes) || itemsMinutes.length === 0) return { hours: 0, price: 0, minutes: 0 };
-                        const totalMinutes = itemsMinutes.reduce((a, b) => a + b, 0);
-                        let hours = totalMinutes / 60;
-                        if (hours > 0 && hours < 1) hours = 1;
-                        const hoursRounded = Math.round(hours * 100) / 100;
-                        const rate = (SERVICE_DATA?.meta?.rate_per_hour || 85);
-                        const price = Math.round(hoursRounded * rate * 100) / 100;
-                        return { hours: hoursRounded, price, minutes: totalMinutes };
+                function decodePaxConfig(b64) {
+                    try {
+                        return JSON.parse(atob(b64));
+                    } catch (e) {
+                        return {
+                            pricePerHour: 85,
+                            startFee: 0,
+                            coefficients: {
+                                cabinet: 1.3,
+                                standardDoor: 0.6,
+                                slidingDoor: 0.9,
+                                insideItem: 0.35
+                            }
+                        };
                     }
+                }
+                const PAX_CONFIG = decodePaxConfig(PAX_COEFF_B64);
+                const PRICE_PER_HOUR = PAX_CONFIG.pricePerHour;
+                const START_FEE = PAX_CONFIG.startFee;
+                const COEFF = PAX_CONFIG.coefficients;
 
-                    function computeRepairCharge(hoursInput) {
-                        let hours = parseFloat(hoursInput) || 0;
-                        if (hours <= 0) hours = 1;
-                        const hoursRounded = Math.round(hours * 100) / 100;
-                        const rate = (SERVICE_DATA?.meta?.repair_rate_per_hour || 110);
-                        const price = Math.round(hoursRounded * rate * 100) / 100;
-                        return { hours: hoursRounded, price };
-                    }
+                function computeFurnitureCharge(itemsMinutes) {
+                    if (!Array.isArray(itemsMinutes) || itemsMinutes.length === 0) return {
+                        hours: 0,
+                        price: 0,
+                        minutes: 0
+                    };
+                    const totalMinutes = itemsMinutes.reduce((a, b) => a + b, 0);
+                    let hours = totalMinutes / 60;
+                    if (hours > 0 && hours < 1) hours = 1;
+                    const hoursRounded = Math.round(hours * 100) / 100;
+                    const rate = (SERVICE_DATA?.meta?.rate_per_hour || 85);
+                    const price = Math.round(hoursRounded * rate * 100) / 100;
+                    return {
+                        hours: hoursRounded,
+                        price,
+                        minutes: totalMinutes
+                    };
+                }
 
-                    // ---------- Build Maps from JSON (with subgroup support) ----------
-                    function buildDataMaps(data) {
-                        SERVICE_DATA = data;
-                        categoryMap.clear(); groupMap.clear(); servicesByGroup.clear(); serviceMap.clear(); furnitureMap.clear();
-                        data.categories.forEach(c => categoryMap.set(c.id, c));
-                        data.groups.forEach(g => {
-                            groupMap.set(g.id, g);
-                            if (!servicesByGroup.has(g.id)) servicesByGroup.set(g.id, []);
+                function computeRepairCharge(hoursInput) {
+                    let hours = parseFloat(hoursInput) || 0;
+                    if (hours <= 0) hours = 1;
+                    const hoursRounded = Math.round(hours * 100) / 100;
+                    const rate = (SERVICE_DATA?.meta?.repair_rate_per_hour || 110);
+                    const price = Math.round(hoursRounded * rate * 100) / 100;
+                    return {
+                        hours: hoursRounded,
+                        price
+                    };
+                }
+
+                // ---------- Build Maps from JSON (with subgroup support) ----------
+                function buildDataMaps(data) {
+                    SERVICE_DATA = data;
+                    categoryMap.clear();
+                    groupMap.clear();
+                    servicesByGroup.clear();
+                    serviceMap.clear();
+                    furnitureMap.clear();
+                    data.categories.forEach(c => categoryMap.set(c.id, c));
+                    data.groups.forEach(g => {
+                        groupMap.set(g.id, g);
+                        if (!servicesByGroup.has(g.id)) servicesByGroup.set(g.id, []);
+                    });
+                    data.services.forEach(s => {
+                        serviceMap.set(s.id, s);
+                        const arr = servicesByGroup.get(s.group) || [];
+                        arr.push(s);
+                        servicesByGroup.set(s.group, arr);
+                    });
+                    data.furniture_items.forEach(f => {
+                        const displayName = f.article ? `${f.name} (${f.article})` : f.name;
+                        furnitureMap.set(displayName, {
+                            name: f.name,
+                            minutes: f.minutes,
+                            article: f.article,
+                            brand: f.brand
                         });
-                        data.services.forEach(s => {
-                            serviceMap.set(s.id, s);
-                            const arr = servicesByGroup.get(s.group) || [];
-                            arr.push(s);
-                            servicesByGroup.set(s.group, arr);
+                        if (f.article) furnitureMap.set(f.article, {
+                            name: f.name,
+                            minutes: f.minutes,
+                            article: f.article,
+                            brand: f.brand
                         });
-                        data.furniture_items.forEach(f => {
-                            const displayName = f.article ? `${f.name} (${f.article})` : f.name;
-                            furnitureMap.set(displayName, { name: f.name, minutes: f.minutes, article: f.article, brand: f.brand });
-                            if (f.article) furnitureMap.set(f.article, { name: f.name, minutes: f.minutes, article: f.article, brand: f.brand });
-                        });
-                        // Build subgroup structure if present in JSON (e.g., groups have subgroups array)
-                        // We'll handle nested groups dynamically in navigation.
-                    }
+                    });
+                    // Build subgroup structure if present in JSON (e.g., groups have subgroups array)
+                    // We'll handle nested groups dynamically in navigation.
+                }
 
-                    function formatServicePrice(svc) {
-                        if (svc.price) return `$${svc.price}`;
-                        if (svc.price_per_hour) return `$${svc.price_per_hour}/hr`;
-                        return 'Call';
-                    }
+                function formatServicePrice(svc) {
+                    if (svc.price) return `$${svc.price}`;
+                    if (svc.price_per_hour) return `$${svc.price_per_hour}/hr`;
+                    return 'Call';
+                }
 
-                    // ---------- CSS Injection ----------
-                    function injectStyles() {
-                        if (document.getElementById('booktom-dynamic-styles')) return;
-                        const css = `
+                // ---------- CSS Injection ----------
+                function injectStyles() {
+                    if (document.getElementById('booktom-dynamic-styles')) return;
+                    const css = `
                             #invoiceOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); display: none; z-index: 10000; animation: fadeIn 0.3s ease; justify-content: center; align-items: center; padding: 1rem; }
                             #invoiceOverlay.open { display: flex; }
                             #invoiceOverlay .invoice-content { background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 248, 248, 0.95) 100%); color: #2a2a2a; border-radius: 16px; border: 2px solid rgba(169, 169, 169, 0.3); box-shadow: var(--shadow-lg); overflow: hidden; max-height: 90vh; display: flex; flex-direction: column; width: 100%; max-width: 450px; position: relative; animation: invoiceSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -3952,592 +4060,849 @@
                             @media (min-width:600px) { #invoiceOverlay .invoice-content { width: 450px; } }
                             @media (max-width: 768px) { .close-btn, .invoice-remove-service-btn { min-width: 44px; min-height: 44px; } .clear-all-btn { padding: 12px 20px; font-size: 1rem; } }
                         `;
-                        const style = document.createElement('style');
-                        style.id = 'booktom-dynamic-styles';
-                        style.textContent = css;
-                        document.head.appendChild(style);
-                    }
-                    injectStyles();
+                    const style = document.createElement('style');
+                    style.id = 'booktom-dynamic-styles';
+                    style.textContent = css;
+                    document.head.appendChild(style);
+                }
+                injectStyles();
 
-                    // ---------- Cart UI Updates (continued in Part 2) ----------
-                    // ---------- Cart UI Updates ----------
-                    function updateserviceRequestUI() {
-                        const list = DOM.serviceRequestList;
-                        if (!list) return;
-                        list.innerHTML = '';
-                        let total = 0;
-                        State.serviceRequest.forEach(svc => {
-                            const item = create("div", { class: "requested-service-item" });
-                            item.appendChild(create("div", { class: "requested-service-icon", text: svc.icon || "🔧" }));
-                            const tw = create("div", { class: "requested-service-text" });
-                            const nameSpan = create("h4", { text: svc.name });
-                            if (svc.price && svc.price.includes('/hr')) nameSpan.appendChild(create("span", { class: "price-type-emojii", text: "🕐" }));
-                            tw.appendChild(nameSpan);
-                            tw.appendChild(create("div", { class: "service-detail", text: svc.detail || "" }));
-                            if (svc.notes && (!svc.furnitureItems || svc.furnitureItems.length === 0)) {
-                                tw.appendChild(create("div", { class: "service-notes", text: svc.notes }));
-                            }
-                            if (svc.furnitureItems && svc.furnitureItems.length) {
-                                const fwrap = create("div", { class: "requested-service-furniture" });
-                                svc.furnitureItems.forEach((fi, i) => {
-                                    const fitem = create("span", { class: "f-item" });
-                                    fitem.appendChild(create("span", { text: fi.label }));
-                                    const rem = create("button", { type: "button", text: "🗙" });
-                                    rem.addEventListener("click", e => { e.stopPropagation(); removeFurnitureItemFromService(svc.id, i); updateserviceRequestUI(); });
-                                    fitem.appendChild(rem);
-                                    fwrap.appendChild(fitem);
-                                });
-                                tw.appendChild(fwrap);
-                            }
-                            item.appendChild(tw);
-                            const actions = create("div", { class: "service-item-actions" });
-                            const removeBtn = create("button", { class: "remove-service-btn", text: "✕" });
-                            removeBtn.addEventListener("click", e => { e.stopPropagation(); removeServiceFromCart(svc.id); updateserviceRequestUI(); });
-                            actions.appendChild(removeBtn);
-                            item.appendChild(actions);
-                            item.appendChild(create("div", { class: "requested-service-price", text: svc.price || "$0" }));
-                            list.appendChild(item);
-                            total += parsePriceToInt(svc.price);
+                // ---------- Cart UI Updates (continued in Part 2) ----------
+                // ---------- Cart UI Updates ----------
+                function updateserviceRequestUI() {
+                    const list = DOM.serviceRequestList;
+                    if (!list) return;
+                    list.innerHTML = '';
+                    let total = 0;
+                    State.serviceRequest.forEach(svc => {
+                        const item = create("div", {
+                            class: "requested-service-item"
                         });
-                        if (State.serviceRequest.length > 0) {
-                            if (DOM.estimateTotal) DOM.estimateTotal.style.display = "flex";
-                            if (DOM.totalAmount) safeText(DOM.totalAmount, `$${total}`);
-                            if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "block";
-                        } else {
-                            if (DOM.estimateTotal) DOM.estimateTotal.style.display = "none";
-                            if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "none";
+                        item.appendChild(create("div", {
+                            class: "requested-service-icon",
+                            text: svc.icon || "🔧"
+                        }));
+                        const tw = create("div", {
+                            class: "requested-service-text"
+                        });
+                        const nameSpan = create("h4", {
+                            text: svc.name
+                        });
+                        if (svc.price && svc.price.includes('/hr')) nameSpan.appendChild(create("span", {
+                            class: "price-type-emojii",
+                            text: "🕐"
+                        }));
+                        tw.appendChild(nameSpan);
+                        tw.appendChild(create("div", {
+                            class: "service-detail",
+                            text: svc.detail || ""
+                        }));
+                        if (svc.notes && (!svc.furnitureItems || svc.furnitureItems.length === 0)) {
+                            tw.appendChild(create("div", {
+                                class: "service-notes",
+                                text: svc.notes
+                            }));
                         }
-                        if (DOM.serviceCount) safeText(DOM.serviceCount, String(State.serviceRequest.length));
-                        if (DOM.fabCount) safeText(DOM.fabCount, String(State.serviceRequest.length));
-                        persistCartPlain(State.serviceRequest);
-                        updateFabVisibility();
+                        if (svc.furnitureItems && svc.furnitureItems.length) {
+                            const fwrap = create("div", {
+                                class: "requested-service-furniture"
+                            });
+                            svc.furnitureItems.forEach((fi, i) => {
+                                const fitem = create("span", {
+                                    class: "f-item"
+                                });
+                                fitem.appendChild(create("span", {
+                                    text: fi.label
+                                }));
+                                const rem = create("button", {
+                                    type: "button",
+                                    text: "🗙"
+                                });
+                                rem.addEventListener("click", e => {
+                                    e.stopPropagation();
+                                    removeFurnitureItemFromService(svc.id, i);
+                                    updateserviceRequestUI();
+                                });
+                                fitem.appendChild(rem);
+                                fwrap.appendChild(fitem);
+                            });
+                            tw.appendChild(fwrap);
+                        }
+                        item.appendChild(tw);
+                        const actions = create("div", {
+                            class: "service-item-actions"
+                        });
+                        const removeBtn = create("button", {
+                            class: "remove-service-btn",
+                            text: "✕"
+                        });
+                        removeBtn.addEventListener("click", e => {
+                            e.stopPropagation();
+                            removeServiceFromCart(svc.id);
+                            updateserviceRequestUI();
+                        });
+                        actions.appendChild(removeBtn);
+                        item.appendChild(actions);
+                        item.appendChild(create("div", {
+                            class: "requested-service-price",
+                            text: svc.price || "$0"
+                        }));
+                        list.appendChild(item);
+                        total += parsePriceToInt(svc.price);
+                    });
+                    if (State.serviceRequest.length > 0) {
+                        if (DOM.estimateTotal) DOM.estimateTotal.style.display = "flex";
+                        if (DOM.totalAmount) safeText(DOM.totalAmount, `$${total}`);
+                        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "block";
+                    } else {
+                        if (DOM.estimateTotal) DOM.estimateTotal.style.display = "none";
+                        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "none";
                     }
+                    if (DOM.serviceCount) safeText(DOM.serviceCount, String(State.serviceRequest.length));
+                    if (DOM.fabCount) safeText(DOM.fabCount, String(State.serviceRequest.length));
+                    persistCartPlain(State.serviceRequest);
+                    updateFabVisibility();
+                }
 
-                    function removeServiceFromCart(id) {
-                        State.serviceRequest = State.serviceRequest.filter(s => s.id !== id);
-                        updateserviceRequestUI();
-                        updateFabVisibility();
+                function removeServiceFromCart(id) {
+                    State.serviceRequest = State.serviceRequest.filter(s => s.id !== id);
+                    updateserviceRequestUI();
+                    updateFabVisibility();
+                }
+
+                function removeFurnitureItemFromService(serviceId, idx) {
+                    const svc = State.serviceRequest.find(s => s.id === serviceId);
+                    if (!svc || !svc.furnitureItems) return;
+                    svc.furnitureItems.splice(idx, 1);
+                    const isAssembly = svc.name.toLowerCase().includes("assembly");
+                    if (isAssembly && svc.furnitureItems.length === 0) {
+                        removeServiceFromCart(serviceId);
+                        return;
                     }
+                    if (isAssembly) {
+                        const minutes = svc.furnitureItems.map(fi => fi.minutes);
+                        const charge = computeFurnitureCharge(minutes);
+                        svc.estimatedHours = charge.hours;
+                        svc.estimatedPrice = charge.price;
+                        svc.price = `$${charge.price.toFixed(2)}`;
+                        svc.notes = `Furniture Items: ${svc.furnitureItems.map(f => f.label).join(", ")} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
+                    }
+                    persistCartPlain(State.serviceRequest);
+                    updateserviceRequestUI();
+                    updateFabVisibility();
+                }
 
-                    function removeFurnitureItemFromService(serviceId, idx) {
-                        const svc = State.serviceRequest.find(s => s.id === serviceId);
-                        if (!svc || !svc.furnitureItems) return;
-                        svc.furnitureItems.splice(idx, 1);
-                        const isAssembly = svc.name.toLowerCase().includes("assembly");
-                        if (isAssembly && svc.furnitureItems.length === 0) {
-                            removeServiceFromCart(serviceId);
+                function addToCart(entry) {
+                    if (!entry || !entry.id) return;
+                    const isFurnitureAssembly = entry.furnitureItems && entry.furnitureItems.length > 0;
+                    if (isFurnitureAssembly) {
+                        const existing = State.serviceRequest.find(item => item.name === entry.name && item.categoryId === entry.categoryId);
+                        if (existing) {
+                            existing.furnitureItems = [...existing.furnitureItems, ...entry.furnitureItems];
+                            const allMinutes = existing.furnitureItems.map(fi => fi.minutes);
+                            const charge = computeFurnitureCharge(allMinutes);
+                            existing.estimatedHours = charge.hours;
+                            existing.estimatedPrice = charge.price;
+                            existing.price = `$${charge.price.toFixed(2)}`;
+                            existing.notes = `Furniture Items: ${existing.furnitureItems.map(f => f.label).join(", ")} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
+                            updateserviceRequestUI();
+                            updateFabVisibility();
+                            toast(`Added ${entry.furnitureItems.length} item(s) to ${entry.name}`);
                             return;
                         }
-                        if (isAssembly) {
-                            const minutes = svc.furnitureItems.map(fi => fi.minutes);
-                            const charge = computeFurnitureCharge(minutes);
-                            svc.estimatedHours = charge.hours;
-                            svc.estimatedPrice = charge.price;
-                            svc.price = `$${charge.price.toFixed(2)}`;
-                            svc.notes = `Furniture Items: ${svc.furnitureItems.map(f => f.label).join(", ")} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
-                        }
-                        persistCartPlain(State.serviceRequest);
-                        updateserviceRequestUI();
-                        updateFabVisibility();
                     }
+                    State.serviceRequest.push(entry);
+                    updateserviceRequestUI();
+                    updateFabVisibility();
+                    toast(`${entry.name} added to cart!`);
+                }
 
-                    function addToCart(entry) {
-                        if (!entry || !entry.id) return;
-                        const isFurnitureAssembly = entry.furnitureItems && entry.furnitureItems.length > 0;
-                        if (isFurnitureAssembly) {
-                            const existing = State.serviceRequest.find(item => item.name === entry.name && item.categoryId === entry.categoryId);
-                            if (existing) {
-                                existing.furnitureItems = [...existing.furnitureItems, ...entry.furnitureItems];
-                                const allMinutes = existing.furnitureItems.map(fi => fi.minutes);
-                                const charge = computeFurnitureCharge(allMinutes);
-                                existing.estimatedHours = charge.hours;
-                                existing.estimatedPrice = charge.price;
-                                existing.price = `$${charge.price.toFixed(2)}`;
-                                existing.notes = `Furniture Items: ${existing.furnitureItems.map(f => f.label).join(", ")} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
-                                updateserviceRequestUI();
-                                updateFabVisibility();
-                                toast(`Added ${entry.furnitureItems.length} item(s) to ${entry.name}`);
-                                return;
+                function updateFabVisibility() {
+                    if (!DOM.cartFab || !DOM.fabCount) return;
+                    const hasItems = State.serviceRequest.length > 0;
+                    DOM.cartFab.style.display = hasItems ? "flex" : "none";
+                    safeText(DOM.fabCount, String(State.serviceRequest.length));
+                    const manageBtn = q("#manageVisitBtn");
+                    if (manageBtn) manageBtn.style.display = hasItems ? "none" : "";
+                }
+
+                // ---------- Focused Mode ----------
+                function enterFocusedMode() {
+                    const card = document.querySelector('.card-schedule-service');
+                    if (card) {
+                        card.classList.add('focused-mode');
+                        document.body.classList.add('modal-active');
+                    }
+                }
+
+                function exitFocusedMode() {
+                    const card = document.querySelector('.card-schedule-service');
+                    if (card) {
+                        card.classList.remove('focused-mode');
+                        document.body.classList.remove('modal-active');
+                    }
+                }
+
+                // ---------- Navigation Path Stack (supports nested groups) ----------
+                const Navigation = {
+                    pathStack: [],
+                    push(state) {
+                        this.pathStack.push(state);
+                    },
+                    pop() {
+                        return this.pathStack.pop();
+                    },
+                    clear() {
+                        this.pathStack = [];
+                    },
+                    goBack() {
+                        if (this.pathStack.length === 0) {
+                            showCategories();
+                            return;
+                        }
+                        const prev = this.pathStack.pop();
+                        if (prev.type === 'groups') showGroupsForCategory(prev.categoryId, true);
+                        else if (prev.type === 'services') showServicesForGroup(prev.groupId, prev.categoryId, true);
+                        else if (prev.type === 'subgroups') showSubgroupsForGroup(prev.groupId, prev.categoryId, true);
+                        else showCategories();
+                    }
+                };
+
+                // ---------- Show Categories ----------
+                function showCategories() {
+                    exitFocusedMode();
+                    Navigation.clear();
+                    if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "grid";
+                    if (DOM.newServiceRequestSummaryContainer) DOM.newServiceRequestSummaryContainer.style.display = "none";
+                    if (DOM.selectDetailsContainer) DOM.selectDetailsContainer.style.display = "none";
+                    if (DOM.selectServiceSection) DOM.selectServiceSection.innerHTML = "";
+                    if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = State.serviceRequest.length ? "block" : "none";
+                    closeInvoiceOverlay();
+                    updateFabVisibility();
+                }
+
+                function renderCategoryTiles() {
+                    const grid = DOM.categoriesGrid;
+                    if (!grid) return;
+                    grid.innerHTML = '';
+                    SERVICE_DATA.categories.forEach(cat => {
+                        const tile = create('div', {
+                            class: 'category-tile',
+                            'data-category-id': cat.id,
+                            tabindex: '0'
+                        });
+                        tile.appendChild(create('div', {
+                            class: 'category-icon',
+                            text: cat.icon
+                        }));
+                        tile.appendChild(create('h2', {
+                            text: cat.name
+                        }));
+                        tile.addEventListener('click', () => {
+                            Navigation.push({
+                                type: 'categories'
+                            });
+                            showGroupsForCategory(cat.id);
+                        });
+                        grid.appendChild(tile);
+                    });
+                }
+
+                // Check if a group has subgroups (nested groups)
+                function groupHasSubgroups(groupId) {
+                    const group = groupMap.get(groupId);
+                    return group && group.subgroups && Array.isArray(group.subgroups) && group.subgroups.length > 0;
+                }
+
+                function showGroupsForCategory(categoryId, fromBack = false) {
+                    if (!fromBack) Navigation.push({
+                        type: 'groups',
+                        categoryId
+                    });
+                    enterFocusedMode();
+                    const groups = SERVICE_DATA.groups.filter(g => g.category === categoryId);
+                    const container = DOM.selectServiceSection;
+                    container.innerHTML = '';
+                    container.style.display = 'block';
+                    DOM.categoriesGrid.style.display = 'none';
+                    DOM.newServiceRequestSummaryContainer.style.display = 'block';
+                    DOM.selectDetailsContainer.style.display = 'none';
+                    const cat = categoryMap.get(categoryId);
+                    const header = create('h3', {});
+                    header.appendChild(create('span', {
+                        text: cat.icon + ' '
+                    }));
+                    header.appendChild(document.createTextNode(cat.name));
+                    container.appendChild(header);
+                    const grid = create('div', {
+                        class: 'service-item-grid'
+                    });
+                    groups.forEach(group => {
+                        const card = create('div', {
+                            class: 'service-item-card',
+                            tabindex: '0'
+                        });
+                        card.appendChild(create('div', {
+                            class: 'service-item-icon',
+                            text: group.icon || '📁'
+                        }));
+                        card.appendChild(create('h4', {
+                            text: group.name
+                        }));
+                        card.addEventListener('click', () => {
+                            if (groupHasSubgroups(group.id)) {
+                                Navigation.push({
+                                    type: 'subgroups',
+                                    groupId: group.id,
+                                    categoryId
+                                });
+                                showSubgroupsForGroup(group.id, categoryId);
+                            } else {
+                                Navigation.push({
+                                    type: 'services',
+                                    groupId: group.id,
+                                    categoryId
+                                });
+                                showServicesForGroup(group.id, categoryId);
                             }
+                        });
+                        grid.appendChild(card);
+                    });
+                    container.appendChild(grid);
+                    addBackButton(container, () => Navigation.goBack());
+                }
+
+                function showSubgroupsForGroup(groupId, categoryId, fromBack = false) {
+                    if (!fromBack) Navigation.push({
+                        type: 'subgroups',
+                        groupId,
+                        categoryId
+                    });
+                    const group = groupMap.get(groupId);
+                    if (!group || !group.subgroups) return;
+                    const container = DOM.selectServiceSection;
+                    container.innerHTML = '';
+                    container.style.display = 'block';
+                    const header = create('h3', {
+                        text: group.name + ' › Subcategories'
+                    });
+                    container.appendChild(header);
+                    const grid = create('div', {
+                        class: 'service-item-grid'
+                    });
+                    group.subgroups.forEach(sub => {
+                        const card = create('div', {
+                            class: 'service-item-card',
+                            tabindex: '0'
+                        });
+                        card.appendChild(create('div', {
+                            class: 'service-item-icon',
+                            text: sub.icon || '📂'
+                        }));
+                        card.appendChild(create('h4', {
+                            text: sub.name
+                        }));
+                        card.addEventListener('click', () => {
+                            Navigation.push({
+                                type: 'services',
+                                groupId: group.id,
+                                categoryId,
+                                subgroupId: sub.id
+                            });
+                            showServicesForGroup(group.id, categoryId, false, sub.id);
+                        });
+                        grid.appendChild(card);
+                    });
+                    container.appendChild(grid);
+                    addBackButton(container, () => Navigation.goBack());
+                }
+
+                function showServicesForGroup(groupId, categoryId, fromBack = false, subgroupId = null) {
+                    if (!fromBack) Navigation.push({
+                        type: 'services',
+                        groupId,
+                        categoryId,
+                        subgroupId
+                    });
+                    let services = servicesByGroup.get(groupId) || [];
+                    if (subgroupId) {
+                        services = services.filter(s => s.subgroup === subgroupId);
+                    }
+                    const container = DOM.selectServiceSection;
+                    container.innerHTML = '';
+                    const group = groupMap.get(groupId);
+                    const header = create('h3', {});
+                    if (group) {
+                        header.appendChild(create('span', {
+                            text: group.icon + ' '
+                        }));
+                        header.appendChild(document.createTextNode(group.name));
+                    }
+                    container.appendChild(header);
+                    const grid = create('div', {
+                        class: 'service-item-grid'
+                    });
+                    services.forEach(svc => {
+                        const card = create('div', {
+                            class: 'service-item-card',
+                            tabindex: '0'
+                        });
+                        card.appendChild(create('div', {
+                            class: 'service-item-icon',
+                            text: svc.icon || '🔧'
+                        }));
+                        card.appendChild(create('h4', {
+                            text: svc.name
+                        }));
+                        const priceSpan = create('div', {
+                            class: 'service-price',
+                            text: formatServicePrice(svc)
+                        });
+                        if (svc.price_per_hour) priceSpan.appendChild(create('span', {
+                            class: 'price-type-emojii',
+                            text: '🕐'
+                        }));
+                        card.appendChild(priceSpan);
+                        const infoBtn = create('button', {
+                            class: 'service-info-btn',
+                            html: '»'
+                        });
+                        infoBtn.addEventListener('click', e => {
+                            e.stopPropagation();
+                            showServiceDetails(svc, categoryId);
+                        });
+                        card.appendChild(infoBtn);
+                        card.addEventListener('click', () => showServiceDetails(svc, categoryId));
+                        grid.appendChild(card);
+                    });
+                    container.appendChild(grid);
+                    addBackButton(container, () => Navigation.goBack());
+                }
+
+                function addBackButton(container, backFn) {
+                    const back = create('button', {
+                        class: 'back-button',
+                        text: '← Back'
+                    });
+                    back.addEventListener('click', backFn);
+                    container.appendChild(back);
+                }
+
+                // ---------- Service Detail & Intake (with detail cards, hour selection options, notes toggle, etc.) ----------
+                function showServiceDetails(svc, categoryId) {
+                    Navigation.push({
+                        type: 'detail',
+                        serviceId: svc.id,
+                        categoryId
+                    });
+                    enterFocusedMode();
+                    const container = DOM.selectDetailsContainer;
+                    container.innerHTML = '';
+                    container.style.display = 'block';
+                    DOM.selectServiceSection.style.display = 'none';
+
+                    // Header with name and materials badge
+                    const header = create('h3', {});
+                    header.appendChild(document.createTextNode(svc.name));
+                    if (svc.materials_included) {
+                        header.appendChild(create('span', {
+                            class: 'materials-badge',
+                            text: 'Materials Included'
+                        }));
+                    }
+                    container.appendChild(header);
+                    container.appendChild(create('p', {
+                        text: svc.description || ''
+                    }));
+
+                    // Repair hint if service is repair type
+                    if (svc.name.toLowerCase().includes("repair")) {
+                        const rate = SERVICE_DATA?.meta?.repair_rate_per_hour || 110;
+                        container.appendChild(create('div', {
+                            class: 'repair-hint',
+                            text: `🔧 Repair rate: $${rate}/hour (minimum 1 hour)`
+                        }));
+                    }
+
+                    // Furniture selection branch
+                    if (svc.requires_furniture_selection) {
+                        renderFurnitureSelection(container, svc, categoryId);
+                        return;
+                    }
+
+                    const formWrapper = create('div', {
+                        class: 'simple-intake-form'
+                    });
+                    const answers = {};
+                    const intakeQuestions = svc.intake || [];
+
+                    // Detail cards (if present)
+                    let selectedDetail = null;
+                    const detailsArray = svc.details || [];
+                    const hasDetails = detailsArray.length > 0;
+                    if (hasDetails) {
+                        const detailsSection = create('div', {
+                            class: 'intake-section'
+                        });
+                        detailsSection.appendChild(create('div', {
+                            class: 'intake-label',
+                            text: svc.detail_prompt || 'Select an option'
+                        }));
+                        const detailsGrid = create('div', {
+                            class: 'details-grid'
+                        });
+                        detailsArray.forEach(detail => {
+                            const card = create('div', {
+                                class: 'detail-card',
+                                text: detail,
+                                tabindex: '0'
+                            });
+                            card.addEventListener('click', () => {
+                                detailsGrid.querySelectorAll('.detail-card').forEach(c => c.classList.remove('selected'));
+                                card.classList.add('selected');
+                                selectedDetail = detail;
+                                // Show notes field if hidden
+                                const notesField = container.querySelector('.service-input-area');
+                                if (notesField) notesField.style.display = 'block';
+                                updateAddButtonState();
+                            });
+                            detailsGrid.appendChild(card);
+                        });
+                        detailsSection.appendChild(detailsGrid);
+                        formWrapper.appendChild(detailsSection);
+                    }
+
+                    // Hour selection for hourly services
+                    let hourSelect = null,
+                        priceDisplay = null;
+                    let selectedHours = svc.default_hours || 1;
+                    const hourSelection = svc.hour_selection || 'dropdown';
+                    if (svc.price_per_hour) {
+                        const hourSection = create('div', {
+                            class: 'intake-section'
+                        });
+                        hourSection.appendChild(create('div', {
+                            class: 'intake-label',
+                            text: 'Estimated hours'
+                        }));
+                        if (hourSelection === 'hidden') {
+                            // Hidden field
+                            selectedHours = selectedHours;
+                            hourSection.style.display = 'none';
+                        } else if (hourSelection === 'prompt' || hourSelection === 'input') {
+                            // Numeric input
+                            const input = create('input', {
+                                type: 'number',
+                                class: 'hour-input',
+                                min: '0.5',
+                                max: '24',
+                                step: '0.5',
+                                value: selectedHours
+                            });
+                            input.addEventListener('input', () => {
+                                selectedHours = parseFloat(input.value) || 1;
+                                if (priceDisplay) priceDisplay.textContent = `Total: $${(selectedHours * svc.price_per_hour).toFixed(2)}`;
+                            });
+                            hourSection.appendChild(input);
+                        } else {
+                            // Dropdown (default)
+                            hourSelect = create('select', {
+                                class: 'hour-dropdown'
+                            });
+                            const start = 0.5;
+                            const end = 8;
+                            const step = 0.5;
+                            for (let h = start; h <= end; h += step) {
+                                hourSelect.appendChild(create('option', {
+                                    value: h,
+                                    text: `${h} hour${h>1?'s':''}`
+                                }));
+                            }
+                            hourSelect.value = selectedHours;
+                            hourSelect.addEventListener('change', () => {
+                                selectedHours = parseFloat(hourSelect.value);
+                                if (priceDisplay) priceDisplay.textContent = `Total: $${(selectedHours * svc.price_per_hour).toFixed(2)}`;
+                            });
+                            hourSection.appendChild(hourSelect);
                         }
-                        State.serviceRequest.push(entry);
+                        priceDisplay = create('div', {
+                            class: 'hourly-price-display',
+                            text: `Total: $${(selectedHours * svc.price_per_hour).toFixed(2)}`
+                        });
+                        hourSection.appendChild(priceDisplay);
+                        formWrapper.appendChild(hourSection);
+                    }
+
+                    // Intake questions (chips)
+                    intakeQuestions.forEach((q, idx) => {
+                        const section = create('div', {
+                            class: 'intake-section'
+                        });
+                        section.appendChild(create('div', {
+                            class: 'intake-label',
+                            text: q.label
+                        }));
+                        const chipContainer = create('div', {
+                            class: 'chip-container'
+                        });
+                        q.options.forEach(opt => {
+                            const chip = create('button', {
+                                class: 'chip-btn',
+                                text: opt,
+                                type: 'button'
+                            });
+                            chip.addEventListener('click', () => {
+                                chipContainer.querySelectorAll('.chip-btn').forEach(c => c.classList.remove('selected'));
+                                chip.classList.add('selected');
+                                answers[idx] = opt;
+                                // Show notes field if hidden and no detail cards (or combined logic)
+                                const notesField = container.querySelector('.service-input-area');
+                                if (notesField && !hasDetails) notesField.style.display = 'block';
+                                updateAddButtonState();
+                            });
+                            chipContainer.appendChild(chip);
+                        });
+                        section.appendChild(chipContainer);
+                        formWrapper.appendChild(section);
+                    });
+
+                    container.appendChild(formWrapper);
+
+                    // Notes field (initially hidden if detail cards exist)
+                    const notesField = create('textarea', {
+                        class: 'service-input-area',
+                        placeholder: 'Additional notes...',
+                        rows: 3,
+                        style: hasDetails ? 'display:none;' : ''
+                    });
+                    container.appendChild(notesField);
+
+                    // Add to cart button
+                    const addBtn = create('button', {
+                        class: 'book-more-button',
+                        text: 'Add to Cart',
+                        disabled: (hasDetails || intakeQuestions.length > 0),
+                        style: `width: 100%; margin-top: 15px; opacity: ${(hasDetails || intakeQuestions.length > 0) ? '0.6' : '1'};`
+                    });
+
+                    function updateAddButtonState() {
+                        const allIntakeAnswered = intakeQuestions.every((_, i) => answers[i] !== undefined);
+                        const detailSelected = !hasDetails || selectedDetail !== null;
+                        const enable = (!hasDetails || detailSelected) && allIntakeAnswered;
+                        addBtn.disabled = !enable;
+                        addBtn.style.opacity = enable ? '1' : '0.6';
+                    }
+
+                    addBtn.addEventListener('click', () => {
+                        let finalNotes = '';
+                        if (selectedDetail) finalNotes = `Detail: ${selectedDetail}`;
+                        intakeQuestions.forEach((q, i) => {
+                            if (answers[i]) finalNotes += (finalNotes ? ' • ' : '') + `${q.label}: ${answers[i]}`;
+                        });
+                        if (notesField.value.trim()) finalNotes += (finalNotes ? ' • ' : '') + notesField.value.trim();
+
+                        let finalPrice = svc.price ? `$${svc.price}` : '';
+                        let hours = 0;
+                        if (svc.price_per_hour) {
+                            hours = selectedHours;
+                            finalPrice = `$${(hours * svc.price_per_hour).toFixed(2)}`;
+                            finalNotes += (finalNotes ? ' • ' : '') + `Hours: ${hours} hr`;
+                        }
+
+                        const entry = {
+                            id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
+                            categoryId,
+                            name: svc.name,
+                            price: finalPrice,
+                            icon: svc.icon || '🔧',
+                            detail: selectedDetail || '',
+                            notes: finalNotes,
+                            furnitureItems: [],
+                            hours,
+                            selectedHours: hours
+                        };
+                        addToCart(entry);
+                        exitFocusedMode();
+                        container.style.display = 'none';
+                        DOM.serviceRequestSection.style.display = 'block';
+                        DOM.serviceRequestSection.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
                         updateserviceRequestUI();
-                        updateFabVisibility();
-                        toast(`${entry.name} added to cart!`);
-                    }
+                        toast('Added to cart');
+                    });
 
-                    function updateFabVisibility() {
-                        if (!DOM.cartFab || !DOM.fabCount) return;
-                        const hasItems = State.serviceRequest.length > 0;
-                        DOM.cartFab.style.display = hasItems ? "flex" : "none";
-                        safeText(DOM.fabCount, String(State.serviceRequest.length));
-                        const manageBtn = q("#manageVisitBtn");
-                        if (manageBtn) manageBtn.style.display = hasItems ? "none" : "";
-                    }
+                    container.appendChild(addBtn);
+                    addBackButton(container, () => {
+                        container.style.display = 'none';
+                        Navigation.goBack();
+                    });
+                }
 
-                    // ---------- Focused Mode ----------
-                    function enterFocusedMode() {
-                        const card = document.querySelector('.card-schedule-service');
-                        if (card) { card.classList.add('focused-mode'); document.body.classList.add('modal-active'); }
-                    }
-                    function exitFocusedMode() {
-                        const card = document.querySelector('.card-schedule-service');
-                        if (card) { card.classList.remove('focused-mode'); document.body.classList.remove('modal-active'); }
-                    }
+                // (Part 2 ends – Furniture selection, PAX configurator, invoice overlay, and event wiring continue in Part 3)
 
-                    // ---------- Navigation Path Stack (supports nested groups) ----------
-                    const Navigation = {
-                        pathStack: [],
-                        push(state) { this.pathStack.push(state); },
-                        pop() { return this.pathStack.pop(); },
-                        clear() { this.pathStack = []; },
-                        goBack() {
-                            if (this.pathStack.length === 0) { showCategories(); return; }
-                            const prev = this.pathStack.pop();
-                            if (prev.type === 'groups') showGroupsForCategory(prev.categoryId, true);
-                            else if (prev.type === 'services') showServicesForGroup(prev.groupId, prev.categoryId, true);
-                            else if (prev.type === 'subgroups') showSubgroupsForGroup(prev.groupId, prev.categoryId, true);
-                            else showCategories();
+                // ---------- Furniture Selection ----------
+                function renderFurnitureSelection(container, svc, categoryId) {
+                    const isRepair = svc.name.toLowerCase().includes("repair");
+                    const searchInput = create("input", {
+                        type: "text",
+                        class: "furniture-search-input",
+                        placeholder: "Search by name or IKEA article number (e.g., 002.133.80)"
+                    });
+                    const listContainer = create("div", {
+                        class: "furniture-list-container"
+                    });
+
+                    const masterList = [];
+                    for (const [displayKey, item] of furnitureMap.entries()) {
+                        if (displayKey === 'PAX_CUSTOM') continue;
+                        masterList.push({
+                            key: displayKey,
+                            label: item.name,
+                            type: item.brand === 'IKEA' ? 'IKEA' : 'Generic',
+                            articleNumber: item.article,
+                            minutes: item.minutes
+                        });
+                    }
+                    masterList.sort((a, b) => a.label.localeCompare(b.label));
+
+                    const renderList = (filterText) => {
+                        listContainer.innerHTML = "";
+                        const term = filterText.toLowerCase().trim();
+                        const filtered = masterList.filter(item => item.label.toLowerCase().includes(term) || (item.articleNumber && item.articleNumber.toLowerCase().includes(term)));
+                        if (filtered.length === 0) {
+                            listContainer.appendChild(create("div", {
+                                text: "No items found",
+                                style: "padding:10px; text-align:center; color:#666;"
+                            }));
+                            return;
                         }
+                        filtered.slice(0, 200).forEach(item => {
+                            let displayText = item.label;
+                            if (item.articleNumber) displayText += ` (${item.articleNumber})`;
+                            const row = create("div", {
+                                class: "furniture-list-item",
+                                text: displayText
+                            });
+                            row.addEventListener("click", () => {
+                                if (item.label.includes("PAX")) {
+                                    renderPaxConfigurator(row, container, svc, categoryId);
+                                    return;
+                                }
+                                State.furnitureItems.push({
+                                    key: item.key,
+                                    label: item.label,
+                                    minutes: item.minutes,
+                                    isIkea: item.type === 'IKEA',
+                                    articleNumber: item.articleNumber
+                                });
+                                updateSelectedFurnitureUI(container, svc, categoryId);
+                                searchInput.value = "";
+                                renderList("");
+                                toast(`Added ${item.label}`);
+                            });
+                            listContainer.appendChild(row);
+                        });
                     };
 
-                    // ---------- Show Categories ----------
-                    function showCategories() {
-                        exitFocusedMode();
-                        Navigation.clear();
-                        if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "grid";
-                        if (DOM.newServiceRequestSummaryContainer) DOM.newServiceRequestSummaryContainer.style.display = "none";
-                        if (DOM.selectDetailsContainer) DOM.selectDetailsContainer.style.display = "none";
-                        if (DOM.selectServiceSection) DOM.selectServiceSection.innerHTML = "";
-                        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = State.serviceRequest.length ? "block" : "none";
-                        closeInvoiceOverlay();
-                        updateFabVisibility();
-                    }
+                    renderList("");
+                    searchInput.addEventListener("input", e => renderList(e.target.value));
 
-                    function renderCategoryTiles() {
-                        const grid = DOM.categoriesGrid;
-                        if (!grid) return;
-                        grid.innerHTML = '';
-                        SERVICE_DATA.categories.forEach(cat => {
-                            const tile = create('div', { class: 'category-tile', 'data-category-id': cat.id, tabindex: '0' });
-                            tile.appendChild(create('div', { class: 'category-icon', text: cat.icon }));
-                            tile.appendChild(create('h2', { text: cat.name }));
-                            tile.addEventListener('click', () => {
-                                Navigation.push({ type: 'categories' });
-                                showGroupsForCategory(cat.id);
+                    container.appendChild(create("h4", {
+                        text: isRepair ? "Search Item to Repair" : "Search Item to Assemble",
+                        style: "margin-bottom: 10px; color: #fff;"
+                    }));
+                    container.appendChild(searchInput);
+                    container.appendChild(listContainer);
+
+                    const selectionWrapper = create("div", {
+                        id: "furniture-selection-wrapper"
+                    });
+                    container.appendChild(selectionWrapper);
+                    updateSelectedFurnitureUI(container, svc, categoryId);
+
+                    addBackButton(container, () => {
+                        State.furnitureItems = [];
+                        container.style.display = "none";
+                        Navigation.goBack();
+                    });
+                }
+
+                function updateSelectedFurnitureUI(container, svc, categoryId) {
+                    const wrapper = container.querySelector("#furniture-selection-wrapper");
+                    if (!wrapper) return;
+                    wrapper.innerHTML = "";
+                    if (State.furnitureItems.length > 0) {
+                        wrapper.appendChild(create("h5", {
+                            text: "Furniture Selected:",
+                            style: "margin-top:15px; color:#fff;"
+                        }));
+                        const ul = create("ul", {
+                            class: "selected-furniture-list"
+                        });
+                        State.furnitureItems.forEach((item, idx) => {
+                            const li = create("li");
+                            let displayLabel = item.label;
+                            if (item.articleNumber) displayLabel += ` (${item.articleNumber})`;
+                            li.appendChild(create("span", {
+                                text: displayLabel
+                            }));
+                            const btn = create("button", {
+                                text: "✕",
+                                class: "remove-item"
                             });
-                            grid.appendChild(tile);
-                        });
-                    }
-
-                    // Check if a group has subgroups (nested groups)
-                    function groupHasSubgroups(groupId) {
-                        const group = groupMap.get(groupId);
-                        return group && group.subgroups && Array.isArray(group.subgroups) && group.subgroups.length > 0;
-                    }
-
-                    function showGroupsForCategory(categoryId, fromBack = false) {
-                        if (!fromBack) Navigation.push({ type: 'groups', categoryId });
-                        enterFocusedMode();
-                        const groups = SERVICE_DATA.groups.filter(g => g.category === categoryId);
-                        const container = DOM.selectServiceSection;
-                        container.innerHTML = '';
-                        container.style.display = 'block';
-                        DOM.categoriesGrid.style.display = 'none';
-                        DOM.newServiceRequestSummaryContainer.style.display = 'block';
-                        DOM.selectDetailsContainer.style.display = 'none';
-                        const cat = categoryMap.get(categoryId);
-                        const header = create('h3', {});
-                        header.appendChild(create('span', { text: cat.icon + ' ' }));
-                        header.appendChild(document.createTextNode(cat.name));
-                        container.appendChild(header);
-                        const grid = create('div', { class: 'service-item-grid' });
-                        groups.forEach(group => {
-                            const card = create('div', { class: 'service-item-card', tabindex: '0' });
-                            card.appendChild(create('div', { class: 'service-item-icon', text: group.icon || '📁' }));
-                            card.appendChild(create('h4', { text: group.name }));
-                            card.addEventListener('click', () => {
-                                if (groupHasSubgroups(group.id)) {
-                                    Navigation.push({ type: 'subgroups', groupId: group.id, categoryId });
-                                    showSubgroupsForGroup(group.id, categoryId);
-                                } else {
-                                    Navigation.push({ type: 'services', groupId: group.id, categoryId });
-                                    showServicesForGroup(group.id, categoryId);
-                                }
+                            btn.addEventListener("click", () => {
+                                State.furnitureItems.splice(idx, 1);
+                                updateSelectedFurnitureUI(container, svc, categoryId);
                             });
-                            grid.appendChild(card);
+                            li.appendChild(btn);
+                            ul.appendChild(li);
                         });
-                        container.appendChild(grid);
-                        addBackButton(container, () => Navigation.goBack());
-                    }
-
-                    function showSubgroupsForGroup(groupId, categoryId, fromBack = false) {
-                        if (!fromBack) Navigation.push({ type: 'subgroups', groupId, categoryId });
-                        const group = groupMap.get(groupId);
-                        if (!group || !group.subgroups) return;
-                        const container = DOM.selectServiceSection;
-                        container.innerHTML = '';
-                        container.style.display = 'block';
-                        const header = create('h3', { text: group.name + ' › Subcategories' });
-                        container.appendChild(header);
-                        const grid = create('div', { class: 'service-item-grid' });
-                        group.subgroups.forEach(sub => {
-                            const card = create('div', { class: 'service-item-card', tabindex: '0' });
-                            card.appendChild(create('div', { class: 'service-item-icon', text: sub.icon || '📂' }));
-                            card.appendChild(create('h4', { text: sub.name }));
-                            card.addEventListener('click', () => {
-                                Navigation.push({ type: 'services', groupId: group.id, categoryId, subgroupId: sub.id });
-                                showServicesForGroup(group.id, categoryId, false, sub.id);
-                            });
-                            grid.appendChild(card);
+                        wrapper.appendChild(ul);
+                        const addBtn = create("button", {
+                            class: "book-more-button",
+                            text: "Add Selection to Cart",
+                            style: "width:100%; margin-top:10px;"
                         });
-                        container.appendChild(grid);
-                        addBackButton(container, () => Navigation.goBack());
-                    }
-
-                    function showServicesForGroup(groupId, categoryId, fromBack = false, subgroupId = null) {
-                        if (!fromBack) Navigation.push({ type: 'services', groupId, categoryId, subgroupId });
-                        let services = servicesByGroup.get(groupId) || [];
-                        if (subgroupId) {
-                            services = services.filter(s => s.subgroup === subgroupId);
-                        }
-                        const container = DOM.selectServiceSection;
-                        container.innerHTML = '';
-                        const group = groupMap.get(groupId);
-                        const header = create('h3', {});
-                        if (group) {
-                            header.appendChild(create('span', { text: group.icon + ' ' }));
-                            header.appendChild(document.createTextNode(group.name));
-                        }
-                        container.appendChild(header);
-                        const grid = create('div', { class: 'service-item-grid' });
-                        services.forEach(svc => {
-                            const card = create('div', { class: 'service-item-card', tabindex: '0' });
-                            card.appendChild(create('div', { class: 'service-item-icon', text: svc.icon || '🔧' }));
-                            card.appendChild(create('h4', { text: svc.name }));
-                            const priceSpan = create('div', { class: 'service-price', text: formatServicePrice(svc) });
-                            if (svc.price_per_hour) priceSpan.appendChild(create('span', { class: 'price-type-emojii', text: '🕐' }));
-                            card.appendChild(priceSpan);
-                            const infoBtn = create('button', { class: 'service-info-btn', html: '»' });
-                            infoBtn.addEventListener('click', e => { e.stopPropagation(); showServiceDetails(svc, categoryId); });
-                            card.appendChild(infoBtn);
-                            card.addEventListener('click', () => showServiceDetails(svc, categoryId));
-                            grid.appendChild(card);
-                        });
-                        container.appendChild(grid);
-                        addBackButton(container, () => Navigation.goBack());
-                    }
-
-                    function addBackButton(container, backFn) {
-                        const back = create('button', { class: 'back-button', text: '← Back' });
-                        back.addEventListener('click', backFn);
-                        container.appendChild(back);
-                    }
-
-                    // ---------- Service Detail & Intake (with detail cards, hour selection options, notes toggle, etc.) ----------
-                    function showServiceDetails(svc, categoryId) {
-                        Navigation.push({ type: 'detail', serviceId: svc.id, categoryId });
-                        enterFocusedMode();
-                        const container = DOM.selectDetailsContainer;
-                        container.innerHTML = '';
-                        container.style.display = 'block';
-                        DOM.selectServiceSection.style.display = 'none';
-
-                        // Header with name and materials badge
-                        const header = create('h3', {});
-                        header.appendChild(document.createTextNode(svc.name));
-                        if (svc.materials_included) {
-                            header.appendChild(create('span', { class: 'materials-badge', text: 'Materials Included' }));
-                        }
-                        container.appendChild(header);
-                        container.appendChild(create('p', { text: svc.description || '' }));
-
-                        // Repair hint if service is repair type
-                        if (svc.name.toLowerCase().includes("repair")) {
-                            const rate = SERVICE_DATA?.meta?.repair_rate_per_hour || 110;
-                            container.appendChild(create('div', { class: 'repair-hint', text: `🔧 Repair rate: $${rate}/hour (minimum 1 hour)` }));
-                        }
-
-                        // Furniture selection branch
-                        if (svc.requires_furniture_selection) {
-                            renderFurnitureSelection(container, svc, categoryId);
-                            return;
-                        }
-
-                        const formWrapper = create('div', { class: 'simple-intake-form' });
-                        const answers = {};
-                        const intakeQuestions = svc.intake || [];
-
-                        // Detail cards (if present)
-                        let selectedDetail = null;
-                        const detailsArray = svc.details || [];
-                        const hasDetails = detailsArray.length > 0;
-                        if (hasDetails) {
-                            const detailsSection = create('div', { class: 'intake-section' });
-                            detailsSection.appendChild(create('div', { class: 'intake-label', text: svc.detail_prompt || 'Select an option' }));
-                            const detailsGrid = create('div', { class: 'details-grid' });
-                            detailsArray.forEach(detail => {
-                                const card = create('div', { class: 'detail-card', text: detail, tabindex: '0' });
-                                card.addEventListener('click', () => {
-                                    detailsGrid.querySelectorAll('.detail-card').forEach(c => c.classList.remove('selected'));
-                                    card.classList.add('selected');
-                                    selectedDetail = detail;
-                                    // Show notes field if hidden
-                                    const notesField = container.querySelector('.service-input-area');
-                                    if (notesField) notesField.style.display = 'block';
-                                    updateAddButtonState();
-                                });
-                                detailsGrid.appendChild(card);
-                            });
-                            detailsSection.appendChild(detailsGrid);
-                            formWrapper.appendChild(detailsSection);
-                        }
-
-                        // Hour selection for hourly services
-                        let hourSelect = null, priceDisplay = null;
-                        let selectedHours = svc.default_hours || 1;
-                        const hourSelection = svc.hour_selection || 'dropdown';
-                        if (svc.price_per_hour) {
-                            const hourSection = create('div', { class: 'intake-section' });
-                            hourSection.appendChild(create('div', { class: 'intake-label', text: 'Estimated hours' }));
-                            if (hourSelection === 'hidden') {
-                                // Hidden field
-                                selectedHours = selectedHours;
-                                hourSection.style.display = 'none';
-                            } else if (hourSelection === 'prompt' || hourSelection === 'input') {
-                                // Numeric input
-                                const input = create('input', { type: 'number', class: 'hour-input', min: '0.5', max: '24', step: '0.5', value: selectedHours });
-                                input.addEventListener('input', () => {
-                                    selectedHours = parseFloat(input.value) || 1;
-                                    if (priceDisplay) priceDisplay.textContent = `Total: $${(selectedHours * svc.price_per_hour).toFixed(2)}`;
-                                });
-                                hourSection.appendChild(input);
-                            } else {
-                                // Dropdown (default)
-                                hourSelect = create('select', { class: 'hour-dropdown' });
-                                const start = 0.5;
-                                const end = 8;
-                                const step = 0.5;
-                                for (let h = start; h <= end; h += step) {
-                                    hourSelect.appendChild(create('option', { value: h, text: `${h} hour${h>1?'s':''}` }));
-                                }
-                                hourSelect.value = selectedHours;
-                                hourSelect.addEventListener('change', () => {
-                                    selectedHours = parseFloat(hourSelect.value);
-                                    if (priceDisplay) priceDisplay.textContent = `Total: $${(selectedHours * svc.price_per_hour).toFixed(2)}`;
-                                });
-                                hourSection.appendChild(hourSelect);
-                            }
-                            priceDisplay = create('div', { class: 'hourly-price-display', text: `Total: $${(selectedHours * svc.price_per_hour).toFixed(2)}` });
-                            hourSection.appendChild(priceDisplay);
-                            formWrapper.appendChild(hourSection);
-                        }
-
-                        // Intake questions (chips)
-                        intakeQuestions.forEach((q, idx) => {
-                            const section = create('div', { class: 'intake-section' });
-                            section.appendChild(create('div', { class: 'intake-label', text: q.label }));
-                            const chipContainer = create('div', { class: 'chip-container' });
-                            q.options.forEach(opt => {
-                                const chip = create('button', { class: 'chip-btn', text: opt, type: 'button' });
-                                chip.addEventListener('click', () => {
-                                    chipContainer.querySelectorAll('.chip-btn').forEach(c => c.classList.remove('selected'));
-                                    chip.classList.add('selected');
-                                    answers[idx] = opt;
-                                    // Show notes field if hidden and no detail cards (or combined logic)
-                                    const notesField = container.querySelector('.service-input-area');
-                                    if (notesField && !hasDetails) notesField.style.display = 'block';
-                                    updateAddButtonState();
-                                });
-                                chipContainer.appendChild(chip);
-                            });
-                            section.appendChild(chipContainer);
-                            formWrapper.appendChild(section);
-                        });
-
-                        container.appendChild(formWrapper);
-
-                        // Notes field (initially hidden if detail cards exist)
-                        const notesField = create('textarea', {
-                            class: 'service-input-area',
-                            placeholder: 'Additional notes...',
-                            rows: 3,
-                            style: hasDetails ? 'display:none;' : ''
-                        });
-                        container.appendChild(notesField);
-
-                        // Add to cart button
-                        const addBtn = create('button', {
-                            class: 'book-more-button',
-                            text: 'Add to Cart',
-                            disabled: (hasDetails || intakeQuestions.length > 0),
-                            style: `width: 100%; margin-top: 15px; opacity: ${(hasDetails || intakeQuestions.length > 0) ? '0.6' : '1'};`
-                        });
-
-                        function updateAddButtonState() {
-                            const allIntakeAnswered = intakeQuestions.every((_, i) => answers[i] !== undefined);
-                            const detailSelected = !hasDetails || selectedDetail !== null;
-                            const enable = (!hasDetails || detailSelected) && allIntakeAnswered;
-                            addBtn.disabled = !enable;
-                            addBtn.style.opacity = enable ? '1' : '0.6';
-                        }
-
-                        addBtn.addEventListener('click', () => {
-                            let finalNotes = '';
-                            if (selectedDetail) finalNotes = `Detail: ${selectedDetail}`;
-                            intakeQuestions.forEach((q, i) => { if (answers[i]) finalNotes += (finalNotes?' • ':'') + `${q.label}: ${answers[i]}`; });
-                            if (notesField.value.trim()) finalNotes += (finalNotes?' • ':'') + notesField.value.trim();
-
-                            let finalPrice = svc.price ? `$${svc.price}` : '';
-                            let hours = 0;
-                            if (svc.price_per_hour) {
-                                hours = selectedHours;
-                                finalPrice = `$${(hours * svc.price_per_hour).toFixed(2)}`;
-                                finalNotes += (finalNotes?' • ':'') + `Hours: ${hours} hr`;
-                            }
-
+                        addBtn.addEventListener("click", () => {
+                            const itemsMinutes = State.furnitureItems.map(fi => fi.minutes);
+                            const charge = svc.name.toLowerCase().includes("repair") ? computeRepairCharge(itemsMinutes.reduce((a, b) => a + b, 0) / 60) : computeFurnitureCharge(itemsMinutes);
                             const entry = {
                                 id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
                                 categoryId,
                                 name: svc.name,
-                                price: finalPrice,
-                                icon: svc.icon || '🔧',
-                                detail: selectedDetail || '',
-                                notes: finalNotes,
-                                furnitureItems: [],
-                                hours,
-                                selectedHours: hours
+                                price: `$${charge.price.toFixed(2)}`,
+                                icon: svc.icon || "🛋️",
+                                detail: "Furniture Service",
+                                notes: `Items: ${State.furnitureItems.map(f => f.label).join(", ")}`,
+                                furnitureItems: [...State.furnitureItems],
+                                estimatedHours: charge.hours,
+                                estimatedPrice: charge.price
                             };
                             addToCart(entry);
-                            exitFocusedMode();
-                            container.style.display = 'none';
-                            DOM.serviceRequestSection.style.display = 'block';
-                            DOM.serviceRequestSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            updateserviceRequestUI();
-                            toast('Added to cart');
-                        });
-
-                        container.appendChild(addBtn);
-                        addBackButton(container, () => {
-                            container.style.display = 'none';
-                            Navigation.goBack();
-                        });
-                    }
-
-                    // (Part 2 ends – Furniture selection, PAX configurator, invoice overlay, and event wiring continue in Part 3)
-
-                    // ---------- Furniture Selection ----------
-                    function renderFurnitureSelection(container, svc, categoryId) {
-                        const isRepair = svc.name.toLowerCase().includes("repair");
-                        const searchInput = create("input", { type: "text", class: "furniture-search-input", placeholder: "Search by name or IKEA article number (e.g., 002.133.80)" });
-                        const listContainer = create("div", { class: "furniture-list-container" });
-
-                        const masterList = [];
-                        for (const [displayKey, item] of furnitureMap.entries()) {
-                            if (displayKey === 'PAX_CUSTOM') continue;
-                            masterList.push({ key: displayKey, label: item.name, type: item.brand === 'IKEA' ? 'IKEA' : 'Generic', articleNumber: item.article, minutes: item.minutes });
-                        }
-                        masterList.sort((a, b) => a.label.localeCompare(b.label));
-
-                        const renderList = (filterText) => {
-                            listContainer.innerHTML = "";
-                            const term = filterText.toLowerCase().trim();
-                            const filtered = masterList.filter(item => item.label.toLowerCase().includes(term) || (item.articleNumber && item.articleNumber.toLowerCase().includes(term)));
-                            if (filtered.length === 0) {
-                                listContainer.appendChild(create("div", { text: "No items found", style: "padding:10px; text-align:center; color:#666;" }));
-                                return;
-                            }
-                            filtered.slice(0, 200).forEach(item => {
-                                let displayText = item.label;
-                                if (item.articleNumber) displayText += ` (${item.articleNumber})`;
-                                const row = create("div", { class: "furniture-list-item", text: displayText });
-                                row.addEventListener("click", () => {
-                                    if (item.label.includes("PAX")) {
-                                        renderPaxConfigurator(row, container, svc, categoryId);
-                                        return;
-                                    }
-                                    State.furnitureItems.push({ key: item.key, label: item.label, minutes: item.minutes, isIkea: item.type === 'IKEA', articleNumber: item.articleNumber });
-                                    updateSelectedFurnitureUI(container, svc, categoryId);
-                                    searchInput.value = "";
-                                    renderList("");
-                                    toast(`Added ${item.label}`);
-                                });
-                                listContainer.appendChild(row);
-                            });
-                        };
-
-                        renderList("");
-                        searchInput.addEventListener("input", e => renderList(e.target.value));
-
-                        container.appendChild(create("h4", { text: isRepair ? "Search Item to Repair" : "Search Item to Assemble", style: "margin-bottom: 10px; color: #fff;" }));
-                        container.appendChild(searchInput);
-                        container.appendChild(listContainer);
-
-                        const selectionWrapper = create("div", { id: "furniture-selection-wrapper" });
-                        container.appendChild(selectionWrapper);
-                        updateSelectedFurnitureUI(container, svc, categoryId);
-
-                        addBackButton(container, () => {
                             State.furnitureItems = [];
-                            container.style.display = "none";
-                            Navigation.goBack();
+                            container.style.display = 'none';
+                            exitFocusedMode();
+                            DOM.serviceRequestSection.style.display = 'block';
+                            DOM.serviceRequestSection.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                            updateserviceRequestUI();
+                            toast("Furniture added to cart!");
                         });
+                        wrapper.appendChild(addBtn);
                     }
+                }
 
-                    function updateSelectedFurnitureUI(container, svc, categoryId) {
-                        const wrapper = container.querySelector("#furniture-selection-wrapper");
-                        if (!wrapper) return;
-                        wrapper.innerHTML = "";
-                        if (State.furnitureItems.length > 0) {
-                            wrapper.appendChild(create("h5", { text: "Furniture Selected:", style: "margin-top:15px; color:#fff;" }));
-                            const ul = create("ul", { class: "selected-furniture-list" });
-                            State.furnitureItems.forEach((item, idx) => {
-                                const li = create("li");
-                                let displayLabel = item.label;
-                                if (item.articleNumber) displayLabel += ` (${item.articleNumber})`;
-                                li.appendChild(create("span", { text: displayLabel }));
-                                const btn = create("button", { text: "✕", class: "remove-item" });
-                                btn.addEventListener("click", () => { State.furnitureItems.splice(idx, 1); updateSelectedFurnitureUI(container, svc, categoryId); });
-                                li.appendChild(btn);
-                                ul.appendChild(li);
-                            });
-                            wrapper.appendChild(ul);
-                            const addBtn = create("button", { class: "book-more-button", text: "Add Selection to Cart", style: "width:100%; margin-top:10px;" });
-                            addBtn.addEventListener("click", () => {
-                                const itemsMinutes = State.furnitureItems.map(fi => fi.minutes);
-                                const charge = svc.name.toLowerCase().includes("repair") ? computeRepairCharge(itemsMinutes.reduce((a,b)=>a+b,0)/60) : computeFurnitureCharge(itemsMinutes);
-                                const entry = {
-                                    id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
-                                    categoryId,
-                                    name: svc.name,
-                                    price: `$${charge.price.toFixed(2)}`,
-                                    icon: svc.icon || "🛋️",
-                                    detail: "Furniture Service",
-                                    notes: `Items: ${State.furnitureItems.map(f => f.label).join(", ")}`,
-                                    furnitureItems: [...State.furnitureItems],
-                                    estimatedHours: charge.hours,
-                                    estimatedPrice: charge.price
-                                };
-                                addToCart(entry);
-                                State.furnitureItems = [];
-                                container.style.display = 'none';
-                                exitFocusedMode();
-                                DOM.serviceRequestSection.style.display = 'block';
-                                DOM.serviceRequestSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                updateserviceRequestUI();
-                                toast("Furniture added to cart!");
-                            });
-                            wrapper.appendChild(addBtn);
-                        }
-                    }
+                function renderPaxConfigurator(clickedElement, container, svc, categoryId) {
+                    const existing = document.querySelector('.pax-calc-module');
+                    if (existing) existing.remove();
 
-                    function renderPaxConfigurator(clickedElement, container, svc, categoryId) {
-                        const existing = document.querySelector('.pax-calc-module');
-                        if (existing) existing.remove();
-
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'pax-calc-module';
-                        wrapper.innerHTML = `
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'pax-calc-module';
+                    wrapper.innerHTML = `
                             <div class="total-panel">
                                 <div class="price-main"><span class="price-label">Estimate</span><span class="price-value" id="paxTotalPrice">$0.00</span></div>
                                 <div style="display:flex; justify-content:space-between; margin-top:8px;">
@@ -4556,430 +4921,572 @@
                                 <button class="pax-add-btn" id="paxAddToCartBtn">Complete</button>
                             </div>
                         `;
-                        const listContainerEl = clickedElement.closest('.furniture-list-container');
-                        if (listContainerEl && listContainerEl.parentNode) {
-                            listContainerEl.parentNode.insertBefore(wrapper, listContainerEl.nextSibling);
-                        } else {
-                            clickedElement.parentNode.insertBefore(wrapper, clickedElement.nextSibling);
-                        }
+                    const listContainerEl = clickedElement.closest('.furniture-list-container');
+                    if (listContainerEl && listContainerEl.parentNode) {
+                        listContainerEl.parentNode.insertBefore(wrapper, listContainerEl.nextSibling);
+                    } else {
+                        clickedElement.parentNode.insertBefore(wrapper, clickedElement.nextSibling);
+                    }
 
-                        // Tooltips
-                        const tooltipEl = create('div', { class: 'tooltip-pop hidden-tooltip' });
-                        document.body.appendChild(tooltipEl);
-                        const messages = { frames: 'Number of wardrobe frames.', hinge: 'Number of hinge doors.', sliding: 'Number of sliding doors.', interiors: 'Drawers, shelves, etc.' };
-                        wrapper.querySelectorAll('.info-btn').forEach(btn => {
-                            btn.addEventListener('click', e => {
-                                e.stopPropagation();
-                                const key = btn.dataset.tooltip;
-                                if (!tooltipEl.classList.contains('hidden-tooltip')) tooltipEl.classList.add('hidden-tooltip');
-                                else {
-                                    const rect = btn.getBoundingClientRect();
-                                    tooltipEl.textContent = messages[key] || '';
-                                    tooltipEl.classList.remove('hidden-tooltip');
-                                    tooltipEl.style.left = Math.max(8, rect.left + rect.width/2 - 120) + 'px';
-                                    tooltipEl.style.top = (rect.bottom + 8) + 'px';
-                                }
-                            });
-                        });
-                        document.addEventListener('click', () => tooltipEl.classList.add('hidden-tooltip'));
-
-                        const counts = {
-                            frames: wrapper.querySelector('#pax-frames-count'),
-                            hinge: wrapper.querySelector('#pax-hinge-count'),
-                            sliding: wrapper.querySelector('#pax-sliding-count'),
-                            interiors: wrapper.querySelector('#pax-interiors-count')
-                        };
-                        const priceEl = wrapper.querySelector('#paxTotalPrice');
-                        const hoursEl = wrapper.querySelector('#paxTotalHours');
-
-                        function updatePaxDisplay() {
-                            const c = {
-                                cabinet: parseInt(counts.frames.textContent) || 0,
-                                standardDoor: parseInt(counts.hinge.textContent) || 0,
-                                slidingDoor: parseInt(counts.sliding.textContent) || 0,
-                                insideItem: parseInt(counts.interiors.textContent) || 0
-                            };
-                            const rawHours = c.cabinet * COEFF.cabinet + c.standardDoor * COEFF.standardDoor + c.slidingDoor * COEFF.slidingDoor + c.insideItem * COEFF.insideItem;
-                            const hours = Math.max(0, rawHours);
-                            const price = hours * PRICE_PER_HOUR + (hours < 3 ? START_FEE : 0);
-                            hoursEl.textContent = hours.toFixed(1);
-                            priceEl.textContent = `$${price.toFixed(2)}`;
-                            priceEl.classList.add('price-pulse');
-                            setTimeout(() => priceEl.classList.remove('price-pulse'), 300);
-                        }
-
-                        wrapper.addEventListener('click', e => {
-                            const btn = e.target.closest('.pax-add, .pax-sub');
-                            if (!btn) return;
+                    // Tooltips
+                    const tooltipEl = create('div', {
+                        class: 'tooltip-pop hidden-tooltip'
+                    });
+                    document.body.appendChild(tooltipEl);
+                    const messages = {
+                        frames: 'Number of wardrobe frames.',
+                        hinge: 'Number of hinge doors.',
+                        sliding: 'Number of sliding doors.',
+                        interiors: 'Drawers, shelves, etc.'
+                    };
+                    wrapper.querySelectorAll('.info-btn').forEach(btn => {
+                        btn.addEventListener('click', e => {
                             e.stopPropagation();
-                            const isAdd = btn.classList.contains('pax-add');
-                            const target = btn.dataset.target;
-                            const el = counts[target];
-                            if (!el) return;
-                            let val = parseInt(el.textContent) || 0;
-                            val = Math.max(0, val + (isAdd ? 1 : -1));
-                            el.textContent = val;
-                            updatePaxDisplay();
-                        });
-                        wrapper.querySelector('#paxCancelBtn').addEventListener('click', () => wrapper.remove());
-                        wrapper.querySelector('#paxAddToCartBtn').addEventListener('click', e => {
-                            e.stopPropagation();
-                            const frames = parseInt(counts.frames.textContent) || 0;
-                            const hinge = parseInt(counts.hinge.textContent) || 0;
-                            const sliding = parseInt(counts.sliding.textContent) || 0;
-                            const interiors = parseInt(counts.interiors.textContent) || 0;
-                            if (frames === 0 && hinge === 0 && sliding === 0 && interiors === 0) {
-                                toast('Please add at least one component.');
-                                return;
+                            const key = btn.dataset.tooltip;
+                            if (!tooltipEl.classList.contains('hidden-tooltip')) tooltipEl.classList.add('hidden-tooltip');
+                            else {
+                                const rect = btn.getBoundingClientRect();
+                                tooltipEl.textContent = messages[key] || '';
+                                tooltipEl.classList.remove('hidden-tooltip');
+                                tooltipEl.style.left = Math.max(8, rect.left + rect.width / 2 - 120) + 'px';
+                                tooltipEl.style.top = (rect.bottom + 8) + 'px';
                             }
-                            const totalHours = frames * COEFF.cabinet + hinge * COEFF.standardDoor + sliding * COEFF.slidingDoor + interiors * COEFF.insideItem;
-                            const minutes = Math.round(totalHours * 60);
-                            const label = `PAX: ${frames} frames, ${hinge} hinge, ${sliding} sliding, ${interiors} interiors`;
-                            State.furnitureItems.push({ key: 'PAX_CUSTOM', label, minutes, isIkea: true, articleNumber: null });
-                            updateSelectedFurnitureUI(container, svc, categoryId);
-                            wrapper.remove();
-                            const searchInputEl = container.querySelector('.furniture-search-input');
-                            if (searchInputEl) { searchInputEl.value = ''; searchInputEl.dispatchEvent(new Event('input', { bubbles: true })); }
-                            toast(`Added ${label}`);
                         });
+                    });
+                    document.addEventListener('click', () => tooltipEl.classList.add('hidden-tooltip'));
+
+                    const counts = {
+                        frames: wrapper.querySelector('#pax-frames-count'),
+                        hinge: wrapper.querySelector('#pax-hinge-count'),
+                        sliding: wrapper.querySelector('#pax-sliding-count'),
+                        interiors: wrapper.querySelector('#pax-interiors-count')
+                    };
+                    const priceEl = wrapper.querySelector('#paxTotalPrice');
+                    const hoursEl = wrapper.querySelector('#paxTotalHours');
+
+                    function updatePaxDisplay() {
+                        const c = {
+                            cabinet: parseInt(counts.frames.textContent) || 0,
+                            standardDoor: parseInt(counts.hinge.textContent) || 0,
+                            slidingDoor: parseInt(counts.sliding.textContent) || 0,
+                            insideItem: parseInt(counts.interiors.textContent) || 0
+                        };
+                        const rawHours = c.cabinet * COEFF.cabinet + c.standardDoor * COEFF.standardDoor + c.slidingDoor * COEFF.slidingDoor + c.insideItem * COEFF.insideItem;
+                        const hours = Math.max(0, rawHours);
+                        const price = hours * PRICE_PER_HOUR + (hours < 3 ? START_FEE : 0);
+                        hoursEl.textContent = hours.toFixed(1);
+                        priceEl.textContent = `$${price.toFixed(2)}`;
+                        priceEl.classList.add('price-pulse');
+                        setTimeout(() => priceEl.classList.remove('price-pulse'), 300);
+                    }
+
+                    wrapper.addEventListener('click', e => {
+                        const btn = e.target.closest('.pax-add, .pax-sub');
+                        if (!btn) return;
+                        e.stopPropagation();
+                        const isAdd = btn.classList.contains('pax-add');
+                        const target = btn.dataset.target;
+                        const el = counts[target];
+                        if (!el) return;
+                        let val = parseInt(el.textContent) || 0;
+                        val = Math.max(0, val + (isAdd ? 1 : -1));
+                        el.textContent = val;
                         updatePaxDisplay();
-                    }
+                    });
+                    wrapper.querySelector('#paxCancelBtn').addEventListener('click', () => wrapper.remove());
+                    wrapper.querySelector('#paxAddToCartBtn').addEventListener('click', e => {
+                        e.stopPropagation();
+                        const frames = parseInt(counts.frames.textContent) || 0;
+                        const hinge = parseInt(counts.hinge.textContent) || 0;
+                        const sliding = parseInt(counts.sliding.textContent) || 0;
+                        const interiors = parseInt(counts.interiors.textContent) || 0;
+                        if (frames === 0 && hinge === 0 && sliding === 0 && interiors === 0) {
+                            toast('Please add at least one component.');
+                            return;
+                        }
+                        const totalHours = frames * COEFF.cabinet + hinge * COEFF.standardDoor + sliding * COEFF.slidingDoor + interiors * COEFF.insideItem;
+                        const minutes = Math.round(totalHours * 60);
+                        const label = `PAX: ${frames} frames, ${hinge} hinge, ${sliding} sliding, ${interiors} interiors`;
+                        State.furnitureItems.push({
+                            key: 'PAX_CUSTOM',
+                            label,
+                            minutes,
+                            isIkea: true,
+                            articleNumber: null
+                        });
+                        updateSelectedFurnitureUI(container, svc, categoryId);
+                        wrapper.remove();
+                        const searchInputEl = container.querySelector('.furniture-search-input');
+                        if (searchInputEl) {
+                            searchInputEl.value = '';
+                            searchInputEl.dispatchEvent(new Event('input', {
+                                bubbles: true
+                            }));
+                        }
+                        toast(`Added ${label}`);
+                    });
+                    updatePaxDisplay();
+                }
 
-                    // ---------- Invoice Overlay ----------
-                    function ensureInvoiceOverlayExists() {
-                        let ov = DOM.invoiceOverlay || q("#invoiceOverlay");
-                        if (!ov) return null;
-                        DOM.invoiceOverlay = ov;
-                        DOM.invoiceServiceList = DOM.invoiceServiceList || q("#invoiceServiceList");
-                        DOM.invoiceTotal = DOM.invoiceTotal || q("#invoiceTotal");
-                        DOM.serviceCount = DOM.serviceCount || q("#serviceCount");
-                        DOM.overlayCheckoutBtn = DOM.overlayCheckoutBtn || q("#bookNowBtn");
-                        DOM.showCategoriesBtn = DOM.showCategoriesBtn || q("#showCategoriesBtn");
-                        ov.addEventListener('click', (e) => { if (e.target === ov) closeInvoiceOverlay(); });
-                        return ov;
-                    }
+                // ---------- Invoice Overlay ----------
+                function ensureInvoiceOverlayExists() {
+                    let ov = DOM.invoiceOverlay || q("#invoiceOverlay");
+                    if (!ov) return null;
+                    DOM.invoiceOverlay = ov;
+                    DOM.invoiceServiceList = DOM.invoiceServiceList || q("#invoiceServiceList");
+                    DOM.invoiceTotal = DOM.invoiceTotal || q("#invoiceTotal");
+                    DOM.serviceCount = DOM.serviceCount || q("#serviceCount");
+                    DOM.overlayCheckoutBtn = DOM.overlayCheckoutBtn || q("#bookNowBtn");
+                    DOM.showCategoriesBtn = DOM.showCategoriesBtn || q("#showCategoriesBtn");
+                    ov.addEventListener('click', (e) => {
+                        if (e.target === ov) closeInvoiceOverlay();
+                    });
+                    return ov;
+                }
 
-                    function openInvoiceOverlay() {
-                        const ov = ensureInvoiceOverlayExists();
-                        if (!ov) return;
-                        invoiceCurrentPage = 1;
+                function openInvoiceOverlay() {
+                    const ov = ensureInvoiceOverlayExists();
+                    if (!ov) return;
+                    invoiceCurrentPage = 1;
+                    requestAnimationFrame(() => {
                         ov.classList.add('open');
                         ov.style.display = 'flex';
                         document.body.classList.add('modal-open');
                         renderInvoiceOverlay();
-                    }
+                    });
+                }
 
-                    function closeInvoiceOverlay() {
-                        const ov = ensureInvoiceOverlayExists();
-                        if (!ov) return;
+                function closeInvoiceOverlay() {
+                    const ov = ensureInvoiceOverlayExists();
+                    if (!ov) return;
+                    requestAnimationFrame(() => {
                         ov.classList.remove('open');
                         ov.style.display = 'none';
                         document.body.classList.remove('modal-open');
-                    }
+                    });
+                }
 
-                    let priorDisplayState = null;
-                    function capturePriorDisplays() {
-                        priorDisplayState = {
-                            categoriesGrid: DOM.categoriesGrid?.style.display,
-                            newServiceRequestSummaryContainer: DOM.newServiceRequestSummaryContainer?.style.display,
-                            selectDetailsContainer: DOM.selectDetailsContainer?.style.display,
-                            serviceRequestSection: DOM.serviceRequestSection?.style.display
-                        };
-                    }
-                    function restorePriorDisplays() {
-                        if (!priorDisplayState) return;
-                        if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = priorDisplayState.categoriesGrid || "grid";
-                        if (DOM.newServiceRequestSummaryContainer) DOM.newServiceRequestSummaryContainer.style.display = priorDisplayState.newServiceRequestSummaryContainer || "none";
-                        if (DOM.selectDetailsContainer) DOM.selectDetailsContainer.style.display = priorDisplayState.selectDetailsContainer || "none";
-                        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = priorDisplayState.serviceRequestSection || "none";
-                        priorDisplayState = null;
-                    }
+                let priorDisplayState = null;
 
-                    function createInvoiceServiceItem(svc) {
-                        const el = create("div", { class: "invoice-service-item" });
-                        el.appendChild(create("div", { class: "invoice-service-icon", text: svc.icon || "🔧" }));
-                        const tw = create("div", { class: "invoice-service-text" });
-                        const nameSpan = create("h4", { text: svc.name });
-                        if (svc.price && svc.price.includes('/hr')) nameSpan.appendChild(create("span", { class: "price-type-emojii", text: "🕐" }));
-                        tw.appendChild(nameSpan);
-                        tw.appendChild(create("div", { class: "invoice-service-detail", text: svc.detail || "" }));
-                        if (svc.selectedHours) tw.appendChild(create("div", { class: "service-hours", text: `Hours: ${svc.selectedHours}` }));
-                        if (svc.notes && (!svc.furnitureItems || svc.furnitureItems.length === 0)) {
-                            tw.appendChild(create("div", { class: "invoice-service-notes", text: svc.notes }));
-                        }
-                        if (svc.furnitureItems && svc.furnitureItems.length) {
-                            const fwrap = create("div", { class: "requested-service-furniture" });
-                            svc.furnitureItems.forEach((fi, idx) => {
-                                const fitem = create("span", { class: "f-item" });
-                                fitem.appendChild(create("span", { text: fi.label }));
-                                const rem = create("button", { type: "button", text: "✕" });
-                                rem.addEventListener("click", e => { e.stopPropagation(); removeFurnitureItemFromService(svc.id, idx); renderInvoiceOverlay(); updateserviceRequestUI(); });
-                                fitem.appendChild(rem);
-                                fwrap.appendChild(fitem);
+                function capturePriorDisplays() {
+                    priorDisplayState = {
+                        categoriesGrid: DOM.categoriesGrid?.style.display,
+                        newServiceRequestSummaryContainer: DOM.newServiceRequestSummaryContainer?.style.display,
+                        selectDetailsContainer: DOM.selectDetailsContainer?.style.display,
+                        serviceRequestSection: DOM.serviceRequestSection?.style.display
+                    };
+                }
+
+                function restorePriorDisplays() {
+                    if (!priorDisplayState) return;
+                    if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = priorDisplayState.categoriesGrid || "grid";
+                    if (DOM.newServiceRequestSummaryContainer) DOM.newServiceRequestSummaryContainer.style.display = priorDisplayState.newServiceRequestSummaryContainer || "none";
+                    if (DOM.selectDetailsContainer) DOM.selectDetailsContainer.style.display = priorDisplayState.selectDetailsContainer || "none";
+                    if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = priorDisplayState.serviceRequestSection || "none";
+                    priorDisplayState = null;
+                }
+
+                function createInvoiceServiceItem(svc) {
+                    const el = create("div", {
+                        class: "invoice-service-item"
+                    });
+                    el.appendChild(create("div", {
+                        class: "invoice-service-icon",
+                        text: svc.icon || "🔧"
+                    }));
+                    const tw = create("div", {
+                        class: "invoice-service-text"
+                    });
+                    const nameSpan = create("h4", {
+                        text: svc.name
+                    });
+                    if (svc.price && svc.price.includes('/hr')) nameSpan.appendChild(create("span", {
+                        class: "price-type-emojii",
+                        text: "🕐"
+                    }));
+                    tw.appendChild(nameSpan);
+                    tw.appendChild(create("div", {
+                        class: "invoice-service-detail",
+                        text: svc.detail || ""
+                    }));
+                    if (svc.selectedHours) tw.appendChild(create("div", {
+                        class: "service-hours",
+                        text: `Hours: ${svc.selectedHours}`
+                    }));
+                    if (svc.notes && (!svc.furnitureItems || svc.furnitureItems.length === 0)) {
+                        tw.appendChild(create("div", {
+                            class: "invoice-service-notes",
+                            text: svc.notes
+                        }));
+                    }
+                    if (svc.furnitureItems && svc.furnitureItems.length) {
+                        const fwrap = create("div", {
+                            class: "requested-service-furniture"
+                        });
+                        svc.furnitureItems.forEach((fi, idx) => {
+                            const fitem = create("span", {
+                                class: "f-item"
                             });
-                            tw.appendChild(fwrap);
-                        }
-                        el.appendChild(tw);
-                        el.appendChild(create("div", { class: "invoice-service-price", text: svc.price || "$0" }));
-                        const remBtn = create("button", { class: "invoice-remove-service-btn", text: "✕", type: "button" });
-                        remBtn.addEventListener("click", e => { e.stopPropagation(); removeServiceFromCart(svc.id); renderInvoiceOverlay(); updateserviceRequestUI(); });
-                        el.appendChild(remBtn);
-                        return el;
+                            fitem.appendChild(create("span", {
+                                text: fi.label
+                            }));
+                            const rem = create("button", {
+                                type: "button",
+                                text: "✕"
+                            });
+                            rem.addEventListener("click", e => {
+                                e.stopPropagation();
+                                removeFurnitureItemFromService(svc.id, idx);
+                                renderInvoiceOverlay();
+                                updateserviceRequestUI();
+                            });
+                            fitem.appendChild(rem);
+                            fwrap.appendChild(fitem);
+                        });
+                        tw.appendChild(fwrap);
+                    }
+                    el.appendChild(tw);
+                    el.appendChild(create("div", {
+                        class: "invoice-service-price",
+                        text: svc.price || "$0"
+                    }));
+                    const remBtn = create("button", {
+                        class: "invoice-remove-service-btn",
+                        text: "✕",
+                        type: "button"
+                    });
+                    remBtn.addEventListener("click", e => {
+                        e.stopPropagation();
+                        removeServiceFromCart(svc.id);
+                        renderInvoiceOverlay();
+                        updateserviceRequestUI();
+                    });
+                    el.appendChild(remBtn);
+                    return el;
+                }
+
+                function renderInvoiceOverlay() {
+                    const ov = DOM.invoiceOverlay;
+                    if (!ov) return;
+                    const list = DOM.invoiceServiceList;
+                    const totalEl = DOM.invoiceTotal;
+                    const countEl = DOM.serviceCount;
+                    const checkoutBtn = DOM.overlayCheckoutBtn;
+                    const allServices = State.serviceRequest;
+                    const totalItems = allServices.length;
+                    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+                    if (invoiceCurrentPage > totalPages && totalPages > 0) invoiceCurrentPage = totalPages;
+                    if (totalPages === 0) invoiceCurrentPage = 1;
+                    const startIdx = (invoiceCurrentPage - 1) * ITEMS_PER_PAGE;
+                    const pageServices = allServices.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+                    list.innerHTML = "";
+                    const total = allServices.reduce((sum, svc) => sum + parsePriceToInt(svc.price), 0);
+                    safeText(countEl, String(totalItems));
+                    safeText(totalEl, `$${total}.00`);
+
+                    if (totalItems === 0) {
+                        list.innerHTML = `<div class="empty-invoice-message">🛒 Your cart is empty<br><button class="book-more-button" id="emptyCartBrowseBtn">Browse Services</button></div>`;
+                        setTimeout(() => {
+                            const browseBtn = q('#emptyCartBrowseBtn');
+                            if (browseBtn) browseBtn.addEventListener('click', () => {
+                                closeInvoiceOverlay();
+                                exitFocusedMode();
+                                showCategories();
+                            });
+                        }, 0);
+                        const paginationDiv = ov.querySelector('#invoicePagination');
+                        if (paginationDiv) paginationDiv.style.display = 'none';
+                        const termsWrap = ov.querySelector('.terms-wrap');
+                        if (termsWrap) termsWrap.style.display = 'none';
+                        if (checkoutBtn) checkoutBtn.disabled = true;
+                        return;
                     }
 
-                    function renderInvoiceOverlay() {
-                        const ov = DOM.invoiceOverlay;
-                        if (!ov) return;
-                        const list = DOM.invoiceServiceList;
-                        const totalEl = DOM.invoiceTotal;
-                        const countEl = DOM.serviceCount;
-                        const checkoutBtn = DOM.overlayCheckoutBtn;
-                        const allServices = State.serviceRequest;
-                        const totalItems = allServices.length;
-                        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-                        if (invoiceCurrentPage > totalPages && totalPages > 0) invoiceCurrentPage = totalPages;
-                        if (totalPages === 0) invoiceCurrentPage = 1;
-                        const startIdx = (invoiceCurrentPage - 1) * ITEMS_PER_PAGE;
-                        const pageServices = allServices.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+                    pageServices.forEach(svc => list.appendChild(createInvoiceServiceItem(svc)));
 
-                        list.innerHTML = "";
-                        const total = allServices.reduce((sum, svc) => sum + parsePriceToInt(svc.price), 0);
-                        safeText(countEl, String(totalItems));
-                        safeText(totalEl, `$${total}.00`);
+                    let paginationDiv = ov.querySelector('#invoicePagination');
+                    if (!paginationDiv) {
+                        paginationDiv = create('div', {
+                            id: 'invoicePagination',
+                            class: 'invoice-pagination'
+                        });
+                        list.parentNode.insertBefore(paginationDiv, list.nextSibling);
+                    }
+                    if (totalPages > 1) {
+                        paginationDiv.style.display = 'flex';
+                        paginationDiv.innerHTML = `<button class="pagination-btn" id="prevPageBtn" ${invoiceCurrentPage === 1 ? 'disabled' : ''}>&lt; Prev</button><span class="pagination-info">Page ${invoiceCurrentPage} of ${totalPages} (${totalItems} items)</span><button class="pagination-btn" id="nextPageBtn" ${invoiceCurrentPage === totalPages ? 'disabled' : ''}>Next &gt;</button>`;
+                        q('#prevPageBtn')?.addEventListener('click', () => {
+                            if (invoiceCurrentPage > 1) {
+                                invoiceCurrentPage--;
+                                renderInvoiceOverlay();
+                            }
+                        });
+                        q('#nextPageBtn')?.addEventListener('click', () => {
+                            if (invoiceCurrentPage < totalPages) {
+                                invoiceCurrentPage++;
+                                renderInvoiceOverlay();
+                            }
+                        });
+                    } else paginationDiv.style.display = 'none';
 
-                        if (totalItems === 0) {
-                            list.innerHTML = `<div class="empty-invoice-message">🛒 Your cart is empty<br><button class="book-more-button" id="emptyCartBrowseBtn">Browse Services</button></div>`;
-                            setTimeout(() => {
-                                const browseBtn = q('#emptyCartBrowseBtn');
-                                if (browseBtn) browseBtn.addEventListener('click', () => { closeInvoiceOverlay(); exitFocusedMode(); showCategories(); });
-                            }, 0);
-                            const paginationDiv = ov.querySelector('#invoicePagination');
-                            if (paginationDiv) paginationDiv.style.display = 'none';
-                            const termsWrap = ov.querySelector('.terms-wrap');
-                            if (termsWrap) termsWrap.style.display = 'none';
-                            if (checkoutBtn) checkoutBtn.disabled = true;
+                    // Clear All button
+                    const clearBtn = ov.querySelector('#clearAllServicesBtn');
+                    if (clearBtn) {
+                        const newClearBtn = clearBtn.cloneNode(true);
+                        clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
+                        newClearBtn.addEventListener('click', () => {
+                            if (!State.serviceRequest.length) return;
+                            if (confirm('Remove all services from your cart?')) {
+                                State.serviceRequest = [];
+                                persistCartPlain([]);
+                                updateserviceRequestUI();
+                                updateFabVisibility();
+                                closeInvoiceOverlay();
+                                exitFocusedMode();
+                                showCategories();
+                                toast('Cart cleared');
+                            }
+                        });
+                    }
+
+                    // Terms checkbox
+                    let termsWrap = ov.querySelector('.terms-wrap');
+                    if (!termsWrap) {
+                        termsWrap = document.createElement('div');
+                        termsWrap.className = 'terms-wrap';
+                        termsWrap.style.margin = '16px 0';
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = 'termsCheckbox';
+                        const label = document.createElement('label');
+                        label.htmlFor = 'termsCheckbox';
+                        label.style.cursor = 'pointer';
+                        label.innerHTML = `I agree to the <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" target="_blank" style="text-decoration:underline;font-weight:700;">Service Agreement</a>. Checking this box is my electronic signature and confirms that I have had the opportunity to review the terms and that I agree to be legally bound by them.`;
+                        termsWrap.appendChild(checkbox);
+                        termsWrap.appendChild(label);
+                        const actionBtns = ov.querySelector('.action-buttons');
+                        if (actionBtns) actionBtns.parentNode.insertBefore(termsWrap, actionBtns);
+                    } else {
+                        termsWrap.style.display = 'flex';
+                    }
+                    const checkbox = termsWrap.querySelector('#termsCheckbox');
+                    if (checkoutBtn) {
+                        const newCheckoutBtn = checkoutBtn.cloneNode(true);
+                        checkoutBtn.parentNode.replaceChild(newCheckoutBtn, checkoutBtn);
+                        DOM.overlayCheckoutBtn = newCheckoutBtn;
+                        newCheckoutBtn.disabled = !checkbox.checked;
+                        checkbox.addEventListener('change', e => newCheckoutBtn.disabled = !e.target.checked);
+                        newCheckoutBtn.addEventListener('click', () => {
+                            if (!checkbox.checked) {
+                                toast('Please agree to the Service Agreement.');
+                                return;
+                            }
+                            newCheckoutBtn.disabled = true;
+                            newCheckoutBtn.textContent = 'Processing…';
+                            toast('Proceeding to booking...');
+                            // TODO: actual booking submission
+                        });
+                    }
+
+                    // "Add More Services" button inside overlay
+                    const showCategoriesBtn = ov.querySelector('#showCategoriesBtn');
+                    if (showCategoriesBtn) {
+                        const newBtn = showCategoriesBtn.cloneNode(true);
+                        showCategoriesBtn.parentNode.replaceChild(newBtn, showCategoriesBtn);
+                        newBtn.textContent = '➕ Add More Services';
+                        newBtn.addEventListener('click', () => {
+                            closeInvoiceOverlay();
+                            exitFocusedMode();
+                            showCategories();
+                        });
+                    }
+
+                    const closeBtn = ov.querySelector('#closeInvoiceOverlay');
+                    if (closeBtn) {
+                        const newCloseBtn = closeBtn.cloneNode(true);
+                        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+                        newCloseBtn.addEventListener('click', () => {
+                            closeInvoiceOverlay();
+                            restorePriorDisplays();
+                        });
+                    }
+                }
+
+                function toggleCartInvoice() {
+                    const ov = ensureInvoiceOverlayExists();
+                    if (!ov) {
+                        toast("Cart overlay not found. Please refresh.");
+                        return;
+                    }
+                    if (ov.classList.contains("open")) {
+                        closeInvoiceOverlay();
+                        restorePriorDisplays();
+                    } else {
+                        capturePriorDisplays();
+                        if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
+                        if (DOM.newServiceRequestSummaryContainer) DOM.newServiceRequestSummaryContainer.style.display = "none";
+                        if (DOM.selectDetailsContainer) DOM.selectDetailsContainer.style.display = "none";
+                        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "none";
+                        openInvoiceOverlay();
+                    }
+
+
+                }
+
+
+
+                function wireGlobalEvents() {
+                    // Single event delegation listener for all dynamic interactions
+                    document.body.addEventListener('click', (e) => {
+                        // Cart FAB
+                        const cartFab = e.target.closest('#cartFab');
+                        if (cartFab) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleCartInvoice();
                             return;
                         }
 
-                        pageServices.forEach(svc => list.appendChild(createInvoiceServiceItem(svc)));
-
-                        let paginationDiv = ov.querySelector('#invoicePagination');
-                        if (!paginationDiv) {
-                            paginationDiv = create('div', { id: 'invoicePagination', class: 'invoice-pagination' });
-                            list.parentNode.insertBefore(paginationDiv, list.nextSibling);
-                        }
-                        if (totalPages > 1) {
-                            paginationDiv.style.display = 'flex';
-                            paginationDiv.innerHTML = `<button class="pagination-btn" id="prevPageBtn" ${invoiceCurrentPage === 1 ? 'disabled' : ''}>&lt; Prev</button><span class="pagination-info">Page ${invoiceCurrentPage} of ${totalPages} (${totalItems} items)</span><button class="pagination-btn" id="nextPageBtn" ${invoiceCurrentPage === totalPages ? 'disabled' : ''}>Next &gt;</button>`;
-                            q('#prevPageBtn')?.addEventListener('click', () => { if (invoiceCurrentPage > 1) { invoiceCurrentPage--; renderInvoiceOverlay(); } });
-                            q('#nextPageBtn')?.addEventListener('click', () => { if (invoiceCurrentPage < totalPages) { invoiceCurrentPage++; renderInvoiceOverlay(); } });
-                        } else paginationDiv.style.display = 'none';
-
-                        // Clear All button
-                        const clearBtn = ov.querySelector('#clearAllServicesBtn');
-                        if (clearBtn) {
-                            const newClearBtn = clearBtn.cloneNode(true);
-                            clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
-                            newClearBtn.addEventListener('click', () => {
-                                if (!State.serviceRequest.length) return;
-                                if (confirm('Remove all services from your cart?')) {
-                                    State.serviceRequest = [];
-                                    persistCartPlain([]);
-                                    updateserviceRequestUI();
-                                    updateFabVisibility();
-                                    closeInvoiceOverlay();
-                                    exitFocusedMode();
-                                    showCategories();
-                                    toast('Cart cleared');
-                                }
-                            });
+                        // Contact button
+                        const contactBtn = e.target.closest('#contact-button');
+                        if (contactBtn) {
+                            e.stopPropagation();
+                            const toolbar = q('#contactToolbar');
+                            if (toolbar) {
+                                const isOpen = toolbar.classList.toggle('active');
+                                contactBtn.setAttribute('aria-expanded', String(isOpen));
+                            }
+                            return;
                         }
 
-                        // Terms checkbox
-                        let termsWrap = ov.querySelector('.terms-wrap');
-                        if (!termsWrap) {
-                            termsWrap = document.createElement('div');
-                            termsWrap.className = 'terms-wrap';
-                            termsWrap.style.margin = '16px 0';
-                            const checkbox = document.createElement('input');
-                            checkbox.type = 'checkbox';
-                            checkbox.id = 'termsCheckbox';
-                            const label = document.createElement('label');
-                            label.htmlFor = 'termsCheckbox';
-                            label.style.cursor = 'pointer';
-                            label.innerHTML = `I agree to the <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" target="_blank" style="text-decoration:underline;font-weight:700;">Service Agreement</a>. Checking this box is my electronic signature and confirms that I have had the opportunity to review the terms and that I agree to be legally bound by them.`;
-                            termsWrap.appendChild(checkbox);
-                            termsWrap.appendChild(label);
-                            const actionBtns = ov.querySelector('.action-buttons');
-                            if (actionBtns) actionBtns.parentNode.insertBefore(termsWrap, actionBtns);
-                        } else {
-                            termsWrap.style.display = 'flex';
-                        }
-                        const checkbox = termsWrap.querySelector('#termsCheckbox');
-                        if (checkoutBtn) {
-                            const newCheckoutBtn = checkoutBtn.cloneNode(true);
-                            checkoutBtn.parentNode.replaceChild(newCheckoutBtn, checkoutBtn);
-                            DOM.overlayCheckoutBtn = newCheckoutBtn;
-                            newCheckoutBtn.disabled = !checkbox.checked;
-                            checkbox.addEventListener('change', e => newCheckoutBtn.disabled = !e.target.checked);
-                            newCheckoutBtn.addEventListener('click', () => {
-                                if (!checkbox.checked) { toast('Please agree to the Service Agreement.'); return; }
-                                newCheckoutBtn.disabled = true;
-                                newCheckoutBtn.textContent = 'Processing…';
-                                toast('Proceeding to booking...');
-                                // TODO: actual booking submission
-                            });
+                        // Close contact toolbar when clicking outside
+                        const toolbar = q('#contactToolbar');
+                        if (toolbar && toolbar.classList.contains('active') && !e.target.closest('#contactToolbar') && !e.target.closest('#contact-button')) {
+                            toolbar.classList.remove('active');
+                            q('#contact-button')?.setAttribute('aria-expanded', 'false');
                         }
 
-                        // "Add More Services" button inside overlay
-                        const showCategoriesBtn = ov.querySelector('#showCategoriesBtn');
-                        if (showCategoriesBtn) {
-                            const newBtn = showCategoriesBtn.cloneNode(true);
-                            showCategoriesBtn.parentNode.replaceChild(newBtn, showCategoriesBtn);
-                            newBtn.textContent = '➕ Add More Services';
-                            newBtn.addEventListener('click', () => { closeInvoiceOverlay(); exitFocusedMode(); showCategories(); });
-                        }
-
-                        const closeBtn = ov.querySelector('#closeInvoiceOverlay');
-                        if (closeBtn) {
-                            const newCloseBtn = closeBtn.cloneNode(true);
-                            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-                            newCloseBtn.addEventListener('click', () => { closeInvoiceOverlay(); restorePriorDisplays(); });
-                        }
-                    }
-
-                    function toggleCartInvoice() {
-                        const ov = ensureInvoiceOverlayExists();
-                        if (!ov) { toast("Cart overlay not found. Please refresh."); return; }
-                        if (ov.classList.contains("open")) {
+                        // Invoice overlay background click
+                        const overlay = e.target.closest('#invoiceOverlay');
+                        if (overlay && e.target === overlay) {
                             closeInvoiceOverlay();
                             restorePriorDisplays();
-                        } else {
-                            capturePriorDisplays();
-                            if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "none";
-                            if (DOM.newServiceRequestSummaryContainer) DOM.newServiceRequestSummaryContainer.style.display = "none";
-                            if (DOM.selectDetailsContainer) DOM.selectDetailsContainer.style.display = "none";
-                            if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = "none";
-                            openInvoiceOverlay();
+                            return;
                         }
-                    }
 
-                    // ---------- Event Wiring ----------
-                    function wireContactToolbar() {
-                        const contactBtn = q("#contact-button");
-                        const contactToolbar = q("#contactToolbar");
-                        if (!contactBtn || !contactToolbar) return;
-                        contactBtn.setAttribute("aria-controls", "contactToolbar");
-                        contactBtn.setAttribute("aria-expanded", "false");
-                        contactToolbar.setAttribute("role", "menu");
-                        contactBtn.addEventListener("click", (e) => {
-                            e.stopPropagation();
-                            const isOpen = contactToolbar.classList.toggle("active");
-                            contactBtn.setAttribute("aria-expanded", String(isOpen));
-                        });
-                        document.addEventListener("click", (ev) => {
-                            if (!contactToolbar.contains(ev.target) && ev.target !== contactBtn) {
-                                contactToolbar.classList.remove("active");
-                                contactBtn.setAttribute("aria-expanded", "false");
-                            }
-                        });
-                    }
+                        // Checkout buttons (any with .checkout-button except the overlay one handled separately)
+                        const checkoutBtn = e.target.closest('.checkout-button');
+                        if (checkoutBtn && checkoutBtn.id !== 'bookNowBtn') {
+                            if (!State.serviceRequest.length) toast("Please add at least one service before booking.");
+                            else toggleCartInvoice();
+                            return;
+                        }
 
-                    function wireFab() {
-                        const fab = DOM.cartFab;
-                        if (!fab) return;
-                        fab.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); toggleCartInvoice(); });
-                    }
-
-                    function wireGlobalEvents() {
-                        if (DOM.cartFab && State.serviceRequest.length > 0) DOM.cartFab.style.display = "flex";
-                        wireFab();
-                        wireContactToolbar();
-                        wireContactElements(); // mail/phone/sms handlers
-
-                        qAll(".checkout-button").forEach(b => {
-                            if (b.id !== "checkoutBtn") {
-                                b.addEventListener("click", () => {
-                                    if (!State.serviceRequest.length) toast("Please add at least one service before booking.");
-                                    else toggleCartInvoice();
-                                });
-                            }
-                        });
-                        qAll('.clear-all-btn').forEach(b => {
-                            if (b.id !== 'clearAllFurnitureInline' && b.id !== 'clearAllServicesBtn') {
-                                b.addEventListener("click", () => {
-                                    State.serviceRequest = [];
-                                    persistCartPlain([]);
-                                    updateserviceRequestUI();
-                                    updateFabVisibility();
-                                    showCategories();
-                                    toast("All services cleared");
-                                });
-                            }
-                        });
-                        qAll(".book-more-button").forEach(btn => {
-                            if (!btn.id || (!btn.id.includes("addFurniture") && btn.id !== "bookMoreBtn")) {
-                                btn.addEventListener("click", showCategories);
-                            }
-                        });
-                        q("#bookMoreBtn")?.addEventListener("click", showCategories);
-                        q("#manageVisitBtn")?.addEventListener("click", () => toast("Redirecting to Manage Your Visit page..."));
-                        q("#clientLoginBtn")?.addEventListener("click", () => toast("Redirecting to Client Portal..."));
-
-                        // Resize debounce
-                        window.addEventListener("resize", debounce(() => {
-                            document.documentElement.style.setProperty("--vp-width", String(window.innerWidth));
-                            document.documentElement.style.setProperty("--vp-height", String(window.innerHeight));
-                        }, 220), { passive: true });
-                    }
-
-                    // ---------- Initialization ----------
-                    function initDomRefs() {
-                        DOM.categoriesGrid = q("#categories-grid");
-                        DOM.cartFab = q("#cartFab");
-                        DOM.fabCount = q("#fabCartCount");
-                        DOM.invoiceOverlay = q("#invoiceOverlay");
-                        DOM.invoiceServiceList = q("#invoiceServiceList");
-                        DOM.invoiceTotal = q("#invoiceTotal");
-                        DOM.serviceCount = q("#serviceCount");
-                        DOM.serviceRequestList = q("#serviceRequestList");
-                        DOM.estimateTotal = q("#estimateTotal");
-                        DOM.totalAmount = q("#totalAmount");
-                        DOM.newServiceRequestSummaryContainer = q("#newServiceRequestSummaryContainer");
-                        DOM.selectDetailsContainer = q("#selectDetailsContainer");
-                        DOM.selectServiceSection = q("#selectServiceSection");
-                        DOM.serviceRequestSection = q("#serviceRequestSection");
-                        DOM.checkoutBtn = q("#checkoutBtn");
-                        DOM.bookMoreBtn = q("#bookMoreBtn");
-                        DOM.showCategoriesBtn = q("#showCategoriesBtn");
-                        DOM.overlayCheckoutBtn = q("#bookNowBtn");
-                    }
-
-                    async function init() {
-                        try {
-                            const res = await fetch('https://tommichael88.github.io/booktomnyc/new_services.json');
-                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                            const data = await res.json();
-                            buildDataMaps(data);
-                            initDomRefs();
-                            renderCategoryTiles();
-                            wireGlobalEvents();
+                        // Clear all buttons
+                        const clearBtn = e.target.closest('.clear-all-btn');
+                        if (clearBtn && clearBtn.id !== 'clearAllServicesBtn') {
+                            State.serviceRequest = [];
+                            persistCartPlain([]);
                             updateserviceRequestUI();
                             updateFabVisibility();
-                            if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = State.serviceRequest.length ? 'block' : 'none';
-                        } catch (err) {
-                            console.error('Init failed:', err);
-                            toast('Could not load services. Please refresh.');
-                            // Provide minimal fallback
-                            SERVICE_DATA = { categories: [], groups: [], services: [], furniture_items: [], meta: { rate_per_hour: 85, repair_rate_per_hour: 110 } };
+                            showCategories();
+                            toast("All services cleared");
+                            return;
                         }
-                    }
 
-                    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-                    else init();
-                })();
-            }
-        </script>
+                        // Book More buttons
+                        const bookMoreBtn = e.target.closest('.book-more-button');
+                        if (bookMoreBtn && !bookMoreBtn.id?.includes('addFurniture') && bookMoreBtn.id !== 'bookMoreBtn') {
+                            showCategories();
+                            return;
+                        }
+
+                        // Manage Visit / Client Login buttons (delegated)
+                        if (e.target.closest('#manageVisitBtn')) {
+                            toast("Redirecting to Manage Your Visit page...");
+                            return;
+                        }
+                        if (e.target.closest('#clientLoginBtn')) {
+                            toast("Redirecting to Client Portal...");
+                            return;
+                        }
+                    });
+
+                    // Contact element listeners (mail/phone/sms) still need individual handlers due to data attributes
+                    wireContactElements();
+
+                    // Cart FAB initial visibility
+                    if (DOM.cartFab && State.serviceRequest.length > 0) DOM.cartFab.style.display = "flex";
+
+                    // Resize debounce for custom properties
+                    window.addEventListener("resize", debounce(() => {
+                        document.documentElement.style.setProperty("--vp-width", String(window.innerWidth));
+                        document.documentElement.style.setProperty("--vp-height", String(window.innerHeight));
+                    }, 220), {
+                        passive: true
+                    });
+                    // Add these listeners in init() or wireGlobalEvents()
+                    window.addEventListener('resize', debounce(setViewportHeight, 150));
+                    window.addEventListener('orientationchange', setViewportHeight);
+                }
+
+                // ---------- Initialization ----------
+                function initDomRefs() {
+                    DOM.categoriesGrid = q("#categories-grid");
+                    DOM.cartFab = q("#cartFab");
+                    DOM.fabCount = q("#fabCartCount");
+                    DOM.invoiceOverlay = q("#invoiceOverlay");
+                    DOM.invoiceServiceList = q("#invoiceServiceList");
+                    DOM.invoiceTotal = q("#invoiceTotal");
+                    DOM.serviceCount = q("#serviceCount");
+                    DOM.serviceRequestList = q("#serviceRequestList");
+                    DOM.estimateTotal = q("#estimateTotal");
+                    DOM.totalAmount = q("#totalAmount");
+                    DOM.newServiceRequestSummaryContainer = q("#newServiceRequestSummaryContainer");
+                    DOM.selectDetailsContainer = q("#selectDetailsContainer");
+                    DOM.selectServiceSection = q("#selectServiceSection");
+                    DOM.serviceRequestSection = q("#serviceRequestSection");
+                    DOM.checkoutBtn = q("#checkoutBtn");
+                    DOM.bookMoreBtn = q("#bookMoreBtn");
+                    DOM.showCategoriesBtn = q("#showCategoriesBtn");
+                    DOM.overlayCheckoutBtn = q("#bookNowBtn");
+                }
+
+                async function init() {
+                    try {
+                        const res = await fetch('https://tommichael88.github.io/booktomnyc/new_services.json');
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const data = await res.json();
+                        buildDataMaps(data);
+                        initDomRefs();
+                        renderCategoryTiles();
+                        wireGlobalEvents();
+                        updateserviceRequestUI();
+                        updateFabVisibility();
+                        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = State.serviceRequest.length ? 'block' : 'none';
+                    } catch (err) {
+                        console.error('Init failed:', err);
+                        toast('Could not load services. Please refresh.');
+                        // Provide minimal fallback
+                        SERVICE_DATA = {
+                            categories: [],
+                            groups: [],
+                            services: [],
+                            furniture_items: [],
+                            meta: {
+                                rate_per_hour: 85,
+                                repair_rate_per_hour: 110
+                            }
+                        };
+                    }
+                }
+
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+                else init();
+            })();
+        }
+    </script>
 
 </body>
 
