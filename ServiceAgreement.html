@@ -47,33 +47,27 @@
       background: #1e4a76;
       transform: scale(0.98);
     }
-    
-    /* Add to existing CSS - toggle button specific styles */
-.toggle-btn {
-  min-width: 160px;
-  transition: all 0.2s ease;
-}
-
-.toggle-btn.toggle-open {
-  background: #dc2626;
-  border-color: #dc2626;
+ 
+ /* Toggle button states for inline view */
+.toggle-policy-btn.policy-open {
+  background: #2c6e9e;
+  border-color: #2c6e9e;
   color: white;
 }
 
-.toggle-btn.toggle-open:hover {
-  background: #b91c1c;
-}
-
-.toggle-btn.toggle-closed {
+.toggle-policy-btn.policy-closed {
   background: #10b981;
   border-color: #10b981;
   color: white;
 }
 
-.toggle-btn.toggle-closed:hover {
+.toggle-policy-btn.policy-closed:hover {
   background: #059669;
 }
 
+.toggle-policy-btn.policy-open:hover {
+  background: #1e5a7a;
+}
     /* TOGGLE CONTROLS (inline/modal/hide) */
     .privacy-controls {
       background: #f0f4f8;
@@ -998,14 +992,12 @@ assembly tools and expertise.</p>
     function setIframeFullHeight(iframeElement) {
       if (!iframeElement) return;
       
-      // Set generous initial height to prevent FOUC
       iframeElement.style.height = 'auto';
       iframeElement.style.minHeight = '800px';
       
       try {
         const iframeDoc = iframeElement.contentDocument || iframeElement.contentWindow?.document;
         if (iframeDoc && iframeDoc.body) {
-          // Get full scroll height of iframe content
           const scrollHeight = Math.max(
             iframeDoc.body.scrollHeight,
             iframeDoc.documentElement.scrollHeight,
@@ -1013,14 +1005,11 @@ assembly tools and expertise.</p>
             iframeDoc.documentElement.offsetHeight,
             iframeDoc.body.clientHeight || 0
           );
-          
-          // Add buffer (20px) to avoid cut-off
           const finalHeight = Math.max(scrollHeight + 20, 800);
           iframeElement.style.height = finalHeight + 'px';
           iframeElement.style.minHeight = finalHeight + 'px';
           iframeElement.setAttribute('data-full-height', finalHeight);
         } else {
-          // Fallback large height
           iframeElement.style.height = '1200px';
           iframeElement.style.minHeight = '1200px';
         }
@@ -1043,26 +1032,17 @@ assembly tools and expertise.</p>
     
     // Load event handlers
     if (inlineIframe) {
-      inlineIframe.style.height = '1000px'; // immediate large height
+      inlineIframe.style.height = '1000px';
       inlineIframe.style.minHeight = '1000px';
       inlineIframe.addEventListener('load', function() {
         ensureIframeFullHeight(inlineIframe, 3);
-        // Extra attempts for slow-loading assets
         setTimeout(() => ensureIframeFullHeight(inlineIframe, 2), 500);
-        setTimeout(() => ensureIframeFullHeight(inlineIframe, 1000);
+        setTimeout(() => ensureIframeFullHeight(inlineIframe, 2), 1000); // FIXED syntax
       });
       if (inlineIframe.contentDocument) ensureIframeFullHeight(inlineIframe);
     }
     if (modalIframe) {
       modalIframe.addEventListener('load', () => setIframeFullHeight(modalIframe));
-    }
-    
-    // Resize observer for dynamic content
-    function observeIframeContent(iframe) {
-      if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
-        const observer = new ResizeObserver(() => setIframeFullHeight(iframe));
-        observer.observe(iframe.contentDocument.body);
-      }
     }
     
     // Window resize re-trigger
@@ -1077,7 +1057,7 @@ assembly tools and expertise.</p>
     });
     
     // ---------- TOGGLE STATE (Inline button opens/closes) ----------
-    let isPolicyVisible = true; // inline policy starts visible
+    let isPolicyVisible = true;
     
     function updateInlineButton() {
       const btn = btnInline;
@@ -1094,20 +1074,16 @@ assembly tools and expertise.</p>
     
     function toggleInlinePolicy() {
       if (isPolicyVisible) {
-        // Hide inline policy
         inlineWrapper.classList.add('hidden-privacy');
         isPolicyVisible = false;
-        // Also close modal if open
         if (modalOverlay.classList.contains('active')) {
           modalOverlay.classList.remove('active');
         }
         btnInline.classList.remove('active');
       } else {
-        // Show inline policy
         inlineWrapper.classList.remove('hidden-privacy');
         isPolicyVisible = true;
         btnInline.classList.add('active');
-        // Ensure full height after showing
         setTimeout(() => ensureIframeFullHeight(inlineIframe, 2), 100);
       }
       updateInlineButton();
@@ -1115,7 +1091,6 @@ assembly tools and expertise.</p>
     
     // Modal view handler
     btnModal.addEventListener('click', () => {
-      // Hide inline, show modal
       inlineWrapper.classList.add('hidden-privacy');
       modalOverlay.classList.add('active');
       isPolicyVisible = false;
@@ -1129,7 +1104,6 @@ assembly tools and expertise.</p>
     
     // Inline button toggles visibility
     btnInline.addEventListener('click', () => {
-      // Close modal if it's open
       if (modalOverlay.classList.contains('active')) {
         modalOverlay.classList.remove('active');
         btnModal.classList.remove('active');
@@ -1138,12 +1112,11 @@ assembly tools and expertise.</p>
       if (isPolicyVisible) btnInline.classList.add('active');
     });
     
-    // Close modal via X or overlay click
+    // Close modal
     closeModalBtn.addEventListener('click', () => {
       if (modalOverlay.classList.contains('active')) {
         modalOverlay.classList.remove('active');
         btnModal.classList.remove('active');
-        // Optionally show inline again? Better to keep inline state as is.
       }
     });
     modalOverlay.addEventListener('click', (e) => {
@@ -1153,12 +1126,11 @@ assembly tools and expertise.</p>
       }
     });
     
-    // Initialize: inline visible, modal hidden
+    // Initialize: inline visible
     inlineWrapper.classList.remove('hidden-privacy');
     isPolicyVisible = true;
     btnInline.classList.add('active');
     updateInlineButton();
-    // Force height calculation immediately
     ensureIframeFullHeight(inlineIframe, 5);
     
     // ---------- PRINT HANDLER (full policy always prints) ----------
@@ -1241,12 +1213,10 @@ assembly tools and expertise.</p>
       lastUpdatedEl.innerHTML += formatDate(document.lastModified);
     }
     
-    // Final safety: run again after all resources
     window.addEventListener('load', () => {
       ensureIframeFullHeight(inlineIframe, 3);
       setTimeout(() => ensureIframeFullHeight(inlineIframe, 2), 1000);
     });
   })();
-</script>
-</body>
+</script></body>
 </html>
