@@ -3436,6 +3436,105 @@
                         const serviceMap = new Map();
                         const furnitureMap = new Map();
 
+// --- DYNAMIC N-LEVEL HIERARCHY INJECTION ---
+let navigationStack = ['root'];
+const nodeChildrenMap = new Map();
+const nodeServicesMap = new Map();
+
+const buildDataMaps = (data) => {
+    // 1. Maintain your legacy maps so other parts of your script don't break
+    legacyBuildDataMaps(data); 
+
+    // 2. Build the dynamic tree mappings
+    nodeChildrenMap.clear();
+    nodeServicesMap.clear();
+    nodeChildrenMap.set('root', []);
+
+    if (data.categories) {
+        data.categories.forEach(c => {
+            nodeChildrenMap.get('root').push(c);
+            if (!nodeChildrenMap.has(c.id)) nodeChildrenMap.set(c.id, []);
+        });
+    }
+
+    if (data.groups) {
+        data.groups.forEach(g => {
+            const parentId = g.parent_id || g.category;
+            if (!nodeChildrenMap.has(parentId)) nodeChildrenMap.set(parentId, []);
+            nodeChildrenMap.get(parentId).push(g);
+            if (!nodeChildrenMap.has(g.id)) nodeChildrenMap.set(g.id, []);
+        });
+    }
+
+    if (data.services) {
+        data.services.forEach(s => {
+            const parentId = s.parent_id || s.subsubgroup || s.subgroup || s.group || s.category;
+            if (!nodeServicesMap.has(parentId)) nodeServicesMap.set(parentId, []);
+            nodeServicesMap.get(parentId).push(s);
+        });
+    }
+};
+
+const renderLevel = () => {
+    const currentParentId = navigationStack[navigationStack.length - 1];
+    DOM.servicesContainer.innerHTML = '';
+    
+    const childNodes = nodeChildrenMap.get(currentParentId) || [];
+    const childServices = nodeServicesMap.get(currentParentId) || [];
+
+    if (currentParentId !== 'root') renderBreadcrumbs();
+
+    childNodes.forEach(node => {
+        const tile = document.createElement('div');
+        tile.className = 'tile category-group-tile';
+        tile.innerHTML = `<div class="tile-icon">${node.icon || '📁'}</div><div class="tile-name">${node.name}</div>`;
+        tile.addEventListener('click', () => {
+            navigationStack.push(node.id);
+            renderLevel();
+        });
+        DOM.servicesContainer.appendChild(tile);
+    });
+
+    childServices.forEach(service => {
+        const sTile = document.createElement('div');
+        sTile.className = 'tile service-tile';
+        
+        // Dynamically handle your hourly vs flat rate text
+        const priceDisplay = service.price ? `$${service.price}` : `$${service.price_per_hour}/hr`;
+        
+        sTile.innerHTML = `<div class="service-icon">${service.icon || '🔧'}</div><div class="service-info"><h4>${service.name}</h4><p>${service.description || ''}</p></div><div class="service-price">${priceDisplay}</div>`;
+        sTile.addEventListener('click', () => { 
+            if (typeof handleServiceSelection === 'function') handleServiceSelection(service); 
+        });
+        DOM.servicesContainer.appendChild(sTile);
+    });
+};
+
+const renderBreadcrumbs = () => {
+    const bcContainer = document.createElement('div');
+    bcContainer.style.width = '100%';
+    bcContainer.style.marginBottom = '15px';
+    
+    const backBtn = document.createElement('button');
+    backBtn.innerText = '⬅ Back';
+    backBtn.className = 'contact-button'; // Borrowing your existing button styling
+    backBtn.onclick = () => {
+        navigationStack.pop();
+        renderLevel();
+    };
+    
+    bcContainer.appendChild(backBtn);
+    DOM.servicesContainer.appendChild(bcContainer);
+};
+
+// Overwrite the initial boot-up render function so `init()` triggers our new stack
+const renderCategoryTiles = () => {
+    navigationStack = ['root'];
+    renderLevel();
+};
+// --- END DYNAMIC INJECTION ---
+
+
                         // ---------- Toast ----------
                         function toast(message) {
                             requestAnimationFrame(() => {
@@ -3526,85 +3625,35 @@
 
                         // ---------- Build Maps from JSON (with subgroup support) ----------
 // ---------- Build Maps from JSON (with subgroup support) ----------
-                        function buildDataMaps(data) {
-                            SERVICE_DATA = data;
-                            categoryMap.clear();
-                            groupMap.clear();
-                            servicesByGroup.clear();
-                            serviceMap.clear();
-                            furnitureMap.clear();
-                            data.categories.forEach(c => categoryMap.set(c.id, c));
-                            data.groups.forEach(g => {
-                                groupMap.set(g.id, g);
-                                if (!servicesByGroup.has(g.id)) servicesByGroup.set(g.id, []);
-                            });
-                            data.services.forEach(s => {
-                                serviceMap.set(s.id, s);
-                                const arr = servicesByGroup.get(s.group) || [];
-                                arr.push(s);
-                                servicesByGroup.set(s.group, arr);
-                            });
-                            data.furniture_items.forEach(f => {
-                                const displayName = f.article ? `${f.name} (${f.article})` : f.name;
-                                furnitureMap.set(displayName, {
-                                    name: f.name,
-                                    minutes: f.minutes,
-                                    article: f.article,
-                                    brand: f.brand
-                                });
-                                if (f.article) furnitureMap.set(f.article, {
-                                    name: f.name,
-                                    minutes: f.minutes,
-                                    article: f.article,
-                                    brand: f.brand
-                                });
-                            });
-                            
-                            // Build subgroup structure if present in JSON (e.g., groups have subgroups array)
-                            // We'll handle nested groups dynamically in navigation.
-                            // Performance & Security: Safe property access, bidirectional linking, and cycle prevention
-                            data.groups.forEach(g => {
-                                // 1. Link child to parent via parent_id
-                                if (Object.hasOwn(g, 'parent_id') && typeof g.parent_id === 'string' && g.parent_id !== g.id) {
-                                    const parent = groupMap.get(g.parent_id);
-                                    if (parent) {
-                                        if (!Array.isArray(parent.subgroups)) parent.subgroups = [];
-                                        if (!parent.subgroups.includes(g.id)) parent.subgroups.push(g.id);
-                                    }
-                                }
-                                
-                                // 2. Link parent to children via explicitly defined subgroups array
-                                if (Object.hasOwn(g, 'subgroups') && Array.isArray(g.subgroups)) {
-                                    g.subgroups = g.subgroups.filter(subId => {
-                                        if (typeof subId !== 'string' || subId === g.id) return false;
-                                        const child = groupMap.get(subId);
-                                        if (child) {
-                                            child.parent_id = g.id; // Enforce bi-directional link
-                                            return true;
-                                        }
-                                        return false; // Filter out missing/invalid IDs to optimize UI rendering
-                                    });
-                                }
-                            });
+const legacyBuildDataMaps = (data) => {
+    DATA.nodes = {};
+    DATA.children = {};
+    DATA.servicesMap = {};
+    DATA.children['root'] = [];
 
-                            // 3. Cycle Detection (Safeguard against infinite loops causing browser hangs)
-                            data.groups.forEach(g => {
-                                let current = g;
-                                let depth = 0;
-                                const maxDepth = 15; // Set a hard limit to stop deep recursion
-                                
-                                while (current && current.parent_id && depth <= maxDepth) {
-                                    if (current.parent_id === g.id || depth === maxDepth) {
-                                        console.warn(`[Security/Perf Warning] Cyclic or excessively deep group dependency detected involving: ${g.id}. Breaking cycle.`);
-                                        delete g.parent_id;
-                                        break;
-                                    }
-                                    current = groupMap.get(current.parent_id);
-                                    depth++;
-                                }
-                            });
-                        }
-                        function formatServicePrice(svc) {
+    if (data.categories) {
+        data.categories.forEach(c => {
+            DATA.nodes[c.id] = { ...c, nodeLevel: 'category' };
+            DATA.children['root'].push(DATA.nodes[c.id]);
+        });
+    }
+    if (data.groups) {
+        data.groups.forEach(g => {
+            DATA.nodes[g.id] = { ...g, nodeLevel: 'group' };
+            const parentId = g.parent_id || g.category; 
+            if (!DATA.children[parentId]) DATA.children[parentId] = [];
+            DATA.children[parentId].push(DATA.nodes[g.id]);
+        });
+    }
+    if (data.services) {
+        data.services.forEach(s => {
+            const parentId = s.parent_id || s.subsubgroup || s.subgroup || s.group || s.category;
+            if (!DATA.servicesMap[parentId]) DATA.servicesMap[parentId] = [];
+            DATA.servicesMap[parentId].push(s);
+        });
+    }
+};
+function formatServicePrice(svc) {
                             if (svc.price) return `$${svc.price}`;
                             if (svc.price_per_hour) return `$${svc.price_per_hour}/hr`;
                             return 'Call';
