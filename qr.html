@@ -3636,6 +3636,8 @@
                 }
                 const contactLimiter = new RateLimiter(3, 60000);
 
+                const servicesCache = new Map(); // groupId → array of service objects
+
                 // ---------- Contact Handlers ----------
                 function decodeB64(s) {
                     try {
@@ -3883,20 +3885,20 @@
                     enterFocusedMode();
 
                     const container = DOM.selectServiceSection;
-                    container.innerHTML = '';
+                    // Use replaceChildren for fast, fresh render
+                    container.replaceChildren();
                     container.style.display = 'block';
                     if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = 'none';
                     if (DOM.newServiceRequestSummaryContainer) DOM.newServiceRequestSummaryContainer.style.display = 'block';
                     if (DOM.selectDetailsContainer) DOM.selectDetailsContainer.style.display = 'none';
 
                     const cat = categoryMap.get(categoryId);
-                    const header = create('h3', {}, [
+                    container.appendChild(create('h3', {}, [
                         create('span', {
                             text: cat.icon + ' '
                         }),
                         document.createTextNode(cat.name)
-                    ]);
-                    container.appendChild(header);
+                    ]));
 
                     const rootGroups = (SERVICE_DATA.groups || []).filter(g => g.category === categoryId && !g.parent_group);
                     const groupWrapper = create('div', {
@@ -3915,34 +3917,45 @@
                         });
                         tile.innerHTML = `<span class="tile-icon">${group.icon || '📁'}</span><span class="tile-name">${group.name}</span>`;
                         const children = window.groupChildrenMap.get(group.id) || [];
-                        if (children.length > 0) {
+                        if (children.length) {
                             tile.classList.add('has-children');
                             tile.addEventListener('click', (e) => {
                                 e.stopPropagation();
-                                console.log(`Clicked group with children: ${group.name}`);
                                 window.showSubgroupsForGroup(group.id, categoryId);
                             });
                         } else {
                             tile.addEventListener('click', (e) => {
                                 e.stopPropagation();
-                                console.log(`Leaf group: ${group.name}`);
                                 window.selectGroupForCategory(group.id, categoryId);
-                                collapseGroupGrid(group.id, group.icon, group.name);
+                                // Optional collapse chip (keep if you use it)
+                                const grid = document.getElementById('focusedGroupGrid');
+                                const chip = document.getElementById('selectedGroupChip');
+                                if (grid && chip) {
+                                    grid.style.display = 'none';
+                                    chip.style.display = 'flex';
+                                    document.getElementById('chipContent').innerHTML = `<span class="icon">${group.icon}</span> ${group.name}`;
+                                }
                             });
                         }
                         groupGrid.appendChild(tile);
                     });
-
                     groupWrapper.appendChild(groupGrid);
 
-                    // Collapsed chip
+                    // Collapsed chip (optional but keep for UI consistency)
                     const chip = create('div', {
                         class: 'selected-group-chip',
                         id: 'selectedGroupChip',
                         style: 'display: none;'
                     });
                     chip.innerHTML = `<span class="chip-content" id="chipContent"><span class="icon"></span></span><span class="chevron">▼</span>`;
-                    chip.addEventListener('click', expandGroupGrid);
+                    chip.addEventListener('click', () => {
+                        const grid = document.getElementById('focusedGroupGrid');
+                        const chipEl = document.getElementById('selectedGroupChip');
+                        if (grid && chipEl) {
+                            grid.style.display = 'grid';
+                            chipEl.style.display = 'none';
+                        }
+                    });
                     groupWrapper.appendChild(chip);
                     container.appendChild(groupWrapper);
 
@@ -3967,87 +3980,71 @@
                         class: 'empty-message',
                         text: 'Select a group to see services'
                     }));
+                    container.appendChild(servicesGrid);
+
+                    // Debounced global search
+                    let searchDebounce;
+                    searchInput.addEventListener('input', (e) => {
+                        if (searchDebounce) clearTimeout(searchDebounce);
+                        searchDebounce = setTimeout(() => {
+                            const term = e.target.value.trim();
+                            if (term === '') {
+                                servicesGrid.replaceChildren(create('div', {
+                                    class: 'empty-message',
+                                    text: 'Select a group to see services'
+                                }));
+                                const clearBtn = document.getElementById('clearGlobalSearchBtn');
+                                if (clearBtn) clearBtn.remove();
+                                return;
+                            }
+                            const allServices = SERVICE_DATA.services || [];
+                            const filtered = allServices.filter(svc =>
+                                svc.name.toLowerCase().includes(term.toLowerCase()) ||
+                                (svc.description && svc.description.toLowerCase().includes(term.toLowerCase()))
+                            );
+                            renderGlobalSearchResults(servicesGrid, filtered, categoryId);
+                            if (!document.getElementById('clearGlobalSearchBtn')) {
+                                const clearBtn = create('button', {
+                                    class: 'show-more-btn',
+                                    text: '✕ Clear search',
+                                    id: 'clearGlobalSearchBtn',
+                                    style: 'margin-top: 8px;'
+                                });
+                                clearBtn.addEventListener('click', () => {
+                                    searchInput.value = '';
+                                    searchInput.dispatchEvent(new Event('input'));
+                                });
+                                servicesGrid.parentNode.insertBefore(clearBtn, servicesGrid.nextSibling);
+                            }
+                        }, 250);
+                    });
+
                     addBackButton(container, () => Navigation.goBack());
-
-
-                    function collapseGroupGrid(groupId, icon, name) {
-                        const grid = document.getElementById('focusedGroupGrid');
-                        const chip = document.getElementById('selectedGroupChip');
-                        if (grid && chip) {
-                            grid.style.display = 'none';
-                            chip.style.display = 'flex';
-                            document.getElementById('chipContent').innerHTML = `<span class="icon">${icon}</span> ${name}`;
-                        }
-                    }
-
-                    function expandGroupGrid() {
-                        const grid = document.getElementById('focusedGroupGrid');
-                        const chip = document.getElementById('selectedGroupChip');
-                        if (grid && chip) {
-                            grid.style.display = 'grid';
-                            chip.style.display = 'none';
-                        }
-                    }
-
-                    // Global search (unchanged)
-                    searchInput.addEventListener('input', debounce((e) => {
-                        const term = e.target.value.trim();
-                        if (term === '') {
-                            servicesGrid.innerHTML = '<div class="empty-message">Select a group to see services</div>';
-                            const clearBtn = document.getElementById('clearGlobalSearchBtn');
-                            if (clearBtn) clearBtn.remove();
-                            return;
-                        }
-                        const allServices = SERVICE_DATA.services || [];
-                        const filtered = allServices.filter(svc =>
-                            svc.name.toLowerCase().includes(term.toLowerCase()) ||
-                            (svc.description && svc.description.toLowerCase().includes(term.toLowerCase()))
-                        );
-                        renderGlobalSearchResults(servicesGrid, filtered, categoryId);
-                        if (!document.getElementById('clearGlobalSearchBtn')) {
-                            const clearBtn = create('button', {
-                                class: 'show-more-btn',
-                                text: '✕ Clear search',
-                                id: 'clearGlobalSearchBtn',
-                                style: 'margin-top: 8px;'
-                            });
-                            clearBtn.addEventListener('click', () => {
-                                searchInput.value = '';
-                                searchInput.dispatchEvent(new Event('input'));
-                            });
-                            servicesGrid.parentNode.insertBefore(clearBtn, servicesGrid.nextSibling);
-                        }
-                    }, 250));
-                };
-
-                // -----------------------------------------------------------------
+                }; // -----------------------------------------------------------------
                 //  SHOW SUBGROUPS (drill down)
                 // -----------------------------------------------------------------
-                window.showSubgroupsForGroup = function(groupId, categoryId) {
-                    console.log("✅ showSubgroupsForGroup executing", groupId, categoryId);
+
+                window.showSubgroupsForGroup = function(groupId, categoryId, fromBack = false) {
+                    if (!fromBack) Navigation.push({
+                        type: 'subgroups',
+                        groupId,
+                        categoryId
+                    });
                     const container = DOM.selectServiceSection;
-                    if (!container) {
-                        console.error("No container");
-                        return;
-                    }
-                    container.innerHTML = '';
+                    container.replaceChildren();
+                    container.style.display = 'block';
 
                     const cat = categoryMap.get(categoryId);
                     const parentGroup = groupMap.get(groupId);
-                    if (!parentGroup) {
-                        console.error("Parent group not found");
-                        return;
-                    }
-                    const header = create('h3', {}, [
+                    if (!parentGroup) return;
+                    container.appendChild(create('h3', {}, [
                         create('span', {
                             text: cat.icon + ' › ' + (parentGroup.icon || '📁') + ' '
                         }),
                         document.createTextNode(parentGroup.name)
-                    ]);
-                    container.appendChild(header);
+                    ]));
 
                     const subgroups = window.groupChildrenMap.get(groupId) || [];
-                    console.log("Subgroups found:", subgroups.length);
                     const groupGrid = create('div', {
                         class: 'group-grid'
                     });
@@ -4058,61 +4055,70 @@
                         });
                         tile.innerHTML = `<span class="tile-icon">${sub.icon || '📂'}</span><span class="tile-name">${sub.name}</span>`;
                         const deeper = window.groupChildrenMap.get(sub.id) || [];
-                        if (deeper.length > 0) {
+                        if (deeper.length) {
                             tile.addEventListener('click', () => window.showSubgroupsForGroup(sub.id, categoryId));
                         } else {
-                            tile.addEventListener('click', () => {
-                                console.log("Leaf subgroup clicked:", sub.name);
-                                window.selectGroupForCategory(sub.id, categoryId);
-                            });
+                            tile.addEventListener('click', () => window.selectGroupForCategory(sub.id, categoryId));
                         }
                         groupGrid.appendChild(tile);
                     });
                     container.appendChild(groupGrid);
-                    addBackButton(container, () => window.showGroupsForCategory(categoryId, true));
-                };
-
-                // -----------------------------------------------------------------
+                    addBackButton(container, () => Navigation.goBack());
+                }; // -----------------------------------------------------------------
                 //  SELECT LEAF GROUP (load services)
                 // -----------------------------------------------------------------
                 window.selectGroupForCategory = function(groupId, categoryId) {
-                    console.log("selectGroupForCategory", groupId);
+                    // No navigation push – this is a leaf view, back button goes to parent manually
                     const container = DOM.selectServiceSection;
-                    if (!container) {
-                        console.error("No container");
-                        return;
-                    }
-                    container.dataset.currentGroupId = groupId;
+                    container.replaceChildren();
+                    container.style.display = 'block';
 
-                    // Ensure services grid exists
-                    let servicesGrid = document.getElementById('focusedServicesGrid');
-                    if (!servicesGrid) {
-                        servicesGrid = create('div', {
-                            class: 'service-item-grid',
-                            id: 'focusedServicesGrid'
-                        });
-                        container.appendChild(servicesGrid);
-                        console.log("Created new services grid");
+                    const cat = categoryMap.get(categoryId);
+                    const group = groupMap.get(groupId);
+                    if (cat && group) {
+                        container.appendChild(create('h3', {}, [
+                            create('span', {
+                                text: cat.icon + ' › ' + (group.icon || '📁') + ' '
+                            }),
+                            document.createTextNode(group.name)
+                        ]));
                     }
 
-                    // ... rest of your existing code (fetch services, render)
-                    let services = servicesByGroup.get(groupId) || [];
-                    console.log(`Services found for ${groupId}:`, services.length);
+                    const servicesGrid = create('div', {
+                        class: 'service-item-grid',
+                        id: 'focusedServicesGrid'
+                    });
+                    container.appendChild(servicesGrid);
 
-                    function collectDescendantServices(gid) {
-                        const children = window.groupChildrenMap.get(gid) || [];
-                        for (const child of children) {
-                            const childSvcs = servicesByGroup.get(child.id) || [];
-                            services.push(...childSvcs);
-                            collectDescendantServices(child.id);
+                    let services = servicesCache.get(groupId);
+                    if (!services) {
+                        services = servicesByGroup.get(groupId) || [];
+                        // Also collect from descendant groups (if any)
+                        function collectDescendant(gid) {
+                            const children = window.groupChildrenMap.get(gid) || [];
+                            for (const child of children) {
+                                const childSvcs = servicesByGroup.get(child.id) || [];
+                                services.push(...childSvcs);
+                                collectDescendant(child.id);
+                            }
                         }
+                        collectDescendant(groupId);
+                        services = services.filter((svc, idx, self) => self.findIndex(s => s.id === svc.id) === idx);
+                        servicesCache.set(groupId, services);
                     }
-                    collectDescendantServices(groupId);
-                    services = services.filter((svc, idx, self) => self.findIndex(s => s.id === svc.id) === idx);
+
                     renderServicesGrid(servicesGrid, services, categoryId);
-                }; // ----------------------------------------------
-                //  RENDER SERVICES GRID (grouped by type)
-                // ----------------------------------------------
+
+                    // Back button: go to parent group (subgroups) or root groups
+                    const groupObj = groupMap.get(groupId);
+                    const parentGroupId = groupObj ? groupObj.parent_group : null;
+                    if (parentGroupId) {
+                        addBackButton(container, () => window.showSubgroupsForGroup(parentGroupId, categoryId, true));
+                    } else {
+                        addBackButton(container, () => window.showGroupsForCategory(categoryId, true));
+                    }
+                };
+
                 function renderServicesGrid(container, services, categoryId) {
                     console.log("renderServicesGrid called with", services.length, "services");
                     container.innerHTML = '';
@@ -4382,7 +4388,6 @@
                     },
                     goBack() {
                         if (this.pathStack.length === 0) {
-                            // No history → exit focused mode and show category tiles
                             exitFocusedMode();
                             if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = "grid";
                             if (DOM.newServiceRequestSummaryContainer) DOM.newServiceRequestSummaryContainer.style.display = "none";
@@ -4392,11 +4397,16 @@
                         }
                         const prev = this.pathStack.pop();
                         if (prev.type === 'groups') {
-                            showGroupsForCategory(prev.categoryId, true);
+                            window.showGroupsForCategory(prev.categoryId, true);
                         } else if (prev.type === 'subgroups') {
-                            showSubgroupsForGroup(prev.groupId, prev.categoryId, true);
+                            window.showSubgroupsForGroup(prev.groupId, prev.categoryId, true);
+                        } else if (prev.type === 'serviceDetail') {
+                            // Restore the service list for that leaf group (without pushing a new state)
+                            window.selectGroupForCategory(prev.groupId, prev.categoryId);
+                            // Hide details container and show service section
+                            if (DOM.selectDetailsContainer) DOM.selectDetailsContainer.style.display = 'none';
+                            if (DOM.selectServiceSection) DOM.selectServiceSection.style.display = 'block';
                         } else {
-                            // fallback
                             showCategories();
                         }
                     }
@@ -4665,29 +4675,42 @@
                     container.appendChild(back);
                 }
 
-                function showServiceDetails(svc, categoryId) {
-                    Navigation.push({
-                        type: 'detail',
-                        serviceId: svc.id,
-                        categoryId
-                    });
+                // ----------------------------------------------
+                //  SHOW SERVICE DETAILS (intake form, with navigation)
+                // ----------------------------------------------
+                function showServiceDetails(svc, categoryId, fromBack = false) {
+                    // Push the actual group ID from the service object onto the navigation stack
+                    if (!fromBack) {
+                        Navigation.push({
+                            type: 'serviceDetail',
+                            groupId: svc.group,
+                            categoryId
+                        });
+                    }
                     enterFocusedMode();
+
                     const container = DOM.selectDetailsContainer;
                     container.innerHTML = '';
                     container.style.display = 'block';
-                    DOM.selectServiceSection.style.display = 'none';
+                    if (DOM.selectServiceSection) DOM.selectServiceSection.style.display = 'none';
 
+                    // ----- Header -----
                     const header = create('h3', {});
                     header.appendChild(document.createTextNode(svc.name));
-                    if (svc.materials_included) header.appendChild(create('span', {
-                        class: 'materials-badge',
-                        text: 'Materials Included'
-                    }));
+                    if (svc.materials_included) {
+                        header.appendChild(create('span', {
+                            class: 'materials-badge',
+                            text: 'Materials Included'
+                        }));
+                    }
                     container.appendChild(header);
-                    container.appendChild(create('p', {
-                        text: svc.description || ''
-                    }));
+                    if (svc.description) {
+                        container.appendChild(create('p', {
+                            text: svc.description
+                        }));
+                    }
 
+                    // ----- Repair rate hint -----
                     if (svc.name.toLowerCase().includes("repair")) {
                         const rate = SERVICE_DATA?.meta?.repair_rate_per_hour || 110;
                         container.appendChild(create('div', {
@@ -4696,11 +4719,17 @@
                         }));
                     }
 
+                    // ----- Furniture selection (if required) -----
                     if (svc.requires_furniture_selection) {
                         renderFurnitureSelection(container, svc, categoryId);
+                        addBackButton(container, () => {
+                            container.style.display = 'none';
+                            Navigation.goBack();
+                        });
                         return;
                     }
 
+                    // ----- Build intake form -----
                     const formWrapper = create('div', {
                         class: 'simple-intake-form'
                     });
@@ -4710,6 +4739,7 @@
                     const detailsArray = svc.details || [];
                     const hasDetails = detailsArray.length > 0;
 
+                    // ----- Details (bullets) selection -----
                     if (hasDetails) {
                         const detailsSection = create('div', {
                             class: 'intake-section'
@@ -4741,6 +4771,7 @@
                         formWrapper.appendChild(detailsSection);
                     }
 
+                    // ----- Hour selection (for hourly services) -----
                     let selectedHours = svc.default_hours || 1;
                     const hourSelection = svc.hour_selection || 'dropdown';
                     let priceDisplay = null;
@@ -4775,7 +4806,7 @@
                             for (let h = 0.5; h <= 8; h += 0.5) {
                                 hourSelect.appendChild(create('option', {
                                     value: h,
-                                    text: `${h} hour${h>1?'s':''}`
+                                    text: `${h} hour${h > 1 ? 's' : ''}`
                                 }));
                             }
                             hourSelect.value = selectedHours;
@@ -4793,6 +4824,7 @@
                         formWrapper.appendChild(hourSection);
                     }
 
+                    // ----- Intake questions (chip selectors) -----
                     intakeQuestions.forEach((q, idx) => {
                         const section = create('div', {
                             class: 'intake-section'
@@ -4826,6 +4858,7 @@
 
                     container.appendChild(formWrapper);
 
+                    // ----- Notes textarea -----
                     const notesField = create('textarea', {
                         class: 'service-input-area',
                         placeholder: 'Additional notes...',
@@ -4834,6 +4867,7 @@
                     });
                     container.appendChild(notesField);
 
+                    // ----- Add to cart button -----
                     const addBtn = create('button', {
                         class: 'add-more-button',
                         text: 'Add to Cart',
@@ -4865,7 +4899,7 @@
                         }
 
                         const entry = {
-                            id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
+                            id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                             categoryId,
                             name: svc.name,
                             price: finalPrice,
@@ -4879,7 +4913,7 @@
                         addToCart(entry);
                         exitFocusedMode();
                         container.style.display = 'none';
-                        DOM.serviceRequestSection.style.display = 'block';
+                        if (DOM.serviceRequestSection) DOM.serviceRequestSection.style.display = 'block';
                         DOM.serviceRequestSection.scrollIntoView({
                             behavior: 'smooth',
                             block: 'start'
@@ -4889,12 +4923,13 @@
                     });
 
                     container.appendChild(addBtn);
+
+                    // ----- Back button (calls Navigation.goBack) -----
                     addBackButton(container, () => {
                         container.style.display = 'none';
                         Navigation.goBack();
                     });
                 }
-
                 // ---------- Furniture Selection ----------
                 function renderFurnitureSelection(container, svc, categoryId) {
                     const isRepair = svc.name.toLowerCase().includes("repair");
