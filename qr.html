@@ -2994,6 +2994,7 @@ function formatServicePrice(svc) {
     // Moderate range: show both
     return `$${Math.round(range.min)} – $${Math.round(range.max)}${suffix}`;
 }
+
                 /* ================================================================
                    RATE LIMITER
                    ================================================================ */
@@ -3712,83 +3713,105 @@ function formatServicePrice(svc) {
 
     // Header
     const hdr = create('h3', {}, [document.createTextNode(svc.name)]);
-    if (svc.materials_included) hdr.appendChild(create('span', {
-        class: 'materials-badge',
-        text: '✓ Materials Included'
-    }));
+    if (svc.materials_included) hdr.appendChild(create('span', { class: 'materials-badge', text: '✓ Materials Included' }));
     container.appendChild(hdr);
     if (svc.description) container.appendChild(create('p', {
         text: svc.description,
         style: 'color:rgba(255,255,255,.7);font-size:.88rem;margin-bottom:12px;line-height:1.5;'
     }));
 
-    // Repair rate hint (if applicable)
     if (svc.name.toLowerCase().includes('repair')) {
         const rate = (SERVICE_DATA?.meta?.repair_rate_per_hour) || 110;
-        container.appendChild(create('div', {
-            class: 'repair-hint',
-            text: `🔧 Repair rate: $${rate}/hour (min 1hr)`
-        }));
+        container.appendChild(create('div', { class: 'repair-hint', text: `🔧 Repair rate: $${rate}/hour (min 1hr)` }));
     }
 
-    // Furniture selection branch
     if (svc.requires_furniture_selection) {
         renderFurnitureSelection(container, svc, categoryId);
         return;
     }
 
-    // --- Normal intake (questions + details) ---
+    // --- Normal intake ---
     const intakeQuestions = svc.intake && typeof svc.intake === 'object' && !Array.isArray(svc.intake)
         ? svc.intake.questions
         : svc.intake;
 
     const formWrapper = create('div', { class: 'simple-intake-form' });
-    const answers = {};      // key: question index or id? we'll use id for rules
+    const answers = {};          // key: question id -> selected option value
     let selectedDetail = null;
     const detailsArray = Array.isArray(svc.details) ? svc.details : [];
     const hasDetails = detailsArray.length > 0;
+    let selectedHours = 1;
 
-    // Start with base modifiers from svc.pricing
-    let currentModifiers = {};
-    (svc.pricing?.modifiers || []).forEach(mod => {
-        currentModifiers[mod.type] = mod.level;
-    });
-    let selectedHours = 1;   // for hourly services
+    // ----- Helper: build modifier object from current answers (simple accumulation) -----
+    function getCurrentModifiers() {
+        let mods = {};
+        // start with service’s default modifiers
+        (svc.pricing?.modifiers || []).forEach(mod => {
+            mods[mod.type] = mod.level;
+        });
+        // apply rules from answered questions; later rules overwrite earlier if same type (that's fine)
+        (intakeQuestions || []).forEach(iq => {
+            const ans = answers[iq.id];
+            if (ans && iq.modifier_rules && iq.modifier_rules[ans]) {
+                Object.assign(mods, iq.modifier_rules[ans]);
+            }
+        });
+        return mods;
+    }
 
-    // Function to recompute final price and update button text
-    function updatePriceAndButton() {
-        let finalPrice = computeFinalPriceFromModifiers(
+    // ----- Helper: compute final price based on current answers -----
+    function computeFinalPrice() {
+        const mods = getCurrentModifiers();
+        return computeFinalPriceFromModifiers(
             svc.pricing.base_price,
-            currentModifiers,
+            mods,
             svc.pricing.labor,
             svc.pricing.labor?.type === 'hourly' ? selectedHours : null
         );
-        addBtn.textContent = `🛒 Add to Cart - $${finalPrice.toFixed(2)}`;
-        addBtn.disabled = false;
     }
+
+    // ----- Helper: check if all questions are answered -----
+    function allQuestionsAnswered() {
+        const allIntake = (intakeQuestions || []).every(iq => answers[iq.id] !== undefined);
+        const detailOk = !hasDetails || selectedDetail !== null;
+        return allIntake && detailOk;
+    }
+
+    // ----- Update the Add button: show current price only when all answered -----
+    function updateAddButton() {
+        if (allQuestionsAnswered()) {
+            const finalPrice = computeFinalPrice();
+            addBtn.textContent = `🛒 Add to Cart - $${finalPrice.toFixed(2)}`;
+            addBtn.disabled = false;
+        } else {
+            addBtn.textContent = `🛒 Select options above`;
+            addBtn.disabled = true;
+        }
+    }
+
+    // ----- Create the Add button (disabled initially) -----
+    const addBtn = create('button', {
+        class: 'add-more-button',
+        text: '🛒 Select options above',
+        type: 'button',
+        style: 'width:100%;margin-top:16px;'
+    });
+    addBtn.disabled = true;
 
     // --- Details (if any) ---
     if (hasDetails) {
         const sec = create('div', { class: 'intake-section' });
-        sec.appendChild(create('div', {
-            class: 'intake-label',
-            text: svc.detail_prompt || 'Select an option'
-        }));
+        sec.appendChild(create('div', { class: 'intake-label', text: svc.detail_prompt || 'Select an option' }));
         const grid = create('div', { class: 'details-grid' });
         detailsArray.forEach(detail => {
-            const card = create('div', {
-                class: 'detail-card',
-                text: detail,
-                tabindex: '0',
-                role: 'button'
-            });
+            const card = create('div', { class: 'detail-card', text: detail, tabindex: '0', role: 'button' });
             const activate = () => {
                 grid.querySelectorAll('.detail-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 selectedDetail = detail;
                 const notesField = container.querySelector('.service-input-area');
                 if (notesField) notesField.style.display = 'block';
-                updatePriceAndButton();
+                updateAddButton();
             };
             card.addEventListener('click', activate);
             card.addEventListener('keydown', e => {
@@ -3807,30 +3830,27 @@ function formatServicePrice(svc) {
     if (svc.pricing?.labor?.type === 'hourly') {
         const sec = create('div', { class: 'intake-section' });
         sec.appendChild(create('div', { class: 'intake-label', text: 'Estimated hours' }));
-        const input = create('input', {
-            type: 'number', min: '0.5', max: '24', step: '0.5', value: selectedHours
-        });
+        const input = create('input', { type: 'number', min: '0.5', max: '24', step: '0.5', value: selectedHours });
         const priceDisplay = create('div', { class: 'hourly-price-display' });
         const updateHourly = () => {
             selectedHours = parseFloat(input.value) || 1;
-            updatePriceAndButton();
-            const total = computeFinalPriceFromModifiers(
-                svc.pricing.base_price,
-                currentModifiers,
-                svc.pricing.labor,
-                selectedHours
-            );
-            priceDisplay.textContent = `Total: $${total.toFixed(2)}`;
+            updateAddButton();
+            if (allQuestionsAnswered()) {
+                const total = computeFinalPrice();
+                priceDisplay.textContent = `Total: $${total.toFixed(2)}`;
+            } else {
+                priceDisplay.textContent = `Complete questions above to see total`;
+            }
         };
         input.addEventListener('input', updateHourly);
         sec.appendChild(input);
         sec.appendChild(priceDisplay);
         formWrapper.appendChild(sec);
-        updateHourly(); // initial display
+        updateHourly();
     }
 
     // --- Intake questions (with modifier_rules) ---
-    (intakeQuestions || []).forEach((iq, idx) => {
+    (intakeQuestions || []).forEach(iq => {
         const sec = create('div', { class: 'intake-section' });
         sec.appendChild(create('div', { class: 'intake-label', text: iq.label }));
 
@@ -3838,27 +3858,17 @@ function formatServicePrice(svc) {
         const optionList = Array.isArray(iq.options) ? iq.options : (typeof iq.options === 'string' ? [iq.options] : []);
 
         optionList.forEach(opt => {
-            const btn = create('button', {
-                class: 'chip-btn', text: opt, type: 'button'
-            });
+            const btn = create('button', { class: 'chip-btn', text: opt, type: 'button' });
             btn.addEventListener('click', () => {
                 chips.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 answers[iq.id] = opt;
-
-                // Apply modifier_rules for this question
-                if (iq.modifier_rules && iq.modifier_rules[opt]) {
-                    const changes = iq.modifier_rules[opt];
-                    Object.assign(currentModifiers, changes);
-                }
-                updatePriceAndButton();
-
+                updateAddButton();  // this recomputes price from all current answers
                 const notesField = container.querySelector('.service-input-area');
                 if (notesField && !hasDetails) notesField.style.display = 'block';
             });
             chips.appendChild(btn);
         });
-
         sec.appendChild(chips);
         formWrapper.appendChild(sec);
     });
@@ -3874,69 +3884,56 @@ function formatServicePrice(svc) {
     });
     container.appendChild(notesField);
 
-    // Add button
-    const addBtn = create('button', {
-        class: 'add-more-button',
-        text: '🛒 Add to Cart',
-        type: 'button',
-        style: 'width:100%;margin-top:16px;'
-    });
-    if (hasDetails || (intakeQuestions && intakeQuestions.length > 0)) {
-        addBtn.disabled = true;
-    }
-
-    addBtn.addEventListener('click', () => {
-        if (!cartLimiter.isAllowed('add')) {
-            toast('Adding too fast, please wait.', 'error');
-            return;
-        }
-
-        let notes = selectedDetail ? `Detail: ${selectedDetail}` : '';
-        (intakeQuestions || []).forEach(iq => {
-            if (answers[iq.id]) notes += (notes ? ' • ' : '') + `${iq.label}: ${answers[iq.id]}`;
-        });
-        if (notesField.value.trim()) notes += (notes ? ' • ' : '') + notesField.value.trim();
-
-        let finalPrice = computeFinalPriceFromModifiers(
-            svc.pricing.base_price,
-            currentModifiers,
-            svc.pricing.labor,
-            svc.pricing.labor?.type === 'hourly' ? selectedHours : null
-        );
-
-        const entry = {
-            id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            serviceId: svc.id,
-            categoryId,
-            name: svc.name,
-            price: `$${finalPrice.toFixed(2)}`,
-            icon: svc.icon || '🔧',
-            detail: selectedDetail || '',
-            notes: notes,
-            furnitureItems: [],
-            selectedHours: svc.pricing.labor?.type === 'hourly' ? selectedHours : 0,
-            modifiersUsed: { ...currentModifiers }
-        };
-        addToCart(entry);
-        exitFocusedMode();
-        container.style.display = 'none';
-        if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
-        DOM.serviceRequestSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        renderCart();
-        toast(`${svc.name} added to cart`, 'success');
-    });
-
+    // Append the Add button
     container.appendChild(addBtn);
+
+    // Add button action
+    addBtn.addEventListener('click', () => {
+        if (!addBtn.disabled && allQuestionsAnswered()) {
+            if (!cartLimiter.isAllowed('add')) {
+                toast('Adding too fast, please wait.', 'error');
+                return;
+            }
+
+            let notes = selectedDetail ? `Detail: ${selectedDetail}` : '';
+            (intakeQuestions || []).forEach(iq => {
+                if (answers[iq.id]) notes += (notes ? ' • ' : '') + `${iq.label}: ${answers[iq.id]}`;
+            });
+            if (notesField.value.trim()) notes += (notes ? ' • ' : '') + notesField.value.trim();
+
+            const finalPrice = computeFinalPrice();
+
+            const entry = {
+                id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                serviceId: svc.id,
+                categoryId,
+                name: svc.name,
+                price: `$${finalPrice.toFixed(2)}`,
+                icon: svc.icon || '🔧',
+                detail: selectedDetail || '',
+                notes: notes,
+                furnitureItems: [],
+                selectedHours: svc.pricing.labor?.type === 'hourly' ? selectedHours : 0,
+                modifiersUsed: getCurrentModifiers()
+            };
+            addToCart(entry);
+            exitFocusedMode();
+            container.style.display = 'none';
+            if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
+            DOM.serviceRequestSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            renderCart();
+            toast(`${svc.name} added to cart`, 'success');
+        }
+    });
+
     addBackButton(container, () => {
         container.style.display = 'none';
         Breadcrumbs.goBack();
     });
 
-    // Initial price sync
-    updatePriceAndButton();
+    // Initial update
+    updateAddButton();
 }
-
-
                 /* ================================================================
                    FURNITURE SELECTION
                    ================================================================ */
