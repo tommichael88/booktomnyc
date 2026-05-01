@@ -3720,11 +3720,16 @@ function formatServicePrice(svc) {
         style: 'color:rgba(255,255,255,.7);font-size:.88rem;margin-bottom:12px;line-height:1.5;'
     }));
 
-    if (svc.name.toLowerCase().includes('repair')) {
-        const rate = (SERVICE_DATA?.meta?.repair_rate_per_hour) || 110;
-        container.appendChild(create('div', { class: 'repair-hint', text: `🔧 Repair rate: $${rate}/hour (min 1hr)` }));
-    }
-
+if (svc.pricing?.labor?.type === 'hourly') {
+    const baseRate = svc.pricing.labor.rate || svc.pricing.base_price;
+    // Get the default modifier sum (from service.pricing.modifiers)
+    let defaultSum = 0;
+    (svc.pricing.modifiers || []).forEach(mod => {
+        defaultSum += getModifierValue(mod.type, mod.level);
+    });
+    const effectiveRate = baseRate + defaultSum;
+    container.appendChild(create('div', { class: 'repair-hint', text: `🔧 Labor rate: $${baseRate}/hour + modifiers = from $${effectiveRate}/hour (minimum)` }));
+}
     if (svc.requires_furniture_selection) {
         renderFurnitureSelection(container, svc, categoryId);
         return;
@@ -3839,7 +3844,7 @@ function formatServicePrice(svc) {
                 const total = computeFinalPrice();
                 priceDisplay.textContent = `Total: $${total.toFixed(2)}`;
             } else {
-                priceDisplay.textContent = `Complete questions above to see total`;
+                priceDisplay.textContent = '';
             }
         };
         input.addEventListener('input', updateHourly);
