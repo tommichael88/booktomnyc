@@ -2888,33 +2888,34 @@
                     return defs?.[level] ?? 0;
                 }
 
-                function computeFinalPriceFromPricing(pricingObj, hours = null) {
-                    if (!pricingObj) return 0;
-                    let base = pricingObj.base_price || 0;
-                    let modifierSum = (pricingObj.modifiers || []).reduce((sum, mod) => {
-                        return sum + getModifierValue(mod.type, mod.level);
-                    }, 0);
-                    if (pricingObj.labor?.type === 'hourly') {
-                        const hourlyRate = pricingObj.labor.rate || base;
+                function computeFinalPriceFromModifiers(basePrice, modifiersObj, laborObj, hours = null) {
+                    let modifierSum = 0;
+                    for (const [type, level] of Object.entries(modifiersObj)) {
+                        modifierSum += getModifierValue(type, level);
+                    }
+                    if (laborObj?.type === 'hourly') {
+                        const hourlyRate = laborObj.rate || basePrice;
                         const usedHours = hours || 1;
                         return (hourlyRate + modifierSum) * usedHours;
                     }
-                    return base + modifierSum;
+                    return basePrice + modifierSum;
                 }
 
-                // Override formatServicePrice
+               function formatServicePrice(svc) {
+                    if (svc.pricing) {
+                        // Build modifiers object from array
+                        let mods = {};
+                        (svc.pricing.modifiers || []).forEach(m => { mods[m.type] = m.level; });
+                        const est = computeFinalPriceFromModifiers(svc.pricing.base_price, mods, svc.pricing.labor);
+                        if (svc.pricing.labor?.type === 'hourly') return `From $${Math.round(est)}/hr`;
+                        return `$${Math.round(est)}`;
+                    }
+                    // fallback
+                    if (svc.price) return `${svc.price}`;
+                    if (svc.price_per_hour) return `${svc.price_per_hour}/hr`;
+                    return 'Call';
+                }
 
-function formatServicePrice(svc) {
-    if (svc.pricing) {
-        const est = computeFinalPriceFromPricing(svc.pricing);
-        if (svc.pricing.labor?.type === 'hourly') return `From $${Math.round(est)}/hr`;
-        return `$${Math.round(est)}`;
-    }
-    // fallback
-    if (svc.price) return `${svc.price}`;
-    if (svc.price_per_hour) return `${svc.price_per_hour}/hr`;
-    return 'Call';
-}
                 /* ================================================================
                    RATE LIMITER
                    ================================================================ */
@@ -3525,8 +3526,6 @@ function formatServicePrice(svc) {
                    SERVICE CARD HELPER
                    ================================================================ */
 
-
-
                 function renderServices(container, services, categoryId) {
                     container.replaceChildren();
                     if (!services || services.length === 0) {
@@ -3556,58 +3555,25 @@ function formatServicePrice(svc) {
                     });
                 }
 
+                /* ================================================================
+                   SERVICE CARD & INTAKE (UPDATED)
+                ================================================================ */
                 function createServiceCardElement(svc, categoryId) {
-                    const card = create('div', {
-                        class: 'service-card',
-                        tabindex: '0',
-                        role: 'button',
-                        'aria-label': svc.name
-                    });
-
-                    const iconEl = create('div', {
-                        class: 'service-item-icon',
-                        text: svc.icon || '🔧'
-                    });
-
-                    // Info wrapper
+                    const card = create('div', { class: 'service-card', tabindex: '0', role: 'button', 'aria-label': svc.name });
+                    const iconEl = create('div', { class: 'service-item-icon', text: svc.icon || '🔧' });
                     const info = document.createElement('div');
                     info.style.cssText = 'width:100%; display:flex; flex-direction:column; align-items:center;';
-
-                    info.appendChild(create('h4', {
-                        text: svc.name
-                    }));
-                    info.appendChild(create('div', {
-                        class: 'service-price',
-                        text: formatServicePrice(svc)
-                    }));
-
-                    // Always‑visible description
+                    info.appendChild(create('h4', { text: svc.name }));
+                    info.appendChild(create('div', { class: 'service-price', text: formatServicePrice(svc) }));
                     let desc = svc.description ? svc.description : 'Tap to customise.';
                     if (svc.materials_included) desc += ' ✓ Materials included.';
-                    const descEl = create('div', {
-                        class: 'service-card-expanded',
-                        text: desc,
-                        style: 'display:block;' // ensure it shows
-                    });
-                    info.appendChild(descEl);
-
+                    info.appendChild(create('div', { class: 'service-card-expanded', text: desc, style: 'display:block;' }));
                     card.appendChild(iconEl);
                     card.appendChild(info);
-
-                    // Whole card is clickable → intake
-                    card.addEventListener('click', () => {
-                        showIntakeQuestions(svc, categoryId);
-                    });
-                    card.addEventListener('keydown', e => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            showIntakeQuestions(svc, categoryId);
-                        }
-                    });
-
+                    card.addEventListener('click', () => { showIntakeQuestions(svc, categoryId); });
+                    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showIntakeQuestions(svc, categoryId); } });
                     return card;
                 }
-
 
                 /* ================================================================
                    GLOBAL SEARCH RENDERER
@@ -3647,236 +3613,271 @@ function formatServicePrice(svc) {
                     container.appendChild(btn);
                 }
 
+         
                 /* ================================================================
                    INTAKE QUESTIONS & SERVICE DETAIL
                    ================================================================ */
-                /* ================================================================
-                   INTAKE QUESTIONS & SERVICE DETAIL
-                   ================================================================ */
-                function showIntakeQuestions(svc, categoryId, fromBack = false) {
-                    if (!fromBack) Breadcrumbs.push({
-                        type: 'serviceDetail',
-                        groupId: svc.group,
-                        categoryId
-                    });
-                    enterFocusedMode();
-                    setStep(4);
-
-                    const container = DOM.intakeQuestionsContainer;
-                    container.replaceChildren();
-                    container.style.display = 'block';
-                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
-
-                    const hdr = create('h3', {}, [document.createTextNode(svc.name)]);
-                    if (svc.materials_included) hdr.appendChild(create('span', {
-                        class: 'materials-badge',
-                        text: '✓ Materials Included'
-                    }));
-                    container.appendChild(hdr);
-                    if (svc.description) container.appendChild(create('p', {
-                        text: svc.description,
-                        style: 'color:rgba(255,255,255,.7);font-size:.88rem;margin-bottom:12px;line-height:1.5;'
-                    }));
-
-                    if (svc.name.toLowerCase().includes('repair')) {
-                        const rate = (SERVICE_DATA?.meta?.repair_rate_per_hour) || 110;
-                        container.appendChild(create('div', {
-                            class: 'repair-hint',
-                            text: `🔧 Repair rate: $${rate}/hour (min 1hr)`
-                        }));
-                    }
-
-                    if (svc.requires_furniture_selection) {
-                        renderFurnitureSelection(container, svc, categoryId);
-                        return;
-                    }
-
-                    // Normalise intake: if it's a structured object { version, questions }, extract the array
-                    const intakeQuestions = svc.intake && typeof svc.intake === 'object' && !Array.isArray(svc.intake) ?
-                        svc.intake.questions :
-                        svc.intake;
-
-                    const formWrapper = create('div', {
-                        class: 'simple-intake-form'
-                    });
-                    const answers = {};
-                    let selectedDetail = null;
-                    const detailsArray = Array.isArray(svc.details) ? svc.details : [];
-                    const hasDetails = detailsArray.length > 0;
-
-                    if (hasDetails) {
-                        const sec = create('div', {
-                            class: 'intake-section'
-                        });
-                        sec.appendChild(create('div', {
-                            class: 'intake-label',
-                            text: svc.detail_prompt || 'Select an option'
-                        }));
-                        const grid = create('div', {
-                            class: 'details-grid'
-                        });
-                        detailsArray.forEach(detail => {
-                            const card = create('div', {
-                                class: 'detail-card',
-                                text: detail,
-                                tabindex: '0',
-                                role: 'button'
-                            });
-                            const activate = () => {
-                                grid.querySelectorAll('.detail-card').forEach(c => c.classList.remove('selected'));
-                                card.classList.add('selected');
-                                selectedDetail = detail;
-                                const notesField = container.querySelector('.service-input-area');
-                                if (notesField) notesField.style.display = 'block';
-                                updateAddButton();
-                            };
-                            card.addEventListener('click', activate);
-                            card.addEventListener('keydown', e => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    activate();
-                                }
-                            });
-                            grid.appendChild(card);
-                        });
-                        sec.appendChild(grid);
-                        formWrapper.appendChild(sec);
-                    }
-
-                    if (svc.pricing?.labor?.type === 'hourly') {
-                        const hourlyRate = svc.pricing.labor.rate || svc.pricing.base_price;
-                        let modifierSum = (svc.pricing.modifiers || []).reduce((sum, mod) => sum + getModifierValue(mod.type, mod.level), 0);
-                       let selectedHours = 1;
-if (svc.pricing?.labor?.type === 'hourly') {
-    const hourlyRate = svc.pricing.labor.rate || svc.pricing.base_price;
-    let modifierSum = (svc.pricing.modifiers || []).reduce((sum, mod) => sum + getModifierValue(mod.type, mod.level), 0);
-    const input = create('input', { type: 'number', min: '0.5', max: '24', step: '0.5', value: selectedHours });
-    const priceDisplay = create('div', { class: 'hourly-price-display' });
-    const updateHourlyPrice = () => {
-        selectedHours = parseFloat(input.value) || 1;
-        const total = (hourlyRate + modifierSum) * selectedHours;let selectedHours = 1;
-        priceDisplay.textContent = `Total: $${total.toFixed(2)}`;
-    };
-    input.addEventListener('input', updateHourlyPrice);
-    updateHourlyPrice();
-    sec.appendChild(input);
-    sec.appendChild(priceDisplay);
-    formWrapper.appendChild(sec);
+// ======================= PRICING HELPERS =======================
+function getModifierValue(modifierType, level) {
+    if (!SERVICE_DATA?.pricing_model?.modifier_definitions) return 0;
+    const defs = SERVICE_DATA.pricing_model.modifier_definitions[modifierType];
+    return defs?.[level] ?? 0;
 }
-                    } // Intake questions (now using the normalised intakeQuestions)
-                    (intakeQuestions || []).forEach((iq, idx) => {
-                        const sec = create('div', {
-                            class: 'intake-section'
-                        });
-                        sec.appendChild(create('div', {
-                            class: 'intake-label',
-                            text: iq.label
-                        }));
 
-                        const chips = create('div', {
-                            class: 'chip-container'
-                        });
-                        // Safe handling: ensure options is always an array
-                        const optionList = Array.isArray(iq.options) ? iq.options : (typeof iq.options === 'string' ? [iq.options] : []);
+function computeFinalPriceFromModifiers(basePrice, modifiersObj, laborObj, hours = null) {
+    let modifierSum = 0;
+    for (const [type, level] of Object.entries(modifiersObj)) {
+        modifierSum += getModifierValue(type, level);
+    }
+    if (laborObj?.type === 'hourly') {
+        const hourlyRate = laborObj.rate || basePrice;
+        const usedHours = hours || 1;
+        return (hourlyRate + modifierSum) * usedHours;
+    }
+    return basePrice + modifierSum;
+}
 
-                        optionList.forEach(opt => {
-                            const btn = create('button', {
-                                class: 'chip-btn',
-                                text: opt,
-                                type: 'button'
-                            });
-                            btn.addEventListener('click', () => {
-                                chips.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
-                                btn.classList.add('selected');
-                                answers[idx] = opt;
-                                const notesField = container.querySelector('.service-input-area');
-                                if (notesField && !hasDetails) notesField.style.display = 'block';
-                                updateAddButton();
-                            });
-                            chips.appendChild(btn);
-                        });
+// ======================= FULL INTAKE FUNCTION =======================
+async function showIntakeQuestions(svc, categoryId, fromBack = false) {
+    if (!fromBack) Breadcrumbs.push({
+        type: 'serviceDetail',
+        groupId: svc.group,
+        categoryId
+    });
+    enterFocusedMode();
+    setStep(4);
 
-                        sec.appendChild(chips);
-                        formWrapper.appendChild(sec);
-                    });
+    const container = DOM.intakeQuestionsContainer;
+    container.replaceChildren();
+    container.style.display = 'block';
+    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
 
-                    container.appendChild(formWrapper);
+    // Header
+    const hdr = create('h3', {}, [document.createTextNode(svc.name)]);
+    if (svc.materials_included) hdr.appendChild(create('span', {
+        class: 'materials-badge',
+        text: '✓ Materials Included'
+    }));
+    container.appendChild(hdr);
+    if (svc.description) container.appendChild(create('p', {
+        text: svc.description,
+        style: 'color:rgba(255,255,255,.7);font-size:.88rem;margin-bottom:12px;line-height:1.5;'
+    }));
 
-                    const notesField = create('textarea', {
-                        class: 'service-input-area',
-                        placeholder: 'Additional notes (optional)…',
-                        rows: 3,
-                        style: hasDetails ? 'display:none;margin-top:12px;' : 'margin-top:12px;'
-                    });
-                    container.appendChild(notesField);
+    // Repair rate hint (if applicable)
+    if (svc.name.toLowerCase().includes('repair')) {
+        const rate = (SERVICE_DATA?.meta?.repair_rate_per_hour) || 110;
+        container.appendChild(create('div', {
+            class: 'repair-hint',
+            text: `🔧 Repair rate: $${rate}/hour (min 1hr)`
+        }));
+    }
 
-                    const needsSelection = hasDetails || (intakeQuestions && intakeQuestions.length > 0);
-                    const addBtn = create('button', {
-                        class: 'add-more-button',
-                        text: '🛒 Add to Cart',
-                        type: 'button',
-                        style: 'width:100%;margin-top:16px;'
-                    });
-                    if (needsSelection) {
-                        addBtn.disabled = true;
-                    }
+    // Furniture selection branch
+    if (svc.requires_furniture_selection) {
+        renderFurnitureSelection(container, svc, categoryId);
+        return;
+    }
 
-                    function updateAddButton() {
-                        const allAnswered = (intakeQuestions || []).every((_, i) => answers[i] !== undefined);
-                        const detailOk = !hasDetails || selectedDetail !== null;
-                        const enable = (!hasDetails || detailOk) && allAnswered;
-                        addBtn.disabled = !enable;
-                        addBtn.style.opacity = enable ? '1' : '0.5';
-                    }
+    // --- Normal intake (questions + details) ---
+    const intakeQuestions = svc.intake && typeof svc.intake === 'object' && !Array.isArray(svc.intake)
+        ? svc.intake.questions
+        : svc.intake;
 
-                    addBtn.addEventListener('click', () => {
-                        if (!cartLimiter.isAllowed('add')) {
-                            toast('Adding too fast, please wait.', 'error');
-                            return;
-                        }
-                        let notes = selectedDetail ? `Detail: ${selectedDetail}` : '';
-                        (intakeQuestions || []).forEach((iq, i) => {
-                            if (answers[i]) notes += (notes ? ' • ' : '') + `${iq.label}: ${answers[i]}`;
-                        });
-                        if (notesField.value.trim()) notes += (notes ? ' • ' : '') + notesField.value.trim();
+    const formWrapper = create('div', { class: 'simple-intake-form' });
+    const answers = {};      // key: question index or id? we'll use id for rules
+    let selectedDetail = null;
+    const detailsArray = Array.isArray(svc.details) ? svc.details : [];
+    const hasDetails = detailsArray.length > 0;
 
-                        let price = svc.price ? `${svc.price}` : '';
-                        if (svc.price_per_hour) {
-                            price = `$${(selectedHours * svc.price_per_hour).toFixed(2)}`;
-                            notes += (notes ? ' • ' : '') + `Hours: ${selectedHours} hr`;
-                        }
+    // Start with base modifiers from svc.pricing
+    let currentModifiers = {};
+    (svc.pricing?.modifiers || []).forEach(mod => {
+        currentModifiers[mod.type] = mod.level;
+    });
+    let selectedHours = 1;   // for hourly services
 
-                        const entry = {
-                            id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                            serviceId: svc.id, // ← for merging
-                            categoryId,
-                            name: svc.name,
-                            price,
-                            icon: svc.icon || '🔧',
-                            detail: selectedDetail || '',
-                            notes,
-                            furnitureItems: [],
-                            hours: svc.price_per_hour ? selectedHours : 0,
-                            selectedHours: svc.price_per_hour ? selectedHours : 0
-                        };
-                        addToCart(entry);
-                        exitFocusedMode();
-                        container.style.display = 'none';
-                        if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
-                        DOM.serviceRequestSummary.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                        renderCart();
-                        toast(`${svc.name} added to cart`, 'success');
-                    });
+    // Function to recompute final price and update button text
+    function updatePriceAndButton() {
+        let finalPrice = computeFinalPriceFromModifiers(
+            svc.pricing.base_price,
+            currentModifiers,
+            svc.pricing.labor,
+            svc.pricing.labor?.type === 'hourly' ? selectedHours : null
+        );
+        addBtn.textContent = `🛒 Add to Cart - $${finalPrice.toFixed(2)}`;
+        addBtn.disabled = false;
+    }
 
-                    container.appendChild(addBtn);
-                    addBackButton(container, () => {
-                        container.style.display = 'none';
-                        Breadcrumbs.goBack();
-                    });
+    // --- Details (if any) ---
+    if (hasDetails) {
+        const sec = create('div', { class: 'intake-section' });
+        sec.appendChild(create('div', {
+            class: 'intake-label',
+            text: svc.detail_prompt || 'Select an option'
+        }));
+        const grid = create('div', { class: 'details-grid' });
+        detailsArray.forEach(detail => {
+            const card = create('div', {
+                class: 'detail-card',
+                text: detail,
+                tabindex: '0',
+                role: 'button'
+            });
+            const activate = () => {
+                grid.querySelectorAll('.detail-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedDetail = detail;
+                const notesField = container.querySelector('.service-input-area');
+                if (notesField) notesField.style.display = 'block';
+                updatePriceAndButton();
+            };
+            card.addEventListener('click', activate);
+            card.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    activate();
                 }
+            });
+            grid.appendChild(card);
+        });
+        sec.appendChild(grid);
+        formWrapper.appendChild(sec);
+    }
+
+    // --- Hourly labor input ---
+    if (svc.pricing?.labor?.type === 'hourly') {
+        const sec = create('div', { class: 'intake-section' });
+        sec.appendChild(create('div', { class: 'intake-label', text: 'Estimated hours' }));
+        const input = create('input', {
+            type: 'number', min: '0.5', max: '24', step: '0.5', value: selectedHours
+        });
+        const priceDisplay = create('div', { class: 'hourly-price-display' });
+        const updateHourly = () => {
+            selectedHours = parseFloat(input.value) || 1;
+            updatePriceAndButton();
+            const total = computeFinalPriceFromModifiers(
+                svc.pricing.base_price,
+                currentModifiers,
+                svc.pricing.labor,
+                selectedHours
+            );
+            priceDisplay.textContent = `Total: $${total.toFixed(2)}`;
+        };
+        input.addEventListener('input', updateHourly);
+        sec.appendChild(input);
+        sec.appendChild(priceDisplay);
+        formWrapper.appendChild(sec);
+        updateHourly(); // initial display
+    }
+
+    // --- Intake questions (with modifier_rules) ---
+    (intakeQuestions || []).forEach((iq, idx) => {
+        const sec = create('div', { class: 'intake-section' });
+        sec.appendChild(create('div', { class: 'intake-label', text: iq.label }));
+
+        const chips = create('div', { class: 'chip-container' });
+        const optionList = Array.isArray(iq.options) ? iq.options : (typeof iq.options === 'string' ? [iq.options] : []);
+
+        optionList.forEach(opt => {
+            const btn = create('button', {
+                class: 'chip-btn', text: opt, type: 'button'
+            });
+            btn.addEventListener('click', () => {
+                chips.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                answers[iq.id] = opt;
+
+                // Apply modifier_rules for this question
+                if (iq.modifier_rules && iq.modifier_rules[opt]) {
+                    const changes = iq.modifier_rules[opt];
+                    Object.assign(currentModifiers, changes);
+                }
+                updatePriceAndButton();
+
+                const notesField = container.querySelector('.service-input-area');
+                if (notesField && !hasDetails) notesField.style.display = 'block';
+            });
+            chips.appendChild(btn);
+        });
+
+        sec.appendChild(chips);
+        formWrapper.appendChild(sec);
+    });
+
+    container.appendChild(formWrapper);
+
+    // Notes textarea
+    const notesField = create('textarea', {
+        class: 'service-input-area',
+        placeholder: 'Additional notes (optional)…',
+        rows: 3,
+        style: hasDetails ? 'display:none;margin-top:12px;' : 'margin-top:12px;'
+    });
+    container.appendChild(notesField);
+
+    // Add button
+    const addBtn = create('button', {
+        class: 'add-more-button',
+        text: '🛒 Add to Cart',
+        type: 'button',
+        style: 'width:100%;margin-top:16px;'
+    });
+    if (hasDetails || (intakeQuestions && intakeQuestions.length > 0)) {
+        addBtn.disabled = true;
+    }
+
+    addBtn.addEventListener('click', () => {
+        if (!cartLimiter.isAllowed('add')) {
+            toast('Adding too fast, please wait.', 'error');
+            return;
+        }
+
+        let notes = selectedDetail ? `Detail: ${selectedDetail}` : '';
+        (intakeQuestions || []).forEach(iq => {
+            if (answers[iq.id]) notes += (notes ? ' • ' : '') + `${iq.label}: ${answers[iq.id]}`;
+        });
+        if (notesField.value.trim()) notes += (notes ? ' • ' : '') + notesField.value.trim();
+
+        let finalPrice = computeFinalPriceFromModifiers(
+            svc.pricing.base_price,
+            currentModifiers,
+            svc.pricing.labor,
+            svc.pricing.labor?.type === 'hourly' ? selectedHours : null
+        );
+
+        const entry = {
+            id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            serviceId: svc.id,
+            categoryId,
+            name: svc.name,
+            price: `$${finalPrice.toFixed(2)}`,
+            icon: svc.icon || '🔧',
+            detail: selectedDetail || '',
+            notes: notes,
+            furnitureItems: [],
+            selectedHours: svc.pricing.labor?.type === 'hourly' ? selectedHours : 0,
+            modifiersUsed: { ...currentModifiers }
+        };
+        addToCart(entry);
+        exitFocusedMode();
+        container.style.display = 'none';
+        if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
+        DOM.serviceRequestSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        renderCart();
+        toast(`${svc.name} added to cart`, 'success');
+    });
+
+    container.appendChild(addBtn);
+    addBackButton(container, () => {
+        container.style.display = 'none';
+        Breadcrumbs.goBack();
+    });
+
+    // Initial price sync
+    updatePriceAndButton();
+}
+
 
                 /* ================================================================
                    FURNITURE SELECTION
@@ -4764,7 +4765,6 @@ if (svc.pricing?.labor?.type === 'hourly') {
                     }
 
                     // Add more button
-                    // Add more button
                     const addMoreBtn = DOM.cartOverlay.querySelector('#showCategoryGridBtn');
                     if (addMoreBtn) {
                         const newBtn = addMoreBtn.cloneNode(true);
@@ -4918,7 +4918,7 @@ if (svc.pricing?.labor?.type === 'hourly') {
                 async function init() {
                     cacheDOM();
                     try {
-                        const res = await fetch('https://tommichael88.github.io/booktomnyc/new_services_restructured.json');
+                        const res = await fetch('https://tommichael88.github.io/booktomnyc/new_services_restructured_with_rules.json');
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         SERVICE_DATA = await res.json();
                     } catch (err) {
@@ -4929,10 +4929,7 @@ if (svc.pricing?.labor?.type === 'hourly') {
                             groups: [],
                             services: [],
                             furniture_items: [],
-                            meta: {
-                                rate_per_hour: 85,
-                                repair_rate_per_hour: 110
-                            }
+                            meta: { rate_per_hour: 85, repair_rate_per_hour: 110 }
                         };
                     }
                     buildDataMaps(SERVICE_DATA);
