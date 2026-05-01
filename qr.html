@@ -2901,21 +2901,99 @@
                     return basePrice + modifierSum;
                 }
 
-               function formatServicePrice(svc) {
-                    if (svc.pricing) {
-                        // Build modifiers object from array
-                        let mods = {};
-                        (svc.pricing.modifiers || []).forEach(m => { mods[m.type] = m.level; });
-                        const est = computeFinalPriceFromModifiers(svc.pricing.base_price, mods, svc.pricing.labor);
-                        if (svc.pricing.labor?.type === 'hourly') return `From $${Math.round(est)}/hr`;
-                        return `$${Math.round(est)}`;
-                    }
-                    // fallback
-                    if (svc.price) return `${svc.price}`;
-                    if (svc.price_per_hour) return `${svc.price_per_hour}/hr`;
-                    return 'Call';
-                }
 
+// For a service, compute min and max possible price over all combinations of modifier levels
+// that are actually reachable via the service's modifier_rules (or all levels if no rules)
+function getServicePriceRange(svc) {
+    if (!svc.pricing) return { min: null, max: null };
+    const base = svc.pricing.base_price;
+    const labor = svc.pricing.labor;
+    const isHourly = labor?.type === 'hourly';
+    const staticMods = {};
+    (svc.pricing.modifiers || []).forEach(m => { staticMods[m.type] = [m.level]; });
+
+    // Collect possible levels per modifier type
+    const possibleLevels = {};
+    for (const modType of Object.keys(staticMods)) {
+        // Start with the static level
+        let levels = new Set([staticMods[modType][0]]);
+        // If any intake question has modifier_rules for this type, collect all levels from those rules
+        const intake = svc.intake?.questions || [];
+        intake.forEach(q => {
+            if (q.modifier_rules) {
+                for (const [answer, changes] of Object.entries(q.modifier_rules)) {
+                    if (changes[modType]) {
+                        levels.add(changes[modType]);
+                    }
+                }
+            }
+        });
+        // Also include all possible levels from global definitions (in case rules can set any)
+        possibleLevels[modType] = Array.from(levels);
+    }
+
+    // If no modifier types at all, min = max = base price (plus hourly logic)
+    if (Object.keys(possibleLevels).length === 0) {
+        let price = base;
+        if (isHourly) price = (labor.rate || base) * (labor.min_hours || 1);
+        return { min: price, max: price };
+    }
+
+    // Compute min and max by brute force (product of all combinations)
+    // Since typical services have 2-3 modifier types with 2-3 levels each, this is fine.
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+
+    function evaluateCombination(idx, modCombination, modTypes) {
+        if (idx === modTypes.length) {
+            let modifierSum = 0;
+            for (const [t, lvl] of Object.entries(modCombination)) {
+                modifierSum += getModifierValue(t, lvl);
+            }
+            let final = base + modifierSum;
+            if (isHourly) {
+                const hourlyRate = labor.rate || base;
+                final = (hourlyRate + modifierSum) * (labor.min_hours || 1);
+            }
+            if (final < minPrice) minPrice = final;
+            if (final > maxPrice) maxPrice = final;
+            return;
+        }
+        const type = modTypes[idx];
+        for (const level of possibleLevels[type]) {
+            modCombination[type] = level;
+            evaluateCombination(idx + 1, modCombination, modTypes);
+        }
+    }
+
+    const modTypes = Object.keys(possibleLevels);
+    evaluateCombination(0, {}, modTypes);
+
+    return { min: minPrice, max: maxPrice };
+}
+
+function formatServicePrice(svc) {
+    const range = getServicePriceRange(svc);
+    if (range.min === null) return svc.price || 'Call';
+    const diff = range.max - range.min;
+    const isHourly = svc.pricing?.labor?.type === 'hourly';
+    const suffix = isHourly ? '/hr' : '';
+
+    if (range.min === range.max) {
+        return `$${Math.round(range.min)}${suffix}`;
+    }
+    if (diff <= 15) {
+        // Small range: "Around $X"
+        const avg = (range.min + range.max) / 2;
+        return `Around $${Math.round(avg)}${suffix}`;
+    }
+    if (range.min < 100 && range.max > range.min * 2) {
+        // Very wide range (e.g., $35 – $320) -> "From $X"
+        return `From $${Math.round(range.min)}${suffix}`;
+    }
+    // Moderate range: show both
+    return `$${Math.round(range.min)} – $${Math.round(range.max)}${suffix}`;
+}
                 /* ================================================================
                    RATE LIMITER
                    ================================================================ */
@@ -3617,28 +3695,8 @@
                 /* ================================================================
                    INTAKE QUESTIONS & SERVICE DETAIL
                    ================================================================ */
-// ======================= PRICING HELPERS =======================
-function getModifierValue(modifierType, level) {
-    if (!SERVICE_DATA?.pricing_model?.modifier_definitions) return 0;
-    const defs = SERVICE_DATA.pricing_model.modifier_definitions[modifierType];
-    return defs?.[level] ?? 0;
-}
 
-function computeFinalPriceFromModifiers(basePrice, modifiersObj, laborObj, hours = null) {
-    let modifierSum = 0;
-    for (const [type, level] of Object.entries(modifiersObj)) {
-        modifierSum += getModifierValue(type, level);
-    }
-    if (laborObj?.type === 'hourly') {
-        const hourlyRate = laborObj.rate || basePrice;
-        const usedHours = hours || 1;
-        return (hourlyRate + modifierSum) * usedHours;
-    }
-    return basePrice + modifierSum;
-}
-
-// ======================= FULL INTAKE FUNCTION =======================
-async function showIntakeQuestions(svc, categoryId, fromBack = false) {
+                function showIntakeQuestions(svc, categoryId, fromBack = false) {
     if (!fromBack) Breadcrumbs.push({
         type: 'serviceDetail',
         groupId: svc.group,
