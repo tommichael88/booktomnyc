@@ -3969,10 +3969,11 @@
                     container.appendChild(formWrapper);
 
                     // Hide all intake questions except the first one (sequential flow)
-                    const allSections = container.querySelectorAll('.intake-section');
-                    if (allSections.length > 0) {
-                        allSections.forEach(sec => sec.style.display = 'none');
-                        allSections[0].style.display = 'block';
+                    // Only hide the actual intake questions (not detail/hourly sections)
+                    const intakeSections = container.querySelectorAll('.intake-section[data-question-id]');
+                    if (intakeSections.length > 0) {
+                        intakeSections.forEach(sec => sec.style.display = 'none');
+                        intakeSections[0].style.display = 'block';
                     }
 
                     // Notes textarea
@@ -4556,16 +4557,6 @@
                     };
                 }
 
-                function mathRepairCharge(hoursInput) {
-                    let hours = parseFloat(hoursInput) || 0;
-                    if (hours <= 0) hours = 1;
-                    const rounded = Math.round(hours * 100) / 100;
-                    const rate = (SERVICE_DATA?.meta?.repair_rate_per_hour) || 110;
-                    return {
-                        hours: rounded,
-                        price: Math.round(rounded * rate * 100) / 100
-                    };
-                }
                 /* ================================================================
                    CART MANAGEMENT
                    ================================================================ */
