@@ -2924,6 +2924,7 @@
         </span>
     </div>
     <div id=toast-container aria-live=polite aria-atomic=true style=position:fixed;bottom:20px;right:20px;z-index:10001;display:flex;flex-direction:column;gap:10px;pointer-events:none></div>
+
     <script>
         if (!window.__booktom_qr_loaded) {
             window.__booktom_qr_loaded = true;
@@ -4936,193 +4937,232 @@
                     if (DOM.serviceCount) setText(DOM.serviceCount, String(State.serviceRequest.length));
                 }
 
-function updateCartOverlayIfOpen() {
-    if (!DOM.cartOverlay || DOM.cartOverlay.style.display !== 'flex') return;
-    const list = DOM.cartServiceList;
-    if (!list) return;
-    const totalItems = State.serviceRequest.length;
-    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-    if (cartCurrentPage > totalPages && totalPages > 0) cartCurrentPage = totalPages;
-    if (totalPages === 0) cartCurrentPage = 1;
-    const start = (cartCurrentPage - 1) * ITEMS_PER_PAGE;
-    const pageItems = State.serviceRequest.slice(start, start + ITEMS_PER_PAGE);
+                function updateCartOverlayIfOpen() {
+                    if (!DOM.cartOverlay || DOM.cartOverlay.style.display !== 'flex') return;
+                    const list = DOM.cartServiceList;
+                    if (!list) return;
+                    const totalItems = State.serviceRequest.length;
+                    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+                    if (cartCurrentPage > totalPages && totalPages > 0) cartCurrentPage = totalPages;
+                    if (totalPages === 0) cartCurrentPage = 1;
+                    const start = (cartCurrentPage - 1) * ITEMS_PER_PAGE;
+                    const pageItems = State.serviceRequest.slice(start, start + ITEMS_PER_PAGE);
 
-    list.replaceChildren();
-    if (totalItems === 0) {
-        list.innerHTML = `<div class="empty-invoice-message">🛒 Your cart is empty<br><button class="add-more-button" id="emptyCartBrowseBtn" type="button">Browse Services</button></div>`;
-        setTimeout(() => {
-            const btn = q('#emptyCartBrowseBtn');
-            if (btn) btn.addEventListener('click', () => {
-                closeCartOverlay();
-                restoreCategoryView();
-            });
-        }, 0);
-        const pag = DOM.cartOverlay.querySelector('#CartPagination');
-        if (pag) pag.style.display = 'none';
-        const terms = DOM.cartOverlay.querySelector('.terms-wrap');
-        if (terms) terms.style.display = 'none';
-        if (DOM.overlaybookNowBtn) DOM.overlaybookNowBtn.disabled = true;
-        // Remove any project disclaimer
-        const disc = document.querySelector('#projectDisclaimerNote');
-        if (disc) disc.remove();
-        return;
-    }
+                    list.replaceChildren();
+                    if (totalItems === 0) {
+                        list.innerHTML = `<div class="empty-invoice-message">🛒 Your cart is empty<br><button class="add-more-button" id="emptyCartBrowseBtn" type="button">Browse Services</button></div>`;
+                        setTimeout(() => {
+                            const btn = q('#emptyCartBrowseBtn');
+                            if (btn) btn.addEventListener('click', () => {
+                                closeCartOverlay();
+                                restoreCategoryView();
+                            });
+                        }, 0);
+                        const pag = DOM.cartOverlay.querySelector('#CartPagination');
+                        if (pag) pag.style.display = 'none';
+                        const terms = DOM.cartOverlay.querySelector('.terms-wrap');
+                        if (terms) terms.style.display = 'none';
+                        if (DOM.overlaybookNowBtn) DOM.overlaybookNowBtn.disabled = true;
+                        // Remove any project disclaimer
+                        const disc = document.querySelector('#projectDisclaimerNote');
+                        if (disc) disc.remove();
+                        return;
+                    }
 
-    pageItems.forEach(svc => {
-        const item = create('div', { class: 'cart-service-item' });
-        item.appendChild(create('div', { class: 'cart-service-icon', text: svc.icon || '🔧' }));
-        const tw = create('div', { class: 'cart-service-text' });
-        tw.appendChild(create('h4', { text: svc.name }));
-        tw.appendChild(create('div', { class: 'summary-service-detail', text: svc.detail || '' }));
-        if (svc.notes && !svc.furnitureItems?.length) {
-            tw.appendChild(create('div', { class: 'cart-service-notes', text: svc.notes }));
-        }
-        // Materials‑extra badge (only when materials are NOT included)
-        if (svc.materialsNotIncluded && svc.materialsEstimateRange) {
-            const matBadge = create('div', {
-                class: 'f-item',
-                text: `+ Materials $${svc.materialsEstimateRange[0]}‑$${svc.materialsEstimateRange[1]}`,
-                style: 'background: #f97316; color: #fff; font-size: 0.7rem; margin-top: 4px;'
-            });
-            tw.appendChild(matBadge);
-        }
-        if (svc.furnitureItems?.length) {
-            const fwrap = create('div', { class: 'summary-service-furniture' });
-            svc.furnitureItems.forEach((fi, idx) => {
-                const fitem = create('span', { class: 'f-item' });
-                fitem.appendChild(create('span', { text: fi.label }));
-                const rm = create('button', { type: 'button', text: '✕' });
-                rm.addEventListener('click', e => {
-                    e.stopPropagation();
-                    removeFurnitureEntry(svc.id, idx);
-                    updateCartOverlayIfOpen();
-                });
-                fitem.appendChild(rm);
-                fwrap.appendChild(fitem);
-            });
-            tw.appendChild(fwrap);
-        }
-        item.appendChild(tw);
-        item.appendChild(create('div', { class: 'cart-service-price', text: svc.price || '0' }));
+                    pageItems.forEach(svc => {
+                        const item = create('div', {
+                            class: 'cart-service-item'
+                        });
+                        item.appendChild(create('div', {
+                            class: 'cart-service-icon',
+                            text: svc.icon || '🔧'
+                        }));
+                        const tw = create('div', {
+                            class: 'cart-service-text'
+                        });
+                        tw.appendChild(create('h4', {
+                            text: svc.name
+                        }));
+                        tw.appendChild(create('div', {
+                            class: 'summary-service-detail',
+                            text: svc.detail || ''
+                        }));
+                        if (svc.notes && !svc.furnitureItems?.length) {
+                            tw.appendChild(create('div', {
+                                class: 'cart-service-notes',
+                                text: svc.notes
+                            }));
+                        }
+                        // Materials‑extra badge (only when materials are NOT included)
+                        if (svc.materialsNotIncluded && svc.materialsEstimateRange) {
+                            const matBadge = create('div', {
+                                class: 'f-item',
+                                text: `+ Materials $${svc.materialsEstimateRange[0]}‑$${svc.materialsEstimateRange[1]}`,
+                                style: 'background: #f97316; color: #fff; font-size: 0.7rem; margin-top: 4px;'
+                            });
+                            tw.appendChild(matBadge);
+                        }
+                        if (svc.furnitureItems?.length) {
+                            const fwrap = create('div', {
+                                class: 'summary-service-furniture'
+                            });
+                            svc.furnitureItems.forEach((fi, idx) => {
+                                const fitem = create('span', {
+                                    class: 'f-item'
+                                });
+                                fitem.appendChild(create('span', {
+                                    text: fi.label
+                                }));
+                                const rm = create('button', {
+                                    type: 'button',
+                                    text: '✕'
+                                });
+                                rm.addEventListener('click', e => {
+                                    e.stopPropagation();
+                                    removeFurnitureEntry(svc.id, idx);
+                                    updateCartOverlayIfOpen();
+                                });
+                                fitem.appendChild(rm);
+                                fwrap.appendChild(fitem);
+                            });
+                            tw.appendChild(fwrap);
+                        }
+                        item.appendChild(tw);
+                        item.appendChild(create('div', {
+                            class: 'cart-service-price',
+                            text: svc.price || '0'
+                        }));
 
-        const rmBtn = create('button', {
-            class: 'remove-service-btn',
-            type: 'button',
-            text: '✕',
-            'aria-label': `Remove ${svc.name}`
-        });
-        rmBtn.addEventListener('click', () => {
-            removeServiceFromCart(svc.id);
-            updateCartOverlayIfOpen();
-            restoreCategoryView();
-        });
-        item.appendChild(rmBtn);
-        list.appendChild(item);
-    });
+                        const rmBtn = create('button', {
+                            class: 'remove-service-btn',
+                            type: 'button',
+                            text: '✕',
+                            'aria-label': `Remove ${svc.name}`
+                        });
+                        rmBtn.addEventListener('click', () => {
+                            removeServiceFromCart(svc.id);
+                            updateCartOverlayIfOpen();
+                            restoreCategoryView();
+                        });
+                        item.appendChild(rmBtn);
+                        list.appendChild(item);
+                    });
 
-    // Pagination
-    let pag = DOM.cartOverlay.querySelector('#CartPagination');
-    if (!pag) {
-        pag = create('div', { id: 'CartPagination', class: 'cart-pagination' });
-        list.parentNode.insertBefore(pag, list.nextSibling);
-    }
-    if (totalPages > 1) {
-        pag.style.display = 'flex';
-        pag.innerHTML = `<button class="pagination-btn" id="prevPageBtn" ${cartCurrentPage===1?'disabled':''}>&lt; Prev</button>
+                    // Pagination
+                    let pag = DOM.cartOverlay.querySelector('#CartPagination');
+                    if (!pag) {
+                        pag = create('div', {
+                            id: 'CartPagination',
+                            class: 'cart-pagination'
+                        });
+                        list.parentNode.insertBefore(pag, list.nextSibling);
+                    }
+                    if (totalPages > 1) {
+                        pag.style.display = 'flex';
+                        pag.innerHTML = `<button class="pagination-btn" id="prevPageBtn" ${cartCurrentPage===1?'disabled':''}>&lt; Prev</button>
                          <span class="pagination-info">Page ${cartCurrentPage} of ${totalPages} (${totalItems} items)</span>
                          <button class="pagination-btn" id="nextPageBtn" ${cartCurrentPage===totalPages?'disabled':''}>Next &gt;</button>`;
-        q('#prevPageBtn')?.addEventListener('click', () => {
-            if (cartCurrentPage > 1) { cartCurrentPage--; updateCartOverlayIfOpen(); }
-        });
-        q('#nextPageBtn')?.addEventListener('click', () => {
-            if (cartCurrentPage < totalPages) { cartCurrentPage++; updateCartOverlayIfOpen(); }
-        });
-    } else {
-        pag.style.display = 'none';
-    }
+                        q('#prevPageBtn')?.addEventListener('click', () => {
+                            if (cartCurrentPage > 1) {
+                                cartCurrentPage--;
+                                updateCartOverlayIfOpen();
+                            }
+                        });
+                        q('#nextPageBtn')?.addEventListener('click', () => {
+                            if (cartCurrentPage < totalPages) {
+                                cartCurrentPage++;
+                                updateCartOverlayIfOpen();
+                            }
+                        });
+                    } else {
+                        pag.style.display = 'none';
+                    }
 
-    // Terms checkbox setup
-    let termsWrap = DOM.cartOverlay.querySelector('.terms-wrap');
-    if (!termsWrap) {
-        termsWrap = document.createElement('div');
-        termsWrap.className = 'terms-wrap';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.id = 'termsCheckbox';
-        const lbl = document.createElement('label');
-        lbl.htmlFor = 'termsCheckbox';
-        lbl.innerHTML = `I agree to the <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" target="_blank" rel="noopener noreferrer">Service Agreement</a>. This is my electronic signature.`;
-        termsWrap.appendChild(cb);
-        termsWrap.appendChild(lbl);
-        const actBtns = DOM.cartOverlay.querySelector('.cart-overlay-actions');
-        if (actBtns) actBtns.parentNode.insertBefore(termsWrap, actBtns);
-    } else {
-        termsWrap.style.display = 'flex';
-    }
+                    // Terms checkbox setup
+                    let termsWrap = DOM.cartOverlay.querySelector('.terms-wrap');
+                    if (!termsWrap) {
+                        termsWrap = document.createElement('div');
+                        termsWrap.className = 'terms-wrap';
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.id = 'termsCheckbox';
+                        const lbl = document.createElement('label');
+                        lbl.htmlFor = 'termsCheckbox';
+                        lbl.innerHTML = `I agree to the <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement" target="_blank" rel="noopener noreferrer">Service Agreement</a>. This is my electronic signature.`;
+                        termsWrap.appendChild(cb);
+                        termsWrap.appendChild(lbl);
+                        const actBtns = DOM.cartOverlay.querySelector('.cart-overlay-actions');
+                        if (actBtns) actBtns.parentNode.insertBefore(termsWrap, actBtns);
+                    } else {
+                        termsWrap.style.display = 'flex';
+                    }
 
-    // Project‑based disclaimer
-    const oldDisc = document.querySelector('#projectDisclaimerNote');
-    if (oldDisc) oldDisc.remove();
-    const hasProjectBased = State.serviceRequest.some(s => {
-        const svc = SERVICE_DATA.services.find(sv => svc.id === s.serviceId);
-        return svc && svc.estimate_disclaimer === 'project_based';
+// Project‑based disclaimer
+const oldDisc = document.querySelector('#projectDisclaimerNote');
+if (oldDisc) oldDisc.remove();
+
+const hasProjectBased = State.serviceRequest.some(s => {
+    const foundSvc = SERVICE_DATA.services.find(service => service.id === s.serviceId);
+    return foundSvc && foundSvc.estimate_disclaimer === 'project_based';
+});
+
+if (hasProjectBased) {
+    const disc = create('div', {
+        id: 'projectDisclaimerNote',
+        class: 'repair-hint',
+        text: '⚠️ ' + (SERVICE_DATA.meta.estimate_disclaimers.project_based || 'Final price confirmed after site visit.'),
+        style: 'margin: 8px 1rem; font-size: 0.8rem; border-left-color: #facc15;'
     });
-    if (hasProjectBased) {
-        const disc = create('div', {
-            id: 'projectDisclaimerNote',
-            class: 'repair-hint',
-            text: '⚠️ ' + (SERVICE_DATA.meta.estimate_disclaimers.project_based || 'Final price confirmed after site visit.'),
-            style: 'margin: 8px 1rem; font-size: 0.8rem; border-left-color: #facc15;'
-        });
-        termsWrap.parentNode.insertBefore(disc, termsWrap.nextSibling);
-    }
-
-    // Bind checkbox to book‑now button
-    const checkbox = termsWrap.querySelector('#termsCheckbox');
-    if (DOM.overlaybookNowBtn) {
-        // We replace the button to remove old listeners, then attach fresh one
-        const newBtn = DOM.overlaybookNowBtn.cloneNode(true);
-        DOM.overlaybookNowBtn.parentNode.replaceChild(newBtn, DOM.overlaybookNowBtn);
-        DOM.overlaybookNowBtn = newBtn; // keep reference
-        newBtn.disabled = !checkbox.checked;
-        checkbox.onchange = () => {
-            newBtn.disabled = !checkbox.checked;
-        };
-        newBtn.addEventListener('click', () => {
-            if (!checkbox.checked) {
-                toast('Please agree to the Service Agreement.', 'error');
-                return;
-            }
-            if (!State.serviceRequest.length) {
-                toast('No services to book.', 'error');
-                return;
-            }
-            finalizeBooking();
-        });
-    }
-
-    // Add‑more button (outside overlay)
-    const addMoreBtn = DOM.cartOverlay.querySelector('#addMoreBtn');
-    if (addMoreBtn) {
-        const newAdd = addMoreBtn.cloneNode(true);
-        addMoreBtn.parentNode.replaceChild(newAdd, addMoreBtn);
-        newAdd.addEventListener('click', () => {
-            closeCartOverlay();
-            restoreCategoryView();
-        });
-    }
-
-    // Close button (inside overlay)
-    const closeBtn = DOM.cartOverlay.querySelector('#closeBt');
-    if (closeBtn) {
-        const newClose = closeBtn.cloneNode(true);
-        closeBtn.parentNode.replaceChild(newClose, closeBtn);
-        newClose.addEventListener('click', () => {
-            closeCartOverlay();
-            restoreCategoryView();
-        });
-    }
+    termsWrap.parentNode.insertBefore(disc, termsWrap.nextSibling);
 }
+
+                    // Bind checkbox to book‑now button
+                    const checkbox = termsWrap.querySelector('#termsCheckbox');
+                    if (DOM.overlaybookNowBtn) {
+                        // We replace the button to remove old listeners, then attach fresh one
+                        const newBtn = DOM.overlaybookNowBtn.cloneNode(true);
+                        DOM.overlaybookNowBtn.parentNode.replaceChild(newBtn, DOM.overlaybookNowBtn);
+                        DOM.overlaybookNowBtn = newBtn; // keep reference
+                        newBtn.disabled = !checkbox.checked;
+                        checkbox.onchange = () => {
+                            newBtn.disabled = !checkbox.checked;
+                        };
+                        newBtn.addEventListener('click', () => {
+                            if (!checkbox.checked) {
+                                toast('Please agree to the Service Agreement.', 'error');
+                                return;
+                            }
+                            if (!State.serviceRequest.length) {
+                                toast('No services to book.', 'error');
+                                return;
+                            }
+                            finalizeBooking();
+                        });
+                    }
+
+                    // Add‑more button (outside overlay)
+                    const addMoreBtn = DOM.cartOverlay.querySelector('#addMoreBtn');
+                    if (addMoreBtn) {
+                        const newAdd = addMoreBtn.cloneNode(true);
+                        addMoreBtn.parentNode.replaceChild(newAdd, addMoreBtn);
+                        newAdd.addEventListener('click', () => {
+                            closeCartOverlay();
+                            restoreCategoryView();
+                        });
+                    }
+
+                    // Close button (inside overlay)
+                    const closeBtn = DOM.cartOverlay.querySelector('#closeBt');
+                    if (closeBtn) {
+                        const newClose = closeBtn.cloneNode(true);
+                        closeBtn.parentNode.replaceChild(newClose, closeBtn);
+                        newClose.addEventListener('click', () => {
+                            closeCartOverlay();
+                            restoreCategoryView();
+                        });
+                    }
+                }
+
                 function finalizeBooking() {
                     DOM.overlaybookNowBtn.disabled = true;
                     DOM.overlaybookNowBtn.textContent = 'Submitting…';
@@ -5286,6 +5326,12 @@ function updateCartOverlayIfOpen() {
             })();
         }
     </script>
+
+
+
+
+
+
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
