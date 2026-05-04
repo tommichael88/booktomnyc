@@ -3,7 +3,12 @@
     "version": "2.1",
     "last_updated": "2026-05-02T09:31:41.318678",
     "rate_per_hour": [],
-    "repair_rate_per_hour": []
+    "repair_rate_per_hour": [],
+    "estimate_disclaimers": {
+      "flat_fee": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
+      "hourly": "Hourly services are billed for the actual time worked. Estimate based on typical durations; final amount may vary. Materials (if any) are extra.",
+      "project_based": "All estimates are preliminary and non‑binding. Your final, binding price will be confirmed after our technician inspects the job site and you approve the exact scope and material selections. You are not committed until you accept the final quote."
+    }
   },
   "categories": [
     {
@@ -277,6 +282,18 @@
       "name": "Other",
       "icon": "🔧",
       "parent_group": "minor_home_repairs_appliances"
+    },
+    {
+      "id": "general_handyman",
+      "category": "minor_home_repairs",
+      "name": "General Handyman",
+      "icon": "🔧"
+    },
+    {
+      "id": "logistics",
+      "category": "minor_home_repairs",
+      "name": "Logistics & Add‑Ons",
+      "icon": "📦"
     }
   ],
   "services": [
@@ -391,12 +408,12 @@
       }
     },
     {
-      "name": "Door Prehung Install",
+      "name": "Prehung Interior Door Install",
       "id": "1f849f3d",
       "category": "minor_home_repairs",
       "group": "minor_home_repairs_doors",
       "price": "$275",
-      "description": "Install a complete prehung interior door (frame + slab). Pricing does NOT include purchase of the door/ materials or hardware required.",
+      "description": "Professional installation of a prehung interior door. Labor only; door and hardware not included. We’ll help you select the right door after measuring on site.",
       "icon": "🚪",
       "details": [
         "Remove/Replace Existing Door",
@@ -410,30 +427,76 @@
         "questions": [
           {
             "id": "door_size",
-            "label": "Size?",
+            "label": "Do you know the door size?",
             "type": "select",
             "options": [
               "Standard 30\"x80\"",
               "Standard 32\"x80\"",
-              "Other"
+              "I don’t know – please measure on site"
             ],
             "fee_modifiers": {
               "Standard 30\"x80\"": 0,
               "Standard 32\"x80\"": 0,
-              "Other": 0
+              "Other": 0,
+              "I don’t know – please measure on site": 0
             }
           },
           {
             "id": "existing_frame",
-            "label": "Opening ready?",
+            "label": "Is the old door and frame already removed?",
             "type": "select",
             "options": [
-              "Yes",
-              "No"
+              "Yes, rough opening ready",
+              "No, need to remove old frame (+$50)"
             ],
             "fee_modifiers": {
               "Yes": 0,
-              "No": 0
+              "No": 0,
+              "Yes, rough opening ready": 0,
+              "No, need to remove old frame": 50
+            }
+          },
+          {
+            "id": "door_style_pref",
+            "label": "Door style preference? (narrows material estimate)",
+            "type": "select",
+            "options": [
+              "Hollow core (budget, ~$150‑$250)",
+              "Solid core (better sound insulation, ~$300‑$500)",
+              "Solid wood (premium, ~$400‑$800+)",
+              "Not sure / talk later"
+            ],
+            "fee_modifiers": {
+              "Hollow core (budget, ~$150‑$250)": 0,
+              "Solid core (better sound insulation, ~$300‑$500)": 0,
+              "Solid wood (premium, ~$400‑$800+)": 0,
+              "Not sure / talk later": 0
+            },
+            "modifier_rules": {
+              "Hollow core (budget, ~$150‑$250)": {
+                "materials_estimate": {
+                  "range": [
+                    150,
+                    250
+                  ]
+                }
+              },
+              "Solid core (better sound insulation, ~$300‑$500)": {
+                "materials_estimate": {
+                  "range": [
+                    300,
+                    500
+                  ]
+                }
+              },
+              "Solid wood (premium, ~$400‑$800+)": {
+                "materials_estimate": {
+                  "range": [
+                    400,
+                    800
+                  ]
+                }
+              }
             }
           }
         ]
@@ -459,7 +522,20 @@
           }
         ],
         "labor": null
-      }
+      },
+      "materials_estimate": {
+        "range": [
+          200,
+          600
+        ],
+        "note": "Hollow‑core doors start around $150; solid wood doors can exceed $400. Hardware extra. Exact cost depends on your choice."
+      },
+      "total_estimate_range": {
+        "min": 475,
+        "max": 925,
+        "note": "Labor + typical materials range. Final price confirmed after measurement and door selection."
+      },
+      "estimate_disclaimer": "project_based"
     },
     {
       "name": "Door Repair Impact Damage",
@@ -2665,7 +2741,7 @@
       "category": "plumbing_help",
       "group": "plumbing_help_toilets",
       "price": "$100",
-      "description": "Remove old Toilet and install new one (you provide Toilet).",
+      "description": "Remove old toilet and install new one. Labor only; toilet and supply lines must be provided by client or purchased separately.",
       "icon": "🚽",
       "details": [],
       "detail_prompt": "",
@@ -2676,17 +2752,80 @@
         "questions": [
           {
             "id": "removal",
-            "label": "Removal?",
+            "label": "Remove old?",
             "type": "select",
             "options": [
-              "Yes",
-              "No",
+              "Yes, remove and dispose (+$25)",
+              "Yes, leave for me",
               "Already removed"
             ],
             "fee_modifiers": {
               "Yes": 0,
               "No": 0,
-              "Already removed": 0
+              "Already removed": 0,
+              "Yes, remove and dispose (+$25)": 25,
+              "Yes, leave for me": 0
+            }
+          },
+          {
+            "id": "toilet_style_pref",
+            "label": "What type of toilet are you installing?",
+            "type": "select",
+            "options": [
+              "Standard two‑piece (budget)",
+              "Comfort height / elongated",
+              "High‑efficiency / dual‑flush",
+              "Designer / premium finish",
+              "I already have the toilet"
+            ],
+            "fee_modifiers": {
+              "Standard two‑piece (budget)": 0,
+              "Comfort height / elongated": 0,
+              "High‑efficiency / dual‑flush": 0,
+              "Designer / premium finish": 0,
+              "I already have the toilet": 0
+            },
+            "modifier_rules": {
+              "Standard two‑piece (budget)": {
+                "materials_estimate": {
+                  "range": [
+                    100,
+                    200
+                  ]
+                }
+              },
+              "Comfort height / elongated": {
+                "materials_estimate": {
+                  "range": [
+                    150,
+                    300
+                  ]
+                }
+              },
+              "High‑efficiency / dual‑flush": {
+                "materials_estimate": {
+                  "range": [
+                    200,
+                    400
+                  ]
+                }
+              },
+              "Designer / premium finish": {
+                "materials_estimate": {
+                  "range": [
+                    300,
+                    600
+                  ]
+                }
+              },
+              "I already have the toilet": {
+                "materials_estimate": {
+                  "range": [
+                    0,
+                    50
+                  ]
+                }
+              }
             }
           }
         ]
@@ -2712,7 +2851,20 @@
           }
         ],
         "labor": null
-      }
+      },
+      "materials_estimate": {
+        "range": [
+          100,
+          400
+        ],
+        "note": "Basic two‑piece toilet starts ~$100; premium models can run $300+. Wax ring and minor supplies included in labor."
+      },
+      "total_estimate_range": {
+        "min": 200,
+        "max": 525,
+        "note": "Labor + typical toilet price range. Exact cost depends on your selection."
+      },
+      "estimate_disclaimer": "project_based"
     },
     {
       "name": "Toilet Wax Ring Replacement",
@@ -4044,12 +4196,12 @@
       }
     },
     {
-      "name": "Repair",
+      "name": "Dishwasher Repair",
       "id": "2fffb7ce",
       "category": "minor_home_repairs",
       "group": "minor_home_repairs_appliances_washer",
       "price": "$70/hour",
-      "description": "Diagnostic and repair.",
+      "description": "Diagnostic and repair. Labor billed at $70 per hour, minimum 1 hour. Parts are additional and will be invoiced after the repair.",
       "icon": "🍽️",
       "details": [],
       "detail_prompt": "",
@@ -4117,7 +4269,20 @@
           "rate": 70.0,
           "min_hours": 1
         }
-      }
+      },
+      "materials_estimate": {
+        "range": [
+          0,
+          250
+        ],
+        "note": "Common parts (heating element, pump, inlet valve) typically $30‑$250. Exact part cost cannot be determined before diagnosis."
+      },
+      "total_estimate_range": {
+        "min": 70,
+        "max": 390,
+        "note": "1‑2 hours labor typical; parts extra. Final cost depends on fault and parts needed."
+      },
+      "estimate_disclaimer": "hourly"
     },
     {
       "name": "Setup",
@@ -4952,6 +5117,315 @@
           }
         ],
         "labor": null
+      }
+    },
+    {
+      "id": "handyman_hourly",
+      "category": "minor_home_repairs",
+      "group": "general_handyman",
+      "name": "Handyman Hourly – Custom Task",
+      "price": "$60/hour",
+      "description": "Mount anything, assemble non‑IKEA items, fix odd things, or tackle small projects. You describe the task; we handle the rest.",
+      "icon": "🔧",
+      "materials_included": false,
+      "materials_estimate": {
+        "range": [
+          0,
+          100
+        ],
+        "note": "Most small tasks use minimal materials. If significant supplies are needed, we’ll provide a separate estimate."
+      },
+      "total_estimate_range": {
+        "min": 60,
+        "max": 360,
+        "note": "Typical range based on 1‑6 hours. Final billing based on actual time."
+      },
+      "estimate_disclaimer": "hourly",
+      "intake": {
+        "version": "1.0",
+        "questions": [
+          {
+            "id": "task_desc",
+            "label": "What do you need done? (short description)",
+            "type": "text"
+          },
+          {
+            "id": "estimated_hours",
+            "label": "How long do you think it will take?",
+            "type": "select",
+            "options": [
+              "1 hour",
+              "Up to 2 hours",
+              "Up to 4 hours",
+              "Let the pro decide"
+            ],
+            "fee_modifiers": {}
+          },
+          {
+            "id": "materials_provided",
+            "label": "Do you have all necessary materials and parts?",
+            "type": "select",
+            "options": [
+              "Yes, I have everything",
+              "No, please bring standard supplies (est. $10‑$50)",
+              "No, please shop for me (parts charged at cost)"
+            ],
+            "fee_modifiers": {},
+            "modifier_rules": {
+              "No, please bring standard supplies (est. $10‑$50)": {
+                "materials_estimate": {
+                  "range": [
+                    10,
+                    50
+                  ]
+                }
+              },
+              "No, please shop for me (parts charged at cost)": {
+                "materials_estimate": {
+                  "range": [
+                    20,
+                    150
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "pricing": {
+        "base_price": 60.0,
+        "modifiers": [
+          {
+            "type": "complexity",
+            "level": "simple"
+          },
+          {
+            "type": "materials",
+            "level": "basic_supply"
+          },
+          {
+            "type": "access",
+            "level": "easy"
+          },
+          {
+            "type": "urgency",
+            "level": "standard"
+          }
+        ],
+        "labor": {
+          "type": "hourly",
+          "rate": 60.0,
+          "min_hours": 1
+        }
+      }
+    },
+    {
+      "id": "handyman_half_day",
+      "category": "minor_home_repairs",
+      "group": "general_handyman",
+      "name": "Half‑Day Handyman (4 Hours)",
+      "price": "$220",
+      "description": "Reserve a handyman for a 4‑hour block to handle multiple small tasks, furniture assembly, mounting, and odd jobs. Any unused time is credited.",
+      "icon": "⏳",
+      "materials_included": false,
+      "materials_estimate": {
+        "range": [
+          0,
+          100
+        ],
+        "note": "Materials not included unless added."
+      },
+      "total_estimate_range": {
+        "min": 220,
+        "max": 320,
+        "note": "4‑hour labor + typical minor supply costs."
+      },
+      "estimate_disclaimer": "flat_fee",
+      "intake": {
+        "version": "1.0",
+        "questions": [
+          {
+            "id": "tasks_list",
+            "label": "What needs to be done? (list)",
+            "type": "text"
+          },
+          {
+            "id": "need_extra_trips",
+            "label": "Will you need the handyman to shop for parts?",
+            "type": "select",
+            "options": [
+              "No, materials on site",
+              "Yes, please add Parts Fetching service"
+            ],
+            "fee_modifiers": {}
+          }
+        ]
+      },
+      "pricing": {
+        "base_price": 220.0,
+        "modifiers": [
+          {
+            "type": "complexity",
+            "level": "simple"
+          },
+          {
+            "type": "materials",
+            "level": "basic_supply"
+          },
+          {
+            "type": "access",
+            "level": "easy"
+          },
+          {
+            "type": "urgency",
+            "level": "standard"
+          }
+        ],
+        "labor": {
+          "type": "flat",
+          "min_hours": 4,
+          "max_hours": 4
+        }
+      }
+    },
+    {
+      "id": "handyman_full_day",
+      "category": "minor_home_repairs",
+      "group": "general_handyman",
+      "name": "Full‑Day Handyman (8 Hours)",
+      "price": "$420",
+      "description": "8 hours of skilled help for larger projects, multiple installations, or full room makeovers. Unused time credited if job finishes early.",
+      "icon": "🔨",
+      "materials_included": false,
+      "materials_estimate": {
+        "range": [
+          0,
+          200
+        ],
+        "note": "Materials not included."
+      },
+      "total_estimate_range": {
+        "min": 420,
+        "max": 620,
+        "note": "8‑hour labor + materials range."
+      },
+      "estimate_disclaimer": "flat_fee",
+      "intake": {
+        "version": "1.0",
+        "questions": [
+          {
+            "id": "scope",
+            "label": "Describe everything you'd like done",
+            "type": "text"
+          }
+        ]
+      },
+      "pricing": {
+        "base_price": 420.0,
+        "modifiers": [
+          {
+            "type": "complexity",
+            "level": "moderate"
+          },
+          {
+            "type": "materials",
+            "level": "basic_supply"
+          },
+          {
+            "type": "access",
+            "level": "easy"
+          },
+          {
+            "type": "urgency",
+            "level": "standard"
+          }
+        ],
+        "labor": {
+          "type": "flat",
+          "min_hours": 8,
+          "max_hours": 8
+        }
+      }
+    },
+    {
+      "id": "logistics_parts_fetch",
+      "category": "minor_home_repairs",
+      "group": "logistics",
+      "name": "Parts Fetching / Shopping Trip",
+      "price": "$35",
+      "description": "We’ll go to the hardware store and pick up the needed parts. Materials are billed at cost. One trip included.",
+      "icon": "🛒",
+      "materials_included": false,
+      "materials_estimate": {
+        "range": [
+          0,
+          500
+        ],
+        "note": "Parts cost will be added to your invoice; the $35 covers our time."
+      },
+      "total_estimate_range": {
+        "min": 35,
+        "max": 535,
+        "note": "Trip fee + parts cost."
+      },
+      "estimate_disclaimer": "flat_fee",
+      "pricing": {
+        "base_price": 35.0,
+        "modifiers": [
+          {
+            "type": "complexity",
+            "level": "simple"
+          },
+          {
+            "type": "materials",
+            "level": "basic_supply"
+          },
+          {
+            "type": "access",
+            "level": "easy"
+          },
+          {
+            "type": "urgency",
+            "level": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "id": "logistics_pickup_dropoff",
+      "category": "minor_home_repairs",
+      "group": "logistics",
+      "name": "Pick‑Up & Drop‑Off (Single Trip)",
+      "price": "$45",
+      "description": "We’ll pick up an item from one location and deliver it within the metro area. Useful for parts, appliances, or repaired devices.",
+      "icon": "🚚",
+      "materials_included": false,
+      "total_estimate_range": {
+        "min": 45,
+        "max": 45,
+        "note": "Flat fee for one round‑trip within service area."
+      },
+      "estimate_disclaimer": "flat_fee",
+      "pricing": {
+        "base_price": 45.0,
+        "modifiers": [
+          {
+            "type": "complexity",
+            "level": "simple"
+          },
+          {
+            "type": "materials",
+            "level": "included"
+          },
+          {
+            "type": "access",
+            "level": "easy"
+          },
+          {
+            "type": "urgency",
+            "level": "standard"
+          }
+        ]
       }
     }
   ],
