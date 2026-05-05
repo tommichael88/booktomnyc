@@ -2966,94 +2966,108 @@
                     return m ? Math.round(parseFloat(m[1])) : 0;
                 };
 
-// ======================= NEW PRICING HELPERS (v2) =======================
-function getModifierValue(modifierType, level) {
-    if (!SERVICE_DATA?.pricing_constants) return 0;
-    const defs = SERVICE_DATA.pricing_constants[modifierType];
-    return defs?.[level] ?? 0;
-}
+                // ======================= NEW PRICING HELPERS (v2) =======================
+                function getModifierValue(modifierType, level) {
+                    if (!SERVICE_DATA?.pricing_constants) return 0;
+                    const defs = SERVICE_DATA.pricing_constants[modifierType];
+                    return defs?.[level] ?? 0;
+                }
 
-function computeFinalPriceFromModifiers(basePrice, modifiersObj, laborObj, hours = null, surcharge = 0) {
-    let modifierSum = 0;
-    for (const [type, level] of Object.entries(modifiersObj)) {
-        modifierSum += getModifierValue(type, level);
-    }
-    if (laborObj?.type === 'hourly') {
-        const hourlyRate = laborObj.rate || basePrice;
-        const usedHours = hours || 1;
-        return (hourlyRate + modifierSum + surcharge) * usedHours;
-    }
-    return basePrice + modifierSum + surcharge;
-}
+                function computeFinalPriceFromModifiers(basePrice, modifiersObj, laborObj, hours = null, surcharge = 0) {
+                    let modifierSum = 0;
+                    for (const [type, level] of Object.entries(modifiersObj)) {
+                        modifierSum += getModifierValue(type, level);
+                    }
+                    if (laborObj?.type === 'hourly') {
+                        const hourlyRate = laborObj.rate || basePrice;
+                        const usedHours = hours || 1;
+                        return (hourlyRate + modifierSum + surcharge) * usedHours;
+                    }
+                    return basePrice + modifierSum + surcharge;
+                }
 
-// Computes the real min/max price for a fixed‑rate service,
-// based on the actual modifier questions and their fees.
-function getServicePriceRange(svc) {
-    const pv2 = svc.pricing_v2;
-    if (!pv2) return { min: null, max: null };
+                // Computes the real min/max price for a fixed‑rate service,
+                // based on the actual modifier questions and their fees.
+                function getServicePriceRange(svc) {
+                    const pv2 = svc.pricing_v2;
+                    if (!pv2) return {
+                        min: null,
+                        max: null
+                    };
 
-    const base = pv2.base_price;
+                    const base = pv2.base_price;
 
-    // Static modifier sum (complexity, materials, access)
-    let staticModSum = 0;
-    if (pv2.global_adjustments) {
-        for (const [type, level] of Object.entries(pv2.global_adjustments)) {
-            staticModSum += getModifierValue(type, level);
-        }
-    }
+                    // Static modifier sum (complexity, materials, access)
+                    let staticModSum = 0;
+                    if (pv2.global_adjustments) {
+                        for (const [type, level] of Object.entries(pv2.global_adjustments)) {
+                            staticModSum += getModifierValue(type, level);
+                        }
+                    }
 
-    // Per‑question fee ranges
-    let totalMinFee = 0, totalMaxFee = 0;
-    let hasChoices = false;
-    (pv2.modifier_questions || []).forEach(q => {
-        if (q.options && q.options.length) {
-            hasChoices = true;
-            const fees = q.options.map(o => o.fee_adjustment || 0);
-            totalMinFee += Math.min(...fees);
-            totalMaxFee += Math.max(...fees);
-        }
-    });
+                    // Per‑question fee ranges
+                    let totalMinFee = 0,
+                        totalMaxFee = 0;
+                    let hasChoices = false;
+                    (pv2.modifier_questions || []).forEach(q => {
+                        if (q.options && q.options.length) {
+                            hasChoices = true;
+                            const fees = q.options.map(o => o.fee_adjustment || 0);
+                            totalMinFee += Math.min(...fees);
+                            totalMaxFee += Math.max(...fees);
+                        }
+                    });
 
-    // If no choices, price is fixed
-    if (!hasChoices) {
-        const price = base + staticModSum;
-        return { min: price, max: price };
-    }
+                    // If no choices, price is fixed
+                    if (!hasChoices) {
+                        const price = base + staticModSum;
+                        return {
+                            min: price,
+                            max: price
+                        };
+                    }
 
-    const minPrice = base + staticModSum + totalMinFee;
-    const maxPrice = base + staticModSum + totalMaxFee;
-    return { min: minPrice, max: maxPrice };
-}
+                    const minPrice = base + staticModSum + totalMinFee;
+                    const maxPrice = base + staticModSum + totalMaxFee;
+                    return {
+                        min: minPrice,
+                        max: maxPrice
+                    };
+                }
 
-function formatServicePrice(svc) {
-    const pv2 = svc.pricing_v2;
-    if (!pv2) return svc.price || 'Call';
+                function formatServicePrice(svc) {
+                    const pv2 = svc.pricing_v2;
+                    if (!pv2) return svc.price || 'Call';
 
-    // 1. Hourly services → just the rate
-    if (pv2.type === 'hourly') {
-        const rate = pv2.base_price;
-        return `$${rate}/hr`;
-    }
+                    // 1. Hourly services → just the rate
+                    if (pv2.type === 'hourly') {
+                        const rate = pv2.base_price;
+                        return `$${rate}/hr`;
+                    }
 
-    // 2. Project‑based services (e.g. prehung door, toilet install)
-    //    use the provided total_estimate_range.
-    if (pv2.estimate_disclaimer === 'project_based' &&
-        pv2.total_estimate_range &&
-        typeof pv2.total_estimate_range.min === 'number') {
-        const { min, max } = pv2.total_estimate_range;
-        if (min === max) return `$${Math.round(min)}`;
-        return `From $${Math.round(min)}`;
-    }
+                    // 2. Project‑based services (e.g. prehung door, toilet install)
+                    //    use the provided total_estimate_range.
+                    if (pv2.estimate_disclaimer === 'project_based' &&
+                        pv2.total_estimate_range &&
+                        typeof pv2.total_estimate_range.min === 'number') {
+                        const {
+                            min,
+                            max
+                        } = pv2.total_estimate_range;
+                        if (min === max) return `$${Math.round(min)}`;
+                        return `From $${Math.round(min)}`;
+                    }
 
-    // 3. All other (flat‑fee) services – compute the real modifier spread
-    const range = getServicePriceRange(svc);
-    if (range.min === null) return 'Call';
+                    // 3. All other (flat‑fee) services – compute the real modifier spread
+                    const range = getServicePriceRange(svc);
+                    if (range.min === null) return 'Call';
 
-    const min = range.min, max = range.max;
-    if (min === max) return `$${Math.round(min)}`;
-    if (max - min <= 20) return `Around $${Math.round((min + max) / 2)}`;
-    return `From $${Math.round(min)}`;
-}
+                    const min = range.min,
+                        max = range.max;
+                    if (min === max) return `$${Math.round(min)}`;
+                    if (max - min <= 20) return `Around $${Math.round((min + max) / 2)}`;
+                    return `From $${Math.round(min)}`;
+                }
 
                 /* ================================================================
                    RATE LIMITER
@@ -3697,52 +3711,59 @@ function formatServicePrice(svc) {
                 /* ================================================================
                    SERVICE CARD & INTAKE (UPDATED)
                 ================================================================ */
-function createServiceCardElement(svc, categoryId) {
-    const card = create('div', {
-        class: 'service-card',
-        tabindex: '0',
-        role: 'button',
-        'aria-label': svc.name
-    });
-    const iconEl = create('div', {
-        class: 'service-item-icon',
-        text: svc.icon || '🔧'
-    });
-    const info = document.createElement('div');
-    info.style.cssText = 'width:100%; display:flex; flex-direction:column; align-items:center;';
+                function createServiceCardElement(svc, categoryId) {
+                    const card = create('div', {
+                        class: 'service-card',
+                        tabindex: '0',
+                        role: 'button',
+                        'aria-label': svc.name
+                    });
+                    const iconEl = create('div', {
+                        class: 'service-item-icon',
+                        text: svc.icon || '🔧'
+                    });
+                    const info = document.createElement('div');
+                    info.style.cssText = 'width:100%; display:flex; flex-direction:column; align-items:center;';
 
-    info.appendChild(create('h4', { text: svc.name }));
-    info.appendChild(create('div', { class: 'service-price', text: formatServicePrice(svc) }));
+                    info.appendChild(create('h4', {
+                        text: svc.name
+                    }));
+                    info.appendChild(create('div', {
+                        class: 'service-price',
+                        text: formatServicePrice(svc)
+                    }));
 
-    // ------ Materials Included badge (green) ------
-    if (svc.materials_included) {
-        info.appendChild(create('div', {
-            class: 'materials-badge',
-            text: '🧩Materials 🗹Included',
-            style: 'background: linear-gradient(135deg, #fff, #c0c0c0); font-size: 1rem; margin-top: 4px; padding: 3px 8px; border-radius: 15px; color: #555555; font-weight: 700; letter-spacing: .03em; display: inline-flex; align-items: center; gap: 4px;'
-        }));
-    }
+                    // ------ Materials Included badge (green) ------
+                    if (svc.materials_included) {
+                        info.appendChild(create('div', {
+                            class: 'materials-badge',
+                            text: '🧩Materials 🗹Included',
+                            style: 'background: linear-gradient(135deg, #fff, #c0c0c0); font-size: 1rem; margin-top: 4px; padding: 3px 8px; border-radius: 15px; color: #555555; font-weight: 700; letter-spacing: .03em; display: inline-flex; align-items: center; gap: 4px;'
+                        }));
+                    }
 
-    // Description – no longer mentions materials
-    let desc = svc.description ? svc.description : 'Tap to customise.';
-    info.appendChild(create('div', {
-        class: 'service-card-expanded',
-        text: desc,
-        style: 'display:block;'
-    }));
+                    // Description – no longer mentions materials
+                    let desc = svc.description ? svc.description : 'Tap to customise.';
+                    info.appendChild(create('div', {
+                        class: 'service-card-expanded',
+                        text: desc,
+                        style: 'display:block;'
+                    }));
 
-    card.appendChild(iconEl);
-    card.appendChild(info);
+                    card.appendChild(iconEl);
+                    card.appendChild(info);
 
-    card.addEventListener('click', () => { showIntakeQuestions(svc, categoryId); });
-    card.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            showIntakeQuestions(svc, categoryId);
-        }
-    });
-    return card;
-}
+                    card.addEventListener('click', () => {
+                        showIntakeQuestions(svc, categoryId);
+                    });
+                    card.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            showIntakeQuestions(svc, categoryId);
+                        }
+                    });
+                    return card;
+                }
 
                 /* ================================================================
                    GLOBAL SEARCH RENDERER
@@ -3786,227 +3807,293 @@ function createServiceCardElement(svc, categoryId) {
                 /* ================================================================
                    INTAKE QUESTIONS & SERVICE DETAIL
                    ================================================================ */
-function showIntakeQuestions(svc, categoryId, fromBack = false) {
-    if (!fromBack) Breadcrumbs.push({ type: 'serviceDetail', groupId: svc.group, categoryId });
-    enterFocusedMode();
-    setStep(4);
-    const container = DOM.intakeQuestionsContainer;
-    container.replaceChildren();
-    container.style.display = 'block';
-    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
+                function showIntakeQuestions(svc, categoryId, fromBack = false) {
+                    if (!fromBack) Breadcrumbs.push({
+                        type: 'serviceDetail',
+                        groupId: svc.group,
+                        categoryId
+                    });
+                    enterFocusedMode();
+                    setStep(4);
+                    const container = DOM.intakeQuestionsContainer;
+                    container.replaceChildren();
+                    container.style.display = 'block';
+                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
 
-    const pv2 = svc.pricing_v2;
-    const intakeQs = pv2?.modifier_questions || [];        // price‑affecting
-    const extraQs = svc.intake_v2?.questions || [];        // non‑financial (text, etc.)
+                    const pv2 = svc.pricing_v2;
+                    const intakeQs = pv2?.modifier_questions || []; // price‑affecting
+                    const extraQs = svc.intake_v2?.questions || []; // non‑financial (text, etc.)
 
-    // Header
-    const hdr = create('h3', {}, [document.createTextNode(svc.name)]);
-    if (svc.materials_included) {
-        hdr.appendChild(create('span', { class: 'materials-badge', text: '✓ Materials Included' }));
-    }
-    container.appendChild(hdr);
-    if (svc.description) {
-        container.appendChild(create('p', {
-            text: svc.description,
-            style: 'color:rgba(255,255,255,.7);font-size:.88rem;margin-bottom:12px;'
-        }));
-    }
-    // Materials estimate (if not included)
-    if (pv2?.materials_estimate && !svc.materials_included) {
-        const est = pv2.materials_estimate;
-        const note = est.note || 'Materials will be added to final invoice.';
-        const matInfo = create('div', { class: 'repair-hint', style: 'border-left-color: #f97316;' });
-        matInfo.innerHTML = `🧾 <b>Materials:</b> typically $${est.range[0]} – $${est.range[1]}.<br><small>${note}</small>`;
-        container.appendChild(matInfo);
-    }
-    // Hourly rate info
-    if (pv2?.type === 'hourly') {
-        const rate = pv2.rate_per_hour || pv2.base_price;
-        let defaultSum = 0;
-        if (pv2.global_adjustments) {
-            for (const [t, lvl] of Object.entries(pv2.global_adjustments)) {
-                defaultSum += getModifierValue(t, lvl);
-            }
-        }
-        container.appendChild(create('div', { class: 'repair-hint',
-            text: `🔧 Labor rate: $${rate}/hour + modifiers = from $${rate+defaultSum}/hour (minimum)`
-        }));
-    }
+                    // Header
+                    const hdr = create('h3', {}, [document.createTextNode(svc.name)]);
+                    if (svc.materials_included) {
+                        hdr.appendChild(create('span', {
+                            class: 'materials-badge',
+                            text: '✓ Materials Included'
+                        }));
+                    }
+                    container.appendChild(hdr);
+                    if (svc.description) {
+                        container.appendChild(create('p', {
+                            text: svc.description,
+                            style: 'color:rgba(255,255,255,.7);font-size:.88rem;margin-bottom:12px;'
+                        }));
+                    }
+                    // Materials estimate (if not included)
+                    if (pv2?.materials_estimate && !svc.materials_included) {
+                        const est = pv2.materials_estimate;
+                        const note = est.note || 'Materials will be added to final invoice.';
+                        const matInfo = create('div', {
+                            class: 'repair-hint',
+                            style: 'border-left-color: #f97316;'
+                        });
+                        matInfo.innerHTML = `🧾 <b>Materials:</b> typically $${est.range[0]} – $${est.range[1]}.<br><small>${note}</small>`;
+                        container.appendChild(matInfo);
+                    }
+                    // Hourly rate info
+                    if (pv2?.type === 'hourly') {
+                        const rate = pv2.rate_per_hour || pv2.base_price;
+                        let defaultSum = 0;
+                        if (pv2.global_adjustments) {
+                            for (const [t, lvl] of Object.entries(pv2.global_adjustments)) {
+                                defaultSum += getModifierValue(t, lvl);
+                            }
+                        }
+                        container.appendChild(create('div', {
+                            class: 'repair-hint',
+                            text: `🔧 Labor rate: $${rate}/hour + modifiers = from $${rate+defaultSum}/hour (minimum)`
+                        }));
+                    }
 
-    // Furniture selection (if needed)
-    if (svc.requires_furniture_selection) {
-        renderFurnitureSelection(container, svc, categoryId);
-        return;
-    }
+                    // Furniture selection (if needed)
+                    if (svc.requires_furniture_selection) {
+                        renderFurnitureSelection(container, svc, categoryId);
+                        return;
+                    }
 
-    const formWrapper = create('div', { class: 'simple-intake-form' });
-    const answers = {};
-    let selectedDetail = null;
-    const detailsArray = Array.isArray(svc.details) ? svc.details : [];
-    let selectedHours = 1;
+                    const formWrapper = create('div', {
+                        class: 'simple-intake-form'
+                    });
+                    const answers = {};
+                    let selectedDetail = null;
+                    const detailsArray = Array.isArray(svc.details) ? svc.details : [];
+                    let selectedHours = 1;
 
-    function buildModifierObject() {
-        let mods = {};
-        if (pv2.global_adjustments) Object.assign(mods, pv2.global_adjustments);
-        // Apply fee_adjustments from selected options (these are flat fees, not level changes)
-        // We'll track flat surcharge separately
-        return mods;
-    }
+                    function buildModifierObject() {
+                        let mods = {};
+                        if (pv2.global_adjustments) Object.assign(mods, pv2.global_adjustments);
+                        // Apply fee_adjustments from selected options (these are flat fees, not level changes)
+                        // We'll track flat surcharge separately
+                        return mods;
+                    }
 
-    function computeSurcharge() {
-        let surcharge = 0;
-        // Add fee_adjustment from selected options
-        intakeQs.forEach(q => {
-            const ans = answers[q.question_id];
-            if (ans) {
-                const opt = q.options.find(o => o.choice_code === ans || o.value === ans);
-                if (opt && opt.fee_adjustment) surcharge += opt.fee_adjustment;
-            }
-        });
-        // Add conditional adjustments from conditional_adjustments_v2
-        const conds = svc.conditional_adjustments_v2 || [];
-        conds.forEach(c => {
-            if (c.when && answers[c.when.question_id] === c.when.equals) {
-                if (c.fee_adjustment) surcharge += c.fee_adjustment;
-            }
-        });
-        return surcharge;
-    }
+                    function computeSurcharge() {
+                        let surcharge = 0;
+                        // Add fee_adjustment from selected options
+                        intakeQs.forEach(q => {
+                            const ans = answers[q.question_id];
+                            if (ans) {
+                                const opt = q.options.find(o => o.choice_code === ans || o.value === ans);
+                                if (opt && opt.fee_adjustment) surcharge += opt.fee_adjustment;
+                            }
+                        });
+                        // Add conditional adjustments from conditional_adjustments_v2
+                        const conds = svc.conditional_adjustments_v2 || [];
+                        conds.forEach(c => {
+                            if (c.when && answers[c.when.question_id] === c.when.equals) {
+                                if (c.fee_adjustment) surcharge += c.fee_adjustment;
+                            }
+                        });
+                        return surcharge;
+                    }
 
-    function computeFinalPrice() {
-        const mods = buildModifierObject();
-        const surcharge = computeSurcharge();
-        return computeFinalPriceFromModifiers(
-            pv2.base_price, mods,
-            { type: pv2.type, rate: pv2.rate_per_hour, min_hours: pv2.min_hours },
-            pv2.type === 'hourly' ? selectedHours : null,
-            surcharge
-        );
-    }
+                    function computeFinalPrice() {
+                        const mods = buildModifierObject();
+                        const surcharge = computeSurcharge();
+                        return computeFinalPriceFromModifiers(
+                            pv2.base_price, mods, {
+                                type: pv2.type,
+                                rate: pv2.rate_per_hour,
+                                min_hours: pv2.min_hours
+                            },
+                            pv2.type === 'hourly' ? selectedHours : null,
+                            surcharge
+                        );
+                    }
 
-    function allQuestionsAnswered() {
-        const allIntake = intakeQs.every(q => {
-            const sec = container.querySelector(`[data-question-id="${q.question_id}"]`);
-            if (sec && sec.style.display === 'none') return true;
-            return answers[q.question_id] !== undefined;
-        });
-        const extraOk = (extraQs.length === 0) || true; // text fields not required
-        const detailOk = (detailsArray.length === 0) || selectedDetail !== null;
-        return allIntake && detailOk && extraOk;
-    }
+                    function allQuestionsAnswered() {
+                        const allIntake = intakeQs.every(q => {
+                            const sec = container.querySelector(`[data-question-id="${q.question_id}"]`);
+                            if (sec && sec.style.display === 'none') return true;
+                            return answers[q.question_id] !== undefined;
+                        });
+                        const extraOk = (extraQs.length === 0) || true; // text fields not required
+                        const detailOk = (detailsArray.length === 0) || selectedDetail !== null;
+                        return allIntake && detailOk && extraOk;
+                    }
 
-    function applyVisibility() {
-        const conds = svc.conditional_adjustments_v2 || [];
-        intakeQs.forEach(q => {
-            const sec = container.querySelector(`[data-question-id="${q.question_id}"]`);
-            if (!sec) return;
-            let hide = false;
-            for (const c of conds) {
-                if (c.hide_questions && c.hide_questions.includes(q.question_id)) {
-                    if (answers[c.when.question_id] === c.when.equals) hide = true;
+                    function applyVisibility() {
+                        const conds = svc.conditional_adjustments_v2 || [];
+                        intakeQs.forEach(q => {
+                            const sec = container.querySelector(`[data-question-id="${q.question_id}"]`);
+                            if (!sec) return;
+                            let hide = false;
+                            for (const c of conds) {
+                                if (c.hide_questions && c.hide_questions.includes(q.question_id)) {
+                                    if (answers[c.when.question_id] === c.when.equals) hide = true;
+                                }
+                            }
+                            sec.style.display = hide ? 'none' : 'block';
+                            if (hide) {
+                                delete answers[q.question_id];
+                                sec.querySelectorAll('.chip-btn.selected').forEach(b => b.classList.remove('selected'));
+                            }
+                        });
+                    }
+
+                    const addBtn = create('button', {
+                        class: 'add-more-button',
+                        text: '🛒 Select options above',
+                        type: 'button',
+                        style: 'width:100%;margin-top:16px;'
+                    });
+                    addBtn.disabled = true;
+
+                    function updateAddButton() {
+                        if (allQuestionsAnswered()) {
+                            addBtn.textContent = `🛒 Add to Cart - $${computeFinalPrice().toFixed(2)}`;
+                            addBtn.disabled = false;
+                        } else {
+                            addBtn.textContent = '🛒 Select options above';
+                            addBtn.disabled = true;
+                        }
+                    }
+
+                    // Render details
+                    if (detailsArray.length) {
+                        /* ... same as before ... */
+                    }
+
+                    // Hourly input
+                    if (pv2.type === 'hourly') {
+                        /* ... similar to old, using pv2 ... */
+                    }
+
+                    // Render intake questions (from modifier_questions)
+                    intakeQs.forEach(q => {
+                        const sec = create('div', {
+                            class: 'intake-section'
+                        });
+                        sec.setAttribute('data-question-id', q.question_id);
+                        sec.appendChild(create('div', {
+                            class: 'intake-label',
+                            text: q.label
+                        }));
+                        const chips = create('div', {
+                            class: 'chip-container'
+                        });
+                        q.options.forEach(opt => {
+                            const label = opt.label || opt.choice_code;
+                            const btn = create('button', {
+                                class: 'chip-btn',
+                                text: label,
+                                type: 'button'
+                            });
+                            btn.addEventListener('click', () => {
+                                chips.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
+                                btn.classList.add('selected');
+                                answers[q.question_id] = opt.choice_code || opt.value;
+                                applyVisibility();
+                                updateAddButton();
+                                if (notesField) notesField.style.display = 'block';
+                            });
+                            chips.appendChild(btn);
+                        });
+                        sec.appendChild(chips);
+                        formWrapper.appendChild(sec);
+                    });
+
+                    // Render extra (non‑financial) questions – simple text inputs
+                    extraQs.forEach(q => {
+                        const sec = create('div', {
+                            class: 'intake-section'
+                        });
+                        sec.appendChild(create('div', {
+                            class: 'intake-label',
+                            text: q.label
+                        }));
+                        if (q.type === 'text' || q.type === 'number') {
+                            const input = create('input', {
+                                type: q.type,
+                                class: 'service-input-area',
+                                placeholder: q.placeholder || '',
+                                style: 'margin-top:8px;'
+                            });
+                            sec.appendChild(input);
+                            answers[q.id] = input.value; // not used for price
+                        }
+                        formWrapper.appendChild(sec);
+                    });
+
+                    container.appendChild(formWrapper);
+
+                    // Notes textarea
+                    const notesField = create('textarea', {
+                        class: 'service-input-area',
+                        placeholder: 'Additional notes (optional)…',
+                        rows: 3,
+                        style: detailsArray.length ? 'display:none;margin-top:12px;' : 'margin-top:12px;'
+                    });
+                    container.appendChild(notesField);
+                    container.appendChild(addBtn);
+
+                    addBtn.addEventListener('click', () => {
+                        if (!addBtn.disabled && allQuestionsAnswered()) {
+                            if (!cartLimiter.isAllowed('add')) {
+                                toast('Adding too fast, please wait.', 'error');
+                                return;
+                            }
+                            let notes = selectedDetail ? `Detail: ${selectedDetail}` : '';
+                            intakeQs.forEach(q => {
+                                if (answers[q.question_id]) notes += (notes ? ' • ' : '') + `${q.label}: ${answers[q.question_id]}`;
+                            });
+                            if (notesField.value.trim()) notes += (notes ? ' • ' : '') + notesField.value.trim();
+                            const finalPrice = computeFinalPrice();
+                            const entry = {
+                                id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
+                                serviceId: svc.id,
+                                categoryId,
+                                name: svc.name,
+                                price: `$${finalPrice.toFixed(2)}`,
+                                icon: svc.icon || '🔧',
+                                detail: selectedDetail || '',
+                                notes,
+                                furnitureItems: [],
+                                selectedHours: pv2.type === 'hourly' ? selectedHours : 0,
+                                modifiersUsed: buildModifierObject(),
+                                materialsNotIncluded: !svc.materials_included && pv2.materials_estimate,
+                                materialsEstimateRange: pv2.materials_estimate ? pv2.materials_estimate.range : null
+                            };
+                            addToCart(entry);
+                            exitFocusedMode();
+                            container.style.display = 'none';
+                            DOM.serviceRequestSummary.style.display = 'block';
+                            DOM.serviceRequestSummary.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                            renderCart();
+                            toast(`${svc.name} added to cart`, 'success');
+                        }
+                    });
+
+                    addBackButton(container, () => {
+                        container.style.display = 'none';
+                        Breadcrumbs.goBack();
+                    });
+                    applyVisibility();
+                    updateAddButton();
                 }
-            }
-            sec.style.display = hide ? 'none' : 'block';
-            if (hide) { delete answers[q.question_id]; sec.querySelectorAll('.chip-btn.selected').forEach(b => b.classList.remove('selected')); }
-        });
-    }
-
-    const addBtn = create('button', { class: 'add-more-button', text: '🛒 Select options above', type: 'button', style: 'width:100%;margin-top:16px;' });
-    addBtn.disabled = true;
-    function updateAddButton() {
-        if (allQuestionsAnswered()) {
-            addBtn.textContent = `🛒 Add to Cart - $${computeFinalPrice().toFixed(2)}`;
-            addBtn.disabled = false;
-        } else {
-            addBtn.textContent = '🛒 Select options above';
-            addBtn.disabled = true;
-        }
-    }
-
-    // Render details
-    if (detailsArray.length) { /* ... same as before ... */ }
-
-    // Hourly input
-    if (pv2.type === 'hourly') { /* ... similar to old, using pv2 ... */ }
-
-    // Render intake questions (from modifier_questions)
-    intakeQs.forEach(q => {
-        const sec = create('div', { class: 'intake-section' });
-        sec.setAttribute('data-question-id', q.question_id);
-        sec.appendChild(create('div', { class: 'intake-label', text: q.label }));
-        const chips = create('div', { class: 'chip-container' });
-        q.options.forEach(opt => {
-            const label = opt.label || opt.choice_code;
-            const btn = create('button', { class: 'chip-btn', text: label, type: 'button' });
-            btn.addEventListener('click', () => {
-                chips.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                answers[q.question_id] = opt.choice_code || opt.value;
-                applyVisibility();
-                updateAddButton();
-                if (notesField) notesField.style.display = 'block';
-            });
-            chips.appendChild(btn);
-        });
-        sec.appendChild(chips);
-        formWrapper.appendChild(sec);
-    });
-
-    // Render extra (non‑financial) questions – simple text inputs
-    extraQs.forEach(q => {
-        const sec = create('div', { class: 'intake-section' });
-        sec.appendChild(create('div', { class: 'intake-label', text: q.label }));
-        if (q.type === 'text' || q.type === 'number') {
-            const input = create('input', {
-                type: q.type, class: 'service-input-area',
-                placeholder: q.placeholder || '', style: 'margin-top:8px;'
-            });
-            sec.appendChild(input);
-            answers[q.id] = input.value; // not used for price
-        }
-        formWrapper.appendChild(sec);
-    });
-
-    container.appendChild(formWrapper);
-
-    // Notes textarea
-    const notesField = create('textarea', {
-        class: 'service-input-area', placeholder: 'Additional notes (optional)…', rows: 3,
-        style: detailsArray.length ? 'display:none;margin-top:12px;' : 'margin-top:12px;'
-    });
-    container.appendChild(notesField);
-    container.appendChild(addBtn);
-
-    addBtn.addEventListener('click', () => {
-        if (!addBtn.disabled && allQuestionsAnswered()) {
-            if (!cartLimiter.isAllowed('add')) { toast('Adding too fast, please wait.', 'error'); return; }
-            let notes = selectedDetail ? `Detail: ${selectedDetail}` : '';
-            intakeQs.forEach(q => { if (answers[q.question_id]) notes += (notes ? ' • ' : '') + `${q.label}: ${answers[q.question_id]}`; });
-            if (notesField.value.trim()) notes += (notes ? ' • ' : '') + notesField.value.trim();
-            const finalPrice = computeFinalPrice();
-            const entry = {
-                id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
-                serviceId: svc.id, categoryId, name: svc.name,
-                price: `$${finalPrice.toFixed(2)}`, icon: svc.icon || '🔧',
-                detail: selectedDetail || '', notes, furnitureItems: [],
-                selectedHours: pv2.type === 'hourly' ? selectedHours : 0,
-                modifiersUsed: buildModifierObject(),
-                materialsNotIncluded: !svc.materials_included && pv2.materials_estimate,
-                materialsEstimateRange: pv2.materials_estimate ? pv2.materials_estimate.range : null
-            };
-            addToCart(entry);
-            exitFocusedMode(); container.style.display = 'none';
-            DOM.serviceRequestSummary.style.display = 'block';
-            DOM.serviceRequestSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            renderCart();
-            toast(`${svc.name} added to cart`, 'success');
-        }
-    });
-
-    addBackButton(container, () => { container.style.display = 'none'; Breadcrumbs.goBack(); });
-    applyVisibility();
-    updateAddButton();
-}
                 /* ================================================================
                    FURNITURE SELECTION
                    ================================================================ */
@@ -4888,24 +4975,24 @@ function showIntakeQuestions(svc, categoryId, fromBack = false) {
                         termsWrap.style.display = 'flex';
                     }
 
-// Project‑based disclaimer
-const oldDisc = document.querySelector('#projectDisclaimerNote');
-if (oldDisc) oldDisc.remove();
+                    // Project‑based disclaimer
+                    const oldDisc = document.querySelector('#projectDisclaimerNote');
+                    if (oldDisc) oldDisc.remove();
 
-const hasProjectBased = State.serviceRequest.some(s => {
-    const foundSvc = SERVICE_DATA.services.find(service => service.id === s.serviceId);
-    return foundSvc && foundSvc.estimate_disclaimer === 'project_based';
-});
+                    const hasProjectBased = State.serviceRequest.some(s => {
+                        const foundSvc = SERVICE_DATA.services.find(service => service.id === s.serviceId);
+                        return foundSvc && foundSvc.estimate_disclaimer === 'project_based';
+                    });
 
-if (hasProjectBased) {
-    const disc = create('div', {
-        id: 'projectDisclaimerNote',
-        class: 'repair-hint',
-        text: '⚠️ ' + (SERVICE_DATA.meta.estimate_disclaimers.project_based || 'Final price confirmed after site visit.'),
-        style: 'margin: 8px 1rem; font-size: 0.8rem; border-left-color: #facc15;'
-    });
-    termsWrap.parentNode.insertBefore(disc, termsWrap.nextSibling);
-}
+                    if (hasProjectBased) {
+                        const disc = create('div', {
+                            id: 'projectDisclaimerNote',
+                            class: 'repair-hint',
+                            text: '⚠️ ' + (SERVICE_DATA.meta.estimate_disclaimers.project_based || 'Final price confirmed after site visit.'),
+                            style: 'margin: 8px 1rem; font-size: 0.8rem; border-left-color: #facc15;'
+                        });
+                        termsWrap.parentNode.insertBefore(disc, termsWrap.nextSibling);
+                    }
 
                     // Bind checkbox to book‑now button
                     const checkbox = termsWrap.querySelector('#termsCheckbox');
@@ -5117,6 +5204,14 @@ if (hasProjectBased) {
             })();
         }
     </script>
+
+
+
+
+
+
+
+
 
     <script>
         if ('serviceWorker' in navigator) {
