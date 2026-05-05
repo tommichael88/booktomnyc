@@ -799,123 +799,116 @@
         </footer>
     </main>
 
-     <script>
-        (function() {
-            const JSON_URL = 'https://tommichael88.github.io/booktomnyc/booktom-ssot.json';
+  <script>
+    (function() {
+        const JSON_URL = 'https://tommichael88.github.io/booktomnyc/booktom-ssot.json';
 
-            function escapeHtml(str) {
-                if (!str) return '';
-                return String(str).replace(/[&<>]/g, m => ({
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;'
-                })[m]);
-            }
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
+        }
 
-            // Maps your technical category IDs to friendly descriptions
-            function getCategoryDesc(catId) {
-                const map = {
-                    'minor_home_repairs': 'Small-scale repairs for doors, walls, and furniture.',
-                    'furniture_fixes_assembly': 'Professional assembly of flat-pack furniture.',
-                    'wall_mounting': 'Secure mounting of TVs, shelves, and artwork.',
-                    'plumbing_help': 'Minor plumbing maintenance and cosmetic fixes.',
-                    'tech_trouble': 'Computer repair and smart home configuration.'
-                };
-                return map[catId] || 'Professional handyman services.';
-            }
+        function getCategoryDesc(catId) {
+            const map = {
+                'minor_home_repairs': 'Small-scale repairs for doors, walls, floors, and furniture.',
+                'furniture_fixes_assembly': 'Assembly of flat-pack furniture.',
+                'wall_mounting': 'Secure mounting of TVs, shelves, and artwork.',
+                'plumbing_help': 'Minor plumbing maintenance.',
+                'tech_trouble': 'Computer repair and networking.'
+            };
+            return map[catId] || 'Professional services.';
+        }
 
-            function generateAnnexTOC(categories) {
-                const half = Math.ceil(categories.length / 2);
-                const leftCol = categories.slice(0, half);
-                const rightCol = categories.slice(half);
+        function generateAnnexTOC(categories) {
+            const half = Math.ceil(categories.length / 2);
+            const leftCol = categories.slice(0, half);
+            const rightCol = categories.slice(half);
+            
+            const mapper = (cat, idx, offset) => {
+                const letter = String.fromCharCode(65 + idx + offset);
+                return `${letter}. <a href="#${cat.category_id}">${escapeHtml(cat.display_name)}</a>`;
+            };
 
-                const mapper = (cat, idx, offset) => {
-                    const letter = String.fromCharCode(65 + idx + offset);
-                    return `${letter}. <a href="#${cat.category_id}">${escapeHtml(cat.display_name)}</a>`;
-                };
+            return `<tr>
+                <td style="vertical-align:top;">${leftCol.map((c, i) => mapper(c, i, 0)).join('<br>')}</td>
+                <td style="vertical-align:top;">${rightCol.map((c, i) => mapper(c, i, half)).join('<br>')}</td>
+            </tr>`;
+        }
 
-                return `<tr>
-            <td style="vertical-align:top;">${leftCol.map((c, i) => mapper(c, i, 0)).join('<br>')}</td>
-            <td style="vertical-align:top;">${rightCol.map((c, i) => mapper(c, i, half)).join('<br>')}</td>
-        </tr>`;
-            }
+        function generateAnnexContent(data) {
+            const { categories, groups } = data.ui_taxonomy;
+            const services = data.services;
+            const groupToCat = Object.fromEntries(groups.map(g => [g.group_id, g.category_id]));
+            const servicesByCat = Object.fromEntries(categories.map(c => [c.category_id, []]));
 
-            function generateAnnexContent(data) {
-                const {
-                    categories,
-                    groups
-                } = data.ui_taxonomy;
-                const services = data.services;
-                const groupToCat = Object.fromEntries(groups.map(g => [g.group_id, g.category_id]));
-                const servicesByCat = Object.fromEntries(categories.map(c => [c.category_id, []]));
+            services.forEach(svc => {
+                const catId = groupToCat[svc.ui_taxonomy?.group_id];
+                if (catId && servicesByCat[catId]) servicesByCat[catId].push(svc);
+            });
 
-                services.forEach(svc => {
-                    const catId = groupToCat[svc.ui_taxonomy?.group_id];
-                    if (catId && servicesByCat[catId]) servicesByCat[catId].push(svc);
-                });
+            return categories.map((cat, idx) => {
+                const catId = cat.category_id;
+                const catServices = servicesByCat[catId];
+                if (!catServices || catServices.length === 0) return '';
+                const letter = String.fromCharCode(65 + idx);
+                let counter = 1;
 
-                return categories.map((cat, idx) => {
-                    const catId = cat.category_id;
-                    const catServices = servicesByCat[catId];
-                    if (!catServices || catServices.length === 0) return '';
-                    const letter = String.fromCharCode(65 + idx);
-                    let counter = 1;
-
-                    let html = `
-                <div class="service-category" id="${catId}">
+                let html = `<div class="service-category" id="${catId}">
                     <div class="category-header">
                         <h3>${letter}. ${escapeHtml(cat.display_name)}</h3>
                         <div class="category-desc">${getCategoryDesc(catId)}</div>
                     </div>`;
 
-                    groups.filter(g => g.category_id === catId).forEach(group => {
-                        const groupServices = catServices.filter(s => s.ui_taxonomy.group_id === group.group_id);
-                        if (groupServices.length === 0) return;
+                groups.filter(g => g.category_id === catId).forEach(group => {
+                    const groupServices = catServices.filter(s => s.ui_taxonomy.group_id === group.group_id);
+                    if (groupServices.length === 0) return;
 
-                        html += `<div class="group-block"><div class="group-title">${escapeHtml(group.display_name)}</div><div class="service-list">`;
-                        groupServices.forEach(svc => {
-                            const isIncluded = svc.financial_engine?.materials_included;
-                            html += `
-                        <div class="service-card">
-                            <div class="service-header">
-                                <span class="service-index">${letter}-${counter++}</span>
-                                <span class="service-name">${escapeHtml(svc.ui_taxonomy.display_name)}</span>
-                            </div>
-                            <div class="service-desc">${escapeHtml(svc.ui_taxonomy.description || 'Service details available upon request.')}</div>
-                            <div class="service-details">
-                                <div class="detail-item"><b>Includes:</b> ${isIncluded ? 'Materials & Tools' : 'Tools & Expertise'}</div>
-                                <div class="detail-item"><b>Provider:</b> Tom Kongerslev</div>
-                            </div>
-                        </div>`;
-                        });
-                        html += `</div></div>`;
+                    html += `<div class="group-block"><div class="group-title">${escapeHtml(group.display_name)}</div><div class="service-list">`;
+                    groupServices.forEach(svc => {
+                        const isIncluded = svc.financial_engine?.materials_included;
+                        html += `
+                            <div class="service-card">
+                                <div class="service-header">
+                                    <span class="service-index">${letter}-${counter++}</span>
+                                    <span class="service-name">${escapeHtml(svc.ui_taxonomy.display_name)}</span>
+                                </div>
+                                <div class="service-desc">${escapeHtml(svc.ui_taxonomy.description || '')}</div>
+                                <div class="service-details">
+                                    <div class="detail-item"><b>Includes:</b> ${isIncluded ? 'Materials & Tools' : 'Tools Only'}</div>
+                                </div>
+                            </div>`;
                     });
-                    return html + `</div>`;
-                }).join('');
+                    html += `</div></div>`;
+                });
+                return html + `</div>`;
+            }).join('');
+        }
+
+        async function init() {
+            const toc = document.getElementById('annex-toc-body');
+            const container = document.getElementById('dynamic-annex-container');
+            try {
+                const res = await fetch(JSON_URL);
+                const data = await res.json();
+                if (toc) toc.innerHTML = generateAnnexTOC(data.ui_taxonomy.categories);
+                if (container) container.innerHTML = generateAnnexContent(data);
+            } catch (e) {
+                if (container) container.innerHTML = "⚠️ Failed to load catalog.";
             }
+        }
 
-            async function init() {
-                const toc = document.getElementById('annex-toc-body');
-                const container = document.getElementById('dynamic-annex-container');
-                try {
-                    const res = await fetch(JSON_URL);
-                    if (!res.ok) throw new Error("Could not fetch JSON");
-                    const data = await res.json();
+        document.addEventListener('DOMContentLoaded', init);
+        document.getElementById('masterPrintBtn').addEventListener('click', () => window.print());
 
-                    if (toc) toc.innerHTML = generateAnnexTOC(data.ui_taxonomy.categories);
-                    if (container) container.innerHTML = generateAnnexContent(data);
-                } catch (e) {
-                    console.error(e);
-                    if (container) container.innerHTML = "<p style='color:var(--anodized-red); text-align:center;'>⚠️ Error loading service catalog. Please refresh.</p>";
-                }
-            }
-
-            document.addEventListener('DOMContentLoaded', init);
-
-            // Print logic
-            const printBtn = document.getElementById('masterPrintBtn');
-            if (printBtn) printBtn.addEventListener('click', () => window.print());
-        })();
+        // Privacy Toggle
+        const toggleBtn = document.getElementById('togglePrivacyBtn');
+        const privacyDiv = document.getElementById('privacyFullContent');
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = privacyDiv.style.display === 'none';
+            privacyDiv.style.display = isHidden ? 'block' : 'none';
+            toggleBtn.innerHTML = isHidden ? '🔽 Hide full Privacy Policy' : '▶️ Show full Privacy Policy';
+        });
+    })();
     </script>
 </body>
 
