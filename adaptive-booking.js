@@ -1,3 +1,4 @@
+<script>
 const DATA_URL = "https://tommichael88.github.io/booktomnyc/services.json";
 
 function getFirst(...vals) {
@@ -540,4 +541,4 @@ function wireGlobalEvents() {
 
 document.addEventListener("DOMContentLoaded", () => {
     initApp().catch(err => console.error("Init error", err));
-});
+});</script>
