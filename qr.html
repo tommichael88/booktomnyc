@@ -2162,9 +2162,7 @@ body.modal-active { overflow: hidden; }
 <div id="toast-container" aria-live="polite" aria-atomic="true"
      style="position:fixed;bottom:20px;right:20px;z-index:10001;display:flex;flex-direction:column;gap:10px;pointer-events:none"></div>
 
-<!-- ============================================================
-     APPLICATION LOGIC (unchanged from original)
-     ============================================================ -->
+
 <script>
 if (!window.__booktom_qr_loaded) {
     window.__booktom_qr_loaded = true;
@@ -2199,80 +2197,60 @@ if (!window.__booktom_qr_loaded) {
             return m ? Math.round(parseFloat(m[1])) : 0;
         };
 
-        function getModifierValue(modifierType, level) {
-            if (!SERVICE_DATA?.pricing_model?.modifier_definitions) return 0;
-            const defs = SERVICE_DATA.pricing_model.modifier_definitions[modifierType];
-            return defs?.[level] ?? 0;
-        }
-
-        function computeFinalPriceFromModifiers(basePrice, modifiersObj, laborObj, hours = null, surcharge = 0) {
-            let modifierSum = 0;
-            for (const [type, level] of Object.entries(modifiersObj)) {
-                modifierSum += getModifierValue(type, level);
-            }
-            if (laborObj?.type === 'hourly') {
-                const hourlyRate = laborObj.rate || basePrice;
-                const usedHours = hours || 1;
-                return (hourlyRate + modifierSum + surcharge) * usedHours;
-            }
-            return basePrice + modifierSum + surcharge;
-        }
-
+        // === V3 Pricing Engine ===
         function getServicePriceRange(svc) {
-            if (!svc.pricing) return { min: null, max: null };
-            const base = svc.pricing.base_price;
-            const labor = svc.pricing.labor;
-            const isHourly = labor?.type === 'hourly';
-            const staticMods = {};
-            (svc.pricing.modifiers || []).forEach(m => { staticMods[m.type] = [m.level]; });
-            const possibleLevels = {};
-            for (const modType of Object.keys(staticMods)) {
-                let levels = new Set([staticMods[modType][0]]);
-                const intake = svc.intake?.questions || [];
-                intake.forEach(q => {
-                    if (q.modifier_rules) {
-                        for (const [answer, changes] of Object.entries(q.modifier_rules)) {
-                            if (changes[modType]) levels.add(changes[modType]);
-                        }
+            // Backward compatibility fallback for legacy strings
+            if (svc.base_price === undefined) {
+                const legacy = parsePriceToInt(svc.price);
+                return { min: legacy, max: legacy };
+            }
+
+            const base = svc.base_price;
+            const isHourly = svc.pricing_engine === 'hourly';
+            
+            let minModifiers = 0, maxModifiers = 0;
+            const questions = svc.intake?.questions || svc.intake || [];
+            
+            questions.forEach(q => {
+                if (q.fee_modifiers) {
+                    const fees = Object.values(q.fee_modifiers).map(v => parseFloat(v) || 0);
+                    if (fees.length > 0) {
+                        minModifiers += Math.min(0, ...fees);
+                        maxModifiers += Math.max(0, ...fees);
                     }
-                });
-                possibleLevels[modType] = Array.from(levels);
-            }
-            if (Object.keys(possibleLevels).length === 0) {
-                let price = base;
-                if (isHourly) price = (labor.rate || base) * (labor.min_hours || 1);
-                return { min: price, max: price };
-            }
-            let minPrice = Infinity, maxPrice = -Infinity;
-            function evaluateCombination(idx, modCombination, modTypes) {
-                if (idx === modTypes.length) {
-                    let modifierSum = 0;
-                    for (const [t, lvl] of Object.entries(modCombination)) { modifierSum += getModifierValue(t, lvl); }
-                    let final = base + modifierSum;
-                    if (isHourly) { const hourlyRate = labor.rate || base; final = (hourlyRate + modifierSum) * (labor.min_hours || 1); }
-                    if (final < minPrice) minPrice = final;
-                    if (final > maxPrice) maxPrice = final;
-                    return;
                 }
-                const type = modTypes[idx];
-                for (const level of possibleLevels[type]) { modCombination[type] = level; evaluateCombination(idx + 1, modCombination, modTypes); }
+            });
+
+            let minPrice = base + minModifiers;
+            let maxPrice = base + maxModifiers;
+
+            if (isHourly) {
+                const labor = svc.operational_metrics?.labor_estimates || {};
+                const minHrs = labor.minimum_minutes ? (labor.minimum_minutes / 60) : 1;
+                const maxHrs = labor.high_case_minutes ? (labor.high_case_minutes / 60) : 2;
+                minPrice *= minHrs;
+                maxPrice *= maxHrs;
             }
-            const modTypes = Object.keys(possibleLevels);
-            evaluateCombination(0, {}, modTypes);
+
             return { min: minPrice, max: maxPrice };
         }
 
         function formatServicePrice(svc) {
+            if (svc.base_price === undefined && svc.price) return svc.price; // Legacy check
+            
             const range = getServicePriceRange(svc);
-            if (range.min === null) return svc.price || 'Call';
-            const diff = range.max - range.min;
-            const isHourly = svc.pricing?.labor?.type === 'hourly';
+            const isHourly = svc.pricing_engine === 'hourly';
             const suffix = isHourly ? '/hr' : '';
+            
+            if (range.min === null || (range.min === 0 && range.max === 0)) return 'Call';
+            
+            const diff = range.max - range.min;
             if (range.min === range.max) return `$${Math.round(range.min)}${suffix}`;
-            if (diff <= 15) { const avg = (range.min + range.max) / 2; return `Around $${Math.round(avg)}${suffix}`; }
+            if (diff <= 15) return `Around $${Math.round((range.min + range.max) / 2)}${suffix}`;
             if (range.min < 100 && range.max > range.min * 2) return `From $${Math.round(range.min)}${suffix}`;
             return `$${Math.round(range.min)} – $${Math.round(range.max)}${suffix}`;
         }
+        // =========================
 
         class RateLimiter {
             constructor(max = 3, windowMs = 60000) { this.max = max; this.windowMs = windowMs; this.requests = new Map(); }
@@ -2670,12 +2648,12 @@ if (!window.__booktom_qr_loaded) {
             if (svc.materials_included) hdr.appendChild(create('span', { class: 'materials-badge', text: '✓ Materials Included' }));
             container.appendChild(hdr);
             if (svc.description) container.appendChild(create('p', { text: svc.description }));
-            if (svc.pricing?.labor?.type === 'hourly') {
-                const baseRate = svc.pricing.labor.rate || svc.pricing.base_price;
-                let defaultSum = 0;
-                (svc.pricing.modifiers || []).forEach(mod => { defaultSum += getModifierValue(mod.type, mod.level); });
-                const effectiveRate = baseRate + defaultSum;
-                container.appendChild(create('div', { class: 'repair-hint', text: `🔧 Labor rate: $${baseRate}/hour + modifiers = from $${effectiveRate}/hour` }));
+
+            const isHourly = svc.pricing_engine === 'hourly';
+            const baseRate = svc.base_price || 0;
+
+            if (isHourly) {
+                container.appendChild(create('div', { class: 'repair-hint', text: `🔧 Labor rate: $${baseRate}/hour + option fees` }));
             }
             if (svc.requires_furniture_selection) { renderFurnitureSelection(container, svc, categoryId); return; }
 
@@ -2687,14 +2665,15 @@ if (!window.__booktom_qr_loaded) {
             const hasDetails = detailsArray.length > 0;
             let selectedHours = 1;
 
-            function getCurrentModifiers() {
-                let mods = {};
-                (svc.pricing?.modifiers || []).forEach(mod => { mods[mod.type] = mod.level; });
+            function getFeeSum() {
+                let sum = 0;
                 (intakeQuestions || []).forEach(iq => {
                     const ans = answers[iq.id];
-                    if (ans && iq.modifier_rules && iq.modifier_rules[ans]) Object.assign(mods, iq.modifier_rules[ans]);
+                    if (ans && iq.fee_modifiers && iq.fee_modifiers[ans]) {
+                        sum += parseFloat(iq.fee_modifiers[ans]) || 0;
+                    }
                 });
-                return mods;
+                return sum;
             }
 
             function getConditionalSurcharge() {
@@ -2708,9 +2687,13 @@ if (!window.__booktom_qr_loaded) {
             }
 
             function computeFinalPrice() {
-                const mods = getCurrentModifiers();
+                const feeSum = getFeeSum();
                 const surcharge = getConditionalSurcharge();
-                return computeFinalPriceFromModifiers(svc.pricing.base_price, mods, svc.pricing.labor, svc.pricing.labor?.type === 'hourly' ? selectedHours : null, surcharge);
+                let total = baseRate + feeSum + surcharge;
+                if (isHourly) {
+                    total *= selectedHours;
+                }
+                return total;
             }
 
             function allQuestionsAnswered() {
@@ -2775,7 +2758,7 @@ if (!window.__booktom_qr_loaded) {
                 formWrapper.appendChild(sec);
             }
 
-            if (svc.pricing?.labor?.type === 'hourly') {
+            if (isHourly) {
                 const sec = create('div', { class: 'intake-section' });
                 sec.appendChild(create('div', { class: 'intake-label', text: 'Estimated hours' }));
                 const input = create('input', { type: 'number', min: '0.5', max: '24', step: '0.5', value: selectedHours });
@@ -2844,8 +2827,8 @@ if (!window.__booktom_qr_loaded) {
                         id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         serviceId: svc.id, categoryId, name: svc.name, price: `$${finalPrice.toFixed(2)}`,
                         icon: svc.icon || '🔧', detail: selectedDetail || '', notes, furnitureItems: [],
-                        selectedHours: svc.pricing.labor?.type === 'hourly' ? selectedHours : 0,
-                        modifiersUsed: getCurrentModifiers()
+                        selectedHours: isHourly ? selectedHours : 0,
+                        modifiersUsed: getFeeSum()
                     };
                     addToCart(entry);
                     exitFocusedMode();
@@ -3332,7 +3315,7 @@ if (!window.__booktom_qr_loaded) {
         async function init() {
             cacheDOM();
             try {
-                const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_services.json');
+                const res = await fetch('https://tommichael88.github.io/booktomnyc/booktom_catalog_v3_final.json');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 SERVICE_DATA = await res.json();
             } catch (err) {
@@ -3353,6 +3336,7 @@ if (!window.__booktom_qr_loaded) {
     })();
 }
 </script>
+
 
 <script>
 if ('serviceWorker' in navigator) {
