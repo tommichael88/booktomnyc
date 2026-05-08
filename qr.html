@@ -2896,72 +2896,82 @@
                     if (el) el.textContent = text;
                 };
 
-                const parsePriceToInt = (str) => {
-                    if (!str || typeof str !== 'string') return 0;
-                    const m = str.match(/(\d+(?:\.\d+)?)/);
-                    return m ? Math.round(parseFloat(m[1])) : 0;
-                };
+                // Safely extracts numeric values from strings, integers, or floats
+        const parseSafeCartFloat = (val) => {
+            if (val === undefined || val === null || val === '') return 0;
+            const match = String(val).match(/-?\d+(\.\d+)?/);
+            return match ? parseFloat(match[0]) : 0;
+        };
+        
+// === V3 Pricing Engine ===
+        function getServicePriceRange(svc) {
+            // Backward compatibility fallback for legacy strings
+            if (svc.base_price === undefined) {
+                const legacy = parsePriceToInt(svc.price);
+                return { min: legacy, max: legacy };
+            }
 
-                // === V3 Pricing Engine ===
-                function getServicePriceRange(svc) {
-                    // Backward compatibility fallback for legacy strings
-                    if (svc.base_price === undefined) {
-                        const legacy = parsePriceToInt(svc.price);
-                        return {
-                            min: legacy,
-                            max: legacy
-                        };
-                    }
-
-                    const base = svc.base_price;
-                    const isHourly = svc.pricing_engine === 'hourly';
-
-                    let minModifiers = 0,
-                        maxModifiers = 0;
-                    const questions = svc.intake?.questions || svc.intake || [];
-
-                    questions.forEach(q => {
-                        if (q.fee_modifiers) {
-                            const fees = Object.values(q.fee_modifiers).map(v => parseFloat(v) || 0);
-                            if (fees.length > 0) {
-                                minModifiers += Math.min(0, ...fees);
-                                maxModifiers += Math.max(0, ...fees);
-                            }
-                        }
+            const base = parseFloat(svc.base_price) || 0;
+            const isHourly = svc.pricing_engine === 'hourly';
+            
+            let minModifiers = 0, maxModifiers = 0;
+            const questions = svc.intake?.questions || svc.intake || [];
+            
+            questions.forEach(q => {
+                if (q.fee_modifiers) {
+                    const fees = Object.values(q.fee_modifiers).map(v => {
+                        // Safely extract numbers whether there is a $ or not
+                        const m = String(v).match(/-?\d+(\.\d+)?/);
+                        return m ? parseFloat(m[0]) : 0;
                     });
-
-                    let minPrice = base + minModifiers;
-                    let maxPrice = base + maxModifiers;
-
-                    if (isHourly) {
-                        const labor = svc.operational_metrics?.labor_estimates || {};
-                        const minHrs = labor.minimum_minutes ? (labor.minimum_minutes / 60) : 1;
-                        const maxHrs = labor.high_case_minutes ? (labor.high_case_minutes / 60) : 2;
-                        minPrice *= minHrs;
-                        maxPrice *= maxHrs;
+                    if (fees.length > 0) {
+                        minModifiers += Math.min(0, ...fees);
+                        maxModifiers += Math.max(0, ...fees);
                     }
-
-                    return {
-                        min: minPrice,
-                        max: maxPrice
-                    };
                 }
+            });
 
-                function formatServicePrice(svc) {
-                    if (svc.base_price === undefined && svc.price) return svc.price; // Legacy check
+            let minPrice = base + minModifiers;
+            let maxPrice = base + maxModifiers;
 
-                    const range = getServicePriceRange(svc);
-                    const isHourly = svc.pricing_engine === 'hourly';
-                    const suffix = isHourly ? '/hr' : '';
+            if (isHourly) {
+                const labor = svc.operational_metrics?.labor_estimates || {};
+                const minHrs = labor.minimum_minutes ? (labor.minimum_minutes / 60) : 1;
+                const maxHrs = labor.high_case_minutes ? (labor.high_case_minutes / 60) : 2;
+                minPrice *= minHrs;
+                maxPrice *= maxHrs;
+            }
 
-                    if (range.min === null || (range.min === 0 && range.max === 0)) return 'Call';
+            return { min: minPrice, max: maxPrice };
+        }
 
-                    const diff = range.max - range.min;
-                    if (range.min === range.max) return `$${Math.round(range.min)}${suffix}`;
-                    if (diff <= 15) return `Around $${Math.round((range.min + range.max) / 2)}${suffix}`;
-                    if (range.min < 100 && range.max > range.min * 2) return `From $${Math.round(range.min)}${suffix}`;
-                    return `$${Math.round(range.min)} – $${Math.round(range.max)}${suffix}`;
+        function formatServicePrice(svc) {
+            // Legacy check: Auto-prepend '$' if it's missing from the raw json string
+            if (svc.base_price === undefined && svc.price) {
+                const pStr = String(svc.price).trim();
+                if (pStr.toLowerCase() === 'call' || pStr === '0' || pStr === '') return 'Call';
+                
+                // If it's a number but missing the dollar sign, format it
+                if (!pStr.includes('$') && pStr.match(/\d/)) {
+                    if (pStr.includes('/hr')) return `$${pStr.replace('/hr', '')}/hr`;
+                    return `$${pStr}`;
                 }
+                return pStr;
+            }
+            
+            const range = getServicePriceRange(svc);
+            const isHourly = svc.pricing_engine === 'hourly';
+            const suffix = isHourly ? '/hr' : '';
+            
+            if (range.min === null || (range.min === 0 && range.max === 0)) return 'Call';
+            
+            const diff = range.max - range.min;
+            if (range.min === range.max) return `$${Math.round(range.min)}${suffix}`;
+            if (diff <= 15) return `Around $${Math.round((range.min + range.max) / 2)}${suffix}`;
+            if (range.min < 100 && range.max > range.min * 2) return `From $${Math.round(range.min)}${suffix}`;
+            return `$${Math.round(range.min)} – $${Math.round(range.max)}${suffix}`;
+        }
+        // =========================
                 // =========================
 
                 class RateLimiter {
@@ -4470,81 +4480,60 @@
                     if (DOM.cartOverlay && DOM.cartOverlay.style.display === 'flex') updateCartOverlayIfOpen();
                 }
 
-                function updateCartSummary() {
-                    if (!DOM.serviceRequestList) return;
-                    DOM.serviceRequestList.replaceChildren();
-                    let total = 0;
-                    State.serviceRequest.forEach(svc => {
-                        const item = create('div', {
-                            class: 'summary-service-item'
-                        });
-                        item.appendChild(create('div', {
-                            class: 'summary-service-icon',
-                            text: svc.icon || '🔧'
-                        }));
-                        const tw = create('div', {
-                            class: 'summary-service-text'
-                        });
-                        tw.appendChild(create('h4', {}, [document.createTextNode(svc.name), svc.price && svc.price.includes('/hr') ? create('span', {
-                            class: 'price-type-emojii',
-                            text: '🕐'
-                        }) : null].filter(Boolean)));
-                        tw.appendChild(create('div', {
-                            class: 'service-detail',
-                            text: svc.detail || ''
-                        }));
-                        if (svc.notes && !svc.furnitureItems?.length) tw.appendChild(create('div', {
-                            class: 'service-notes',
-                            text: svc.notes
-                        }));
-                        if (svc.furnitureItems?.length) {
-                            const fwrap = create('div', {
-                                class: 'summary-service-furniture'
-                            });
-                            svc.furnitureItems.forEach((fi, i) => {
-                                const fitem = create('span', {
-                                    class: 'f-item'
-                                });
-                                fitem.appendChild(create('span', {
-                                    text: fi.label
-                                }));
-                                const rm = create('button', {
-                                    type: 'button',
-                                    text: '✕'
-                                });
-                                rm.addEventListener('click', e => {
-                                    e.stopPropagation();
-                                    removeFurnitureEntry(svc.id, i);
-                                });
-                                fitem.appendChild(rm);
-                                fwrap.appendChild(fitem);
-                            });
-                            tw.appendChild(fwrap);
-                        }
-                        item.appendChild(tw);
-                        const rmBtn = create('button', {
-                            class: 'remove-service-btn',
-                            type: 'button',
-                            text: '✕',
-                            'aria-label': `Remove ${svc.name}`
-                        });
-                        rmBtn.addEventListener('click', () => removeServiceFromCart(svc.id));
-                        item.appendChild(rmBtn);
-                        item.appendChild(create('div', {
-                            class: 'summary-service-price',
-                            text: svc.price || '0'
-                        }));
-                        DOM.serviceRequestList.appendChild(item);
-                        total += parsePriceToInt(svc.price);
+function updateCartSummary() {
+            if (!DOM.serviceRequestList) return;
+            DOM.serviceRequestList.replaceChildren();
+            let total = 0;
+            
+            State.serviceRequest.forEach(svc => {
+                const item = create('div', { class: 'summary-service-item' });
+                item.appendChild(create('div', { class: 'summary-service-icon', text: svc.icon || '🔧' }));
+                
+                const tw = create('div', { class: 'summary-service-text' });
+                tw.appendChild(create('h4', {}, [
+                    document.createTextNode(svc.name), 
+                    svc.price && String(svc.price).includes('/hr') ? create('span', { class: 'price-type-emojii', text: '🕐' }) : null
+                ].filter(Boolean)));
+                
+                tw.appendChild(create('div', { class: 'service-detail', text: svc.detail || '' }));
+                if (svc.notes && !svc.furnitureItems?.length) tw.appendChild(create('div', { class: 'service-notes', text: svc.notes }));
+                
+                if (svc.furnitureItems?.length) {
+                    const fwrap = create('div', { class: 'summary-service-furniture' });
+                    svc.furnitureItems.forEach((fi, i) => {
+                        const fitem = create('span', { class: 'f-item' });
+                        fitem.appendChild(create('span', { text: fi.label }));
+                        const rm = create('button', { type: 'button', text: '✕' });
+                        rm.addEventListener('click', e => { e.stopPropagation(); removeFurnitureEntry(svc.id, i); });
+                        fitem.appendChild(rm); fwrap.appendChild(fitem);
                     });
-                    const hasItems = State.serviceRequest.length > 0;
-                    if (DOM.estimateTotalSummary) DOM.estimateTotalSummary.style.display = hasItems ? 'flex' : 'none';
-                    if (DOM.totalAmount) setText(DOM.totalAmount, `$${total}`);
-                    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = hasItems ? 'block' : 'none';
-                    if (DOM.serviceCount) setText(DOM.serviceCount, String(State.serviceRequest.length));
-                    if (DOM.fabCount) setText(DOM.fabCount, String(State.serviceRequest.length));
-                    persistCart();
+                    tw.appendChild(fwrap);
                 }
+                item.appendChild(tw);
+                
+                const rmBtn = create('button', { class: 'remove-service-btn', type: 'button', text: '✕', 'aria-label': `Remove ${svc.name}` });
+                rmBtn.addEventListener('click', () => removeServiceFromCart(svc.id));
+                item.appendChild(rmBtn);
+                
+                // Format the individual item price safely
+                const itemPriceStr = String(svc.price || '0').includes('$') ? svc.price : `$${parseSafeCartFloat(svc.price).toFixed(2)}`;
+                item.appendChild(create('div', { class: 'summary-service-price', text: itemPriceStr }));
+                
+                DOM.serviceRequestList.appendChild(item);
+                
+                // Add to the running total using the safe parser
+                total += parseSafeCartFloat(svc.price);
+            });
+            
+            const hasItems = State.serviceRequest.length > 0;
+            if (DOM.estimateTotalSummary) DOM.estimateTotalSummary.style.display = hasItems ? 'flex' : 'none';
+            if (DOM.totalAmount) setText(DOM.totalAmount, `$${total.toFixed(2)}`);
+            if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = hasItems ? 'block' : 'none';
+            if (DOM.serviceCount) setText(DOM.serviceCount, String(State.serviceRequest.length));
+            if (DOM.fabCount) setText(DOM.fabCount, String(State.serviceRequest.length));
+            persistCart();
+        }
+
 
                 function updateFabVisibility() {
                     if (!DOM.cartFab || !DOM.fabCount) return;
@@ -4578,12 +4567,13 @@
                     document.body.classList.remove('modal-open');
                 }
 
-                function updateCartOverlayTotal() {
-                    const total = State.serviceRequest.reduce((sum, svc) => sum + parsePriceToInt(svc.price), 0);
-                    if (DOM.cartTotal) setText(DOM.cartTotal, `$${total}`);
-                    if (DOM.serviceCount) setText(DOM.serviceCount, String(State.serviceRequest.length));
-                }
-
+function updateCartOverlayTotal() {
+            // Safely sum up the cart items
+            const total = State.serviceRequest.reduce((sum, svc) => sum + parseSafeCartFloat(svc.price), 0);
+            
+            if (DOM.cartTotal) setText(DOM.cartTotal, `$${total.toFixed(2)}`);
+            if (DOM.serviceCount) setText(DOM.serviceCount, String(State.serviceRequest.length));
+        }
                 function updateCartOverlayIfOpen() {
                     if (!DOM.cartOverlay || DOM.cartOverlay.style.display !== 'flex') return;
                     const list = DOM.cartServiceList;
