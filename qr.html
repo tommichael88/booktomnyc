@@ -445,7 +445,7 @@ body.modal-active { overflow: hidden; }
 /* ============================================================
    CARD SCHEDULE SERVICE — OUTER WRAPPER
    ============================================================ */
-.card-schedule-service {
+.main-card-schedule-service {
   display: flex;
   flex-direction: column;
   font-weight: 700;
@@ -459,7 +459,7 @@ body.modal-active { overflow: hidden; }
   transition: box-shadow .3s ease;
 }
 
-.card-schedule-service-header {
+.main-card-schedule-service-header {
   display: block;
   width: 100%;
   max-width: 23rem;
@@ -515,6 +515,8 @@ body.modal-active { overflow: hidden; }
   grid-template-columns: repeat(3, 1fr);
   gap: 2px;
   width: 100%;
+    color: #555;
+
 }
 
 .category-card {
@@ -526,7 +528,7 @@ body.modal-active { overflow: hidden; }
             width: 100%;
             aspect-ratio: 1/1;
             padding: 15px 8px;
-  color: #2a2a2a;
+  color: #555;
   text-align: center;
   border: .5px solid rgba(192,192,192,.5);
   backdrop-filter: blur(10px);
@@ -603,7 +605,7 @@ body.modal-active { overflow: hidden; }
 /* ============================================================
    FOCUSED MODE — WHITE FROSTED GLASS FULL-SCREEN BOOKING FLOW
    ============================================================ */
-.card-schedule-service.focused-mode {
+.main-card-schedule-service.focused-mode {
   position: fixed !important;
   top: 0; left: 0; right: 0; bottom: 0;
   width: 100vw !important;
@@ -668,343 +670,329 @@ body.modal-active { overflow: hidden; }
 .focused-mode .step-connector.done { background: var(--clr-red-dark); }
 .focused-mode .step-connector.active { background: var(--clr-red); }
 
-/* --- Group Grid --- */
-.focused-mode .group-grid-wrapper { margin-bottom: 12px; }
-
+/* --- Base Grid Pattern (applied consistently) --- */
+/* --- Grid for group cards (the missing piece) --- */
+/* ===== GRID CONTAINERS (fixed: service-item-grid and details-grid now display: grid) ===== */
 .focused-mode .group-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 15px;
+  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
-/* Group card – light frosted glass */
-.focused-mode .group-card {
-  height: 100%;
-  background: rgba(255,255,255,.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.6);
+.focused-mode .service-item-grid,
+.focused-mode .details-grid {
+    display: flex-wrap;
+    width: 100%;
+}
+
+/* Service container remains block (contains heading + grid + button) */
+.focused-mode #serviceContainer {
+  display: block;
+  width: 100%;
+  color: #fff;
+}
+
+/* ===== BASE CARD PATTERN (applied consistently to all card types) ===== */
+.focused-mode .group-tile,
+.focused-mode .detail-tile {
+  background: var(--clr-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: var(--radius-md);
-  padding: 20px 12px;
+  padding: 20px 10px;
   text-align: center;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  transition: var(--transition);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: var(--transition);
-  user-select: none;
-  -webkit-user-select: none;
-  isolation: isolate;
+  gap: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   position: relative;
-  overflow: hidden;
-  color: #1a1a1a;
+  isolation: isolate;
 }
-.focused-mode .group-card::before {
+
+/* ===== HOVER / ACTIVE STATES ===== */
+.focused-mode .group-tile:active,
+.focused-mode .service-tile:active,
+.focused-mode .detail-tile:active {
+  transform: scale(0.92);
+}
+
+.focused-mode .group-tile:hover,
+.focused-mode .service-tile:hover,
+.focused-mode .detail-tile:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-5px);
+  border-color: var(--clr-red);
+}
+
+/* ===== ICON PATTERN ===== */
+.focused-mode .tile-icon,
+.focused-mode .service-item-icon,
+.focused-mode .detail-tile .icon {
+  font-size: 3.5rem;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+/* ===== TITLE PATTERN ===== */
+.focused-mode .tile-name,
+.focused-mode .service-tile h4,
+.focused-mode .detail-tile .title {
+  font-family: 'Ubuntu', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.2;
+  margin: 0;
+  color: inherit;
+}
+
+/* ===== RADIAL GLOW EFFECT (clean, works on both group and service cards) ===== */
+.focused-mode .group-tile::before,
+.focused-mode .service-tile::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), rgba(222,0,0,.22) 0, transparent 70%);
+  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), rgba(222, 0, 0, 0.22) 0, transparent 70%);
   opacity: 0;
-  transition: opacity .3s ease;
+  transition: opacity 0.3s ease;
   pointer-events: none;
   z-index: 0;
-}
-.focused-mode .group-card:hover::before { opacity: 1; }
-
-.focused-mode .group-card::after {
-  content: "";
-  position: absolute;
-  left: 50%; bottom: 10px;
-  width: 0; height: 2px;
-  background: linear-gradient(25deg, #de0000 30%, #8a0615 70%);
-  transform: translateX(-50%);
-  transition: width .25s ease;
-}
-.focused-mode .group-card:hover::after { width: 60%; }
-
-.focused-mode .group-card:hover,
-.focused-mode .group-card:focus-visible {
-  background: rgba(255,255,255,.9);
-  border-color: rgba(222,0,0,.5);
-  box-shadow: 0 6px 22px rgba(0,0,0,.2), 0 0 0 2px rgba(222,0,0,.15);
-  transform: translateY(-2px) scale(1.02);
-  color: #000;
-}
-.focused-mode .group-card:active { transform: scale(.94); }
-.focused-mode .group-card:focus-visible { outline: 3px solid #de0000; outline-offset: 2px; }
-
-.focused-mode .group-card.active {
-  background: linear-gradient(135deg, rgba(222,0,0,.85), rgba(138,6,21,.9));
-  border-color: rgba(255,255,255,.4);
-  color: #fff;
-  box-shadow: 0 2px 12px rgba(222,0,0,.3);
+  border-radius: inherit;
 }
 
-.focused-mode .tile-icon {
-  font-size: 2rem;
-  line-height: 1;
-  transition: transform .3s ease;
+.focused-mode .group-tile:hover::before,
+.focused-mode .service-tile:hover::before {
+  opacity: 1;
+}
+
+/* ============================================================
+   ORDERLY SERVICE CARD – LAYOUT OVERRIDE
+   ============================================================ */
+
+.focused-mode .service-tile {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 12px !important;                              /* we'll control spacing manually */
+  padding: 16px 12px !important;
+  position: relative !important;
+  min-height: 140px !important;
+  text-align: left !important;
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(10px);
+  border: 4px solid rgba(255,255,255,0.6);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+
+/* Icon – fixed left, tiny right margin so it doesn't touch text */
+.focused-mode .service-tile .service-item-icon {
+  flex-shrink: 1;
+  width: 42px;
+  text-align: center;
+  font-size: 2.2rem;
+  margin-top: 4px;
+  margin-right: 10px;               /* creates the visual gap you need */
   filter: none;
-  opacity: .85;
-}
-.focused-mode .group-card:hover .tile-icon { transform: scale(1.1) rotate(2deg); }
-
-.focused-mode .tile-name {
-  font-size: .85rem;
-  font-weight: 600;
-  color: inherit;       /* follows card text color */
-  line-height: 1.3;
-  word-break: break-word;
+  opacity: 1;
 }
 
-/* Selected group chip */
+/* Inner wrapper – override inline width:100% and kill centering */
+.focused-mode .service-tile > div[style*="flex-direction: column"] {
+  flex-grow: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start !important;
+  position: relative;                /* anchor for absolute price */
+}
+
+/* Title */
+.focused-mode .service-tile h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: .25rem;
+  color: #111;
+  text-align: left;
+}
+
+/* Expanded description */
+.focused-mode .service-tile-expanded {
+  font-size: 0.78rem;
+  color: #555;
+  line-height: 1.4;
+  text-align: left;
+}
+
+/* Materials badge */
+.focused-mode .materials-badge {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+/* Price – absolute, bottom‑right of the inner wrapper */
+.focused-mode .service-tile .service-price {
+  position: relative;
+  bottom: 0;
+  right: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #de0000, #8a0615);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.4);
+  white-space: nowrap;
+  z-index: 2;
+  margin: 0;
+}
+
+
+/* ===== SELECTED GROUP CHIP ===== */
 .focused-mode .selected-group-chip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255,255,255,.65);
+  background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.6);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: var(--radius-md);
   padding: 10px 18px;
   margin-bottom: 16px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   transition: var(--transition);
   min-height: var(--touch-min);
   color: #1a1a1a;
 }
+
 .focused-mode .selected-group-chip:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 22px rgba(0,0,0,.2), 0 0 0 2px rgba(222,0,0,.15);
-  border-color: rgba(222,0,0,.4);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.2), 0 0 0 2px rgba(222, 0, 0, 0.15);
+  border-color: rgba(222, 0, 0, 0.4);
 }
-.focused-mode .selected-group-chip:active { transform: scale(.94); }
-.focused-mode .selected-group-chip .chip-label { font-size: .9rem; font-weight: 700; color: inherit; }
-.focused-mode .selected-group-chip .chip-change { font-size: .75rem; color: #de0000; font-weight: 600; }
 
-/* Section headers inside focused mode */
+.focused-mode .selected-group-chip:active {
+  transform: scale(0.94);
+}
+
+.focused-mode .selected-group-chip .chip-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.focused-mode .selected-group-chip .chip-change {
+  font-size: 0.75rem;
+  color: #de0000;
+  font-weight: 600;
+}
+
+/* ===== SECTION HEADERS ===== */
 .focused-mode h3 {
   font-size: 1.05rem;
   font-weight: 700;
   color: #fff;
   margin: 14px 0 10px;
-  padding: 8px 14px;
-  background: rgba(0,0,0,.35);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: var(--radius-sm);
-  border-left: 3px solid #de0000;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: auto;
 }
 
-/* Service item grid (the full list) */
-.focused-mode .service-item-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-
-/* Service card */
-.focused-mode .service-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  text-align: center;
-  gap: 6px;
-  padding: 16px 12px;
-  background: rgba(255,255,255,.65);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.6);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: 0 4px 16px rgba(0,0,0,.15);
-  overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
-  isolation: isolate;
-  position: relative;
-  color: #1a1a1a;
-}
-.focused-mode .service-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), rgba(222,0,0,.22) 0, transparent 70%);
-  opacity: 0;
-  transition: opacity .3s ease;
-  pointer-events: none;
-  z-index: 0;
-}
-.focused-mode .service-card:hover::before { opacity: 1; }
-
-.focused-mode .service-card::after {
-  content: "";
-  position: absolute;
-  left: 50%; bottom: 10px;
-  width: 0; height: 2px;
-  background: linear-gradient(25deg, #de0000 30%, #8a0615 70%);
-  transform: translateX(-50%);
-  transition: width .25s ease;
-}
-.focused-mode .service-card:hover::after { width: 60%; }
-
-.focused-mode .service-card:active { transform: scale(.94); }
-.focused-mode .service-card:hover {
-  background: rgba(255,255,255,.9);
-  transform: translateY(-2px) scale(1.02);
-  border-color: rgba(222,0,0,.5);
-  box-shadow: 0 6px 22px rgba(0,0,0,.2), 0 0 0 2px rgba(222,0,0,.15);
-  color: #000;
-}
-.focused-mode .service-card:focus-visible { outline: 3px solid #de0000; outline-offset: 2px; }
-
-.focused-mode .service-item-icon {
-  font-size: 2.5rem;
-  flex-shrink: 0;
-  filter: none;
-  opacity: .85;
-  transition: filter .3s ease, transform .3s ease;
-  line-height: 1;
-  position: relative;
-  z-index: 1;
-}
-.focused-mode .service-card:hover .service-item-icon { transform: scale(1.08) rotate(3deg); filter: none; }
-
-.focused-mode .service-card h4 {
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.3;
-  margin: 0;
-  color: inherit;
-  word-break: break-word;
+/* ===== SERVICE PRICE BADGE ===== */
+.focused-mode .service-price {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #de0000, #8a0615);
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+  margin-top: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   position: relative;
   z-index: 1;
 }
 
-.focused-mode .service-card-expanded {
-  font-size: .78rem;
+/* ===== DETAIL CARD SELECTED STATE ===== */
+.focused-mode .detail-tile.selected {
+  background: linear-gradient(135deg, #de0000, #8a0615);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(222, 0, 0, 0.4);
+}
+
+.focused-mode .detail-tile.selected::after {
+  content: "✓";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ===== SERVICE CARD EXPANDED DESCRIPTION ===== */
+.focused-mode .service-tile-expanded {
+  font-size: 0.78rem;
   color: #444;
   line-height: 1.4;
   position: relative;
   z-index: 1;
 }
 
-.focused-mode .service-price {
-  display: inline-block;
-  font-size: .9rem;
-  font-weight: 800;
-  color: #fff;
-  background: linear-gradient(135deg, #de0000, #8a0615);
-  padding: .2rem .6rem;
-  border-radius: 8px;
-  margin-top: 2px;
-  border: 1px solid rgba(255,255,255,.4);
-  position: relative;
-  z-index: 1;
-}
-
-/* Detail cards grid */
-.focused-mode .details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 8px;
-}
-
-.focused-mode .detail-card {
-  position: relative;
-  padding: 1rem .5rem;
-  background: rgba(255,255,255,.65);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.6);
-  border-radius: var(--radius-md);
-  text-align: center;
-  font-size: .85rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: 0 4px 16px rgba(0,0,0,.15);
-  overflow: hidden;
-  min-height: var(--touch-min);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-}
-.focused-mode .detail-card:active { transform: scale(.93); }
-.focused-mode .detail-card:hover {
-  background: rgba(255,255,255,.9);
-  border-color: rgba(222,0,0,.4);
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 22px rgba(0,0,0,.2), 0 0 0 2px rgba(222,0,0,.1);
-  color: #000;
-}
-.focused-mode .detail-card.selected {
-  background: linear-gradient(135deg, #de0000, #8a0615);
-  border-color: rgba(255,255,255,.4);
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(222,0,0,.4);
-}
-.focused-mode .detail-card.selected::after {
-  content: "✓";
-  position: absolute;
-  top: 4px; right: 6px;
-  font-size: .7rem;
-  font-weight: 900;
-  color: rgba(255,255,255,.8);
-}
-
-/* Intake questions */
+/* ===== INTAKE QUESTIONS SECTION ===== */
 .focused-mode #intakeQuestionsContainer h3 {
-  background: rgba(0,0,0,.35);    /* keep the dark header for contrast */
+  background: rgba(0, 0, 0, 0.35);
   color: #fff;
 }
-.focused-mode .intake-label { color: #222; font-weight: 700; }
+
+.focused-mode .intake-label {
+  color: #222;
+  font-weight: 700;
+}
+
 .focused-mode .chip-btn {
-  padding: .6rem 1.1rem;
-  background: rgba(255,255,255,.7);
+  padding: 0.6rem 1.1rem;
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(0,0,0,.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: var(--radius-md);
   color: #1a1a1a;
-  font-size: .9rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   min-height: var(--touch-min);
   transition: var(--transition);
 }
+
 .focused-mode .chip-btn:hover {
-  background: rgba(255,255,255,.95);
-  border-color: rgba(222,0,0,.5);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(222, 0, 0, 0.5);
   color: #000;
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0,0,0,.15);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
+
 .focused-mode .chip-btn.selected {
   background: linear-gradient(135deg, #de0000, #8a0615);
-  border-color: rgba(255,255,255,.4);
+  border-color: rgba(255, 255, 255, 0.4);
   color: #fff;
-  box-shadow: 0 2px 12px rgba(222,0,0,.3);
+  box-shadow: 0 2px 12px rgba(222, 0, 0, 0.3);
 }
+
 .focused-mode .intake-section input[type="number"],
 .focused-mode .service-input-area {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(255,255,255,.75);
+  background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(0,0,0,.12);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: var(--radius-sm);
   color: #111;
   font-size: 1rem;
@@ -1013,13 +1001,22 @@ body.modal-active { overflow: hidden; }
   min-height: var(--touch-min);
   transition: var(--transition);
 }
+
 .focused-mode .intake-section input[type="number"]:focus,
 .focused-mode .service-input-area:focus {
   border-color: var(--clr-red);
-  box-shadow: 0 0 0 3px rgba(222,0,0,.15);
+  box-shadow: 0 0 0 3px rgba(222, 0, 0, 0.15);
 }
-.focused-mode .service-input-area { font-weight: 400; min-height: 80px; resize: vertical; }
-.focused-mode .service-input-area::placeholder { color: #666; }
+
+.focused-mode .service-input-area {
+  font-weight: 400;
+  min-height: 80px;
+  resize: vertical;
+}
+
+.focused-mode .service-input-area::placeholder {
+  color: #666;
+}
 
 /* Summary / cart inside focused mode */
 .focused-mode .summaryMainContainer {
@@ -1136,14 +1133,13 @@ body.modal-active { overflow: hidden; }
    SERVICE ITEM GRID & CARDS
    ============================================================ */
 .service-item-grid {
-  display: grid;
+  display: inlin-block;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 12px;
   margin-top: 12px;
 }
 
 .service-group-header {
-  grid-column: 1 / -1;
   font-size: .85rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -1153,126 +1149,96 @@ body.modal-active { overflow: hidden; }
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: var(--radius-sm);
-  padding: 7px 14px;
-  margin-top: 14px;
-  margin-bottom: 4px;
-  border-left: 3px solid rgba(222,0,0,.5);
-  display: inline-block;
   width: auto;
 }
 
-.service-card {
-  height: 100%;
+/* ============================================================
+   ORDERLY SERVICE CARDS (override generated inline styles)
+   ============================================================ */
+.focused-mode .service-tile {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 10px;
+  padding: 16px 12px !important;
+  position: relative !important;         /* anchor for price badge */
+  min-height: 140px;
+  text-align: left !important;
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+
+/* Icon – fixed left */
+.focused-mode .service-tile .service-item-icon {
+  flex-shrink: 0;
+  width: 42px;
+  text-align: center;
+  font-size: 2.2rem;
+  margin-top: 4px;
+  filter: none;
+  opacity: 1;
+}
+
+/* Override the inline wrapper – make it stretch and use column */
+.focused-mode .service-tile > div[style*="flex-direction: column"] {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  text-align: center;
-  gap: 6px;
-  padding: 16px 12px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  color: #fff;
-  border: var(--glass-border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--glass-shadow);
-  overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
-  isolation: isolate;
-  position: relative;
+  align-items: flex-start !important;   /* kill center alignment */
+  gap: 4px;
+  min-width: 0;
+  position: relative;                   /* for price absolute positioning */
 }
 
-.service-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), rgba(222,0,0,.22) 0, transparent 70%);
-  opacity: 0;
-  transition: opacity .3s ease;
-  pointer-events: none;
-  z-index: 0;
-}
-.service-card:hover::before { opacity: 1; }
-
-.service-card::after {
-  content: "";
-  position: absolute;
-  left: 50%; bottom: 10px;
-  width: 0; height: 2px;
-  background: linear-gradient(25deg, #de0000 30%, #8a0615 70%);
-  transform: translateX(-50%);
-  transition: width .25s ease;
-}
-.service-card:hover::after { width: 60%; }
-
-.service-card:active { transform: scale(.94); }
-.service-card:hover {
-  background: rgba(40,40,50,.85);
-  transform: translateY(-2px) scale(1.02);
-  border-color: rgba(222,0,0,.5);
-  box-shadow: var(--glass-shadow), 0 0 0 2px rgba(222,0,0,.15);
-}
-.service-card:focus-visible { outline: 3px solid #de0000; outline-offset: 2px; }
-
-.service-item-icon {
-  font-size: 2.5rem;
-  flex-shrink: 0;
-  filter: grayscale(100%) brightness(1.3) contrast(1.1);
-  transition: filter .3s ease, transform .3s ease;
-  line-height: 1;
-  position: relative;
-  z-index: 1;
-}
-.service-card:hover .service-item-icon { filter: none; transform: scale(1.08) rotate(3deg); }
-
-.service-card h4 {
+/* Title */
+.focused-mode .service-tile h4 {
   font-size: 1rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.2;
   margin: 0;
-  color: #f5f5f5;
-  word-break: break-word;
-  position: relative;
-  z-index: 1;
+  color: #111;
+  text-align: left;
 }
 
-.service-card-expanded {
-  font-size: .78rem;
-  color: rgba(255,255,255,.55);
+/* Expanded description */
+.focused-mode .service-tile-expanded {
+  font-size: 0.78rem;
+  color: #555;
   line-height: 1.4;
-  position: relative;
-  z-index: 1;
+  text-align: left;
 }
 
-.service-price {
-  display: inline-block;
-  font-size: .9rem;
+/* Materials badge */
+.focused-mode .materials-badge {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+/* Price – absolutely positioned to bottom‑right of the inner wrapper */
+.focused-mode .service-tile .service-price {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  font-size: 0.9rem;
   font-weight: 800;
   color: #fff;
   background: linear-gradient(135deg, #de0000, #8a0615);
-  padding: .2rem .6rem;
-  border-radius: 8px;
-  margin-top: 2px;
-  border: 1px solid rgba(255,255,255,.2);
-  position: relative;
-  z-index: 1;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.4);
+  white-space: nowrap;
+  z-index: 2;
+  margin: 0;
 }
 
-.materials-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: #fff;
-  font-size: .7rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 15px;
-  letter-spacing: .03em;
+/* Hide group headers so they don't break the grid */
+.focused-mode .service-group-header {
+  display: none;
 }
 
 /* Repair hint */
@@ -1452,7 +1418,7 @@ body.modal-active { overflow: hidden; }
   gap: 8px;
 }
 
-.detail-card {
+.detail-tile {
   position: relative;
   padding: 1rem .5rem;
   background: var(--glass-bg);
@@ -1475,21 +1441,21 @@ body.modal-active { overflow: hidden; }
   user-select: none;
   -webkit-user-select: none;
 }
-.detail-card:active { transform: scale(.93); }
-.detail-card:hover {
+.detail-tile:active { transform: scale(.93); }
+.detail-tile:hover {
   background: rgba(40,40,50,.85);
   border-color: rgba(222,0,0,.4);
   transform: translateY(-2px) scale(1.02);
   box-shadow: var(--glass-shadow), 0 0 0 2px rgba(222,0,0,.1);
   color: #fff;
 }
-.detail-card.selected {
+.detail-tile.selected {
   background: linear-gradient(135deg, #de0000 0, #8a0615 100%);
   border-color: rgba(255,255,255,.4);
   color: #fff;
   box-shadow: 0 4px 16px rgba(222,0,0,.4);
 }
-.detail-card.selected::after {
+.detail-tile.selected::after {
   content: "✓";
   position: absolute;
   top: 4px; right: 6px;
@@ -2191,7 +2157,7 @@ body.modal-active { overflow: hidden; }
 /* ============================================================
    INVOICES CARD
    ============================================================ */
-.card-invoices-container {
+.main-card-invoices {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -2209,9 +2175,9 @@ body.modal-active { overflow: hidden; }
   border: var(--glass-border);
   transition: var(--transition);
 }
-.card-invoices-container h1 { color: rgba(255,255,255,.8); font-size: 5vw; }
-.card-invoices-container p { color: rgba(255,255,255,.6); }
-.card-invoices-container-header { width: 100%; margin: 2rem auto; height: auto; max-width: 22rem; }
+.main-card-invoices h1 { color: rgba(255,255,255,.8); font-size: 5vw; }
+.main-card-invoices p { color: rgba(255,255,255,.6); }
+.main-card-invoices-header { width: 100%; margin: 2rem auto; height: auto; max-width: 22rem; }
 
 .login-client-button {
   background: radial-gradient(circle, #000 5%, #de0000 40%, #8a0615 60%, #8a0615 90%);
@@ -2260,6 +2226,108 @@ body.modal-active { overflow: hidden; }
 }
 
 .price-type-emojii { font-size: .85rem; margin-left: 4px; }
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+  color: #fff;
+}
+
+.modal.active { display: flex; }
+
+.modal-header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  padding-bottom: 120px;
+}
+
+.close-btn {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Intake Questions */
+.question-step {
+  margin-bottom: 30px;
+  animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.question-label { font-size: 1.2rem; font-weight: 700; margin-bottom: 15px; display: block; }
+
+.chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chip {
+  padding: 15px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+}
+
+.chip.selected { background: var(--clr-red); border-color: var(--clr-red); box-shadow: 0 0 15px rgba(222,0,0,0.4); }
+
+/* Estimate Bar */
+.estimate-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  z-index: 1001;
+}
+
+.price-display { display: flex; flex-direction: column; }
+.price-label { font-size: 0.75rem; text-transform: uppercase; opacity: 0.7; letter-spacing: 1px; }
+.price-value { font-size: 1.8rem; font-weight: 800; color: #fff; }
+
+.btn-add {
+  background: var(--clr-red);
+  color: #fff;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(222,0,0,0.3);
+  transition: var(--transition);
+}
 
 /* ============================================================
    RESPONSIVE BREAKPOINTS
@@ -2411,9 +2479,9 @@ body.modal-active { overflow: hidden; }
 /* Base interactive behavior */
 .interactive,
 .category-card,
-.service-card,
-.group-card,
-.detail-card,
+.service-tile,
+.group-tile,
+.detail-tile,
 .contact-toolbar-item,
 .contact-button,
 #cartFab,
@@ -2429,9 +2497,9 @@ body.modal-active { overflow: hidden; }
    1. RED MICRO‑PULSE (Primary Hover State)
    ============================================================ */
 .category-card:hover,
-.service-card:hover,
-.group-card:hover,
-.detail-card:hover,
+.service-tile:hover,
+.group-tile:hover,
+.detail-tile:hover,
 .contact-toolbar-item:hover,
 .contact-button:hover,
 #cartFab:hover,
@@ -2447,9 +2515,9 @@ body.modal-active { overflow: hidden; }
    2. WHITE EDGE HIGHLIGHT (Contrast Booster)
    ============================================================ */
 .category-card:hover::after,
-.service-card:hover::after,
-.group-card:hover::after,
-.detail-card:hover::after,
+.service-tile:hover::after,
+.group-tile:hover::after,
+.detail-tile:hover::after,
 .contact-toolbar-item:hover::after,
 .contact-button:hover::after,
 #cartFab:hover::after,
@@ -2468,9 +2536,9 @@ body.modal-active { overflow: hidden; }
    3. CHARCOAL SHADOW DIP (Active Press)
    ============================================================ */
 .category-card:active,
-.service-card:active,
-.group-card:active,
-.detail-card:active,
+.service-tile:active,
+.group-tile:active,
+.detail-tile:active,
 .contact-toolbar-item:active,
 .contact-button:active,
 #cartFab:active,
@@ -2486,9 +2554,9 @@ body.modal-active { overflow: hidden; }
    4. LIGHT‑SURFACE MODE (White Panels)
    ============================================================ */
 .light-surface .category-card .focused-mode::hover,
-.light-surface .service-card .focused-mode:hover,
-.light-surface .group-card .focused-mode:hover,
-.light-surface .detail-card .focused-mode:hover,
+.light-surface .service-tile .focused-mode:hover,
+.light-surface .group-tile .focused-mode:hover,
+.light-surface .detail-tile .focused-mode:hover,
 .light-surface .contact-toolbar-item .focused-mode:hover,
 .light-surface .login-client-button .focused-mode:hover,
 .light-surface .chip-btn:hover {
@@ -2504,9 +2572,9 @@ body.modal-active { overflow: hidden; }
 
 /* Red underline accent for white surfaces */
 .light-surface .category-card:hover::before,
-.light-surface .service-card:hover::before,
-.light-surface .group-card:hover::before,
-.light-surface .detail-card:hover::before,
+.light-surface .service-tile:hover::before,
+.light-surface .group-tile:hover::before,
+.light-surface .detail-tile:hover::before,
 .light-surface .login-client-button:hover::before {
   content: "";
   position: absolute;
@@ -2521,9 +2589,9 @@ body.modal-active { overflow: hidden; }
 
 /* Micro shadow for white backgrounds */
 .light-surface .category-card,
-.light-surface .service-card .focused-mode,
-.light-surface .group-card .focused-mode,
-.light-surface .detail-card .focused-mode,
+.light-surface .service-tile .focused-mode,
+.light-surface .group-tile .focused-mode,
+.light-surface .detail-tile .focused-mode,
 .light-surface .contact-toolbar-item .focused-mode,
 .light-surface .login-client-button .focused-mode,
 .light-surface .chip-btn {
@@ -2590,6 +2658,21 @@ body.modal-active { overflow: hidden; }
 <body style="font-family: Roboto">
 
 <div class="pg_background"></div>
+
+<div id="booking-modal" class="modal">
+  <div class="modal-header">
+    <h2 id="modal-title">Service Details</h2>
+    <button class="close-btn" onclick="closeModal()">&times;</button>
+  </div>
+  <div class="modal-body" id="intake-container"></div>
+  <div class="estimate-bar">
+    <div class="price-display">
+      <span class="price-label">Estimated Labor</span>
+      <span id="current-estimate" class="price-value">$0.00</span>
+    </div>
+    <button id="add-to-cart-btn" class="btn-add" onclick="addToCart()">Add to Request</button>
+  </div>
+</div>
 
 <!-- ============================================================
      CART OVERLAY
@@ -2689,8 +2772,8 @@ body.modal-active { overflow: hidden; }
           <!-- ============================================================
                BOOKING CARD
                ============================================================ -->
-          <div class="card-schedule-service">
-            <img class="card-schedule-service-header"
+          <div class="main-card-schedule-service">
+            <img class="main-card-schedule-service-header"
                  src="https://github.com/tommichael88/booktomnyc/blob/main/images/service_schedule.png?raw=true"
                  alt="Service Schedule">
 
@@ -2723,7 +2806,7 @@ body.modal-active { overflow: hidden; }
               <div class="step-connector" id="conn1"></div>
               <div class="step-node">
                 <div class="step-dot" id="step2dot">2</div>
-                <div class="step-label">Group</div>
+                <div class="step-label">Type</div>
               </div>
               <div class="step-connector" id="conn2"></div>
               <div class="step-node">
@@ -2738,17 +2821,13 @@ body.modal-active { overflow: hidden; }
             </div>
 
             <!-- Category grid (step 1) -->
-            <div class="card-container" id="category-card"></div>
-
+   <!-- Category grid (step 1) -->
+            <div class="main-card-container" id="category-card"></div>
             <!-- Service container (steps 2-3) -->
-            <div id="summaryMainContainer">
               <div id="serviceContainer"></div>
-            </div>
-
             <!-- Intake questions (step 4) -->
-            <div id="intakeQuestionsContainer" style="display:none"></div>
-          </div>
-          <!-- /card-schedule-service -->
+            <div id="intakeQuestionsContainer"></div>
+          
 
           <!-- Summary panel (shown after adding a service) -->
           <div class="summaryMainContainer" id="serviceRequestSummary" style="display:none">
@@ -2763,16 +2842,15 @@ body.modal-active { overflow: hidden; }
               <button class="add-more-button" id="addMoreBtn" alt="Add Services">➕ More Services</button>
               <button class="book-now-button" id="bookNowBtn" aria-label="Book now">★ BOOK ★</button>
             </span>
-          </div>
-
-        </div>
+       </div>
       </div>
-    </div>
+</div>
+    
     <!-- /qrc_gallery -->
 
     <!-- Invoices card -->
-    <div class="card-invoices-container">
-      <img class="card-invoices-container-header"
+    <div class="main-card-invoices">
+      <img class="main-card-invoices-header"
            src="https://github.com/tommichael88/booktomnyc/blob/main/images/invoices.png?raw=true"
            alt="Invoices">
       <p></p>
@@ -2784,6 +2862,7 @@ body.modal-active { overflow: hidden; }
           <br>🔐 LOGIN
         </div>
       </h5>
+    </div>
     </div>
 
 
@@ -2807,7 +2886,7 @@ body.modal-active { overflow: hidden; }
 <!-- Toast container -->
 <div id="toast-container" aria-live="polite" aria-atomic="true"
      style="position:fixed;bottom:20px;right:20px;z-index:10001;display:flex;flex-direction:column;gap:10px;pointer-events:none"></div>
-
+</div>
     <script>
         if (!window.__booktom_qr_loaded) {
             window.__booktom_qr_loaded = true;
@@ -2959,7 +3038,7 @@ body.modal-active { overflow: hidden; }
                             max
                         } = svc.total_estimate_range;
                         const isHourly = svc.pricing?.labor?.type === 'hourly';
-                        const suffix = isHourly ? '/hr' : '';
+                        const suffix = isHourly ? '/hour' : '';
                         if (min === max) return `$${Math.round(min)}${suffix}`;
                         return `$${Math.round(min)} – $${Math.round(max)}${suffix}`;
                     }
@@ -2969,9 +3048,9 @@ body.modal-active { overflow: hidden; }
                     if (range.min === null) return svc.price || 'Call';
                     const diff = range.max - range.min;
                     const isHourly = svc.pricing?.labor?.type === 'hourly';
-                    const suffix = isHourly ? '/hr' : '';
+                    const suffix = isHourly ? '/hourr' : '';
                     if (range.min === range.max) return `$${Math.round(range.min)}${suffix}`;
-                    if (diff <= 15) return `Around $${Math.round((range.min+range.max)/2)}${suffix}`;
+                    if (diff <= 55) return `Around $${Math.round((range.min+range.max)/2)}${suffix}`;
                     return `$${Math.round(range.min)} – $${Math.round(range.max)}${suffix}`;
                 }
                 /* ================================================================
@@ -3246,7 +3325,7 @@ body.modal-active { overflow: hidden; }
                    FOCUSED MODE
                    ================================================================ */
                 function enterFocusedMode() {
-                    const card = document.querySelector('.card-schedule-service');
+                    const card = document.querySelector('.main-card-schedule-service');
                     if (!card) return;
                     card.classList.add('focused-mode');
                     document.body.classList.add('modal-active');
@@ -3268,7 +3347,7 @@ body.modal-active { overflow: hidden; }
                 }
 
                 function exitFocusedMode() {
-                    const card = document.querySelector('.card-schedule-service');
+                    const card = document.querySelector('.main-card-schedule-service');
                     if (!card) return;
                     card.classList.remove('focused-mode');
                     const inner = card.querySelector('.focused-mode-inner');
@@ -3375,7 +3454,7 @@ body.modal-active { overflow: hidden; }
 
                     rootGroups.forEach(group => {
                         const tile = create('div', {
-                            class: 'group-card',
+                            class: 'group-tile',
                             'data-group-id': group.id,
                             tabindex: '0',
                             role: 'button',
@@ -3392,7 +3471,7 @@ body.modal-active { overflow: hidden; }
                         const children = window.groupChildrenMap.get(group.id) || [];
                         const activate = (e) => {
                             e.stopPropagation();
-                            groupGrid.querySelectorAll('.group-card').forEach(c => c.classList.remove('active'));
+                            groupGrid.querySelectorAll('.group-tile').forEach(c => c.classList.remove('active'));
                             tile.classList.add('active');
                             if (children.length) window.showSubGroups(group.id, categoryId);
                             else window.selectGroupForCategory(group.id, categoryId);
@@ -3420,7 +3499,7 @@ body.modal-active { overflow: hidden; }
                     const searchInput = create('input', {
                         type: 'text',
                         class: 'focused-search-input',
-                        placeholder: '🔍 Search services…',
+                        placeholder: '🔍',
                         id: 'focusedServiceSearch',
                         autocomplete: 'off',
                         spellcheck: 'false'
@@ -3457,7 +3536,7 @@ body.modal-active { overflow: hidden; }
                         if (term === '') {
                             servicesGrid.replaceChildren(create('div', {
                                 class: 'empty-message',
-                                text: 'Select a group above'
+                                text: ''
                             }));
                             return;
                         }
@@ -3505,7 +3584,7 @@ body.modal-active { overflow: hidden; }
 
                     subgroups.forEach(sub => {
                         const tile = create('div', {
-                            class: 'group-card',
+                            class: 'group-tile',
                             tabindex: '0',
                             role: 'button',
                             'aria-label': sub.name
@@ -3520,7 +3599,7 @@ body.modal-active { overflow: hidden; }
                         }));
                         const deeper = window.groupChildrenMap.get(sub.id) || [];
                         const activate = () => {
-                            groupGrid.querySelectorAll('.group-card').forEach(c => c.classList.remove('active'));
+                            groupGrid.querySelectorAll('.group-tile').forEach(c => c.classList.remove('active'));
                             tile.classList.add('active');
                             if (deeper.length) window.showSubGroups(sub.id, categoryId);
                             else window.selectGroupForCategory(sub.id, categoryId);
@@ -3618,7 +3697,7 @@ body.modal-active { overflow: hidden; }
                 ================================================================ */
                 function createServiceCardElement(svc, categoryId) {
                     const card = create('div', {
-                        class: 'service-card',
+                        class: 'service-tile',
                         tabindex: '0',
                         role: 'button',
                         'aria-label': svc.name
@@ -3646,9 +3725,9 @@ body.modal-active { overflow: hidden; }
                         info.appendChild(matBadge);
                     }
                     let desc = svc.description ? svc.description : 'Tap to customise.';
-                    if (svc.materials_included) desc += ' ✓ Materials included.';
+                    if (svc.materials_included) desc += ' ✓Materials included.';
                     info.appendChild(create('div', {
-                        class: 'service-card-expanded',
+                        class: 'service-tile-expanded',
                         text: desc,
                         style: 'display:block;'
                     }));
@@ -3699,7 +3778,7 @@ body.modal-active { overflow: hidden; }
                     const btn = create('button', {
                         class: 'back-button',
                         type: 'button',
-                        text: '❮ Back'
+                        text: '❮ previous'
                     });
                     btn.addEventListener('click', onClick);
                     container.appendChild(btn);
@@ -3727,7 +3806,7 @@ body.modal-active { overflow: hidden; }
                     const hdr = create('h3', {}, [document.createTextNode(svc.name)]);
                     if (svc.materials_included) hdr.appendChild(create('span', {
                         class: 'materials-badge',
-                        text: '✓ Materials Included'
+                        text: '✓Supplies included'
                     }));
                     container.appendChild(hdr);
                     if (svc.description) container.appendChild(create('p', {
@@ -3767,11 +3846,7 @@ body.modal-active { overflow: hidden; }
                         (svc.pricing.modifiers || []).forEach(mod => {
                             defaultSum += getModifierValue(mod.type, mod.level);
                         });
-                        const effectiveRate = baseRate + defaultSum;
-                        container.appendChild(create('div', {
-                            class: 'repair-hint',
-                            text: `🔧 Labor rate: $${baseRate}/hour + modifiers = from $${effectiveRate}/hour (minimum)`
-                        }));
+             
                     }
 
                     if (svc.requires_furniture_selection) {
@@ -3875,7 +3950,7 @@ body.modal-active { overflow: hidden; }
                             addBtn.textContent = `🛒 Add to Cart - $${finalPrice.toFixed(2)}`;
                             addBtn.disabled = false;
                         } else {
-                            addBtn.textContent = `🛒 Select options above`;
+                            addBtn.textContent = `Select options above`;
                             addBtn.disabled = true;
                         }
                     }
@@ -3883,7 +3958,7 @@ body.modal-active { overflow: hidden; }
                     // ----- Create the Add button (disabled initially) -----
                     const addBtn = create('button', {
                         class: 'add-more-button',
-                        text: '🛒 Select options above',
+                        text: 'Select options above',
                         type: 'button',
                         style: 'width:100%;margin-top:16px;'
                     });
@@ -3905,13 +3980,13 @@ body.modal-active { overflow: hidden; }
                         });
                         detailsArray.forEach(detail => {
                             const card = create('div', {
-                                class: 'detail-card',
+                                class: 'detail-tile',
                                 text: detail,
                                 tabindex: '0',
                                 role: 'button'
                             });
                             card.addEventListener('click', () => {
-                                grid.querySelectorAll('.detail-card').forEach(c => c.classList.remove('selected'));
+                                grid.querySelectorAll('.detail-tile').forEach(c => c.classList.remove('selected'));
                                 card.classList.add('selected');
                                 selectedDetail = detail;
                                 const notesField = container.querySelector('.service-input-area');
@@ -4067,7 +4142,7 @@ body.modal-active { overflow: hidden; }
                                 detail: selectedDetail || '',
                                 notes: notes,
                                 furnitureItems: [],
-                                selectedHours: svc.pricing.labor?.type === 'hourly' ? selectedHours : 0,
+                                selectedHours: svc.pricing.labor?.type === 'hourly' ? selectedHours : 1,
                                 modifiersUsed: getCurrentModifiers(),
                                 materialsNotIncluded: !svc.materials_included && svc.materials_estimate ? true : false,
                                 materialsEstimateRange: svc.materials_estimate ? svc.materials_estimate.range : null
@@ -4164,7 +4239,7 @@ body.modal-active { overflow: hidden; }
 
                         distinctBrands.forEach(brand => {
                             const card = create('div', {
-                                class: 'group-card',
+                                class: 'group-tile',
                                 tabindex: '0',
                                 role: 'button',
                                 'aria-label': brand
@@ -4228,7 +4303,7 @@ body.modal-active { overflow: hidden; }
 
                         types.forEach(type => {
                             const card = create('div', {
-                                class: 'group-card',
+                                class: 'group-tile',
                                 tabindex: '0',
                                 role: 'button',
                                 'aria-label': type
@@ -5135,7 +5210,7 @@ body.modal-active { overflow: hidden; }
                             if (DOM.cartOverlay?.style.display === 'flex') {
                                 closeCartOverlay();
                                 restoreCategoryView();
-                            } else if (document.querySelector('.card-schedule-service.focused-mode')) {
+                            } else if (document.querySelector('.main-card-schedule-service.focused-mode')) {
                                 Breadcrumbs.goBack();
                             }
                         }
@@ -5177,22 +5252,22 @@ body.modal-active { overflow: hidden; }
                 async function init() {
                     cacheDOM();
                     try {
-                        const res = await fetch('https://tommichael88.github.io/booktomnyc/services_catalog.json');
+                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_services.json');
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         SERVICE_DATA = await res.json();
                     } catch (err) {
                         console.error('Service data load error:', err);
                         toast('Could not load services. Please refresh.', 'error');
                         SERVICE_DATA = {
+                            meta: {
                             categories: [],
                             groups: [],
                             services: [],
-                            furniture_items: [],
-                            intake_schema: [],
+                            intake_schema: [], 
+                            question_types: [],
                             pricing_model: [],
-                            meta: {
-                                rate_per_hour: [],
-                                repair_rate_per_hour: []
+                            conditional_logic: [],
+                            furniture_items: []
                             }
                         };
                     }
