@@ -2929,130 +2929,81 @@ body.modal-active { overflow: hidden; }
                 };
 
                 // ======================= NEW PRICING HELPERS =======================
-                function getModifierValue(modifierType, level) {
-                    if (!SERVICE_DATA?.pricing_model?.modifier_definitions) return 0;
-                    const defs = SERVICE_DATA.pricing_model.modifier_definitions[modifierType];
-                    return defs?.[level] ?? 0;
-                }
+/* ================================================================
+   UPDATED PRICING HELPERS (v2.2 JSON Schema)
+   ================================================================ */
 
-                function computeFinalPriceFromModifiers(basePrice, modifiersObj, laborObj, hours = null, surcharge = 0) {
-                    let modifierSum = 0;
-                    for (const [type, level] of Object.entries(modifiersObj)) {
-                        modifierSum += getModifierValue(type, level);
-                    }
-                    if (laborObj?.type === 'hourly') {
-                        const hourlyRate = laborObj.rate || basePrice;
-                        const usedHours = hours || 1;
-                        return (hourlyRate + modifierSum + surcharge) * usedHours;
-                    }
-                    return basePrice + modifierSum + surcharge;
-                }
+// 1. Get the min/max range directly from the JSON's default_estimates
+function getServicePriceRange(svc) {
+    if (svc.default_estimates && svc.default_estimates.total) {
+        return {
+            min: svc.default_estimates.total.min,
+            max: svc.default_estimates.total.max
+        };
+    }
+    // Fallback if no estimates exist
+    const base = svc.base_price || 0;
+    return { min: base, max: base };
+}
 
+// 2. Format the display price for the category/group grid
+function formatServicePrice(svc) {
+    const range = getServicePriceRange(svc);
+    const isHourly = svc.pricing_engine === 'hourly';
+    const suffix = isHourly ? '/hour' : '';
 
-                // For a service, compute min and max possible price over all combinations of modifier levels
-                // that are actually reachable via the service's modifier_rules (or all levels if no rules)
-                function getServicePriceRange(svc) {
-                    if (!svc.pricing) return {
-                        min: null,
-                        max: null
-                    };
-                    const base = svc.pricing.base_price;
-                    const labor = svc.pricing.labor;
-                    const isHourly = labor?.type === 'hourly';
-                    const staticMods = {};
-                    (svc.pricing.modifiers || []).forEach(m => {
-                        staticMods[m.type] = [m.level];
-                    });
+    // If min and max are identical (or 0)
+    if (range.min === range.max) {
+        return range.min > 0 ? `$${Math.round(range.min)}${suffix}` : 'Call';
+    }
+    
+    // If the spread is relatively tight, show an "Around $X" estimate
+    const diff = range.max - range.min;
+    if (diff <= 55) {
+        return `Around $${Math.round((range.min + range.max) / 2)}${suffix}`;
+    }
 
-                    // Collect possible levels per modifier type
-                    const possibleLevels = {};
-                    for (const modType of Object.keys(staticMods)) {
-                        // Start with the static level
-                        let levels = new Set([staticMods[modType][0]]);
-                        // If any intake question has modifier_rules for this type, collect all levels from those rules
-                        const intake = svc.intake?.questions || [];
-                        intake.forEach(q => {
-                            if (q.modifier_rules) {
-                                for (const [answer, changes] of Object.entries(q.modifier_rules)) {
-                                    if (changes[modType]) {
-                                        levels.add(changes[modType]);
-                                    }
-                                }
-                            }
-                        });
-                        // Also include all possible levels from global definitions (in case rules can set any)
-                        possibleLevels[modType] = Array.from(levels);
-                    }
+    // Otherwise, show the full range
+    return `$${Math.round(range.min)} – $${Math.round(range.max)}${suffix}`;
+}
 
-                    // If no modifier types at all, min = max = base price (plus hourly logic)
-                    if (Object.keys(possibleLevels).length === 0) {
-                        let price = base;
-                        if (isHourly) price = (labor.rate || base) * (labor.min_hours || 1);
-                        return {
-                            min: price,
-                            max: price
-                        };
-                    }
+// 3. Compute exact price dynamically based on user selections in the Intake form
+function computeFinalPrice(svc, answers, selectedHours = 1) {
+    let finalPrice = svc.base_price || 0;
+    let addedMins = 0;
+    let materialsMin = svc.default_estimates?.materials?.min || 0;
+    let materialsMax = svc.default_estimates?.materials?.max || 0;
+    
+    // Iterate through intake questions and apply their "effects" based on the user's answer
+    const questions = svc.intake?.questions || [];
+    questions.forEach(q => {
+        const ansId = answers[q.id];
+        if (ansId && q.effects && q.effects[ansId]) {
+            const effect = q.effects[ansId];
+            
+            // Add flat fees and minutes
+            if (typeof effect.fee === 'number') finalPrice += effect.fee;
+            if (typeof effect.minutes === 'number') addedMins += effect.minutes;
 
-                    // Compute min and max by brute force (product of all combinations)
-                    // Since typical services have 2-3 modifier types with 2-3 levels each, this is fine.
-                    let minPrice = Infinity;
-                    let maxPrice = -Infinity;
+            // Adjust material estimate bounds if the choice impacts material costs
+            if (typeof effect.materials_min === 'number') materialsMin = effect.materials_min;
+            if (typeof effect.materials_max === 'number') materialsMax = effect.materials_max;
+        }
+    });
 
-                    function evaluateCombination(idx, modCombination, modTypes) {
-                        if (idx === modTypes.length) {
-                            let modifierSum = 0;
-                            for (const [t, lvl] of Object.entries(modCombination)) {
-                                modifierSum += getModifierValue(t, lvl);
-                            }
-                            let final = base + modifierSum;
-                            if (isHourly) {
-                                const hourlyRate = labor.rate || base;
-                                final = (hourlyRate + modifierSum) * (labor.min_hours || 1);
-                            }
-                            if (final < minPrice) minPrice = final;
-                            if (final > maxPrice) maxPrice = final;
-                            return;
-                        }
-                        const type = modTypes[idx];
-                        for (const level of possibleLevels[type]) {
-                            modCombination[type] = level;
-                            evaluateCombination(idx + 1, modCombination, modTypes);
-                        }
-                    }
+    // Handle Hourly Overrides
+    if (svc.pricing_engine === 'hourly') {
+        // Find global rate or fallback to service base_price
+        const ratePerHour = svc.base_price || SERVICE_DATA?.meta?.rate_per_hour || 115;
+        finalPrice = ratePerHour * selectedHours; 
+    }
 
-                    const modTypes = Object.keys(possibleLevels);
-                    evaluateCombination(0, {}, modTypes);
-
-                    return {
-                        min: minPrice,
-                        max: maxPrice
-                    };
-                }
-
-                function formatServicePrice(svc) {
-                    // If the service explicitly provides an all-in range, use it
-                    if (svc.total_estimate_range && typeof svc.total_estimate_range.min === 'number') {
-                        const {
-                            min,
-                            max
-                        } = svc.total_estimate_range;
-                        const isHourly = svc.pricing?.labor?.type === 'hourly';
-                        const suffix = isHourly ? '/hour' : '';
-                        if (min === max) return `$${Math.round(min)}${suffix}`;
-                        return `$${Math.round(min)} – $${Math.round(max)}${suffix}`;
-                    }
-
-                    // Otherwise, compute from modifiers
-                    const range = getServicePriceRange(svc);
-                    if (range.min === null) return svc.price || 'Call';
-                    const diff = range.max - range.min;
-                    const isHourly = svc.pricing?.labor?.type === 'hourly';
-                    const suffix = isHourly ? '/hourr' : '';
-                    if (range.min === range.max) return `$${Math.round(range.min)}${suffix}`;
-                    if (diff <= 55) return `Around $${Math.round((range.min+range.max)/2)}${suffix}`;
-                    return `$${Math.round(range.min)} – $${Math.round(range.max)}${suffix}`;
-                }
+    return { 
+        finalPrice, 
+        addedMins,
+        materialsRange: [materialsMin, materialsMax]
+    };
+}
                 /* ================================================================
                    RATE LIMITER
                    ================================================================ */
@@ -3866,94 +3817,30 @@ body.modal-active { overflow: hidden; }
                     let selectedHours = 1;
 
                     // ----- Helper: build modifier object from current answers -----
-                    function getCurrentModifiers() {
-                        let mods = {};
-                        (svc.pricing?.modifiers || []).forEach(mod => {
-                            mods[mod.type] = mod.level;
-                        });
-                        (intakeQuestions || []).forEach(iq => {
-                            const ans = answers[iq.id];
-                            if (ans && iq.modifier_rules && iq.modifier_rules[ans]) {
-                                Object.assign(mods, iq.modifier_rules[ans]);
-                            }
-                        });
-                        return mods;
-                    }
-
-                    // ----- Helper: compute conditional surcharge from intake_schema rules -----
-                    function getConditionalSurcharge() {
-                        let surcharge = 0;
-                        const rules = (SERVICE_DATA?.intake_schema?.conditional_logic?.rules || [])
-                            .filter(r => r.service_id === svc.id && r.action?.type === 'modify_fee');
-                        for (const rule of rules) {
-                            const conds = rule.conditions || (rule.condition ? [rule.condition] : []);
-                            if (conds.every(c => answers[c.question_id] === c.value)) {
-                                surcharge += rule.action.adjustment || 0;
-                            }
-                        }
-                        return surcharge;
-                    }
-
-                    // ----- Helper: compute final price -----
-                    function computeFinalPrice() {
-                        const mods = getCurrentModifiers();
-                        const surcharge = getConditionalSurcharge();
-                        return computeFinalPriceFromModifiers(
-                            svc.pricing.base_price, mods, svc.pricing.labor,
-                            svc.pricing.labor?.type === 'hourly' ? selectedHours : null,
-                            surcharge
-                        );
-                    }
-
-                    // ----- Helper: only visible questions required -----
-                    function allQuestionsAnswered() {
-                        const allIntake = (intakeQuestions || []).every(iq => {
-                            const section = container.querySelector(`[data-question-id="${iq.id}"]`);
-                            if (section && section.style.display === 'none') return true; // hidden → skip
-                            return answers[iq.id] !== undefined;
-                        });
-                        const detailOk = !hasDetails || selectedDetail !== null;
-                        return allIntake && detailOk;
-                    }
-
-                    // ----- Function to apply conditional visibility (hide/show questions) -----
-                    function applyConditionalVisibility() {
-                        if (!SERVICE_DATA?.intake_schema?.conditional_logic?.rules) return;
-                        const rules = SERVICE_DATA.intake_schema.conditional_logic.rules.filter(r =>
-                            r.service_id === svc.id && r.action?.type === 'hide_question'
-                        );
-                        (intakeQuestions || []).forEach(iq => {
-                            const section = container.querySelector(`[data-question-id="${iq.id}"]`);
-                            if (!section) return;
-                            let hide = false;
-                            for (const rule of rules) {
-                                if (rule.action.target_question_id !== iq.id) continue;
-                                const conds = rule.conditions || (rule.condition ? [rule.condition] : []);
-                                if (conds.every(c => answers[c.question_id] === c.value)) {
-                                    hide = true;
-                                    break;
-                                }
-                            }
-                            section.style.display = hide ? 'none' : 'block';
-                            // Clear answer if hidden
-                            if (hide) {
-                                delete answers[iq.id];
-                                section.querySelectorAll('.chip-btn.selected').forEach(b => b.classList.remove('selected'));
-                            }
-                        });
-                    }
-
-                    // ----- Update the Add button -----
-                    function updateAddButton() {
-                        if (allQuestionsAnswered()) {
-                            const finalPrice = computeFinalPrice();
-                            addBtn.textContent = `🛒 Add to Cart - $${finalPrice.toFixed(2)}`;
-                            addBtn.disabled = false;
-                        } else {
-                            addBtn.textContent = `Select options above`;
-                            addBtn.disabled = true;
-                        }
-                    }
+function updateAddButton() {
+    // 1. Check if all questions currently visible have been answered
+    const visibleQuestions = Array.from(container.querySelectorAll('.intake-section'))
+                                  .filter(sec => sec.style.display !== 'none');
+    
+    const allAnswered = visibleQuestions.every(sec => {
+        const qId = sec.getAttribute('data-question-id');
+        return qId ? answers[qId] : true;
+    });
+    
+    if (allAnswered) {
+        // 2. Calculate dynamic price via the new JSON structure
+        const { finalPrice } = computeFinalPrice(svc, answers, selectedHours);
+        const isHourly = svc.pricing_engine === 'hourly';
+        
+        addBtn.disabled = false;
+        addBtn.style.opacity = '1';
+        addBtn.textContent = `Add to Request - $${Math.round(finalPrice)}${isHourly ? '/hr' : ''}`;
+    } else {
+        addBtn.disabled = true;
+        addBtn.style.opacity = '0.5';
+        addBtn.textContent = 'Select options above';
+    }
+}
 
                     // ----- Create the Add button (disabled initially) -----
                     const addBtn = create('button', {
@@ -5252,7 +5139,7 @@ body.modal-active { overflow: hidden; }
                 async function init() {
                     cacheDOM();
                     try {
-                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_services.json');
+                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc26.json');
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         SERVICE_DATA = await res.json();
                     } catch (err) {
