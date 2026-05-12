@@ -868,7 +868,7 @@
             position: absolute;
             inset: 0;
             background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), rgba(222, 0, 0, .22) 0, transparent 70%);
-            opacity: 0;
+            opacity: 1;
             transition: opacity .3s ease;
             pointer-events: none;
             z-index: 0;
@@ -881,7 +881,7 @@
         }
 
         .focused-mode .service-tile {
-            display: flex !important;
+            display:border-box !important;
             flex-direction: row !important;
             align-items: flex-start !important;
             gap: 12px !important;
@@ -889,30 +889,31 @@
             position: relative !important;
             min-height: 140px !important;
             text-align: left !important;
-            background: rgba(255, 255, 255, .65);
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 1);
+            backdrop-filter: blur(0);
             border: 4px solid rgba(255, 255, 255, .6);
             border-radius: var(--radius-md);
             transition: var(--transition);
             box-shadow: 0 4px 15px rgba(0, 0, 0, .15);
-            cursor: pointer
+            cursor: pointer;
+            opacity: 1;
         }
 
         .focused-mode .service-tile .service-item-icon {
             flex-shrink: 1;
             width: 42px;
             text-align: center;
-            font-size: 2.2rem;
+            font-size:4rem;
             margin-top: 4px;
             margin-right: 10px;
             filter: none;
             opacity: 1
         }
 
-        .focused-mode .service-tile>div[style*="flex-direction: column"] {
-            flex-grow: 0;
+        .focused-mode .service-tile {
+            flex-grow: 1;
             min-width: 0;
-            display: flex;
+            display: row !important;
             flex-direction: column;
             align-items: flex-start !important;
             position: relative
@@ -935,8 +936,8 @@
         }
 
         .focused-mode .materials-badge {
-            align-self: flex-start;
-            margin-top: 4px
+            margin-top: 75%;
+            padding: 4px;
         }
 
         .focused-mode .service-tile .service-price {
@@ -954,6 +955,14 @@
             z-index: 2;
             margin: 0
         }
+        .focused-mode .price-prefix {
+    font-style: italic;
+    font-size: 0.7rem;
+    font-weight: 500;
+    opacity: 0.75;
+    margin-right: 0.2rem;
+    vertical-align: middle;
+}
 
         .focused-mode .selected-group-chip {
             display: flex;
@@ -1334,8 +1343,8 @@
 
         .focused-mode .materials-badge {
             align-self: flex-start;
-            margin-top: 4px;
-            background: blue;
+            margin: 4px;
+            background: inherit;
         }
 
         .focused-mode .service-tile .service-price {
@@ -1351,7 +1360,8 @@
             border: 1px solid rgba(255, 255, 255, .4);
             white-space: nowrap;
             z-index: 2;
-            margin: 0
+            margin: 5px;
+            padding: 10px;
         }
 
         .focused-mode .service-group-header {
@@ -3328,9 +3338,8 @@
                     }
 
                     const diff = range.max - range.min;
-                    if (diff <= 55) return `ᵃʳᵒᵘⁿᵈ $${Math.round((range.min + range.max) / 2)}${suffix}`;
-
-                    return `ᶠʳᵒᵐ $${Math.round(range.min)}${suffix}`;
+                    if (diff <= 55) return `<span class="price-prefix">around</span> $${Math.round((range.min + range.max) / 2)}${suffix}`;
+return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix}`;
                 }
 
                 // 3. Compute exact price cleanly separating Labor vs Materials
@@ -3355,7 +3364,7 @@
                     });
 
                     if (svc.pricing_engine === 'hourly') {
-                        const ratePerHour = svc.base_price || 115;
+                        const ratePerHour = svc.base_price || 0;
                         laborPrice = ratePerHour * selectedHours;
                     }
 
@@ -4053,10 +4062,7 @@
                     info.appendChild(create('h4', {
                         text: svc.name
                     }));
-                    info.appendChild(create('div', {
-                        class: 'service-price',
-                        text: formatServicePrice(svc)
-                    }));
+                    info.appendChild(create('div', { class: 'service-price', html: formatServicePrice(svc) }));
 
                     if (svc.default_estimates?.materials && !svc.materials_included) {
                         const matMin = svc.default_estimates.materials.min || 0;
