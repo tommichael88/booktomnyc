@@ -3641,8 +3641,8 @@ return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix
                     servicesByGroup.clear();
                     furnitureMap.clear();
                     window.groupChildrenMap.clear();
-                    (data.categories || []).forEach(c => categoryMap.set(c.id, c));
-                    (data.groups || []).forEach(g => {
+                    (data.category || []).forEach(c => categoryMap.set(c.id, c));
+                    (data.group || []).forEach(g => {
                         groupMap.set(g.id, g);
                         const parent = g.parent_group || null;
                         if (!window.groupChildrenMap.has(parent)) window.groupChildrenMap.set(parent, []);
@@ -3742,7 +3742,7 @@ return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix
                 function renderCategoryCards() {
                     if (!DOM.categoriesGrid) return;
                     DOM.categoriesGrid.replaceChildren();
-                    SERVICE_DATA.categories.forEach(cat => {
+                    SERVICE_DATA.category.forEach(cat => {
                         const card = create('div', {
                             class: 'category-card',
                             'data-category-id': cat.id,
@@ -3810,7 +3810,7 @@ return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix
                         ]));
                     }
 
-                    const rootGroups = (SERVICE_DATA.groups || []).filter(g => g.category === categoryId && !g.parent_group);
+                    const rootGroups = (SERVICE_DATA.group || []).filter(g => g.category === categoryId && !g.parent_group);
                     const groupGrid = create('div', {
                         class: 'group-grid',
                         id: 'focusedGroupGrid'
@@ -4116,7 +4116,7 @@ return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix
                             class: 'service-group-header',
                             text: `${name} (${groups[name].length})`
                         }));
-                        groups[name].forEach(svc => container.appendChild(createServiceCardElement(svc, currentCategoryId)));
+                        group[name].forEach(svc => container.appendChild(createServiceCardElement(svc, currentCategoryId)));
                     });
                 }
 
