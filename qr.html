@@ -17,7 +17,7 @@
     <meta property="og:description" content="Handyman Services NYC">
     <meta property="og:image" content="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true">
     <link id="favicon" rel="icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon">
-    <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/tht_logo.png?raw=true" as="image">
+    <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/tht_logo.svg?raw=true" as="image">
     <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" as="image">
     <link rel="shortcut icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon">
     <link rel="apple-touch-icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true">
@@ -3267,7 +3267,7 @@
             </div>
 
             <center>
-                <img src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/tht_logo.png" alt="HandyTech logo" style="width:auto; height:25rem; display:flex; margin:3rem; opacity:75%;">
+                <img src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/tht_logo.png" alt="HandyTech logo" style="width:auto; height:25rem; display:flex; margin-top:3rem; margin-bottom: 0; opacity:95%;">
             </center>
 
             <span>
@@ -4161,213 +4161,163 @@ return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix
                 }
 
 
-                /* ================================================================
-                   INTAKE QUESTIONS & SERVICE DETAIL (COMPLETELY REWRITTEN FOR v2.2)
-                   ================================================================ */
-                function showIntakeQuestions(svc, categoryId, fromBack = false) {
-                    if (!fromBack) Breadcrumbs.push({
-                        type: 'serviceDetail',
-                        groupId: svc.group,
-                        categoryId
-                    });
-                    enterFocusedMode();
-                    setStep(4);
+/* ================================================================
+   INTAKE QUESTIONS & SERVICE DETAIL
+   ================================================================ */
+function showIntakeQuestions(svc, categoryId, fromBack = false) {
+    if (!fromBack) Breadcrumbs.push({ type: 'serviceDetail', groupId: svc.group, categoryId });
+    enterFocusedMode();
+    setStep(4);
+    
+    const container = DOM.intakeQuestionsContainer;
+    container.replaceChildren();
+    container.style.display = 'block';
+    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
 
-                    const container = DOM.intakeQuestionsContainer;
-                    container.replaceChildren();
-                    container.style.display = 'block';
-                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
+    // Reset service-specific state
+    State.selectedChips.clear();
+    State.lockedComplexityWeight = 1;
+    State.currentDueNowTotal = svc.base_price || 0;
+    State.activeTags.clear();
 
-                    // 1. Header & Badges
-                    const hdr = create('h3', {}, [document.createTextNode(svc.name)]);
-                    if (svc.materials_included) {
-                        hdr.appendChild(create('span', {
-                            class: 'materials-badge',
-                            text: '✓Supplies included'
-                        }));
+    // Headers
+    container.appendChild(create('h3', {}, [document.createTextNode(svc.name)]));
+    if (svc.description) {
+        container.appendChild(create('p', {
+            text: svc.description,
+            style: 'color:rgba(255,255,255,.7);font-size:.88rem;margin-bottom:12px;'
+        }));
+    }
+
+    // Hazard Banner Placeholder
+    container.appendChild(create('div', {
+        id: 'hazard-warning-banner',
+        class: 'repair-hint',
+        text: '⚠️ Safety First: Please ensure power/water is shut off at the source before the technician arrives.',
+        style: 'display:none; background: rgba(220,38,38,0.2); border-left-color: #dc2626; margin-bottom: 12px;'
+    }));
+
+    if (svc.requires_furniture_selection) {
+        renderFurnitureSelection(container, svc, categoryId);
+        return;
+    }
+
+    const formWrapper = create('div', { class: 'simple-intake-form' });
+    const questionsContainer = create('div', { class: 'intake-questions-wrapper' });
+
+    // Render Modules from Flat Graph
+    const moduleRefs = svc.intake_modules_refs || [];
+    moduleRefs.forEach(modId => {
+        const modData = SERVICE_DATA.intake_modules[modId];
+        if (!modData) return;
+
+        const qDiv = create('div', { class: 'intake-section' });
+        qDiv.appendChild(create('h4', { text: modData.title }));
+        
+        const optionsContainer = create('div', { class: 'chip-group' });
+
+        modData.options.forEach(opt => {
+            const chip = create('button', { class: 'chip', text: opt.label });
+            
+            chip.addEventListener('click', () => {
+                if (modData.type === 'single') {
+                    // Clear sibling active states
+                    Array.from(optionsContainer.querySelectorAll('.chip')).forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    State.selectedChips.set(modId, opt);
+                } else {
+                    // Multi-select toggle
+                    if (chip.classList.contains('active')) {
+                        chip.classList.remove('active');
+                        // Use a composite key for multi-select
+                        State.selectedChips.delete(`${modId}_${opt.label}`);
+                    } else {
+                        chip.classList.add('active');
+                        State.selectedChips.set(`${modId}_${opt.label}`, opt);
                     }
-                    container.appendChild(hdr);
-
-                    if (svc.description) {
-                        container.appendChild(create('p', {
-                            text: svc.description,
-                            style: 'color:rgba(255,255,255,.7);font-size:.88rem;margin-bottom:12px;line-height:1.5;'
-                        }));
-                    }
-
-                    // 2. Material Estimates & Disclaimers
-                    if (svc.default_estimates?.materials && !svc.materials_included) {
-                        const matMin = svc.default_estimates.materials.min || 0;
-                        const matMax = svc.default_estimates.materials.max || 0;
-                        if (matMax > 0) {
-                            const matInfo = create('div', {
-                                class: 'repair-hint',
-                                style: 'background: rgba(20,20,20,.7); border-left-color: #f97316; margin-bottom: 12px;'
-                            });
-                            matInfo.innerHTML = `🧾 <b>Materials:</b> typically $${matMin} – $${matMax} (not included).<br><small>Materials will be added to final invoice.</small>`;
-                            container.appendChild(matInfo);
-                        }
-                    }
-
-                    if (svc.estimate_disclaimer && SERVICE_DATA.meta?.estimate_disclaimers) {
-                        const disclaimerText = SERVICE_DATA.meta.estimate_disclaimers[svc.estimate_disclaimer] || SERVICE_DATA.meta.estimate_disclaimers.project_based || '';
-                        if (disclaimerText) {
-                            container.appendChild(create('div', {
-                                class: 'repair-hint',
-                                text: '⚠️ ' + disclaimerText,
-                                style: 'border-left-color: #facc15; font-size: 0.8rem;'
-                            }));
-                        }
-                    }
-
-                    // 3. Furniture Selection Override
-                    if (svc.requires_furniture_selection) {
-                        renderFurnitureSelection(container, svc, categoryId);
-                        return;
-                    }
-
-                    // 4. Form State & Wrapper
-                    const formWrapper = create('div', {
-                        class: 'simple-intake-form'
-                    });
-                    const answers = {};
-                    let selectedHours = 1;
-
-                    const addBtn = create('button', {
-                        class: 'add-more-button',
-                        text: 'Select options above',
-                        type: 'button',
-                        style: 'width:100%;margin-top:16px;'
-                    });
-                    addBtn.disabled = true;
-
-                    const questionsContainer = create('div', {
-                        class: 'intake-questions-wrapper'
-                    });
-
-                    function updateAddButton() {
-                        const visibleSections = Array.from(questionsContainer.querySelectorAll('.intake-section')).filter(sec => sec.style.display !== 'none');
-                        const allAnswered = visibleSections.every(sec => {
-                            const qId = sec.getAttribute('data-question-id');
-                            return qId ? answers[qId] : true;
-                        });
-
-                        if (allAnswered) {
-                            const {
-                                finalPrice
-                            } = computeFinalPrice(svc, answers, selectedHours);
-                            const isHourly = svc.pricing_engine === 'hourly';
-                            addBtn.disabled = false;
-                            addBtn.style.opacity = '1';
-                            addBtn.textContent = `Add to Request - $${Math.round(finalPrice)}${isHourly ? '/hr' : ''}`;
-                        } else {
-                            addBtn.disabled = true;
-                            addBtn.style.opacity = '0.5';
-                            addBtn.textContent = 'Select options above';
-                        }
-                    }
-
-                    // 5. Hourly Input (If Applicable)
-                    if (svc.pricing_engine === 'hourly') {
-                        const sec = create('div', {
-                            class: 'intake-section'
-                        });
-                        sec.appendChild(create('div', {
-                            class: 'intake-label',
-                            text: 'Estimated hours'
-                        }));
-                        const input = create('input', {
-                            type: 'number',
-                            min: '0.5',
-                            max: '24',
-                            step: '0.5',
-                            value: selectedHours
-                        });
-
-                        input.addEventListener('input', () => {
-                            selectedHours = parseFloat(input.value) || 1;
-                            updateAddButton();
-                        });
-                        sec.appendChild(input);
-                        formWrapper.appendChild(sec);
-                    }
-
-                    // 6. Render Dynamic Questions
-                    formWrapper.appendChild(questionsContainer);
-                    renderIntakeQuestions(svc, questionsContainer, answers, updateAddButton);
-
-                    // 7. Notes
-                    const notesField = create('textarea', {
-                        class: 'service-input-area',
-                        placeholder: 'Additional notes (optional)…',
-                        rows: 3,
-                        style: 'margin-top:12px;'
-                    });
-                    formWrapper.appendChild(notesField);
-                    formWrapper.appendChild(addBtn);
-                    container.appendChild(formWrapper);
-
-                    // 8. Add Button Click Handler
-                    addBtn.addEventListener('click', () => {
-                        if (addBtn.disabled) return;
-                        if (!cartLimiter.isAllowed('add')) {
-                            toast('Adding too fast, please wait.', 'error');
-                            return;
-                        }
-
-                        let notes = '';
-                        (svc.intake?.questions || []).forEach(q => {
-                            if (answers[q.id]) {
-                                // Find the clean text label for the chosen answer
-                                const opt = q.options.find(o => (typeof o === 'object' ? (o.id || o.value) : o) === answers[q.id]);
-                                const label = typeof opt === 'object' ? (opt.label || opt.text || opt.name || answers[q.id]) : answers[q.id];
-                                notes += (notes ? ' • ' : '') + `${q.text || q.prompt || 'Selection'}: ${label}`;
-                            }
-                        });
-                        if (notesField.value.trim()) notes += (notes ? ' • ' : '') + notesField.value.trim();
-
-                        const {
-                            finalPrice,
-                            materialsRange,
-                            materialsIncluded
-                        } = computeFinalPrice(svc, answers, selectedHours);
-
-                        const entry = {
-                            id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                            serviceId: svc.id,
-                            categoryId,
-                            name: svc.name,
-                            price: `$${finalPrice.toFixed(2)}`, // Clean flat numeric formatting for Cart logic
-                            icon: svc.icon || '🔧',
-                            detail: '',
-                            notes: notes,
-                            furnitureItems: [],
-                            selectedHours: svc.pricing_engine === 'hourly' ? selectedHours : 0,
-                            materialsNotIncluded: !materialsIncluded && materialsRange[1] > 0,
-                            materialsEstimateRange: materialsRange
-                        };
-
-                        addToCart(entry);
-                        exitFocusedMode();
-                        container.style.display = 'none';
-                        if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
-                        DOM.serviceRequestSummary.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                        renderCart();
-                        toast(`${svc.name} added to cart`, 'success');
-                    });
-
-                    addBackButton(container, () => {
-                        container.style.display = 'none';
-                        Breadcrumbs.goBack();
-                    });
-
-                    // Initialize button state
-                    updateAddButton();
                 }
+                
+                processIntakeSelection(svc);
+                updateAddButton();
+            });
+            optionsContainer.appendChild(chip);
+        });
+        
+        qDiv.appendChild(optionsContainer);
+        questionsContainer.appendChild(qDiv);
+    });
 
+    formWrapper.appendChild(questionsContainer);
+
+    // Smart Notes Textarea Wrapper
+    const notesWrap = create('div', { id: 'smart-notes-container', style: 'margin-top:12px;' });
+    formWrapper.appendChild(notesWrap);
+
+    // Add To Cart Button
+    const addBtn = create('button', {
+        class: 'add-more-button',
+        type: 'button',
+        style: 'width:100%;margin-top:16px;'
+    });
+    formWrapper.appendChild(addBtn);
+    container.appendChild(formWrapper);
+
+    function updateAddButton() {
+        // Simple validation: Ensure all "single" modules have an answer
+        const requiredModules = moduleRefs.filter(id => SERVICE_DATA.intake_modules[id]?.type === 'single');
+        const answeredRequired = requiredModules.every(id => State.selectedChips.has(id));
+
+        if (answeredRequired) {
+            addBtn.disabled = false;
+            addBtn.style.opacity = '1';
+            const comp = REVERSE_WEIGHTS[State.lockedComplexityWeight].toUpperCase();
+            addBtn.textContent = `Add - $${Math.round(State.currentDueNowTotal)} [${comp}]`;
+        } else {
+            addBtn.disabled = true;
+            addBtn.style.opacity = '0.5';
+            addBtn.textContent = 'Select required options';
+        }
+    }
+
+    addBtn.addEventListener('click', () => {
+        if (addBtn.disabled) return;
+        
+        let notes = '';
+        State.selectedChips.forEach(opt => { notes += `• ${opt.label} `; });
+        const textVal = document.getElementById('smart-notes-input')?.value || '';
+        if (textVal) notes += `| Notes: ${textVal}`;
+
+        const entry = {
+            id: `${svc.id}-${Date.now()}`,
+            serviceId: svc.id,
+            categoryId,
+            name: svc.name,
+            price: `$${State.currentDueNowTotal.toFixed(2)}`,
+            icon: svc.icon || '🔧',
+            notes: notes,
+            furnitureItems: []
+        };
+        addToCart(entry);
+        exitFocusedMode();
+        container.style.display = 'none';
+        if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
+        renderCart();
+    });
+
+    addBackButton(container, () => {
+        container.style.display = 'none';
+        Breadcrumbs.goBack();
+    });
+
+    updateAddButton();
+    
+    // Initialize Smart Notes if smart_tags exist
+    if (svc.smart_tags && typeof renderSmartNotesField === 'function') {
+        renderSmartNotesField('smart-notes-container', svc.smart_tags);
+    } else {
+        notesWrap.innerHTML = `<textarea id="smart-notes-input" class="service-input-area" placeholder="Additional notes..." rows="3"></textarea>`;
+    }
+}
                 /* ================================================================
                    FURNITURE SELECTION
                    ================================================================ */
@@ -5227,100 +5177,6 @@ return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix
                     restoreCategoryView();
                     setTimeout(() => toast('Thank you for your request!', 'success'), 1500);
                 }
-                /* ================================================================
-                   EVENT LISTENERS & WIRING
-                   ================================================================ */
-                function wireGlobalEvents() {
-                    document.body.addEventListener('click', (e) => {
-                        if (e.target.closest('#cartFab')) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            openCartOverlay();
-                            return;
-                        }
-                        if (e.target.closest('#contact-button')) {
-                            e.stopPropagation();
-                            const toolbar = q('#contactToolbar');
-                            if (toolbar) {
-                                const open = toolbar.classList.toggle('active');
-                                q('#contact-button')?.setAttribute('aria-expanded', String(open));
-                            }
-                            return;
-                        }
-                        const toolbar = q('#contactToolbar');
-                        if (toolbar?.classList.contains('active') && !e.target.closest('#contactToolbar') && !e.target.closest('#contact-button')) {
-                            toolbar.classList.remove('active');
-                            q('#contact-button')?.setAttribute('aria-expanded', 'false');
-                        }
-                        if (e.target === DOM.cartOverlay) {
-                            closeCartOverlay();
-                            restoreCategoryView();
-                            return;
-                        }
-                        if (e.target.closest('#clearAllServicesBtn') && !e.target.closest('#cartOverlay')) {
-                            if (!State.serviceRequest.length) return;
-                            if (confirm('Remove all services?')) {
-                                State.serviceRequest = [];
-                                persistCart();
-                                renderCart();
-                                restoreCategoryView();
-                                toast('Cart cleared');
-                            }
-                            return;
-                        }
-                        if (e.target.closest('#addMoreBtn')) {
-                            closeCartOverlay();
-                            restoreCategoryView();
-                            return;
-                        }
-                        if (e.target.closest('#bookNowBtn') || e.target.closest('#finalBookBtn')) {
-                            if (!State.serviceRequest.length) toast('Add at least one service.', 'error');
-                            else openCartOverlay();
-                            return;
-                        }
-                        if (e.target.closest('#manageVisitBtn')) {
-                            toast('Redirecting to Manage Your Visit…');
-                            return;
-                        }
-                        if (e.target.closest('#clientLoginBtn')) {
-                            toast('Redirecting to Client Portal…');
-                            return;
-                        }
-                    });
-
-                    document.addEventListener('keydown', (e) => {
-                        if (e.key === 'Escape') {
-                            if (DOM.cartOverlay?.style.display === 'flex') {
-                                closeCartOverlay();
-                                restoreCategoryView();
-                            } else if (document.querySelector('.main-card-schedule-service.focused-mode')) Breadcrumbs.goBack();
-                        }
-                    });
-
-                    qAll('.contact-mail').forEach(el => {
-                        el.addEventListener('click', e => {
-                            e.preventDefault();
-                            openMail(el);
-                        });
-                        el.addEventListener('keydown', e => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                openMail(el);
-                            }
-                        });
-                    });
-                    qAll('.contact-phone').forEach(el => el.addEventListener('click', e => {
-                        e.preventDefault();
-                        openTel(el);
-                    }));
-                    qAll('.contact-sms').forEach(el => el.addEventListener('click', e => {
-                        e.preventDefault();
-                        openSms(el);
-                    }));
-                    window.addEventListener('resize', debounce(setViewportHeight, 150));
-                    window.addEventListener('orientationchange', setViewportHeight);
-                }
-
                 /* ================================================================
                    EVENT LISTENERS & WIRING
                    ================================================================ */
