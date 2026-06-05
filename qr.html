@@ -605,7 +605,12 @@
         }
 
         #category-card,
-        .category-card-grid {
+        #categories-card,
+        #category-grid,
+        #categories-grid,
+        #categories-card-grid,
+        #categoriesGrid .focused-mode,
+        .category-card-grid  .focused-mode {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 2px;
@@ -3734,7 +3739,7 @@
                                 if (!DOM.categoriesGrid) return;
                                 DOM.categoriesGrid.replaceChildren();
                                 // ✅ USE "categories" (plural) from JSON
-                                (SERVICE_DATA.category || []).forEach(cat => {
+                                (SERVICE_DATA.categories || []).forEach(cat => {
                                     const card = create('div', {
                                         class: 'category-card',
                                         'data-category-id': cat.id,
@@ -3801,7 +3806,7 @@
                                     ]));
                                 }
 
-                                const rootGroups = (SERVICE_DATA.groups || []).filter(g => g.category === categoryId && !g.parent_group);
+                                const rootGroups = (SERVICE_DATA.groups || []).filter(g => g.categories === categoryId && !g.parent_group);
                                 const groupGrid = create('div', {
                                     class: 'group-grid',
                                     id: 'focusedGroupGrid'
@@ -3823,7 +3828,7 @@
                                         class: 'tile-name',
                                         text: group.name
                                     }));
-                                    const children = window.groupChildrenMap.get(group.id) || [];
+                                    const children = window.groupChildrenMap.get(groups.id) || [];
                                     const activate = (e) => {
                                         e.stopPropagation();
                                         groupGrid.querySelectorAll('.group-tile').forEach(c => c.classList.remove('active'));
@@ -5245,50 +5250,50 @@
 
                                 window.addEventListener('resize', debounce(setViewportHeight, 150));
                                 window.addEventListener('orientationchange', setViewportHeight);
+                                
                             }
-                        });
-
+                    
                         /* ================================================================
                            INITIALISATION
                            ================================================================ */
-                        async function init() {
-                            cacheDOM();
-                            try {
-                                const res = await fetch('https://tommichael88.github.io/booktomnyc/booktomnyc.json');
-                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                                SERVICE_DATA = await res.json();
-                                console.log('✅ JSON loaded');
-                            } catch (err) {
-                                console.error('Service data load error:', err);
-                                toast('Could not load services. Please refresh.', 'error');
-                                SERVICE_DATA = {
-                                    categories: [],
-                                    groups: [],
-                                    services: [],
-                                    furniture_catalog: [],
-                                    service_types: {},
-                                    smart_tags: {},
-                                    intake_modules: {},
-                                    dynamic_services: {},
-                                    intent_mappings: {
-                                        objects: [],
-                                        default_fallback: {}
-                                    },
-                                    pricing_formulas: {},
-                                    meta: {
-                                        estimate_disclaimers: {}
-                                    }
-                                };
-                            }
-                            buildDataMaps(SERVICE_DATA);
-                            renderCategoryCards();
-                            wireGlobalEvents();
-                            renderCart();
-                            if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
-                            setViewportHeight();
-                            init();
-                        })();
-                    }
+                           window.SERVICE_DATA = null; // 👈 ADD THIS EXACT LINE
+  async function init() {
+    console.log("🛑 1. init() has started running!");
+    
+    cacheDOM();
+    console.log("🛑 2. DOM Cached. Did we find the grid container?", DOM.categoriesGrid);
+    
+    try {
+        console.log("🛑 3. Starting fetch request...");
+        const res = await fetch('https://tommichael88.github.io/booktomnyc/booktomnyc.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        
+        SERVICE_DATA = await res.json();
+        window.SERVICE_DATA = SERVICE_DATA; // 👈 ADD THIS EXACT LINE
+        console.log("🛑 4. ✅ JSON fetched successfully! Categories found:", SERVICE_DATA?.categories?.length);
+        
+    } catch (err) {
+        console.error('🛑 4. ❌ Service data load error:', err);
+        toast('Could not load services. Please refresh.', 'error');
+        SERVICE_DATA = { categories: [], groups: [], services: [], furniture_catalog: [], smart_tags: {}, intake_modules: {}, dynamic_services: {}, intent_mappings: { objects: [], default_fallback: {} }, pricing_formulas: {}, meta: { estimate_disclaimers: {} } };
+    }
+
+    console.log("🛑 5. Building Data Maps...");
+    buildDataMaps(SERVICE_DATA);
+    
+    console.log("🛑 6. Triggering renderCategoryCards()...");
+    renderCategoryCards();
+    
+    wireGlobalEvents();
+    renderCart();
+    
+    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
+    setViewportHeight();
+    
+    console.log("🛑 7. init() is completely finished.");
+} // <--- Make sure this brace is here!
+
+init();
                 </script>
 </body>
 
