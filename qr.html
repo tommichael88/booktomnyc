@@ -5243,43 +5243,43 @@ function renderCategoryCards() {
                     window.addEventListener('orientationchange', setViewportHeight);
                 }
 
-                /* ================================================================
-                   INITIALISATION
-                   ================================================================ */
-                async function init() {
-                    cacheDOM();
-                    try {
-                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_complex.json');
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        SERVICE_DATA = await res.json();
-                    } catch (err) {
-                        console.error('Service data load error:', err);
-                        toast('Could not load services. Please refresh.', 'error');
-                        SERVICE_DATA = {
-                            categories: [],
-                            groups: [],
-                            services: [],
-                            furniture_catalog: [],
-                            smart_tags: {},
-                            intake_modules: {},
-                            dynamic_services: {},
-                            meta: {
-                                estimate_disclaimers: {}
-                            }
-                        };
-                    }
-                    buildDataMaps(SERVICE_DATA);
-                    renderCategoryCards();
-                    wireGlobalEvents();
-                    renderCart();
-                    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
-                    setViewportHeight();
-                }
+/* ================================================================
+   INITIALISATION
+   ================================================================ */
+async function init() {
+    cacheDOM();
+    try {
+        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_complex.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        SERVICE_DATA = await res.json();
+    } catch (err) {
+        console.error('Service data load error:', err);
+        toast('Could not load services. Please refresh.', 'error');
+        SERVICE_DATA = {
+            categories: [],
+            groups: [],
+            services: [],
+            furniture_catalog: [],
+            smart_tags: {},
+            intake_modules: {},
+            dynamic_services: {},
+            intent_mappings: { objects: [], default_fallback: {} },
+            pricing_formulas: {},
+            meta: { estimate_disclaimers: {} }
+        };
+    }
+    buildDataMaps(SERVICE_DATA);
+    renderCategoryCards();
+    wireGlobalEvents();
+    renderCart();
+    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
+    setViewportHeight();
+}
 
-                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-                else init();
-            })();
-    </script>
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+</script>
+
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
