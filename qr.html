@@ -85,8 +85,7 @@
             background-attachment: fixed;
             background-position: center top;
             background-image: url('https://github.com/tommichael88/booktomnyc/blob/main/images/pg_background7.png?raw=true');
-            backdrop-filter: rgba(255, 255, 255 .75);
-            -webkit-backdrop-filter: rgba(255, 255, 255 .75)
+            -webkit-backdrop-filter: rgba(255, 255, 255 .75);
         }
 
         .qrc_page_inner {
@@ -3287,94 +3286,64 @@
             </span>
         </div>
     </div>
+
     <script>
         if (!window.__booktom_qr_loaded) {
             window.__booktom_qr_loaded = true;
             (function() {
-                    "use strict";
+                "use strict";
 
-                    /* ================================================================
-                       SECURITY & UTILITY HELPERS
-                       ================================================================ */
-                    const q = (sel, ctx = document) => (ctx || document).querySelector(sel);
-                    const qAll = (sel, ctx = document) => Array.from((ctx || document).querySelectorAll(sel));
+                /* ================================================================
+                   SECURITY & UTILITY HELPERS
+                   ================================================================ */
+                const q = (sel, ctx = document) => (ctx || document).querySelector(sel);
+                const qAll = (sel, ctx = document) => Array.from((ctx || document).querySelectorAll(sel));
 
-                    const create = (tag, attrs = {}, children = []) => {
-                        const el = document.createElement(tag);
-                        Object.keys(attrs).forEach(k => {
-                            if (k === 'class') el.className = attrs[k];
-                            else if (k === 'text') el.textContent = attrs[k];
-                            else if (k === 'html') el.innerHTML = attrs[k];
-                            else if (k === 'style' && typeof attrs[k] === 'string') el.style.cssText = attrs[k];
-                            else el.setAttribute(k, attrs[k]);
-                        });
-                        children.forEach(c => {
-                            if (typeof c === 'string') el.appendChild(document.createTextNode(c));
-                            else if (c instanceof Node) el.appendChild(c);
-                        });
-                        return el;
-                    };
+                const create = (tag, attrs = {}, children = []) => {
+                    const el = document.createElement(tag);
+                    Object.keys(attrs).forEach(k => {
+                        if (k === 'class') el.className = attrs[k];
+                        else if (k === 'text') el.textContent = attrs[k];
+                        else if (k === 'html') el.innerHTML = attrs[k];
+                        else if (k === 'style' && typeof attrs[k] === 'string') el.style.cssText = attrs[k];
+                        else el.setAttribute(k, attrs[k]);
+                    });
+                    children.forEach(c => {
+                        if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+                        else if (c instanceof Node) el.appendChild(c);
+                    });
+                    return el;
+                };
 
-                    const safeText = (node, text) => {
-                        if (node) node.textContent = text;
-                    };
-                    const setText = (el, text) => {
-                        if (el) el.textContent = text;
-                    };
+                const safeText = (node, text) => {
+                    if (node) node.textContent = text;
+                };
+                const setText = (el, text) => {
+                    if (el) el.textContent = text;
+                };
 
-                    const parsePriceToInt = (str) => {
-                        if (!str || typeof str !== 'string') return 0;
-                        const m = str.match(/(\d+(?:\.\d+)?)/);
-                        return m ? Math.round(parseFloat(m[1])) : 0;
-                    };
+                const parsePriceToInt = (str) => {
+                    if (!str || typeof str !== 'string') return 0;
+                    const m = str.match(/(\d+(?:\.\d+)?)/);
+                    return m ? Math.round(parseFloat(m[1])) : 0;
+                };
 
-                    /* ================================================================
-                       UPDATED PRICING HELPERS (v2.2 JSON Schema)
-                       ================================================================ */
+                /* ================================================================
+                   PRICING HELPERS (JSON-driven)
+                   ================================================================ */
 
-                    // 1. Get the min/max range directly from the JSON's default_estimates
-                    function getServicePriceRange(svc) {
-                        if (svc.default_estimates && svc.default_estimates.total) {
-                            return {
-                                min: svc.default_estimates.total.min,
-                                max: svc.default_estimates.total.max
-                            };
-                        }
-                        const base = svc.base_price || 0;
-                        return {
-                            min: base,
-                            max: base
-                        };
+                function formatServicePrice(svc) {
+                    const isHourly = svc.pricing_engine === 'hourly';
+                    const base = svc.financial_engine?.base_price ?? 0;
+                    const range = svc.default_estimates?.total;
+                    if (range && typeof range.min === 'number') {
+                        if (range.min === range.max) return `$${Math.round(range.min)}${isHourly ? '/hr' : ''}`;
+                        return `$${Math.round(range.min)} – $${Math.round(range.max)}${isHourly ? '/hr' : ''}`;
                     }
-
-                    // 2. Format the display price for the Service Tile (NO MATERIALS ALLOWED HERE)
-                    function formatServicePrice(svc) {
-                        const isHourly = svc.pricing_engine === 'hourly';
-                        const base = svc.financial_engine?.base_price ?? 0;
-                        const range = svc.default_estimates?.total;
-                        if (range && typeof range.min === 'number') {
-                            if (range.min === range.max) return `$${Math.round(range.min)}${isHourly ? '/hr' : ''}`;
-                            return `$${Math.round(range.min)} – $${Math.round(range.max)}${isHourly ? '/hr' : ''}`;
-                        }
-                        return `$${Math.round(base)}${isHourly ? '/hr' : ''}`;
-                    }
-
-                    const range = getServicePriceRange(svc);
-                    if (range.min === null) return svc.price || 'Call';
-
-                    // If it's a flat fee, force the base price only
-                    if (isFlat || range.min === range.max) {
-                        return `$${Math.round(range.min)}${suffix}`;
-                    }
-
-                    const diff = range.max - range.min;
-                    if (diff <= 55) return `<span class="price-prefix">around</span> $${Math.round((range.min + range.max) / 2)}${suffix}`;
-                    return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix}`;
+                    return `$${Math.round(base)}${isHourly ? '/hr' : ''}`;
                 }
 
-                // 3. Compute exact price cleanly separating Labor vs Materials
                 function computeFinalPrice(svc, answers, selectedHours = 1, extraText = '') {
-                    // 1. Get base price from dynamic_services or service's own base
                     let basePrice = svc.financial_engine?.base_price ?? 0;
                     const dynKey = `${svc.category}+${svc.service_type}`;
                     if (SERVICE_DATA.dynamic_services?.[dynKey]?.financial_engine?.base_price !== undefined) {
@@ -3384,7 +3353,6 @@
                     let laborPrice = basePrice;
                     let minutes = svc.operational_metrics?.expected_minutes || 60;
 
-                    // 2. Apply smart tags from user text + answers
                     const fullText = (extraText + ' ' + Object.values(answers).join(' ')).toLowerCase();
                     const tagMap = SERVICE_DATA.smart_tags || {};
                     for (const [tag, data] of Object.entries(tagMap)) {
@@ -3395,7 +3363,6 @@
                         }
                     }
 
-                    // 3. Apply intake module effects (if any)
                     const moduleRefs = svc.intake_modules_refs || [];
                     moduleRefs.forEach(modId => {
                         const mod = SERVICE_DATA.intake_modules[modId];
@@ -3409,12 +3376,10 @@
                         }
                     });
 
-                    // 4. Hourly override
                     if (svc.pricing_engine === 'hourly') {
                         laborPrice = (svc.financial_engine?.base_price || 0) * selectedHours;
                     }
 
-                    // 5. Materials range (from service or intake)
                     let matMin = svc.default_estimates?.materials?.min || 0;
                     let matMax = svc.default_estimates?.materials?.max || 0;
                     const materialsIncluded = svc.materials_included === true;
@@ -3425,57 +3390,6 @@
                         materialsIncluded,
                         estimatedMinutes: minutes
                     };
-                }
-
-                // 4. Render Dynamic Intake Questions
-                function renderIntakeQuestions(svc, container, answers, updateBtnCallback) {
-                    container.innerHTML = '';
-                    const moduleRefs = svc.intake_modules_refs || [];
-                    if (moduleRefs.length === 0) {
-                        updateBtnCallback();
-                        return;
-                    }
-
-                    moduleRefs.forEach(modId => {
-                        const mod = SERVICE_DATA.intake_modules[modId];
-                        if (!mod) return;
-                        const qDiv = create('div', {
-                            class: 'intake-section'
-                        });
-                        qDiv.appendChild(create('h4', {
-                            text: mod.question || mod.title || 'Select option'
-                        }));
-
-                        const chipGroup = create('div', {
-                            class: 'chip-group'
-                        });
-                        mod.client_response.forEach(opt => {
-                            const chip = create('button', {
-                                class: 'chip',
-                                text: opt.label
-                            });
-                            chip.addEventListener('click', () => {
-                                if (mod.type === 'single') {
-                                    chipGroup.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-                                    chip.classList.add('active');
-                                    answers[modId] = opt.label;
-                                } else {
-                                    // multi – toggle
-                                    if (chip.classList.contains('active')) {
-                                        chip.classList.remove('active');
-                                        delete answers[`${modId}_${opt.label}`];
-                                    } else {
-                                        chip.classList.add('active');
-                                        answers[`${modId}_${opt.label}`] = opt.label;
-                                    }
-                                }
-                                updateBtnCallback();
-                            });
-                            chipGroup.appendChild(chip);
-                        });
-                        qDiv.appendChild(chipGroup);
-                        container.appendChild(qDiv);
-                    });
                 }
 
                 /* ================================================================
@@ -3576,7 +3490,10 @@
                 const State = {
                     serviceRequest: loadCart(),
                     furnitureItems: [],
-                    currentStep: 1
+                    currentStep: 1,
+                    selectedChips: new Map(), // 👈 ADD
+                    lockedComplexityWeight: 1, // 👈 ADD
+                    activeTags: new Set() // 👈 ADD
                 };
 
                 function persistCart() {
@@ -3584,7 +3501,8 @@
                         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(State.serviceRequest));
                     } catch (_) {}
                 }
-                setInterval(persistCart, 10000); window.addEventListener('beforeunload', persistCart);
+                setInterval(persistCart, 10000);
+                window.addEventListener('beforeunload', persistCart);
 
                 /* ================================================================
                    DATA & CONFIG
@@ -3593,7 +3511,8 @@
                 const categoryMap = new Map();
                 const groupMap = new Map();
                 const servicesByGroup = new Map();
-                const furnitureMap = new Map(); window.groupChildrenMap = new Map();
+                const furnitureMap = new Map();
+                window.groupChildrenMap = new Map();
 
                 const PAX_COEFF_B64 = "eyJwcmljZVBlckhvdXIiOjg1LCJzdGFydEZlZSI6MCwiY29lZmZpY2llbnRzIjp7ImNhYmluZXQiOjEuMywic3RhbmRhcmREb29yIjowLjYsInNsaWRpbmdEb29yIjowLjksImluc2lkZUl0ZW0iOjAuMzV9fQ==";
                 const PAX_CONFIG = JSON.parse(atob(PAX_COEFF_B64));
@@ -4296,7 +4215,6 @@
                                         State.selectedChips.set(key, opt.label);
                                     }
                                 }
-                                // Recompute price using new computeFinalPrice
                                 const extraText = document.getElementById('smart-notes-input')?.value || '';
                                 const priceInfo = computeFinalPrice(svc, Object.fromEntries(State.selectedChips), 1, extraText);
                                 State.currentDueNowTotal = priceInfo.finalPrice;
@@ -4310,7 +4228,7 @@
 
                     formWrapper.appendChild(questionsContainer);
 
-                    // Smart notes field (same as before)
+                    // Smart notes field
                     const notesWrap = create('div', {
                         id: 'smart-notes-container',
                         style: 'margin-top:12px;'
@@ -4362,55 +4280,13 @@
                         renderCart();
                     });
 
-                    function updateAddButton() {
-                        // Simple validation: Ensure all "single" modules have an answer
-                        const requiredModules = moduleRefs.filter(id => SERVICE_DATA.intake_modules[id]?.type === 'single');
-                        const answeredRequired = requiredModules.every(id => State.selectedChips.has(id));
-
-                        if (answeredRequired) {
-                            addBtn.disabled = false;
-                            addBtn.style.opacity = '1';
-                            const comp = REVERSE_WEIGHTS[State.lockedComplexityWeight].toUpperCase();
-                            addBtn.textContent = `Add - $${Math.round(State.currentDueNowTotal)} [${comp}]`;
-                        } else {
-                            addBtn.disabled = true;
-                            addBtn.style.opacity = '0.5';
-                            addBtn.textContent = 'Select required options';
-                        }
-                    }
-
-                    addBtn.addEventListener('click', () => {
-                        if (addBtn.disabled) return;
-
-                        let notes = '';
-                        State.selectedChips.forEach(opt => {
-                            notes += `• ${opt.label} `;
-                        });
-                        const textVal = document.getElementById('smart-notes-input')?.value || '';
-                        if (textVal) notes += `| Notes: ${textVal}`;
-
-                        const entry = {
-                            id: `${svc.id}-${Date.now()}`,
-                            serviceId: svc.id,
-                            categoryId,
-                            name: svc.name,
-                            price: `$${State.currentDueNowTotal.toFixed(2)}`,
-                            icon: svc.icon || '🔧',
-                            notes: notes,
-                            furnitureItems: []
-                        };
-                        addToCart(entry);
-                        exitFocusedMode();
-                        container.style.display = 'none';
-                        if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
-                        renderCart();
-                    });
-
+                    // ✅ ADD BACK BUTTON (missing from your version)
                     addBackButton(container, () => {
                         container.style.display = 'none';
                         Breadcrumbs.goBack();
                     });
 
+                    // ✅ INITIAL UPDATE (missing)
                     updateAddButton();
 
                     // Initialize Smart Notes if smart_tags exist
@@ -4420,6 +4296,7 @@
                         notesWrap.innerHTML = `<textarea id="smart-notes-input" class="service-input-area" placeholder="Additional notes..." rows="3"></textarea>`;
                     }
                 }
+
                 /* ================================================================
                    FURNITURE SELECTION
                    ================================================================ */
@@ -4714,7 +4591,7 @@
                         });
                         addBtn.addEventListener('click', () => {
                             const minutes = State.furnitureItems.map(f => f.minutes);
-                            const charge = svc.name.toLowerCase().includes('repair') ? mathRepairCharge(minutes.reduce((a, b) => a + b, 0) / 60) : mathFurnitureAssembly(minutes);
+                            const charge = mathFurnitureAssembly(minutes);
 
                             const entry = {
                                 id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
