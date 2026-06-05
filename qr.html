@@ -3281,8 +3281,6 @@
         </div>
     </div>
 
-    </div>
-
     <script>
         if (!window.__booktom_qr_loaded) {
             window.__booktom_qr_loaded = true;
@@ -3345,19 +3343,15 @@
 
                 // 2. Format the display price for the Service Tile (NO MATERIALS ALLOWED HERE)
                 function formatServicePrice(svc) {
-                    const isHourly = svc.pricing?.labor?.type === 'hourly';
-                    const isFlat = svc.pricing?.type === 'flat_fee';
-                    const suffix = isHourly ? '/hr' : '';
-
-                    // If explicit total estimate range exists
-                    if (svc.total_estimate_range && typeof svc.total_estimate_range.min === 'number') {
-                        const {
-                            min,
-                            max
-                        } = svc.total_estimate_range;
-                        if (min === max || isFlat) return `$${Math.round(min)}${suffix}`;
-                        return `$${Math.round(min)} – $${Math.round(max)}${suffix}`;
-                    }
+    const isHourly = svc.pricing_engine === 'hourly';
+    const base = svc.financial_engine?.base_price ?? 0;
+    const range = svc.default_estimates?.total;
+    if (range && typeof range.min === 'number') {
+        if (range.min === range.max) return `$${Math.round(range.min)}${isHourly ? '/hr' : ''}`;
+        return `$${Math.round(range.min)} – $${Math.round(range.max)}${isHourly ? '/hr' : ''}`;
+    }
+    return `$${Math.round(base)}${isHourly ? '/hr' : ''}`;
+}
 
                     const range = getServicePriceRange(svc);
                     if (range.min === null) return svc.price || 'Call';
@@ -3373,86 +3367,101 @@ return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix
                 }
 
                 // 3. Compute exact price cleanly separating Labor vs Materials
-                function computeFinalPrice(svc, answers, selectedHours = 1) {
-                    let laborPrice = svc.base_price || 0;
-                    const materialsIncluded = svc.materials_included === true;
+                function computeFinalPrice(svc, answers, selectedHours = 1, extraText = '') {
+    // 1. Get base price from dynamic_services or service's own base
+    let basePrice = svc.financial_engine?.base_price ?? 0;
+    const dynKey = `${svc.category}+${svc.service_type}`;
+    if (SERVICE_DATA.dynamic_services?.[dynKey]?.financial_engine?.base_price !== undefined) {
+        basePrice = SERVICE_DATA.dynamic_services[dynKey].financial_engine.base_price;
+    }
 
-                    let matMin = materialsIncluded ? 0 : (svc.default_estimates?.materials?.min || 0);
-                    let matMax = materialsIncluded ? 0 : (svc.default_estimates?.materials?.max || 0);
+    let laborPrice = basePrice;
+    let minutes = svc.operational_metrics?.expected_minutes || 60;
 
-                    const questions = svc.intake?.questions || [];
-                    questions.forEach(q => {
-                        const ansId = answers[q.id];
-                        if (ansId && q.effects && q.effects[ansId]) {
-                            const effect = q.effects[ansId];
-                            if (typeof effect.fee === 'number') laborPrice += effect.fee;
-                            if (!materialsIncluded) {
-                                if (typeof effect.materials_min === 'number') matMin = effect.materials_min;
-                                if (typeof effect.materials_max === 'number') matMax = effect.materials_max;
-                            }
-                        }
-                    });
+    // 2. Apply smart tags from user text + answers
+    const fullText = (extraText + ' ' + Object.values(answers).join(' ')).toLowerCase();
+    const tagMap = SERVICE_DATA.smart_tags || {};
+    for (const [tag, data] of Object.entries(tagMap)) {
+        const synonyms = data.synonyms || [tag.replace('#','')];
+        if (synonyms.some(syn => fullText.includes(syn))) {
+            laborPrice += data.effects?.fee || 0;
+            minutes += data.effects?.minutes || 0;
+        }
+    }
 
-                    if (svc.pricing_engine === 'hourly') {
-                        const ratePerHour = svc.base_price || 0;
-                        laborPrice = ratePerHour * selectedHours;
-                    }
+    // 3. Apply intake module effects (if any)
+    const moduleRefs = svc.intake_modules_refs || [];
+    moduleRefs.forEach(modId => {
+        const mod = SERVICE_DATA.intake_modules[modId];
+        if (!mod) return;
+        const selected = answers[modId];
+        if (!selected) return;
+        const opt = mod.client_response.find(o => o.label === selected);
+        if (opt?.effects) {
+            laborPrice += opt.effects.fee || 0;
+            minutes += opt.effects.minutes || 0;
+        }
+    });
 
-                    return {
-                        finalPrice: laborPrice,
-                        materialsRange: [matMin, matMax],
-                        materialsIncluded: materialsIncluded
-                    };
-                }
+    // 4. Hourly override
+    if (svc.pricing_engine === 'hourly') {
+        laborPrice = (svc.financial_engine?.base_price || 0) * selectedHours;
+    }
+
+    // 5. Materials range (from service or intake)
+    let matMin = svc.default_estimates?.materials?.min || 0;
+    let matMax = svc.default_estimates?.materials?.max || 0;
+    const materialsIncluded = svc.materials_included === true;
+
+    return {
+        finalPrice: Math.round(laborPrice),
+        materialsRange: [matMin, matMax],
+        materialsIncluded,
+        estimatedMinutes: minutes
+    };
+}
 
                 // 4. Render Dynamic Intake Questions
-                function renderIntakeQuestions(svc, container, answers, updateBtnCallback) {
-                    container.innerHTML = '';
-                    const questions = svc.intake?.questions || [];
+               function renderIntakeQuestions(svc, container, answers, updateBtnCallback) {
+    container.innerHTML = '';
+    const moduleRefs = svc.intake_modules_refs || [];
+    if (moduleRefs.length === 0) {
+        updateBtnCallback();
+        return;
+    }
 
-                    questions.forEach(q => {
-                        if (q.depends_on) {
-                            let shouldShow = true;
-                            for (const [depKey, depVal] of Object.entries(q.depends_on)) {
-                                if (answers[depKey] !== depVal) {
-                                    shouldShow = false;
-                                    break;
-                                }
-                            }
-                            if (!shouldShow) return;
-                        }
+    moduleRefs.forEach(modId => {
+        const mod = SERVICE_DATA.intake_modules[modId];
+        if (!mod) return;
+        const qDiv = create('div', { class: 'intake-section' });
+        qDiv.appendChild(create('h4', { text: mod.question || mod.title || 'Select option' }));
 
-                        const qDiv = document.createElement('div');
-                        qDiv.className = 'intake-section';
-                        qDiv.setAttribute('data-question-id', q.id);
-
-                        const title = document.createElement('h4');
-                        title.textContent = q.text || q.prompt || 'Select an option:';
-                        qDiv.appendChild(title);
-
-                        const optionsContainer = document.createElement('div');
-                        optionsContainer.className = 'chip-group';
-
-                        (q.options || []).forEach(opt => {
-                            const valId = typeof opt === 'object' ? (opt.id || opt.value) : opt;
-                            const labelText = typeof opt === 'object' ? (opt.label || opt.text || opt.name || valId) : opt;
-
-                            const chip = document.createElement('button');
-                            chip.className = `chip ${answers[q.id] === valId ? 'active' : ''}`;
-                            chip.textContent = labelText;
-
-                            chip.onclick = () => {
-                                answers[q.id] = valId;
-                                renderIntakeQuestions(svc, container, answers, updateBtnCallback);
-                                updateBtnCallback();
-                            };
-                            optionsContainer.appendChild(chip);
-                        });
-
-                        qDiv.appendChild(optionsContainer);
-                        container.appendChild(qDiv);
-                    });
+        const chipGroup = create('div', { class: 'chip-group' });
+        mod.client_response.forEach(opt => {
+            const chip = create('button', { class: 'chip', text: opt.label });
+            chip.addEventListener('click', () => {
+                if (mod.type === 'single') {
+                    chipGroup.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    answers[modId] = opt.label;
+                } else {
+                    // multi – toggle
+                    if (chip.classList.contains('active')) {
+                        chip.classList.remove('active');
+                        delete answers[`${modId}_${opt.label}`];
+                    } else {
+                        chip.classList.add('active');
+                        answers[`${modId}_${opt.label}`] = opt.label;
+                    }
                 }
+                updateBtnCallback();
+            });
+            chipGroup.appendChild(chip);
+        });
+        qDiv.appendChild(chipGroup);
+        container.appendChild(qDiv);
+    });
+}
 
                 /* ================================================================
                    RATE LIMITER
@@ -3686,6 +3695,25 @@ return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix
                     });
                     (data.furniture_items || []).forEach(f => furnitureMap.set(f.article || f.code, f));
                 }
+                function resolveDynamicServiceType(svc, categoryId) {
+    if (svc.service_type) return svc.service_type;
+    const group = groupMap.get(svc.group);
+    if (!group) return 'repair';
+    const cat = categoryMap.get(categoryId);
+    if (!cat) return 'repair';
+    const dynTypes = cat.dynamic_service_types || ['repair'];
+    return dynTypes[0] || 'repair';
+}
+
+function extractSmartTagsFromText(text) {
+    const tags = [];
+    const lower = text.toLowerCase();
+    for (const [tag, data] of Object.entries(SERVICE_DATA.smart_tags || {})) {
+        const synonyms = data.synonyms || [tag.replace('#','')];
+        if (synonyms.some(syn => lower.includes(syn))) tags.push(tag);
+    }
+    return tags;
+}
 
                 /* ================================================================
                    BREADCRUMBS
@@ -4203,64 +4231,95 @@ function showIntakeQuestions(svc, categoryId, fromBack = false) {
     }
 
     const formWrapper = create('div', { class: 'simple-intake-form' });
-    const questionsContainer = create('div', { class: 'intake-questions-wrapper' });
+const questionsContainer = create('div', { class: 'intake-questions-wrapper' });
 
-    // Render Modules from Flat Graph
-    const moduleRefs = svc.intake_modules_refs || [];
-    moduleRefs.forEach(modId => {
-        const modData = SERVICE_DATA.intake_modules[modId];
-        if (!modData) return;
-
-        const qDiv = create('div', { class: 'intake-section' });
-        qDiv.appendChild(create('h4', { text: modData.title }));
-        
-        const optionsContainer = create('div', { class: 'chip-group' });
-
-        modData.options.forEach(opt => {
-            const chip = create('button', { class: 'chip', text: opt.label });
-            
-            chip.addEventListener('click', () => {
-                if (modData.type === 'single') {
-                    // Clear sibling active states
-                    Array.from(optionsContainer.querySelectorAll('.chip')).forEach(c => c.classList.remove('active'));
-                    chip.classList.add('active');
-                    State.selectedChips.set(modId, opt);
+// Render intake modules
+const moduleRefs = svc.intake_modules_refs || [];
+moduleRefs.forEach(modId => {
+    const mod = SERVICE_DATA.intake_modules[modId];
+    if (!mod) return;
+    const qDiv = create('div', { class: 'intake-section' });
+    qDiv.appendChild(create('h4', { text: mod.question || mod.title || 'Select option' }));
+    const chipGroup = create('div', { class: 'chip-group' });
+    mod.client_response.forEach(opt => {
+        const chip = create('button', { class: 'chip', text: opt.label });
+        chip.addEventListener('click', () => {
+            if (mod.type === 'single') {
+                chipGroup.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                State.selectedChips.set(modId, opt.label);
+            } else {
+                const key = `${modId}_${opt.label}`;
+                if (chip.classList.contains('active')) {
+                    chip.classList.remove('active');
+                    State.selectedChips.delete(key);
                 } else {
-                    // Multi-select toggle
-                    if (chip.classList.contains('active')) {
-                        chip.classList.remove('active');
-                        // Use a composite key for multi-select
-                        State.selectedChips.delete(`${modId}_${opt.label}`);
-                    } else {
-                        chip.classList.add('active');
-                        State.selectedChips.set(`${modId}_${opt.label}`, opt);
-                    }
+                    chip.classList.add('active');
+                    State.selectedChips.set(key, opt.label);
                 }
-                
-                processIntakeSelection(svc);
-                updateAddButton();
-            });
-            optionsContainer.appendChild(chip);
+            }
+            // Recompute price using new computeFinalPrice
+            const extraText = document.getElementById('smart-notes-input')?.value || '';
+            const priceInfo = computeFinalPrice(svc, Object.fromEntries(State.selectedChips), 1, extraText);
+            State.currentDueNowTotal = priceInfo.finalPrice;
+            updateAddButton();
         });
-        
-        qDiv.appendChild(optionsContainer);
-        questionsContainer.appendChild(qDiv);
+        chipGroup.appendChild(chip);
     });
+    qDiv.appendChild(chipGroup);
+    questionsContainer.appendChild(qDiv);
+});
 
-    formWrapper.appendChild(questionsContainer);
+formWrapper.appendChild(questionsContainer);
 
-    // Smart Notes Textarea Wrapper
-    const notesWrap = create('div', { id: 'smart-notes-container', style: 'margin-top:12px;' });
-    formWrapper.appendChild(notesWrap);
+// Smart notes field (same as before)
+const notesWrap = create('div', { id: 'smart-notes-container', style: 'margin-top:12px;' });
+notesWrap.innerHTML = `<textarea id="smart-notes-input" class="service-input-area" placeholder="Additional details (e.g., 'cracked tile', 'high ceiling', 'no grout')..." rows="3"></textarea>`;
+formWrapper.appendChild(notesWrap);
 
-    // Add To Cart Button
-    const addBtn = create('button', {
-        class: 'add-more-button',
-        type: 'button',
-        style: 'width:100%;margin-top:16px;'
-    });
-    formWrapper.appendChild(addBtn);
-    container.appendChild(formWrapper);
+const addBtn = create('button', {
+    class: 'add-more-button',
+    type: 'button',
+    text: 'Add to cart',
+    style: 'width:100%;margin-top:16px;'
+});
+formWrapper.appendChild(addBtn);
+container.appendChild(formWrapper);
+
+function updateAddButton() {
+    const required = moduleRefs.filter(id => SERVICE_DATA.intake_modules[id]?.type === 'single');
+    const allAnswered = required.every(id => State.selectedChips.has(id));
+    if (allAnswered) {
+        addBtn.disabled = false;
+        addBtn.textContent = `Add - $${Math.round(State.currentDueNowTotal)}`;
+    } else {
+        addBtn.disabled = true;
+        addBtn.textContent = 'Select required options';
+    }
+}
+
+addBtn.addEventListener('click', () => {
+    if (addBtn.disabled) return;
+    let notes = '';
+    for (let [k, v] of State.selectedChips.entries()) notes += `${k}: ${v} `;
+    const extra = document.getElementById('smart-notes-input')?.value || '';
+    if (extra) notes += `| ${extra}`;
+    const entry = {
+        id: `${svc.id}-${Date.now()}`,
+        serviceId: svc.id,
+        categoryId,
+        name: svc.name,
+        price: `$${State.currentDueNowTotal}`,
+        icon: svc.icon || '🔧',
+        notes: notes,
+        furnitureItems: []
+    };
+    addToCart(entry);
+    exitFocusedMode();
+    container.style.display = 'none';
+    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
+    renderCart();
+});
 
     function updateAddButton() {
         // Simple validation: Ensure all "single" modules have an answer
@@ -5277,7 +5336,7 @@ function showIntakeQuestions(svc, categoryId, fromBack = false) {
                 async function init() {
                     cacheDOM();
                     try {
-                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc26.json');
+                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_complex.json');
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         SERVICE_DATA = await res.json();
                     } catch (err) {
