@@ -5252,6 +5252,7 @@ async function init() {
         const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_complex.json');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         SERVICE_DATA = await res.json();
+        console.log('✅ JSON loaded');
     } catch (err) {
         console.error('Service data load error:', err);
         toast('Could not load services. Please refresh.', 'error');
@@ -5268,6 +5269,7 @@ async function init() {
             meta: { estimate_disclaimers: {} }
         };
     }
+    // ✅ ALWAYS run these – they belong outside the try/catch
     buildDataMaps(SERVICE_DATA);
     renderCategoryCards();
     wireGlobalEvents();
@@ -5275,9 +5277,6 @@ async function init() {
     if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
     setViewportHeight();
 }
-
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-else init();
 </script>
 
     <script>
