@@ -5252,14 +5252,7 @@
                            INITIALISATION
                            ================================================================ */
                         async function init() {
-                            buildDataMaps(SERVICE_DATA);
-                            renderCategoryCards();
-                            wireGlobalEvents();
-                            renderCart();
-                            if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
-                            setViewportHeight();
                             cacheDOM();
-                            init();
                             try {
                                 const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_complex.json');
                                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -5277,15 +5270,23 @@
                                     smart_tags: {},
                                     intake_modules: {},
                                     dynamic_services: {},
-                                    intent_mappings: {},
+                                    intent_mappings: {
+                                        objects: [],
+                                        default_fallback: {}
+                                    },
                                     pricing_formulas: {},
-                                    meta: {},
+                                    meta: {
+                                        estimate_disclaimers: {}
+                                    }
                                 };
                             }
-                            // ✅ ALWAYS run these – they belong outside the try/catch
-        
-
-                            // 2. Close the IIFE and the if-statement from the top of the script
+                            buildDataMaps(SERVICE_DATA);
+                            renderCategoryCards();
+                            wireGlobalEvents();
+                            renderCart();
+                            if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
+                            setViewportHeight();
+                            init();
                         })();
                     }
                 </script>
