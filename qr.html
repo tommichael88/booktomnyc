@@ -605,11 +605,12 @@
         }
 
         #category-card,
-        #categories-card,
+        #category-card,
         #category-grid,
-        #categories-grid,
-        #categories-card-grid,
-        #categoriesGrid .focused-mode,
+        #category-card-grid,
+        #categoryGrid
+        #categoryGrid .focused-mode,
+        
         .category-card-grid  .focused-mode {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -3289,8 +3290,7 @@
 
 
                 <script>
-                    if (!window.__booktom_qr_loaded) {
-                        window.__booktom_qr_loaded = true;
+          
                         (function() {
                             "use strict";
 
@@ -3525,7 +3525,7 @@
                                DOM REFERENCES
                                ================================================================ */
                             const DOM = {
-                                categoriesGrid: null,
+                                categoryGrid: null,
                                 cartFab: null,
                                 fabCount: null,
                                 cartOverlay: null,
@@ -3543,7 +3543,7 @@
                             };
 
                             function cacheDOM() {
-                                DOM.categoriesGrid = q("#category-card");
+                                DOM.categoryGrid = q("#category-card");
                                 DOM.cartFab = q("#cartFab");
                                 DOM.fabCount = q("#fabCartCount");
                                 DOM.cartOverlay = q("#cartOverlay");
@@ -3614,8 +3614,8 @@
                                 furnitureMap.clear();
                                 window.groupChildrenMap.clear();
 
-                                // Use 'categories' (plural) as in complex JSON
-                                (data.categories || []).forEach(c => categoryMap.set(c.id, c));
+                                // Use 'category' (plural) as in complex JSON
+                                (data.category || []).forEach(c => categoryMap.set(c.id, c));
                                 // Use 'groups' (plural)
                                 (data.groups || []).forEach(g => {
                                     groupMap.set(g.id, g);
@@ -3724,7 +3724,7 @@
                                 exitFocusedMode();
                                 Breadcrumbs.clear();
                                 setStep(1);
-                                if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = 'grid';
+                                if (DOM.categoryGrid) DOM.categoryGrid.style.display = 'grid';
                                 if (DOM.summaryMainContainer) DOM.summaryMainContainer.style.display = 'none';
                                 if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
                                 if (DOM.serviceContainer) DOM.serviceContainer.innerHTML = '';
@@ -3736,10 +3736,10 @@
                                CATEGORY GRID RENDERING
                                ================================================================ */
                             function renderCategoryCards() {
-                                if (!DOM.categoriesGrid) return;
-                                DOM.categoriesGrid.replaceChildren();
-                                // ✅ USE "categories" (plural) from JSON
-                                (SERVICE_DATA.categories || []).forEach(cat => {
+                                if (!DOM.categoryGrid) return;
+                                DOM.categoryGrid.replaceChildren();
+                                // ✅ USE "category" (plural) from JSON
+                                (SERVICE_DATA.category || []).forEach(cat => {
                                     const card = create('div', {
                                         class: 'category-card',
                                         'data-category-id': cat.id,
@@ -3765,7 +3765,7 @@
 
                                     const activate = () => {
                                         Breadcrumbs.push({
-                                            type: 'categories'
+                                            type: 'category'
                                         });
                                         showGroupsForCategory(cat.id);
                                     };
@@ -3776,7 +3776,7 @@
                                             activate();
                                         }
                                     });
-                                    DOM.categoriesGrid.appendChild(card);
+                                    DOM.categoryGrid.appendChild(card);
                                 });
                             }
                             /* ================================================================
@@ -3793,7 +3793,7 @@
                                 const container = DOM.serviceContainer;
                                 container.replaceChildren();
                                 container.style.display = 'block';
-                                if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = 'none';
+                                if (DOM.categoryGrid) DOM.categoryGrid.style.display = 'none';
                                 if (DOM.summaryMainContainer) DOM.summaryMainContainer.style.display = 'block';
                                 if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
 
@@ -3806,7 +3806,7 @@
                                     ]));
                                 }
 
-                                const rootGroups = (SERVICE_DATA.groups || []).filter(g => g.categories === categoryId && !g.parent_group);
+                                const rootGroups = (SERVICE_DATA.groups || []).filter(g => g.category === categoryId && !g.parent_group);
                                 const groupGrid = create('div', {
                                     class: 'group-grid',
                                     id: 'focusedGroupGrid'
@@ -5256,27 +5256,26 @@
                         /* ================================================================
                            INITIALISATION
                            ================================================================ */
-                           window.SERVICE_DATA = null; // 👈 ADD THIS EXACT LINE
   async function init() {
+              SERVICE_DATA = { category: [], groups: [], services: [], furniture_catalog: [], smart_tags: {}, intake_modules: {}, dynamic_services: {}, intent_mappings: { objects: [], default_fallback: {} }, pricing_formulas: {}, meta: { estimate_disclaimers: {} } };
+    }
     console.log("🛑 1. init() has started running!");
     
     cacheDOM();
-    console.log("🛑 2. DOM Cached. Did we find the grid container?", DOM.categoriesGrid);
+    console.log("🛑 2. DOM Cached. Did we find the grid container?", DOM.categoryGrid);
     
     try {
         console.log("🛑 3. Starting fetch request...");
         const res = await fetch('https://tommichael88.github.io/booktomnyc/booktomnyc.json');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        
         SERVICE_DATA = await res.json();
         window.SERVICE_DATA = SERVICE_DATA; // 👈 ADD THIS EXACT LINE
-        console.log("🛑 4. ✅ JSON fetched successfully! Categories found:", SERVICE_DATA?.categories?.length);
+        console.log("🛑 4. ✅ JSON fetched successfully! Category found:", SERVICE_DATA?.category?.length);
         
     } catch (err) {
         console.error('🛑 4. ❌ Service data load error:', err);
         toast('Could not load services. Please refresh.', 'error');
-        SERVICE_DATA = { categories: [], groups: [], services: [], furniture_catalog: [], smart_tags: {}, intake_modules: {}, dynamic_services: {}, intent_mappings: { objects: [], default_fallback: {} }, pricing_formulas: {}, meta: { estimate_disclaimers: {} } };
-    }
+
 
     console.log("🛑 5. Building Data Maps...");
     buildDataMaps(SERVICE_DATA);
@@ -5293,8 +5292,97 @@
     console.log("🛑 7. init() is completely finished.");
 } // <--- Make sure this brace is here!
 
-init();
-                </script>
+                  });
+                }
+            });
+        })();
+        (function() {
+            'use strict';
+
+            function decodeB64(s) {
+                try {
+                    return atob(s);
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            function safePhone(s) {
+                return (s || '').replace(/[^+\d\s\-()]/g, '').trim();
+            }
+
+            function safeEmail(s) {
+                // allow common email characters only
+                return (s || '').replace(/[^A-Za-z0-9@._+\-]/g, '').trim();
+            }
+
+            function openMail(el) {
+                var b64 = el.getAttribute('data-email') || '';
+                var email = safeEmail(decodeB64(b64));
+                if (!email) return;
+                // optionally prefill subject/body
+                var subject = encodeURIComponent('Inquiry from website');
+                var body = encodeURIComponent('');
+
+
+            function openTel(el) {
+                var raw = el.getAttribute('data-phone') || '';
+                var num = safePhone(raw);
+                if (!num) return;
+                window.location.href = 'tel:' + num;
+            }
+
+            function openSms(el) {
+                var raw = el.getAttribute('data-sms') || '';
+                var num = safePhone(raw);
+                if (!num) return;
+                window.location.href = 'sms:' + num;
+            }
+            // Wire handlers
+            document.querySelectorAll('.contact-mail').forEach(function(el) {
+                el.addEventListener('click', function(ev) {
+                    ev.preventDefault();
+                    openMail(el);
+                }, {
+                    passive: false
+                });
+                el.addEventListener('keydown', function(ev) {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        openMail(el);
+                    }
+                });
+            });
+            document.querySelectorAll('.contact-phone').forEach(function(el) {
+                el.addEventListener('click', function(ev) {
+                    ev.preventDefault();
+                    openTel(el);
+                }, {
+                    passive: false
+                });
+                el.addEventListener('keydown', function(ev) {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        openTel(el);
+                    }
+                });
+            });
+            document.querySelectorAll('.contact-sms').forEach(function(el) {
+                el.addEventListener('click', function(ev) {
+                    ev.preventDefault();
+                    openSms(el);
+                }, {
+                    passive: false
+                });
+                el.addEventListener('keydown', function(ev) {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        openSms(el);
+                    }
+                });
+            });
+        })();
+    </script>
 </body>
 
 </html>
