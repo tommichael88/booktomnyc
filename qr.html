@@ -3734,50 +3734,43 @@
                 /* ================================================================
                    CATEGORY GRID RENDERING
                    ================================================================ */
-                function renderCategoryCards() {
-                    if (!DOM.categoriesGrid) return;
-                    DOM.categoriesGrid.replaceChildren();
-                    SERVICE_DATA.category.forEach(cat => {
-                        const card = create('div', {
-                            class: 'category-card',
-                            'data-category-id': cat.id,
-                            tabindex: '0',
-                            role: 'button',
-                            'aria-label': cat.name
-                        });
-                        card.appendChild(create('div', {
-                            class: 'category-icon',
-                            text: cat.icon
-                        }));
-                        card.appendChild(create('h2', {
-                            text: cat.name
-                        }));
+function renderCategoryCards() {
+    if (!DOM.categoriesGrid) return;
+    DOM.categoriesGrid.replaceChildren();
+    // ✅ USE "categories" (plural) from JSON
+    (SERVICE_DATA.categories || []).forEach(cat => {
+        const card = create('div', {
+            class: 'category-card',
+            'data-category-id': cat.id,
+            tabindex: '0',
+            role: 'button',
+            'aria-label': cat.name
+        });
+        card.appendChild(create('div', { class: 'category-icon', text: cat.icon }));
+        card.appendChild(create('h2', { text: cat.name }));
 
-                        card.addEventListener('pointerdown', e => {
-                            const r = card.getBoundingClientRect();
-                            card.style.setProperty('--rx', `${((e.clientX - r.left) / r.width * 100).toFixed(1)}%`);
-                            card.style.setProperty('--ry', `${((e.clientY - r.top) / r.height * 100).toFixed(1)}%`);
-                            card.classList.add('tapped');
-                            setTimeout(() => card.classList.remove('tapped'), 400);
-                        });
+        card.addEventListener('pointerdown', e => {
+            const r = card.getBoundingClientRect();
+            card.style.setProperty('--rx', `${((e.clientX - r.left) / r.width * 100).toFixed(1)}%`);
+            card.style.setProperty('--ry', `${((e.clientY - r.top) / r.height * 100).toFixed(1)}%`);
+            card.classList.add('tapped');
+            setTimeout(() => card.classList.remove('tapped'), 400);
+        });
 
-                        const activate = () => {
-                            Breadcrumbs.push({
-                                type: 'categories'
-                            });
-                            showGroupsForCategory(cat.id);
-                        };
-                        card.addEventListener('click', activate);
-                        card.addEventListener('keydown', e => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                activate();
-                            }
-                        });
-                        DOM.categoriesGrid.appendChild(card);
-                    });
-                }
-
+        const activate = () => {
+            Breadcrumbs.push({ type: 'categories' });
+            showGroupsForCategory(cat.id);
+        };
+        card.addEventListener('click', activate);
+        card.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                activate();
+            }
+        });
+        DOM.categoriesGrid.appendChild(card);
+    });
+}
                 /* ================================================================
                    GROUP NAVIGATION
                    ================================================================ */
@@ -3805,7 +3798,7 @@
                         ]));
                     }
 
-                    const rootGroups = (SERVICE_DATA.group || []).filter(g => g.category === categoryId && !g.parent_group);
+                    const rootGroups = (SERVICE_DATA.groups || []).filter(g => g.category === categoryId && !g.parent_group);
                     const groupGrid = create('div', {
                         class: 'group-grid',
                         id: 'focusedGroupGrid'
@@ -4114,7 +4107,7 @@
                             class: 'service-group-header',
                             text: `${name} (${groups[name].length})`
                         }));
-                        group[name].forEach(svc => container.appendChild(createServiceCardElement(svc, currentCategoryId)));
+                        groups[name].forEach(svc => container.appendChild(createServiceCardElement(svc, currentCategoryId)));
                     });
                 }
 
@@ -5286,7 +5279,6 @@
                 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
                 else init();
             })();
-        }
     </script>
     <script>
         if ('serviceWorker' in navigator) {
