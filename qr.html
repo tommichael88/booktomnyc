@@ -3282,7 +3282,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });</script>
 <div class="main-card-container" id="category-card">
                             <!-- Category grid (step 1) -->
-                            </div><div class="sq" id="stepFlow" style="display: inherit;">
+</div><div class="sq" id="stepFlow" style="display: flex;">
                                     <!-- Step 1: NLP Description -->
                                     <div class="scard active" id="sc1">
                                         <div class="shead" onclick="openStep(1)">
@@ -3291,7 +3291,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <div class="sval" id="sv1"></div>
                                         </div>
                                         <div class="sbody" id="sb1">
-                                            <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px">Describe the job in plain English. The more detail, the better the estimate.</div>
                                             <textarea class="desc-ta" id="descIn" placeholder="e.g. I have a huge 6ft neon sign to mount on a brick wall..."></textarea>
                                             <div class="chip-container" id="catChips" style="margin-top:12px;"></div>
                                             <button class="nbtn" onclick="handleStep1()">Analyze Request <i class="ti ti-wand" aria-hidden="true"></i></button>
@@ -3346,9 +3345,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
 
                                 <div id="quoteOut"></div>
-                            <div id="serviceContainer"></div>
+                               <div id="serviceContainer"></div>
                             <div id="intakeQuestionsContainer"></div>
-
                             <div class="summaryMainContainer" id="serviceRequestSummary" style="display:none;">
                                 <div class="summary-header">
                                     <h3>New Service Request Summary</h3>
@@ -3364,11 +3362,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <button class="book-now-button" id="bookNowBtn" aria-label="Book now">★ BOOK ★</button>
                                 </span>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-
+          </div>
+</div>
                 <!-- Step bar (visible only in focused mode) -->
                 <div class="booking-step-bar" id="bookingStepBar" role="progressbar" aria-label="Booking progress">
                     <div class="step-node">
@@ -3833,7 +3828,7 @@ function buildDataMaps(data) {
     // 3. Map Services (Targeting 'services' array)
     // We check s.group_id OR s.group because service keys often change in schema migrations
     (data.services || []).forEach(s => {
-        const parent = s.group_id || s.group;
+        const parent = s.group || s.group_id;
         if (!parent) return;
         
         if (!servicesByGroup.has(parent)) {
@@ -3870,8 +3865,8 @@ function buildDataMaps(data) {
                             return;
                         }
                         const prev = this.stack.pop();
-                        if (prev.type === 'group') showGroupsForCategory(prev.category_id, true);
-                        else if (prev.type === 'subgroup') showSubGroups(prev.groups, prev.category_id, true);
+                        if (prev.type === 'groups') showGroupsForCategory(prev.category_id, true);
+                        else if (prev.type === 'subgroups') showSubGroups(prev.group, prev.category_id, true);
                         else if (prev.type === 'serviceDetail') {
                             window.selectGroupForCategory(prev.groups, prev.category_id);
                             if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
@@ -3999,7 +3994,7 @@ window.showGroupsForCategory = function(category_id, fromBack = false) {
 
     const cat = categoryMap.get(category_id);
     if (cat) {
-        const catName = cat.display_name || cat.name || 'Category';
+        const catName = cat.display_name || cat.name || 'category';
         container.appendChild(create('h3', {}, [
             create('span', {
                 text: (cat.icon || '📁') + ' '
@@ -4113,26 +4108,33 @@ window.showGroupsForCategory = function(category_id, fromBack = false) {
     }));
     container.appendChild(servicesGrid);
 
-    searchInput.addEventListener('input', debounce((e) => {
-        const term = e.target.value.trim();
-        if (term === '') {
-            servicesGrid.replaceChildren(create('div', {
-                class: 'empty-message',
-                text: 'Select a group above'
-            }));
-            return;
-        }
-        setStep(3);
-        const filtered = (SERVICE_DATA.services || []).filter(svc => {
-            const svcName = svc.display_name || svc.name || '';
-            const svcDesc = svc.description || '';
-            return svcName.toLowerCase().includes(term.toLowerCase()) || svcDesc.toLowerCase().includes(term.toLowerCase());
-        });
-        renderGlobalSearchResults(servicesGrid, filtered, category_id);
-    }, 220));
+searchInput.addEventListener('input', debounce((e) => {
+    const term = e.target.value.trim();
+    if (term === '') {
+        servicesGrid.replaceChildren(create('div', {
+            class: 'empty-message',
+            text: 'Select a group above'
+        }));
+        return;
+    }
+    setStep(3);
+const filtered = (SERVICE_DATA.services || []).filter(svc => {
+    const svcName = svc.ui_taxonomy?.display_name || '';
+    const svcDesc = svc.ui_taxonomy?.description || '';
+    const matches = svcName.toLowerCase().includes(term.toLowerCase()) ||
+                    svcDesc.toLowerCase().includes(term.toLowerCase());
+    if (term && matches) {
+        console.log('Matched service:', svc.id, 'display_name:', svcName, 'Desc:', svcDesc);
+    }
+    return matches;
+});
+console.log('Search term:', term, 'Found count:', filtered.length);
+    renderGlobalSearchResults(servicesGrid, filtered, category_id);
+}, 220));
 
     addBackButton(container, () => Breadcrumbs.goBack());
 };
+
 /* ================================================================
    SUBGROUP NAVIGATION
    ================================================================ */
@@ -4208,14 +4210,14 @@ window.selectGroupForCategory = function(groupId, category_id) {
     container.style.display = 'block';
 
     const cat = categoryMap.get(category_id);
-    const group = groupMap.get(groupId);
+    const group = groupMap.get(group_id);
     
     if (cat && group) {
-        const groupName = group.display_name || group.name || 'Unnamed Group';
+        const groupName = group.display_name || group.display_name || 'Unnamed Group';
         container.appendChild(create('h3', {}, [
             create('span', {
                 text: (cat.icon || '📁') + ' › ' + (group.icon || '📁') + ' '
-            }), document.createTextNode(groupName)
+            }), document.createTextNode(group.display_Name)
         ]));
     }
 
@@ -4225,7 +4227,7 @@ window.selectGroupForCategory = function(groupId, category_id) {
     });
     container.appendChild(servicesGrid);
 
-    let services = servicesByGroup.get(groupId) || [];
+    let services = servicesByGroup.get(group_id) || [];
     (function collect(gid) {
         (window.groupChildrenMap.get(gid) || []).forEach(c => {
             services.push(...(servicesByGroup.get(c.id) || []));
@@ -5634,6 +5636,9 @@ function renderGlobalSearchResults(container, services, currentCategoryId) {
                             meta: {
                                 category: [],
                                 group: [],
+                                groups: [],
+                                subgroups: [],
+                                subgroup: [],
                                 services: [],
                                 furniture_items: []
                             }
