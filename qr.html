@@ -1237,16 +1237,13 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
 
                     // 3. Map Services (Targeting 'services' array)
                     // We check s.group_id OR s.group because service keys often change in schema migrations
-                    (data.services || []).forEach(s => {
-                        const parent = s.group_id || s.group;
-                        if (!parent) return;
-
-                        if (!servicesByGroup.has(parent)) {
-                            servicesByGroup.set(parent, []);
-                        }
-                        servicesByGroup.get(parent).push(s);
-                    });
-
+(data.services || []).forEach(s => {
+    // ✅ Check both top-level AND ui_taxonomy.group_id
+    const parent = s.group_id || s.group || s.ui_taxonomy?.group_id || s.ui_taxonomy?.group;
+    if (!parent) return;
+    if (!servicesByGroup.has(parent)) servicesByGroup.set(parent, []);
+    servicesByGroup.get(parent).push(s);
+});
                     // 4. Map Furniture (Targeting 'furniture_catalog' and 'furniture_items')
                     const furnitureSource = data.furniture_catalog || data.furniture_items || [];
                     furnitureSource.forEach(f => {
