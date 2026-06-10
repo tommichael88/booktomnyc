@@ -19,14 +19,12 @@
     <link id="favicon" rel="icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon">
     <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/tht_logo.png?raw=true" as="image">
     <link rel="preload" href="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" as="image">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="shortcut icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type="image/x-icon">
     <link rel="apple-touch-icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#8a0615">
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         :root {
             --clr-red: #de0000;
@@ -52,41 +50,29 @@
             --step-idle: rgba(255, 255, 255, .18);
             --step-active: var(--clr-red);
             --step-done: var(--clr-red-dark);
-            -webkit-text-size-adjust: 100%;
-            font-family: Ubuntu, -apple-system, BlinkMacSystemFont, sans-serif --color-bg-body: #F4F4F5;
             --color-bg-card: #FFFFFF;
             --color-bg-subtle: #FAFAFA;
             --color-bg-hover: #F1F5F9;
-
-
-
             --color-success: #10B981;
             --color-success-light: #ECFDF5;
             --color-success-border: #A7F3D0;
             --color-success-text: #065F46;
-
             --color-danger: #EF4444;
             --color-danger-light: #FEF2F2;
             --color-danger-border: #FECACA;
             --color-danger-text: #991B1B;
-
-
-
             --color-border: #E2E8F0;
             --color-border-focus: #93C5FD;
-
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
-
             --radius-md: 10px;
             --radius-lg: 16px;
             --radius-pill: 9999px;
-
-
-
-
-
+            font-family: Ubuntu, -apple-system, BlinkMacSystemFont, sans-serif --color-bg-body: #F4F4F5;
+            -webkit-text-size-adjust: 100%;
+            
+        }
             *,
             ::after,
             ::before {
@@ -4570,6 +4556,7 @@
                    DATA & CONFIG
                    ================================================================ */
                 let SERVICE_DATA = null;
+
                 const categoryMap = new Map();
                 const groupMap = new Map();
                 const servicesByGroup = new Map();
@@ -5093,6 +5080,12 @@
                     container.appendChild(servicesGrid);
 
                     let services = servicesByGroup.get(group_id) || [];
+                    console.log(`Services for group ${groupId}:`, services);
+if (!services.length) {
+    console.warn(`No services found for group ${groupId}. Check group IDs in your services array.`);
+    container.appendChild(create('div', { class: 'empty-message', text: 'No services in this group (debug: check console)' }));
+    return;
+}
                     (function collect(gid) {
                         (window.groupChildrenMap.get(gid) || []).forEach(c => {
                             services.push(...(servicesByGroup.get(c.id) || []));
@@ -5244,11 +5237,11 @@
                    INTAKE QUESTIONS & SERVICE DETAIL (COMPLETELY REWRITTEN FOR v2.2)
                    ================================================================ */
                 function showIntakeQuestions(svc, category_id, fromBack = false) {
-                    if (!fromBack) Breadcrumbs.push({
-                        type: 'serviceDetail',
-                        group: group_id,
-                        category_id
-                    });
+                    Breadcrumbs.push({
+    type: 'serviceDetail',
+    group: svc.group_id || svc.group,   // use the service's own group
+    category_id
+});
                     enterFocusedMode();
                     setStep(4);
 
@@ -5458,14 +5451,14 @@
                     for (const [key, item] of furnitureMap.entries()) {
                         if (key === 'PAX_CUSTOM') continue;
                         masterList.push({
-                            key,
-                            label: item.name,
-                            brand: item.brand === 'IKEA' ? 'IKEA' : 'Generic',
-                            type: item.type || 'Other',
-                            article: item.article,
-                            minutes: item.minutes,
-                            isIkea: item.brand === 'IKEA'
-                        });
+    key,
+    label: item.display_name || item.name || item.title || 'Unnamed',
+    brand: (item.brand || '').toUpperCase() === 'IKEA' ? 'IKEA' : (item.brand || 'Generic'),
+    type: item.type || item.category || 'Other',
+    article: item.article || item.article_number || item.sku,
+    minutes: item.minutes || item.assembly_minutes || item.estimated_minutes || 30,
+    isIkea: (item.brand || '').toUpperCase() === 'IKEA'
+});
                     }
 
                     const distinctBrands = [...new Set(masterList.map(i => i.brand))].sort();
