@@ -1610,44 +1610,40 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
                 /* ================================================================
                    SELECT A LEAF GROUP – SHOW SERVICES
                    ================================================================ */
-                window.selectGroupForCategory = function(groupId, category_id) {
-                    setStep(3);
-                    const container = DOM.serviceContainer;
-                    container.replaceChildren();
-                    container.style.display = 'block';
+window.selectGroupForCategory = function(groupId, categoryId) {   // ✅ rename parameter to categoryId
+    setStep(3);
+    const container = DOM.serviceContainer;
+    container.replaceChildren();
+    container.style.display = 'block';
 
-                    const cat = categoryMap.get(categoryId);
-                    const group = groupMap.get(groupId);
+    const cat = categoryMap.get(categoryId);      // ✅ now defined
+    const group = groupMap.get(groupId);
 
-                    if (cat && group) {
-    const groupName = group.display_name || group.id || 'Unnamed Group';
-    container.appendChild(create('h3', {}, [
-        create('span', { text: (cat.icon || '📁') + ' › ' + (group.icon || '📁') + ' ' }),
-        document.createTextNode(groupName)   // ✅ use the variable
-    ]));
-}
+    if (cat && group) {
+        const groupName = group.display_name || group.id || 'Unnamed Group';
+        container.appendChild(create('h3', {}, [
+            create('span', { text: (cat.icon || '📁') + ' › ' + (group.icon || '📁') + ' ' }),
+            document.createTextNode(groupName)
+        ]));
+    }
 
-                    const servicesGrid = create('div', {
-                        class: 'service-item-grid',
-                        id: 'focusedServicesGrid'
-                    });
-                    container.appendChild(servicesGrid);
+    const servicesGrid = create('div', { class: 'service-item-grid', id: 'focusedServicesGrid' });
+    container.appendChild(servicesGrid);
 
-                    let services = servicesByGroup.get(groupId) || [];
-                    (function collect(gid) {
-                        (window.groupChildrenMap.get(gid) || []).forEach(c => {
-                            services.push(...(servicesByGroup.get(c.id) || []));
-                            collect(c.id);
-                        });
-                    })(groupId);
-                    services = services.filter((v, i, a) => a.findIndex(s => s.id === v.id) === i);
+    let services = servicesByGroup.get(groupId) || [];
+    (function collect(gid) {
+        (window.groupChildrenMap.get(gid) || []).forEach(c => {
+            services.push(...(servicesByGroup.get(c.id) || []));
+            collect(c.id);
+        });
+    })(groupId);
+    services = services.filter((v, i, a) => a.findIndex(s => s.id === v.id) === i);
 
-                    renderServices(servicesGrid, services, categoryId);
+    renderServices(servicesGrid, services, categoryId);   // ✅ now uses correct variable
 
-                    if (group?.parent_group) addBackButton(container, () => window.showSubGroups(group.parent_group, categoryId, true));
-                    else addBackButton(container, () => window.showGroupsForCategory(categoryId, true));
-                };
-
+    if (group?.parent_group) addBackButton(container, () => window.showSubGroups(group.parent_group, categoryId, true));
+    else addBackButton(container, () => window.showGroupsForCategory(categoryId, true));
+};
 
 
 
