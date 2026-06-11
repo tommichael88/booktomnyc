@@ -617,43 +617,6 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
                                 </div>
                             </div>
 
-                            <!-- Service Mode Toggle -->
-                            <div class="service-mode-toggle" style="display:flex; gap:20px; background:rgba(255,255,255,.45); margin-bottom:10px; justify-content:center;">
-                                <button id="btn-mode-catalog" class="chip active" onclick="toggleServiceMode('catalog')">
-                                    Service Catalog
-                                </button>&nbsp;
-                                <button id="btn-mode-ai" class="chip" onclick="toggleServiceMode('ai')">
-                                    <i>Instant</i></b>⚡<b>Estimate</b>
-                                </button>
-                            </div>
-
-                            <!-- Mode Toggle Script -->
-                            <script>
-                                window.toggleServiceMode = function(mode) {
-                                    const catalog = document.getElementById('category-card');
-                                    const sqFlow = document.getElementById('stepFlow');
-                                    const btnCatalog = document.getElementById('btn-mode-catalog');
-                                    const btnAi = document.getElementById('btn-mode-ai');
-
-                                    if (mode === 'catalog') {
-                                        catalog.style.display = 'grid';
-                                        sqFlow.style.display = 'none';
-                                        btnCatalog.classList.add('active');
-                                        btnAi.classList.remove('active');
-                                    } else {
-                                        catalog.style.display = 'none';
-                                        sqFlow.style.display = 'block';
-                                        btnAi.classList.add('active');
-                                        btnCatalog.classList.remove('active');
-                                    }
-                                };
-
-                                // Initialize default state
-                                document.addEventListener('DOMContentLoaded', () => {
-                                    toggleServiceMode('catalog');
-                                });
-                            </script>
-
                             <!-- Main Card Container -->
                             <div class="main-card-container">
                                 <!-- Step Progress Bar -->
@@ -681,6 +644,26 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
 
                                 <!-- Category Grid (Step 1) -->
                                 <div id="category-card"></div>
+
+                                <!-- ============================================================
+                                 SMARTQUOTE INLINE PROMPT BAR (always below the grid)
+                                 ============================================================ -->
+                                <div id="sqPromptBar" style="margin-top:10px; padding:10px 12px; background:rgba(255,255,255,0.82); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(200,200,200,0.7); border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+                                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                        <span style="font-size:1.1rem;">⚡</span>
+                                        <span style="font-size:0.78rem; font-weight:700; color:#8a0615; text-transform:uppercase; letter-spacing:0.05em;">SmartQuote</span>
+                                        <span style="font-size:0.75rem; color:#666; font-weight:500;">— or describe your job for an instant estimate</span>
+                                    </div>
+                                    <div style="display:flex; gap:8px; align-items:flex-end;">
+                                        <textarea id="sqInlineDesc" class="service-input-area" rows="2" placeholder="e.g. I need to mount a heavy TV on a brick wall in the living room…" style="flex:1; min-height:56px; background:rgba(255,255,255,0.9); color:#222; border-color:rgba(180,180,180,0.7); font-size:0.9rem;"></textarea>
+                                        <button id="sqInlineAnalyze" style="flex-shrink:0; padding:10px 16px; background:linear-gradient(135deg,#8a0615,#de0000); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:0.85rem; cursor:pointer; min-height:56px; transition:all .2s ease;" onclick="sqInlineLaunch()">
+                                            <i class="ti ti-wand" aria-hidden="true"></i><br>Analyze
+                                        </button>
+                                    </div>
+                                    <!-- Context chips injected here when coming from an "Other" tile -->
+                                    <div id="sqContextChips" style="display:none; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
+                                </div>
+
                             </div><!-- /.main-card-container -->
 
                             <!-- Service Container (Step 2) -->
@@ -709,9 +692,17 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
                             </div>
 
                             <!-- ============================================================
-                             STEP FLOW (AI Instant Estimate)
+                             STEP FLOW (SmartQuote – shown inline below category grid
+                             or launched full-screen when "Other" tile is tapped)
                              ============================================================ -->
                             <div class="sq" id="stepFlow" style="display:none;">
+
+                                <!-- SmartQuote context banner (shown when launched from an "Other" tile) -->
+                                <div id="sqContextBanner" style="display:none; padding:10px 14px; background:linear-gradient(135deg,rgba(138,6,21,0.12),rgba(222,0,0,0.08)); border:1px solid rgba(222,0,0,0.25); border-radius:10px; margin-bottom:4px;">
+                                    <div style="font-size:0.75rem; font-weight:700; color:#8a0615; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">⚡ SmartQuote — Custom Job</div>
+                                    <div id="sqContextBannerText" style="font-size:0.85rem; color:#333; line-height:1.4;"></div>
+                                    <div id="sqContextBannerChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
+                                </div>
 
                                 <!-- Step 1: NLP Description -->
                                 <div class="scard active" id="sc1">
@@ -721,9 +712,10 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
                                         <div class="sval" id="sv1"></div>
                                     </div>
                                     <div class="sbody" id="sb1">
+                                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.6); margin-bottom:8px;">Describe the job — the more detail, the sharper the estimate.</div>
                                         <textarea class="desc-ta" id="descIn" placeholder="e.g. I have a huge 6ft neon sign to mount on a brick wall..."></textarea>
                                         <div class="chip-container" id="catChips" style="margin-top:12px;"></div>
-                                        <button class="nbtn" onclick="handleStep1()">
+                                        <button class="nbtn" onclick="handleStep1()" style="margin-top:16px; width:100%; justify-content:center;">
                                             Analyze Request <i class="ti ti-wand" aria-hidden="true"></i>
                                         </button>
                                     </div>
@@ -773,6 +765,7 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
 
                                         <!-- Adlib Sentence Builder -->
                                         <div class="adlib-box" id="adlibBox" style="display:none; background:rgba(0,0,0,0.3); border-radius:10px; padding:15px; margin-top:20px; border-left:3px solid var(--clr-red);">
+                                            <div style="font-size:0.75rem; font-weight:700; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Review Job Statement</div>
                                             <div class="adlib-sentence" id="adlibSentence" style="line-height:2.2; font-size:15px;"></div>
                                             <div style="margin-top:16px; display:flex; gap:10px;">
                                                 <button class="nbtn" style="flex:1;" onclick="confirmAdlib()">
@@ -830,6 +823,163 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
             </div><!-- /.qrc_gallery.section -->
         </div><!-- /.qrc_page_inner -->
     </div><!-- /.qrc_page_wrapper -->
+    <script>
+        // --- 1. Global State & DOM References --- //
+        const DOM = {
+            grid: document.getElementById('categoryGrid'),
+            sqWrapper: document.getElementById('smartQuoteWrapper'),
+            sqInput: document.getElementById('sqDescIn'),
+            sqBreadcrumbs: document.getElementById('sqBreadcrumbDisplay'),
+            sqChips: document.getElementById('sqChipsDisplay'),
+            sqGenBtn: document.getElementById('sqGenerateBtn'),
+            sqCancelBtn: document.getElementById('sqCancelBtn'),
+            sqQuoteResult: document.getElementById('sqQuoteResult'),
+            sqFinalTitle: document.getElementById('sqFinalTitle'),
+            sqFinalPrice: document.getElementById('sqFinalPrice'),
+            sqAddCartBtn: document.getElementById('sqAddToCartBtn')
+        };
+
+        let currentCustomQuote = null;
+
+        // --- 2. Master Tile Interceptor --- //
+        document.addEventListener('click', (e) => {
+            const tile = e.target.closest('.service-tile');
+            if (!tile) return;
+
+            const serviceName = tile.getAttribute('data-name');
+            const path = tile.getAttribute('data-path');
+            
+            // Derive an ID or use a data-id if available to look up in btnyc.json
+            const serviceId = tile.getAttribute('data-id') || serviceName.toLowerCase().replace(/\s+/g, '_'); 
+
+            // Logic Split: Is this an "Other" service requiring NLP, or a Standard service?
+            if (serviceName.toLowerCase().includes('other')) {
+                initSmartQuoteFlow(path, serviceName);
+            } else {
+                initStandardIntake(path, serviceName, serviceId);
+            }
+        });
+
+        // --- 3. Flow A: SmartQuote NLP Flow ("Other" Services) --- //
+        function initSmartQuoteFlow(path, serviceName) {
+            // UI Transition
+            DOM.grid.style.display = 'none';
+            DOM.sqWrapper.style.display = 'block';
+            DOM.sqQuoteResult.style.display = 'none';
+            
+            // Pre-fill breadcrumbs and JSON Category/Group Context
+            const contextArray = path.split(' > ');
+            DOM.sqBreadcrumbs.innerHTML = `Custom Request: <strong>${path}</strong>`;
+            DOM.sqChips.innerHTML = contextArray.map(ctx => 
+                `<span class="chip"><i class="ti ti-wand" style="font-size: 0.8rem;"></i> ${ctx}</span>`
+            ).join('');
+
+            const specificSubject = contextArray[contextArray.length - 1];
+            DOM.sqInput.value = `I need help with ${specificSubject.toLowerCase()}... `;
+            DOM.sqInput.focus();
+
+            // Bind the Action Button to NLP Processing
+            DOM.sqGenBtn.style.display = 'block';
+            DOM.sqGenBtn.innerHTML = "Analyze & Generate Price";
+            DOM.sqGenBtn.onclick = handleSmartQuoteAnalysis;
+        }
+
+        function handleSmartQuoteAnalysis() {
+            const inputTxt = DOM.sqInput.value.trim();
+            if (!inputTxt) return alert("Please describe what you need done.");
+
+            DOM.sqGenBtn.innerHTML = "Processing via IntakeEngine...";
+            DOM.sqGenBtn.disabled = true;
+            
+            setTimeout(() => {
+                // INTEGRATION POINT: 
+                // Here is where you parse inputTxt against SERVICE_DATA.intent_mappings 
+                // and SERVICE_DATA.smart_tags to calculate the dynamic price.
+                
+                currentCustomQuote = {
+                    id: 'dynamic_' + Math.random().toString(36).substr(2, 9),
+                    title: `Custom: ${inputTxt.substring(0, 25)}...`,
+                    price: 125, // Calculated from SERVICE_DATA.dynamic_services
+                    qty: 1
+                };
+
+                // Advance UI to Result State
+                DOM.sqGenBtn.style.display = 'none';
+                DOM.sqQuoteResult.style.display = 'block';
+                DOM.sqFinalTitle.innerText = currentCustomQuote.title;
+                DOM.sqFinalPrice.innerText = `$${currentCustomQuote.price}.00`;
+                DOM.sqGenBtn.disabled = false;
+            }, 800);
+        }
+
+        // --- 4. Flow B: Standard Service JSON Intake Flow --- //
+        function initStandardIntake(path, serviceName, serviceId) {
+            // UI Transition
+            DOM.grid.style.display = 'none';
+            DOM.sqWrapper.style.display = 'block';
+            DOM.sqQuoteResult.style.display = 'none';
+            
+            DOM.sqBreadcrumbs.innerHTML = `Standard Booking: <strong>${path}</strong>`;
+            DOM.sqChips.innerHTML = `<span class="chip"><i class="ti ti-tool" style="font-size: 0.8rem;"></i> ${serviceName}</span>`;
+            
+            // INTEGRATION POINT:
+            // let modules = SERVICE_DATA.intake_modules[serviceId];
+            // Render the questions from `modules` inside DOM.sqInput's container.
+            
+            // For now, we simulate the module loading into the textarea box
+            DOM.sqInput.value = `[System will load specific intake questions from SERVICE_DATA.intake_modules here]\n\ne.g.,\n1. What are the dimensions?\n2. Do you have the materials?`;
+            
+            // Bind the Action Button to Standard Confirmation
+            DOM.sqGenBtn.style.display = 'block';
+            DOM.sqGenBtn.innerHTML = "Confirm Details";
+            DOM.sqGenBtn.onclick = () => {
+                DOM.sqGenBtn.innerHTML = "Calculating...";
+                
+                setTimeout(() => {
+                    // Retrieve pricing from SERVICE_DATA.pricing_formulas
+                    currentCustomQuote = {
+                        id: serviceId,
+                        title: serviceName,
+                        price: 85, // Mapped from JSON rules
+                        qty: 1
+                    };
+                    
+                    // Advance UI to Result State
+                    DOM.sqGenBtn.style.display = 'none';
+                    DOM.sqQuoteResult.style.display = 'block';
+                    DOM.sqFinalTitle.innerText = currentCustomQuote.title;
+                    DOM.sqFinalPrice.innerText = `$${currentCustomQuote.price}.00`;
+                }, 500);
+            };
+        }
+
+        // --- 5. Cart Integration & State Reset --- //
+        DOM.sqAddCartBtn.addEventListener('click', () => {
+            if (currentCustomQuote) {
+                // Execute standard Cart append logic
+                if (typeof addToCart === 'function') {
+                    addToCart(currentCustomQuote);
+                } else {
+                    console.log("addToCart trigger:", currentCustomQuote);
+                }
+                
+                resetUI();
+                if (typeof renderCart === 'function') renderCart();
+            }
+        });
+
+        DOM.sqCancelBtn.addEventListener('click', resetUI);
+
+        function resetUI() {
+            DOM.sqWrapper.style.display = 'none';
+            DOM.grid.style.display = 'grid'; // Returns to native card grid
+            DOM.sqInput.value = '';
+            DOM.sqGenBtn.style.display = 'block';
+            DOM.sqGenBtn.disabled = false;
+            DOM.sqQuoteResult.style.display = 'none';
+            currentCustomQuote = null;
+        }
+    </script>
 
     <script>
         if (!window.__booktom_qr_loaded) {
@@ -892,34 +1042,17 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
                 }
 
                 // 2. Format the display price for the Service Tile (NO MATERIALS ALLOWED HERE)
-                function formatServicePrice(svc) {
-                    const isHourly = svc.pricing?.labor?.type === 'hourly';
-                    const isFlat = svc.pricing?.type === 'flat_fee';
-                    const suffix = isHourly ? '/hr' : '';
-
-                    // If explicit total estimate range exists
-                    if (svc.total_estimate_range && typeof svc.total_estimate_range.min === 'number') {
-                        const {
-                            min,
-                            max
-                        } = svc.total_estimate_range;
-                        if (min === max || isFlat) return `$${Math.round(min)}${suffix}`;
-                        return `$${Math.round(min)} – $${Math.round(max)}${suffix}`;
-                    }
-
-                    const range = getServicePriceRange(svc);
-                    if (range.min === null) return svc.price || 'Call';
-
-                    // If it's a flat fee, force the base price only
-                    if (isFlat || range.min === range.max) {
-                        return `$${Math.round(range.min)}${suffix}`;
-                    }
-
-                    const diff = range.max - range.min;
-                    if (diff <= 55) return `<span class="price-prefix">around</span> $${Math.round((range.min + range.max) / 2)}${suffix}`;
-                    return `<span class="price-prefix">from</span> $${Math.round(range.min)}${suffix}`;
-                }
-
+function formatServicePrice(svc) {
+    // Hourly pricing
+    if (svc.pricing_engine === 'hourly_estimate' || svc.pricing?.type === 'hourly') {
+        const base = svc.financial_engine?.base_price || svc.base_price || 0;
+        return `<span class="price-prefix">from</span> $${base}/hr`;
+    }
+    // Flat fee or diagnostic
+    const base = svc.financial_engine?.base_price || svc.base_price || 0;
+    if (base) return `$${base}`;
+    return svc.price || 'Call';
+}
                 // 3. Compute exact price cleanly separating Labor vs Materials
                 function computeFinalPrice(svc, answers, selectedHours = 1) {
                     let laborPrice = svc.base_price || 0;
@@ -941,11 +1074,10 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
                         }
                     });
 
-                    if (svc.pricing_engine === 'hourly') {
-                        const ratePerHour = svc.base_price || 0;
-                        laborPrice = ratePerHour * selectedHours;
-                    }
-
+if (svc.pricing_engine === 'hourly_estimate') {
+    const ratePerHour = svc.financial_engine?.base_price || svc.base_price || 0;
+    laborPrice = ratePerHour * selectedHours;
+}
                     return {
                         finalPrice: laborPrice,
                         materialsRange: [matMin, matMax],
@@ -1213,45 +1345,47 @@ body{font-family:var(--font-sans);background:var(--color-bg-body);padding:2rem 1
                 /* ================================================================
                    BUILD DATA MAPS
                    ================================================================ */
-                function buildDataMaps(data) {
-                    categoryMap.clear();
-                    groupMap.clear();
-                    servicesByGroup.clear();
-                    furnitureMap.clear();
-                    window.groupChildrenMap.clear();
+function buildDataMaps(data) {
+    categoryMap.clear();
+    groupMap.clear();
+    servicesByGroup.clear();
+    furnitureMap.clear();
+    window.groupChildrenMap.clear();
 
-                    // 1. Map Categories (Targeting 'category' array from your new schema)
-                    (data.category || []).forEach(c => categoryMap.set(c.id, c));
+    // 1. Map Categories (Targeting 'category' array from your new schema)
+    (data.category || []).forEach(c => categoryMap.set(c.id, c));
 
-                    // 2. Map Groups (Targeting 'group' array from your new schema)
-                    // We check both g.parent_group AND g.parent_id to ensure compatibility
-                    (data.group || []).forEach(g => {
-                        groupMap.set(g.id, g);
-                        const parent = g.parent_group || g.parent_id || null;
+    // 2. Map Groups (Targeting 'group' array from your new schema)
+    // We check both g.parent_group AND g.parent_id to ensure compatibility
+    (data.group || []).forEach(g => {
+        groupMap.set(g.id, g);
+        const parent = g.parent_group || g.parent_id || null;
+        
+        if (!window.groupChildrenMap.has(parent)) {
+            window.groupChildrenMap.set(parent, []);
+        }
+        window.groupChildrenMap.get(parent).push(g);
+    });
 
-                        if (!window.groupChildrenMap.has(parent)) {
-                            window.groupChildrenMap.set(parent, []);
-                        }
-                        window.groupChildrenMap.get(parent).push(g);
-                    });
+    // 3. Map Services (Targeting 'services' array)
+    // We check s.group_id OR s.group because service keys often change in schema migrations
+    (data.services || []).forEach(s => {
+        const parent = s.group_id || s.group;
+        if (!parent) return;
+        
+        if (!servicesByGroup.has(parent)) {
+            servicesByGroup.set(parent, []);
+        }
+        servicesByGroup.get(parent).push(s);
+    });
 
-                    // 3. Map Services (Targeting 'services' array)
-                    // We check s.group_id OR s.group because service keys often change in schema migrations
-(data.services || []).forEach(s => {
-    // ✅ Check both top-level AND ui_taxonomy.group_id
-    const parent = s.group_id || s.group || s.ui_taxonomy?.group_id || s.ui_taxonomy?.group;
-    if (!parent) return;
-    if (!servicesByGroup.has(parent)) servicesByGroup.set(parent, []);
-    servicesByGroup.get(parent).push(s);
-});
-                    // 4. Map Furniture (Targeting 'furniture_catalog' and 'furniture_items')
-                    const furnitureSource = data.furniture_catalog || data.furniture_items || [];
-                    furnitureSource.forEach(f => {
-                        const key = f.article || f.code || f.id;
-                        if (key) furnitureMap.set(key, f);
-                    });
-                }
-                /* ================================================================
+    // 4. Map Furniture (Targeting 'furniture_catalog' and 'furniture_items')
+    const furnitureSource = data.furniture_catalog || data.furniture_items || [];
+    furnitureSource.forEach(f => {
+        const key = f.article || f.code || f.id;
+        if (key) furnitureMap.set(key, f);
+    });
+}                /* ================================================================
                    BREADCRUMBS
                    ================================================================ */
                 const Breadcrumbs = {
@@ -1661,6 +1795,10 @@ window.selectGroupForCategory = function(groupId, categoryId) {   // ✅ rename 
                     }
                     const grouped = {};
                     services.forEach(svc => {
+                        // Deduplicate by id
+const unique = new Map();
+services.forEach(s => unique.set(s.id, s));
+services = Array.from(unique.values());
                         let key = 'Other';
                         const name = svc.ui_taxonomy?.display_name.toLowerCase();
                         if (name.includes('installation') || name.includes('mount')) key = 'Installation';
