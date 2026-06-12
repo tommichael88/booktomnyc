@@ -4818,6 +4818,10 @@
                     };
                 }
 
+                // Inside loadSmartQuoteCatalog, after setting DB, add:
+                // smartQuoteReady = true;
+                // smartQuoteCallbacks.forEach(fn => fn());
+                // smartQuoteCallbacks = [];
                 const categoryMap = new Map();
                 const groupMap = new Map();
                 const servicesByGroup = new Map();
@@ -5324,98 +5328,129 @@
                     });
                 }
 
-function createServiceCardElement(svc, category_id) {
-    const card = create('div', {
-        class: 'service-tile',
-        tabindex: '0',
-        role: 'button',
-        'aria-label': svc.ui_taxonomy?.display_name
-    });
+                function createServiceCardElement(svc, category_id) {
+                    const card = create('div', {
+                        class: 'service-tile',
+                        tabindex: '0',
+                        role: 'button',
+                        'aria-label': svc.ui_taxonomy?.display_name
+                    });
 
-    const fe = svc.financial_engine || {};
-    const chain = svc.intake_chain || [];
-    const defaultTags = svc.default_tags || [];
-    const isOtherSvc = defaultTags.some(t => t === '#adhoc' || t === '#manual_review');
-    const requiresSiteVisit = defaultTags.some(t => t === '#site_visit_required');
-    const isDiagSvc = fe.pricing_type === 'Diagnostic' || fe.checkout_state === 'diagnostic';
-    const isProjectSvc = (fe.base_price || 0) >= 150 || svc.default_estimates?.disclaimer === 'project_based';
-    const isHourlySvc = fe.pricing_type === 'hourly';
+                    // SSOT: determine complexity profile for badge display
+                    const fe = svc.financial_engine || {};
+                    const chain = svc.intake_chain || [];
+                    const defaultTags = svc.default_tags || [];
+                    const isOtherSvc = defaultTags.some(t => t === '#adhoc' || t === '#manual_review');
+                    const requiresSiteVisit = defaultTags.some(t => t === '#site_visit_required');
+                    const isDiagSvc = fe.pricing_type === 'Diagnostic' || fe.checkout_state === 'diagnostic';
+                    const isProjectSvc = (fe.base_price || 0) >= 150 || svc.default_estimates?.disclaimer === 'project_based';
+                    const isHourlySvc = fe.pricing_type === 'hourly';
 
-    let complexityBadge = null;
-    if (requiresSiteVisit) {
-        complexityBadge = { text: '🔍 Quote on site', bg: '#374151', color: '#e5e7eb' };
-    } else if (isOtherSvc) {
-        complexityBadge = { text: '⚡ Smart Quote', bg: '#1e40af', color: '#dbeafe' };
-    } else if (isDiagSvc) {
-        complexityBadge = { text: '🩺 Diagnostic', bg: '#1d4ed8', color: '#dbeafe' };
-    } else if (isProjectSvc) {
-        complexityBadge = { text: '📐 Project est.', bg: '#7c2d12', color: '#fed7aa' };
-    } else if (isHourlySvc) {
-        complexityBadge = { text: '⏰ Hourly', bg: '#065f46', color: '#d1fae5' };
-    } else if (chain.length === 0) {
-        complexityBadge = { text: '✅ Instant price', bg: '#166534', color: '#dcfce7' };
-    }
+                    let complexityBadge = null;
+                    if (requiresSiteVisit) {
+                        complexityBadge = {
+                            text: '🔍 Quote on site',
+                            bg: '#374151',
+                            color: '#e5e7eb'
+                        };
+                    } else if (isOtherSvc) {
+                        complexityBadge = {
+                            text: '⚡ Smart Quote',
+                            bg: '#1e40af',
+                            color: '#dbeafe'
+                        };
+                    } else if (isDiagSvc) {
+                        complexityBadge = {
+                            text: '🩺 Diagnostic',
+                            bg: '#1d4ed8',
+                            color: '#dbeafe'
+                        };
+                    } else if (isProjectSvc) {
+                        complexityBadge = {
+                            text: '📐 Project est.',
+                            bg: '#7c2d12',
+                            color: '#fed7aa'
+                        };
+                    } else if (isHourlySvc) {
+                        complexityBadge = {
+                            text: '⏰ Hourly',
+                            bg: '#065f46',
+                            color: '#d1fae5'
+                        };
+                    } else if (chain.length === 0) {
+                        complexityBadge = {
+                            text: '✅ Instant price',
+                            bg: '#166534',
+                            color: '#dcfce7'
+                        };
+                    }
 
-    let iconText;
-    if (isOtherSvc) {
-        const groupId = svc.ui_taxonomy?.group_id || svc.group_id;
-        const group = groupMap.get(groupId);
-        iconText = group?.icon || svc.ui_taxonomy?.icon || '🔧';
-    } else {
-        iconText = svc.ui_taxonomy?.icon || svc.icon || '🔧';
-    }
-    const iconEl = create('div', { class: 'service-item-icon', text: iconText });
+                    // Icon: inherit from group for "Other" services
+                    let iconText;
+                    if (isOtherSvc) {
+                        const groupId = svc.ui_taxonomy?.group_id || svc.group_id;
+                        const group = groupMap.get(groupId);
+                        iconText = group?.icon || svc.ui_taxonomy?.icon || '🔧';
+                    } else {
+                        iconText = svc.ui_taxonomy?.icon || svc.icon || '🔧';
+                    }
+                    const iconEl = create('div', {
+                        class: 'service-item-icon',
+                        text: iconText
+                    });
 
-    const info = document.createElement('div');
-    info.style.cssText = 'width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:3px;';
+                    const info = document.createElement('div');
+                    info.style.cssText = 'width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:3px;';
 
-    const titleRow = create('h4', { text: svc.ui_taxonomy?.display_name });
-    info.appendChild(titleRow);
+                    const titleRow = create('h4', {
+                        text: svc.ui_taxonomy?.display_name
+                    });
+                    info.appendChild(titleRow);
 
-    if (complexityBadge) {
-        const badge = create('span', {
-            text: complexityBadge.text,
-            style: `font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:${complexityBadge.bg};color:${complexityBadge.color};display:inline-block;margin-bottom:3px;`
-        });
-        info.appendChild(badge);
-    }
+                    if (complexityBadge) {
+                        const badge = create('span', {
+                            text: complexityBadge.text,
+                            style: `font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:${complexityBadge.bg};color:${complexityBadge.color};display:inline-block;margin-bottom:3px;`
+                        });
+                        info.appendChild(badge);
+                    }
 
-    info.appendChild(create('div', {
-        class: 'service-price',
-        html: formatServicePrice(svc)
-    }));
+                    info.appendChild(create('div', {
+                        class: 'service-price',
+                        html: formatServicePrice(svc)
+                    }));
 
-    if (svc.default_estimates?.materials && !svc.materials_included) {
-        const matMin = svc.default_estimates.materials.min || 0;
-        const matMax = svc.default_estimates.materials.max || 0;
-        if (matMax > 0) {
-            info.appendChild(create('div', {
-                class: 'materials-badge',
-                text: `+ Materials $${matMin}‑$${matMax}`,
-                style: 'background: linear-gradient(135deg, #f97316, #ea580c); font-size: 0.7rem; margin-top: 4px;'
-            }));
-        }
-    }
+                    if (svc.default_estimates?.materials && !svc.materials_included) {
+                        const matMin = svc.default_estimates.materials.min || 0;
+                        const matMax = svc.default_estimates.materials.max || 0;
+                        if (matMax > 0) {
+                            info.appendChild(create('div', {
+                                class: 'materials-badge',
+                                text: `+ Materials $${matMin}‑$${matMax}`,
+                                style: 'background: linear-gradient(135deg, #f97316, #ea580c); font-size: 0.7rem; margin-top: 4px;'
+                            }));
+                        }
+                    }
 
-    let desc = svc.ui_taxonomy?.description || svc.description || 'Tap to customise.';
-    if (svc.materials_included) desc += ' ✓ Materials included.';
-    info.appendChild(create('div', {
-        class: 'service-tile-expanded',
-        text: desc,
-        style: 'display:block;'
-    }));
+                    let desc = svc.ui_taxonomy?.description || svc.description || 'Tap to customise.';
+                    if (svc.materials_included) desc += ' ✓ Materials included.';
+                    info.appendChild(create('div', {
+                        class: 'service-tile-expanded',
+                        text: desc,
+                        style: 'display:block;'
+                    }));
 
-    card.appendChild(iconEl);
-    card.appendChild(info);
-    card.addEventListener('click', () => showIntakeQuestions(svc, category_id));
-    card.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            showIntakeQuestions(svc, category_id);
-        }
-    });
-    return card;
-}
+                    card.appendChild(iconEl);
+                    card.appendChild(info);
+                    card.addEventListener('click', () => showIntakeQuestions(svc, category_id));
+                    card.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            showIntakeQuestions(svc, category_id);
+                        }
+                    });
+                    return card;
+                }
 
                 function renderGlobalSearchResults(container, services, currentCategoryId) {
                     container.replaceChildren();
@@ -5458,230 +5493,265 @@ function createServiceCardElement(svc, category_id) {
                 /* ================================================================
                    SMARTQUOTE PREFILL & SERVICE INTAKE
                    ================================================================ */
-function prefillSmartQuoteFromService(svc, category_id) {
-    // Wait until SmartQuote catalogue is ready
-    onSmartQuoteReady(() => {
-        // Ensure SmartQuote engine DOM exists
-        if (typeof initSmartQuote === 'function') initSmartQuote();
+                function prefillSmartQuoteFromService(svc, category_id) {
+                    // Wait until SmartQuote catalogue is ready
+                    onSmartQuoteReady(() => {
+                        // Ensure SmartQuote engine DOM exists
+                        if (typeof initSmartQuote === 'function') initSmartQuote();
 
-        const catObj = (SERVICE_DATA.category || []).find(c => c.id === category_id);
-        const categoryName = catObj ? (catObj.display_name || catObj.name) : 'General';
+                        const catObj = (SERVICE_DATA.category || []).find(c => c.id === category_id);
+                        const categoryName = catObj ? (catObj.display_name || catObj.name) : 'General';
 
-        let serviceType = svc.service_type || 'Repair';
-        if (svc.default_service_type) serviceType = svc.default_service_type;
+                        let serviceType = svc.service_type || 'Repair';
+                        if (svc.default_service_type) serviceType = svc.default_service_type;
 
-        let basePrice = svc.financial_engine?.base_price || svc.base_price;
-        if (!basePrice && SERVICE_DATA.service_types && SERVICE_DATA.service_types[serviceType]) {
-            basePrice = SERVICE_DATA.service_types[serviceType].base_price;
-        }
-        if (!basePrice) basePrice = 70;
+                        let basePrice = svc.financial_engine?.base_price || svc.base_price;
+                        if (!basePrice && SERVICE_DATA.service_types && SERVICE_DATA.service_types[serviceType]) {
+                            basePrice = SERVICE_DATA.service_types[serviceType].base_price;
+                        }
+                        if (!basePrice) basePrice = 70;
 
-        // Build navigation context string from Breadcrumbs
-        let navCrumbs = [];
-        const catIcon = catObj ? catObj.icon : '🏠';
-        if (catObj) navCrumbs.push(catIcon + ' ' + catObj.display_name);
-        Breadcrumbs.stack.forEach(f => {
-            if (f.type === 'subgroup' || f.type === 'subgroups') {
-                const g = groupMap.get(f.groups || f.group);
-                if (g) navCrumbs.push(g.display_name || g.name);
-            }
-        });
-        const navContext = navCrumbs.join(' › ');
+                        // Build navigation context string from Breadcrumbs
+                        let navCrumbs = [];
+                        const catIcon = catObj ? catObj.icon : '🏠';
+                        if (catObj) navCrumbs.push(catIcon + ' ' + catObj.display_name);
+                        Breadcrumbs.stack.forEach(f => {
+                            if (f.type === 'subgroup' || f.type === 'subgroups') {
+                                const g = groupMap.get(f.groups || f.group);
+                                if (g) navCrumbs.push(g.display_name || g.name);
+                            }
+                        });
+                        const navContext = navCrumbs.join(' › ');
 
-        const intent = {
-            category: category_id,
-            displayName: categoryName,
-            label: svc.display_name || svc.ui_taxonomy?.display_name || svc.name || 'Custom Service',
-            key: svc.id,
-            base: basePrice,
-            baseMin: 45,
-            stype: serviceType,
-            qtyLabel: 'item',
-            serviceId: svc.id,
-            intakeChain: svc.intake_chain || [],
-            intakeAnswers: svc.intakeAnswers || {},
-            navContext: navContext
-        };
+                        const intent = {
+                            category: category_id,
+                            displayName: categoryName,
+                            label: svc.display_name || svc.ui_taxonomy?.display_name || svc.name || 'Custom Service',
+                            key: svc.id,
+                            base: basePrice,
+                            baseMin: 45,
+                            stype: serviceType,
+                            qtyLabel: 'item',
+                            serviceId: svc.id,
+                            intakeChain: svc.intake_chain || [],
+                            intakeAnswers: svc.intakeAnswers || {},
+                            navContext: navContext
+                        };
 
-        if (typeof S !== 'undefined') {
-            S.intent = intent;
-            S.stype = serviceType;
-            S.detTagIds = [];
-            S.manTagIds = [];
-            S.negatedTagIds = [];
-            S.qty = 1;
+                        if (typeof S !== 'undefined') {
+                            S.intent = intent;
+                            S.stype = serviceType;
+                            S.detTagIds = [];
+                            S.manTagIds = [];
+                            S.negatedTagIds = [];
+                            S.qty = 1;
 
-            let descText = `Service: ${intent.label}`;
-            if (navContext) descText += ` (${navContext})`;
-            if (svc.ui_taxonomy?.description) descText += ` — ${svc.ui_taxonomy.description}`;
-            S.desc = descText;
-            S.adlibConfirmed = false;
+                            // Build meaningful description
+                            let descText = `Service: ${intent.label}`;
+                            if (navContext) descText += ` (${navContext})`;
+                            if (svc.ui_taxonomy?.description) descText += ` — ${svc.ui_taxonomy.description}`;
+                            S.desc = descText;
+                            S.adlibConfirmed = false;
 
-            // Pre‑fill default tags as auto‑detected conditions
-            if (svc.default_tags && Array.isArray(svc.default_tags)) {
-                svc.default_tags.forEach(tagRef => {
-                    let tagId = tagRef;
-                    if (typeof tagRef === 'object' && tagRef.$ref) tagId = tagRef.$ref;
-                    if (tagId && !S.detTagIds.includes(tagId) && !S.negatedTagIds.includes(tagId)) {
-                        S.detTagIds.push(tagId);
-                    }
-                });
-            }
+                            // Pre‑fill default tags as auto‑detected conditions
+                            if (svc.default_tags && Array.isArray(svc.default_tags)) {
+                                svc.default_tags.forEach(tagRef => {
+                                    let tagId = tagRef;
+                                    if (typeof tagRef === 'object' && tagRef.$ref) tagId = tagRef.$ref;
+                                    if (tagId && !S.detTagIds.includes(tagId) && !S.negatedTagIds.includes(tagId)) {
+                                        S.detTagIds.push(tagId);
+                                    }
+                                });
+                            }
 
-            // Apply category‑wide default tags from catalogue (DB is now ready)
-            const tags = DB?.smart_tags || {};
-            for (const [tid, t] of Object.entries(tags)) {
-                if (t.applicable_categories && (t.applicable_categories.includes('all') || t.applicable_categories.includes(category_id))) {
-                    if (t.is_default_for_group && !S.manTagIds.includes(tid) && !S.detTagIds.includes(tid)) {
-                        S.manTagIds.push(tid);
-                    }
+                            // Apply category‑wide default tags from catalogue (DB is now ready)
+                            const tags = DB?.smart_tags || {};
+                            for (const [tid, t] of Object.entries(tags)) {
+                                if (t.applicable_categories && (t.applicable_categories.includes('all') || t.applicable_categories.includes(category_id))) {
+                                    if (t.is_default_for_group && !S.manTagIds.includes(tid) && !S.detTagIds.includes(tid)) {
+                                        S.manTagIds.push(tid);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Hide category grid, show SmartQuote flow
+                        const grid = document.getElementById('category-card');
+                        if (grid) grid.style.display = 'none';
+
+                        const stepFlow = document.getElementById('stepFlow');
+                        if (stepFlow) {
+                            stepFlow.style.display = 'block';
+                            const descInput = document.getElementById('descIn');
+                            if (descInput) descInput.value = S.desc;
+
+                            if (typeof markDone === 'function') {
+                                markDone(1, intent.label);
+                                markDone(2, serviceType);
+                            }
+                            if (typeof buildStep3 === 'function') buildStep3();
+                            setTimeout(() => {
+                                if (typeof buildAdlib === 'function') buildAdlib();
+                            }, 100);
+                        }
+
+                        if (typeof enterFocusedMode === 'function') enterFocusedMode();
+                        if (stepFlow) stepFlow.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    });
                 }
-            }
-        }
 
-        // Hide category grid, show SmartQuote flow
-        const grid = document.getElementById('category-card');
-        if (grid) grid.style.display = 'none';
 
-        const stepFlow = document.getElementById('stepFlow');
-        if (stepFlow) {
-            stepFlow.style.display = 'block';
-            const descInput = document.getElementById('descIn');
-            if (descInput) descInput.value = S.desc;
 
-            if (typeof markDone === 'function') {
-                markDone(1, intent.label);
-                markDone(2, serviceType);
-            }
-            if (typeof buildStep3 === 'function') buildStep3();
-            setTimeout(() => {
-                if (typeof buildAdlib === 'function') buildAdlib();
-            }, 100);
-        }
-
-        if (typeof enterFocusedMode === 'function') enterFocusedMode();
-        if (stepFlow) stepFlow.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-}
                 function showIntakeQuestions(svc, category_id, fromBack = false) {
 
-    /* helpers (same as original) – keep them unchanged */
-    function buildNavBreadcrumb(categoryId) {
-        const catObj = categoryMap.get(categoryId);
-        const catName = catObj ? (catObj.icon + ' ' + (catObj.display_name || catObj.name)) : '🏠 Service';
-        const parts = [catName];
-        Breadcrumbs.stack.forEach(f => {
-            if (f.type === 'subgroup' || f.type === 'subgroups') {
-                const g = groupMap.get(f.groups || f.group);
-                if (g) parts.push((g.icon || '📁') + ' ' + (g.display_name || g.name));
-            }
-        });
-        return parts;
-    }
+                    /* ── helpers (keep exactly as you had them) ───────────────────────────────── */
+                    function buildNavBreadcrumb(categoryId) {
+                        const catObj = categoryMap.get(categoryId);
+                        const catName = catObj ? (catObj.icon + ' ' + (catObj.display_name || catObj.name)) : '🏠 Service';
+                        const parts = [catName];
+                        Breadcrumbs.stack.forEach(f => {
+                            if (f.type === 'subgroup' || f.type === 'subgroups') {
+                                const g = groupMap.get(f.groups || f.group);
+                                if (g) parts.push((g.icon || '📁') + ' ' + (g.display_name || g.name));
+                            }
+                        });
+                        return parts;
+                    }
 
-    function resolveIntakeChain(svc) {
-        if (!SERVICE_DATA.intake_modules) return [];
-        return (svc.intake_chain || []).map(step => {
-            const mod = SERVICE_DATA.intake_modules[step.module];
-            return mod ? { moduleKey: step.module, then: step.then || {}, ...mod } : null;
-        }).filter(Boolean);
-    }
+                    function resolveIntakeChain(svc) {
+                        if (!SERVICE_DATA.intake_modules) return [];
+                        return (svc.intake_chain || []).map(step => {
+                            const mod = SERVICE_DATA.intake_modules[step.module];
+                            return mod ? {
+                                moduleKey: step.module,
+                                then: step.then || {},
+                                ...mod
+                            } : null;
+                        }).filter(Boolean);
+                    }
 
-    function isModuleVisible(mod, answers) {
-        if (!mod.depends_on) return true;
-        for (const [depKey, depVal] of Object.entries(mod.depends_on)) {
-            if (answers[depKey] !== depVal) return false;
-        }
-        return true;
-    }
+                    function isModuleVisible(mod, answers) {
+                        if (!mod.depends_on) return true;
+                        for (const [depKey, depVal] of Object.entries(mod.depends_on)) {
+                            if (answers[depKey] !== depVal) return false;
+                        }
+                        return true;
+                    }
 
-    const TIER_ORDER = { routine: 0, skilled: 1, specialized: 2 };
-    const TIERS = SERVICE_DATA.global_rules?.complexity_tiers || {
-        routine: { hourly_rate: 65 },
-        skilled: { hourly_rate: 85 },
-        specialized: { hourly_rate: 110 }
-    };
+                    const TIER_ORDER = {
+                        routine: 0,
+                        skilled: 1,
+                        specialized: 2
+                    };
+                    const TIERS = SERVICE_DATA.global_rules?.complexity_tiers || {
+                        routine: {
+                            hourly_rate: 65
+                        },
+                        skilled: {
+                            hourly_rate: 85
+                        },
+                        specialized: {
+                            hourly_rate: 110
+                        }
+                    };
 
-    function computeIntakePrice(svc, answers, qty = 1) {
-        const prof = getServiceProfile(svc);
-        let base = prof.basePrice;
-        if (!base && SERVICE_DATA.service_types?.[svc.service_type]) {
-            base = SERVICE_DATA.service_types[svc.service_type].base_price || 70;
-        }
-        let extraFee = 0, extraMin = 0, matMin = 0, matMax = 0;
-        let complexityOverride = svc.operational_metrics?.complexity_tier ||
-            SERVICE_DATA.service_types?.[svc.service_type]?.default_complexity || 'skilled';
-        const allModules = resolveIntakeChain(svc);
-        allModules.forEach(mod => {
-            if (!isModuleVisible(mod, answers)) return;
-            const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
-            if (!chosen) return;
-            const eff = chosen.effects || {};
-            extraFee += (eff.fee || 0);
-            extraMin += (eff.minutes || 0);
-            if (eff.mat_min) matMin += eff.mat_min;
-            if (eff.mat_max) matMax += eff.mat_max;
-            if (eff.complexity_override && (TIER_ORDER[eff.complexity_override] || 0) > (TIER_ORDER[complexityOverride] || 0)) {
-                complexityOverride = eff.complexity_override;
-            }
-        });
-        const numericMod = allModules.find(m => m.type === 'numeric_multiplier' || m.ui_render_type === 'dropdown_with_custom_input');
-        const effectiveQty = numericMod ? (qty || 1) : 1;
-        let laborEstimate;
-        if (prof.isHourly) {
-            const hourlyRate = TIERS[complexityOverride]?.hourly_rate || 85;
-            const totalMin = Math.max(45 + extraMin, 30);
-            laborEstimate = Math.round((base || hourlyRate) + extraFee + (totalMin / 60) * hourlyRate) * effectiveQty;
-        } else {
-            laborEstimate = Math.round((base + extraFee) * effectiveQty);
-        }
-        return {
-            base, extraFee, extraMin, matMin, matMax,
-            complexityOverride, tierRate: TIERS[complexityOverride]?.hourly_rate || 85,
-            laborEstimate, effectiveQty
-        };
-    }
+                    /* ── price computation (unchanged) ───────────────────────────────────────── */
+                    function computeIntakePrice(svc, answers, qty = 1) {
+                        const prof = getServiceProfile(svc);
+                        let base = prof.basePrice;
+                        if (!base && SERVICE_DATA.service_types?.[svc.service_type]) {
+                            base = SERVICE_DATA.service_types[svc.service_type].base_price || 70;
+                        }
+                        let extraFee = 0,
+                            extraMin = 0,
+                            matMin = 0,
+                            matMax = 0;
+                        let complexityOverride = svc.operational_metrics?.complexity_tier ||
+                            SERVICE_DATA.service_types?.[svc.service_type]?.default_complexity || 'skilled';
+                        const allModules = resolveIntakeChain(svc);
+                        allModules.forEach(mod => {
+                            if (!isModuleVisible(mod, answers)) return;
+                            const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
+                            if (!chosen) return;
+                            const eff = chosen.effects || {};
+                            extraFee += (eff.fee || 0);
+                            extraMin += (eff.minutes || 0);
+                            if (eff.mat_min) matMin += eff.mat_min;
+                            if (eff.mat_max) matMax += eff.mat_max;
+                            if (eff.complexity_override && (TIER_ORDER[eff.complexity_override] || 0) > (TIER_ORDER[complexityOverride] || 0)) {
+                                complexityOverride = eff.complexity_override;
+                            }
+                        });
+                        const numericMod = allModules.find(m => m.type === 'numeric_multiplier' || m.ui_render_type === 'dropdown_with_custom_input');
+                        const effectiveQty = numericMod ? (qty || 1) : 1;
+                        let laborEstimate;
+                        if (prof.isHourly) {
+                            const hourlyRate = TIERS[complexityOverride]?.hourly_rate || 85;
+                            const totalMin = Math.max(45 + extraMin, 30);
+                            laborEstimate = Math.round((base || hourlyRate) + extraFee + (totalMin / 60) * hourlyRate) * effectiveQty;
+                        } else {
+                            laborEstimate = Math.round((base + extraFee) * effectiveQty);
+                        }
+                        return {
+                            base,
+                            extraFee,
+                            extraMin,
+                            matMin,
+                            matMax,
+                            complexityOverride,
+                            tierRate: TIERS[complexityOverride]?.hourly_rate || 85,
+                            laborEstimate,
+                            effectiveQty
+                        };
+                    }
 
-    function getRequiredModules(svc) {
-        const prof = getServiceProfile(svc);
-        if (prof.isOther) return [];
-        return resolveIntakeChain(svc);
-    }
+                    function getRequiredModules(svc) {
+                        const prof = getServiceProfile(svc);
+                        if (prof.isOther) return []; // "Other" goes to SmartQuote, not structured intake
+                        return resolveIntakeChain(svc);
+                    }
 
-    /* ── ENTRY ───────────────────────────────────────────────────────────────── */
-    if (!fromBack) Breadcrumbs.push({ type: 'serviceDetail', group: null, category_id });
-    enterFocusedMode();
-    setStep(4);
+                    /* ── ENTRY ───────────────────────────────────────────────────────────────── */
+                    if (!fromBack) Breadcrumbs.push({
+                        type: 'serviceDetail',
+                        group: null,
+                        category_id
+                    });
+                    enterFocusedMode();
+                    setStep(4);
 
-    const container = DOM.intakeQuestionsContainer;
-    container.replaceChildren();
-    container.style.display = 'block';
-    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
+                    const container = DOM.intakeQuestionsContainer;
+                    container.replaceChildren();
+                    container.style.display = 'block';
+                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
 
-    if (svc.requires_furniture_selection) {
-        renderFurnitureSelection(container, svc, category_id);
-        return;
-    }
+                    if (svc.requires_furniture_selection) {
+                        renderFurnitureSelection(container, svc, category_id);
+                        return;
+                    }
 
-    const prof = getServiceProfile(svc);
+                    const prof = getServiceProfile(svc);
 
-    // RARE: explicitly tagged for site visit → diagnostic flow
-    if (prof.requiresSiteVisit) {
-        _renderDiagnosticFlow(svc, category_id, container, prof);
-        return;
-    }
+                    // RARE: explicitly tagged for site visit → diagnostic flow
+                    if (prof.requiresSiteVisit) {
+                        _renderDiagnosticFlow(svc, category_id, container, prof); // ← FIXED function name
+                        return;
+                    }
 
-    // Service has explicit intake modules → structured panel
-    if (svc.intake_chain && svc.intake_chain.length > 0) {
-        _renderStructuredIntake(svc, category_id, container, prof);
-        return;
-    }
+                    // Service has explicit intake modules → structured panel
+                    if (svc.intake_chain && svc.intake_chain.length > 0) {
+                        _renderStructuredIntake(svc, category_id, container, prof);
+                        return;
+                    }
 
-    // DEFAULT for everything else (including #adhoc, #manual_review, and simple services):
-    container.style.display = 'none';
-    prefillSmartQuoteFromService(svc, category_id);
-}
-                
+                    // DEFAULT for everything else (including #adhoc, #manual_review, and simple services):
+                    // Launch SmartQuote pre‑filled with context
+                    container.style.display = 'none';
+                    prefillSmartQuoteFromService(svc, category_id);
+                }
                 /* ================================================================
                    PATH A: "Other / adhoc" service → Smart-quote text input only
                    No re-asking what we already know from navigation context.
@@ -7796,11 +7866,14 @@ function prefillSmartQuoteFromService(svc, category_id) {
                         const data = await res.json();
                         DB = data;
                         console.log('SmartQuote: loaded btnyc.json');
-       smartQuoteReady = true;
-        smartQuoteCallbacks.forEach(fn => fn());
-        smartQuoteCallbacks = [];
+                        // ---------- ADD THESE LINES ----------
+                        smartQuoteReady = true;
+                        smartQuoteCallbacks.forEach(fn => fn());
+                        smartQuoteCallbacks = [];
+                        // -------------------------------------
                         initStep1();
                     } catch (err) {
+
                         console.warn('SmartQuote: using built-in fallback', err);
                         DB = {
                             global_rules: {
