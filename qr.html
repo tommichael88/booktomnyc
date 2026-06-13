@@ -7149,6 +7149,36 @@ function getServiceFromIntent(intent) {
    if (answers.global_quantity && !isNaN(parseInt(answers.global_quantity))) qty = parseInt(answers.global_quantity);
    return _computePrice(service, answers, qty);
   }
+     function advanceSQ() {
+    const svc = SQ.currentService;
+    if (!svc) return;
+
+    // Recalculate confidence and missing modules after each answer
+    SQ.confidence = calculateConfidence(svc, SQ.answers, SQ.nlpScore);
+    SQ.missingModules = getMissingModules(svc, SQ.answers);
+
+    const minConf = svc.confidence_strategy?.minimum_quote_confidence || 60;
+    const isReady = SQ.confidence >= minConf || SQ.missingModules.length === 0;
+    const hitLimit = SQ.questionCount >= SQ.maxQuestions;
+
+    // Check if diagnostic is required
+    if (requiresDiagnostic(svc, SQ.answers, SQ.confidence, SQ.missingModules)) {
+        renderDiagnosticFallback();
+        return;
+    }
+
+    if (isReady || hitLimit) {
+        renderQuotePanel();
+        return;
+    }
+
+    const nextQ = selectBestQuestion(SQ.missingModules);
+    if (nextQ) {
+        renderCurrentQuestion(nextQ);
+    } else {
+        renderQuotePanel();
+    }
+}
 
   // --- UI rendering for the dynamic loop --------------------------
   function renderCurrentQuestion(moduleKey) {
