@@ -5500,30 +5500,17 @@
   function _computePrice(svc, answers, qty) {
    qty = qty || 1;
    const prof = getServiceProfile(svc);
-   const TIER_ORDER = {
-    routine: 0,
-    skilled: 1,
-    specialized: 2
-   };
+   const TIER_ORDER = { routine: 0, skilled: 1, specialized: 2 };
    const TIERS = SERVICE_DATA.global_rules?.complexity_tiers || {
-    routine: {
-     hourly_rate: 65
-    },
-    skilled: {
-     hourly_rate: 85
-    },
-    specialized: {
-     hourly_rate: 110
-    }
+    routine: { hourly_rate: 65 },
+    skilled: { hourly_rate: 85 },
+    specialized: { hourly_rate: 110 }
    };
    let base = svc.financial_engine?.base_price || svc.base_price || 0;
    if (!base && SERVICE_DATA.service_types?.[svc.service_type]) {
     base = SERVICE_DATA.service_types[svc.service_type].base_price || 70;
    }
-   let extraFee = 0,
-    extraMin = 0,
-    matMin = 0,
-    matMax = 0;
+   let extraFee = 0, extraMin = 0, matMin = 0, matMax = 0;
    let co = svc.operational_metrics?.complexity_tier ||
     SERVICE_DATA.service_types?.[svc.service_type]?.default_complexity || 'skilled';
    const mods = _resolveIntakeChain(svc);
@@ -5539,10 +5526,11 @@
     if (eff.complexity_override && (TIER_ORDER[eff.complexity_override] || 0) > (TIER_ORDER[co] || 0)) co = eff.complexity_override;
    });
    const tierRate = TIERS[co]?.hourly_rate || 85;
-   let   totalMin = Math.max(45 + extraMin, 30);   // or use a default base 
+
+   // Calculate total minutes (same for both hourly and flat rate)
+   let totalMin = Math.max(45 + extraMin, 30);
    let laborEstimate;
    if (prof.isHourly) {
-    const totalMin = Math.max(45 + extraMin, 30);
     laborEstimate = Math.round((base || tierRate) + extraFee + (totalMin / 60) * tierRate) * qty;
    } else {
     laborEstimate = Math.round((base + extraFee) * qty);
@@ -5555,9 +5543,10 @@
     matMax,
     complexityOverride: co,
     tierRate,
-    laborEstimate
+    laborEstimate,
+    totalMin   // <-- now included
    };
-  }
+}
 
   function _makeQtyStepper(initQty, onChange) {
    let current = initQty;
