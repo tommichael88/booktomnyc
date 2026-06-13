@@ -5539,24 +5539,16 @@
     if (eff.complexity_override && (TIER_ORDER[eff.complexity_override] || 0) > (TIER_ORDER[co] || 0)) co = eff.complexity_override;
    });
    const tierRate = TIERS[co]?.hourly_rate || 85;
-   let laborEstimate;
-   if (prof.isHourly) {
-    const totalMin = Math.max(45 + extraMin, 30);
+let laborEstimate;
+let totalMin;
+if (prof.isHourly) {
+    totalMin = Math.max(45 + extraMin, 30);
     laborEstimate = Math.round((base || tierRate) + extraFee + (totalMin / 60) * tierRate) * qty;
-   } else {
+} else {
+    totalMin = Math.max(45 + extraMin, 30);   // or use a default base
     laborEstimate = Math.round((base + extraFee) * qty);
-   }
-   return {
-    base,
-    extraFee,
-    extraMin,
-    matMin,
-    matMax,
-    complexityOverride: co,
-    tierRate,
-    laborEstimate
-   };
-  }
+}
+return { base, extraFee, extraMin, matMin, matMax, complexityOverride: co, tierRate, laborEstimate, totalMin };
 
   function _makeQtyStepper(initQty, onChange) {
    let current = initQty;
