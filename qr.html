@@ -3740,106 +3740,111 @@ body.modal-active{overflow:hidden}
     S.desc = desc;
     const intent = detectIntentNLP(desc);
 
-    // Extract richer context from the user's description
-    S._objectNoun  = extractObject(desc, intent?.key);
-    S._location    = extractLocation(desc);
-    S._sizeHint    = extractSizeHint(desc, DB.smart_tags || {});
-    // SSOT: if intent matched, check dynamic_services for a richer base definition
+    // Extract richer NLP context
+    S._objectNoun = extractObject(desc, intent?.key);
+    S._location   = extractLocation(desc);
+    S._sizeHint   = extractSizeHint(desc, DB.smart_tags || {});
+
+    // Seed intent from NLP (dynamic_services base price enrichment happens in sqPrepareFlow)
     const baseIntent = intent || { category:'other', label:'General', base:70, stype:'Repair', qtyLabel:'item', key:'other', group:'other' };
     const normSt = (baseIntent.stype||'Repair').replace('Install / Mount','Install');
     const dynKey = (baseIntent.category||'other') + '+' + normSt.toLowerCase();
     const dynDef = DB.dynamic_services?.[dynKey];
-    if (dynDef && dynDef.financial_engine?.base_price) {
-      baseIntent.base = dynDef.financial_engine.base_price;
-      // Seed suggested_tags as pre-selected if not already NLP-detected
-      baseIntent._suggestedTags = (dynDef.suggested_tags || []).map(t => {
-        if (typeof t === 'string') return t;
-        if (t && typeof t === 'object' && !t.$ref) return null;
-        return null; // $ref resolved by resolveRefs already — look up by key
-      }).filter(Boolean);
-    }
-    S.intent = baseIntent;
-    const nlp = detectTagsNLP(desc);
-    // Filter NLP-detected tags to only those relevant to the detected category
-    const detCat = S.intent?.category || 'other';
-    S.detTagIds = nlp.found.filter(tid => tagValidForCategory(tid, detCat));
-    S.negatedTagIds = nlp.negated.filter(tid => tagValidForCategory(tid, detCat));
-
-    // Apply contextual inferred tags (e.g. fireplace → #brick_wall)
-    const ctxTags = inferTagsFromContext(desc, detCat);
-    ctxTags.forEach(({tid}) => {
-      if (!S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid)) {
-        // Contextual tags: mark as detected (not manual) so they show in auto-detected row
-        S.detTagIds.push(tid);
-      }
-    });
-
-    // Size hint: if 'standard' detected, negate oversized/heavy to prevent auto-default
-    if (S._sizeHint === 'standard') {
-      ['#heavy_item','#very_heavy'].forEach(tid => {
-        if (!S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid)) {
-          S.negatedTagIds.push(tid);
-        }
-      });
-    }
-
-    // Enter focused mode for the quote flow
-    enterFocusedMode();
-
-    // SSOT: dynamic_services suggested_tags — add as default manTagIds (not det, so removable)
-    // These are already resolved by resolveRefs to full tag objects; find their keys
-    const dynSt2 = (S.intent?.stype||'Repair').replace('Install / Mount','Install').toLowerCase();
-    const dynKey2 = (S.intent?.category||'other') + '+' + dynSt2;
-    const dynDef2 = DB.dynamic_services?.[dynKey2];
-    if (dynDef2?.suggested_tags) {
-      // suggested_tags are {$ref} objects resolved by resolveRefs to full tag objects;
-      // we need to find which tag IDs they correspond to by matching in DB.smart_tags
-      const tagEntries = Object.entries(DB.smart_tags || {});
-      dynDef2.suggested_tags.forEach(tagObj => {
-        if (!tagObj || typeof tagObj !== 'object') return;
-        // After resolveRefs, $ref objects become the target tag objects
-        // Match by reference or by label/synonyms
-        const match = tagEntries.find(([tid, t]) => t === tagObj || (t.label && t.label === tagObj.label));
-        if (match) {
-          const [tid] = match;
-          if (!S.detTagIds.includes(tid) && !S.manTagIds.includes(tid) && !S.negatedTagIds.includes(tid) && tagValidForCategory(tid, detCat)) {
-            S.manTagIds.push(tid);
-          }
-        }
-      });
-    }
+    if (dynDef?.financial_engine?.base_price) baseIntent.base = dynDef.financial_engine.base_price;
+    S.intent  = baseIntent;
     S.manTagIds = [];
-    S.qty = extractQty(desc);
+    S.qty     = extractQty(desc);
     document.getElementById('sqQtyV').textContent = S.qty;
 
-    // Hide the text bar (user is now in the step flow)
+    // Hand off to shared pipeline — confidence_tiers decides step routing
+    sqPrepareFlow(false);
+  }
+
+  /* ── Shared post-intent pipeline ─────────────────────────────────
+     Called by both sqAnalyze (text path) and sqBuilderFinish.
+     By the time this runs, S.intent, S.stype, S.qty, S.desc,
+     S._objectNoun, S._location, S._sizeHint are already set.
+     
+     skipStep2: true when we're certain about service type (builder path
+     or high-confidence NLP) — goes straight to step 3.
+  ─────────────────────────────────────────────────────────────── */
+  function sqPrepareFlow(skipStep2) {
+    const desc    = S.desc || '';
+    const detCat  = S.intent?.category || 'other';
+
+    // ── NLP tag detection on the description ──────────────────────
+    // (even builder path runs this — description is now synthesized)
+    const nlp = detectTagsNLP(desc);
+    S.detTagIds    = nlp.found.filter(tid  => tagValidForCategory(tid, detCat));
+    S.negatedTagIds = nlp.negated.filter(tid => tagValidForCategory(tid, detCat));
+
+    // Contextual tags (fireplace → #brick_wall, urgent → #emergency)
+    const ctxTags = inferTagsFromContext(desc, detCat);
+    ctxTags.forEach(({tid}) => {
+      if (!S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
+        S.detTagIds.push(tid);
+    });
+
+    // Size hint → negate heavy/oversized tags when size is standard
+    if (S._sizeHint === 'standard') {
+      ['#heavy_item','#very_heavy'].forEach(tid => {
+        if (!S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
+          S.negatedTagIds.push(tid);
+      });
+    }
+
+    // ── SSOT: dynamic_services base price + suggested tags ────────
+    const normSt  = (S.intent?.stype||'Repair').replace('Install / Mount','Install');
+    const dynKey  = detCat + '+' + normSt.toLowerCase();
+    const dynDef  = DB.dynamic_services?.[dynKey];
+    if (dynDef) {
+      if (!S.intent.base && dynDef.financial_engine?.base_price)
+        S.intent.base = dynDef.financial_engine.base_price;
+      if (dynDef.suggested_tags) {
+        const tagEntries = Object.entries(DB.smart_tags || {});
+        dynDef.suggested_tags.forEach(tagObj => {
+          if (!tagObj || typeof tagObj !== 'object') return;
+          const match = tagEntries.find(([tid, t]) => t === tagObj || (t.label && tagObj.label && t.label === tagObj.label));
+          if (match) {
+            const [tid] = match;
+            if (!S.detTagIds.includes(tid) && !S.manTagIds.includes(tid) &&
+                !S.negatedTagIds.includes(tid) && tagValidForCategory(tid, detCat))
+              S.manTagIds.push(tid);
+          }
+        });
+      }
+    }
+
+    // ── Hide text bar, enter focused mode ─────────────────────────
     const bar = document.getElementById('sqTextBar');
     if (bar) bar.style.display = 'none';
+    enterFocusedMode();
 
-    // SSOT: confidence_tiers — derive intake behaviour from btnyc.json
-    const intentConf = (() => {
+    // ── Route to step 2 or straight to step 3 ─────────────────────
+    if (skipStep2) {
+      // Stype already known — mark step 2 done, go to chips
+      sqBuildStep2(); // builds the type chips (hidden) so the card renders correctly
+      sqMarkDone(2, S.stype);
+      sqBuildStep3();
+    } else {
+      // Let confidence_tiers decide
       let maps = DB.intent_mappings || [];
       if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
       const kw = (S.intent?.key||'').toLowerCase();
-      const m = maps.find(x=>(x.keyword||'').toLowerCase()===kw);
-      return m?.confidence_weight || 0;
-    })();
+      const m  = maps.find(x => (x.keyword||'').toLowerCase() === kw);
+      const intentConf = m?.confidence_weight || 0;
 
-    // Map confidence score to SSOT confidence_tier
-    const confTierKey = intentConf >= 75 ? 'high_confidence_simple'
-                      : intentConf >= 45 ? 'medium_confidence_standard'
-                      : 'low_confidence_complex';
-    const confTier = DB.confidence_tiers?.[confTierKey] || {};
-    const tierAction = confTier.action || 'standard_intake';
+      const confTierKey = intentConf >= 75 ? 'high_confidence_simple'
+                        : intentConf >= 45 ? 'medium_confidence_standard'
+                        : 'low_confidence_complex';
+      const tierAction = DB.confidence_tiers?.[confTierKey]?.action || 'standard_intake';
 
-    sqBuildStep2();
-
-    // SSOT: high_confidence_simple → bypass_standard_intake (skip step 2)
-    if (tierAction === 'bypass_standard_intake' && S.intent?.stype) {
-      sqMarkDone(2, S.stype);
-      sqBuildStep3();
+      sqBuildStep2();
+      if (tierAction === 'bypass_standard_intake' && S.intent?.stype) {
+        sqMarkDone(2, S.stype);
+        sqBuildStep3();
+      }
     }
-    // medium/low: show step 2 for type confirmation (already built above)
   }
 
   /* ── STEP 2 ───────────────────────────────────────────────────── */
@@ -4656,23 +4661,84 @@ body.modal-active{overflow:hidden}
 
   // ── Builder helpers ───────────────────────────────────────────────
   function sqToggleBuilder() {
-    const builder = document.getElementById('sqBuilder');
-    const textarea = document.querySelector('#sqTextBar .sq-inline-row');
-    const btn = document.getElementById('sqWriteForMeBtn');
+    const builder  = document.getElementById('sqBuilder');
+    const inlineRow = document.querySelector('#sqTextBar .sq-inline-row');
+    const btn      = document.getElementById('sqWriteForMeBtn');
     if (!builder) return;
     const isOpen = builder.style.display !== 'none';
+
     if (isOpen) {
-      // Close builder, show textarea
+      // ── Close builder → restore textarea ──────────────────────
       builder.style.display = 'none';
-      if (textarea) textarea.style.display = 'flex';
+      if (inlineRow) inlineRow.style.display = 'flex';
       btn?.classList.remove('active');
+      // Sync textarea with whatever the builder has built so far
+      const textarea = document.getElementById('sqDescIn');
+      if (textarea && (BLD.action || BLD.object)) {
+        const obj  = BLD.specific || BLD.object || '';
+        const act  = BLD.action || '';
+        const cond = BLD.condition || '';
+        const loc  = BLD.location || '';
+        let synth = obj ? `I need to ${act} my ${obj}` : act ? `I need to ${act}` : '';
+        if (synth && cond) synth += ` because it is ${cond}`;
+        if (synth && loc)  synth += ` in my ${loc}`;
+        if (synth) textarea.value = synth;
+      }
     } else {
-      // Open builder, hide textarea
+      // ── Open builder ──────────────────────────────────────────
       builder.style.display = 'block';
-      if (textarea) textarea.style.display = 'none';
+      if (inlineRow) inlineRow.style.display = 'none';
       btn?.classList.add('active');
-      // Reset and start
-      BLD = { step:0, action:null, object:null, specific:null, condition:null, location:null, qty:1 };
+
+      const existingText = (document.getElementById('sqDescIn')?.value || '').trim();
+
+      if (existingText && DB) {
+        // ── Text already typed → NLP-seed the builder state ──────
+        // Parse what we can from the existing text
+        const intent  = detectIntentNLP(existingText);
+        const objNoun = extractObject(existingText, intent?.key);
+        const loc     = extractLocation(existingText);
+
+        // Map intent stype → builder action value
+        const stypeToAction = {
+          Install:'install', 'Install / Mount':'mount',
+          Repair:'fix', Diagnostic:'fix',
+          Assembly:'assemble', Setup:'set up'
+        };
+        const detectedAction = stypeToAction[intent?.stype] || null;
+
+        // Reset BLD and seed from NLP
+        BLD = {
+          step:      0,
+          action:    detectedAction,
+          object:    objNoun   || null,
+          specific:  null,
+          condition: null,
+          location:  loc       || null,
+          qty:       extractQty(existingText),
+          _stype:    intent?.stype ? (intent.stype.replace('Install / Mount','Install')) : null,
+          _cat:      intent?.category || null,
+          _keyword:  intent?.key || null
+        };
+
+        // Advance BLD.step past already-known fields to the first gap
+        const allSteps = sqBuilderGetSteps();
+        for (let i = 0; i < allSteps.length; i++) {
+          const sid = allSteps[i];
+          if (BLD[sid] !== null && BLD[sid] !== undefined) {
+            BLD.step = i + 1; // mark this step done, advance to next
+          } else {
+            break; // stop at the first unknown
+          }
+        }
+        // Cap at last step
+        if (BLD.step >= allSteps.length) BLD.step = allSteps.length - 1;
+
+      } else {
+        // ── No text → fresh start ─────────────────────────────────
+        BLD = { step:0, action:null, object:null, specific:null, condition:null, location:null, qty:1 };
+      }
+
       sqBuilderRender();
     }
   }
@@ -4819,56 +4885,52 @@ body.modal-active{overflow:hidden}
   }
 
   function sqBuilderFinish() {
-    // Synthesize a natural description from the BLD state
-    const obj     = BLD.specific || BLD.object || 'item';
-    const action  = BLD.action || 'fix';
-    const cond    = BLD.condition;
-    const loc     = BLD.location;
+    const obj    = BLD.specific || BLD.object || 'item';
+    const action = BLD.action || 'fix';
+    const cond   = BLD.condition;
+    const loc    = BLD.location;
 
-    // Build the text description
+    // ── Synthesize description for NLP tag detection & notes ──────
     let desc = `I need to ${action} my ${obj}`;
     if (cond) desc += ` because it is ${cond}`;
     if (loc)  desc += ` in my ${loc}`;
 
-    // Pre-seed S with builder context for smarter NLP
-    S._objectNoun = obj;
-    S._location   = loc || null;
-    S._sizeHint   = null;
-
-    // Put the text in the textarea and close builder
+    // ── Update textarea so it reflects the built sentence ─────────
     const textarea = document.getElementById('sqDescIn');
     if (textarea) textarea.value = desc;
 
-    // Hide builder, show textarea briefly for UX feedback, then analyze
+    // ── Hide builder ──────────────────────────────────────────────
     const builder = document.getElementById('sqBuilder');
     if (builder) builder.style.display = 'none';
-    const btn = document.getElementById('sqWriteForMeBtn');
-    btn?.classList.remove('active');
-    const inlineRow = document.querySelector('#sqTextBar .sq-inline-row');
-    if (inlineRow) inlineRow.style.display = 'flex';
+    document.getElementById('sqWriteForMeBtn')?.classList.remove('active');
 
-    // Brief delay so user sees the constructed sentence, then auto-analyze
-    setTimeout(() => {
-      // Override intent detection with builder context
-      S.desc = desc;
+    // ── Seed S entirely from builder choices (no NLP re-detection) ─
+    const normStype = (BLD._stype || 'Repair').replace('Install / Mount','Install');
+    S.desc        = desc;
+    S._objectNoun = obj;
+    S._location   = loc || null;
+    S._sizeHint   = null;
+    S._notes      = null;
+    S.manTagIds   = [];
+    S.detTagIds   = [];
+    S.negatedTagIds = [];
+    S.qty         = BLD.qty || 1;
+    S.stype       = normStype;
+    S.intent      = {
+      category: BLD._cat  || 'other',
+      label:    obj,
+      group:    BLD._keyword || obj,
+      base:     0,            // dynamic_services will fill this
+      stype:    normStype,
+      qtyLabel: 'item',
+      key:      BLD._keyword || obj
+    };
 
-      // Manually seed intent from builder choices (more accurate than NLP for builder path)
-      const normStype = (BLD._stype || 'Repair').replace('Install / Mount','Install');
-      S.intent = {
-        category: BLD._cat || 'other',
-        label:    obj,
-        group:    BLD._keyword || obj,
-        base:     0, // will be filled by dynamic_services
-        stype:    normStype,
-        qtyLabel: 'item',
-        key:      BLD._keyword || obj
-      };
-      S.stype   = normStype;
-      S.qty     = BLD.qty || 1;
+    document.getElementById('sqQtyV').textContent = S.qty;
 
-      // Let sqAnalyze handle the rest (NLP tags, dynamic_services, focused mode, etc.)
-      sqAnalyze();
-    }, 350);
+    // ── Go directly to pipeline — stype is certain, skip step 2 ──
+    // sqPrepareFlow(true) = skipStep2, goes straight to step 3 chips
+    sqPrepareFlow(true);
   }
 
 
