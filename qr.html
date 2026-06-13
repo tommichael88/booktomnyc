@@ -439,6 +439,14 @@ body.modal-active{overflow:hidden}
 #smartQuoteEngine .qprice{font-size:48px;font-weight:700;color:#fff;letter-spacing:-1px;line-height:1;}
 #smartQuoteEngine .qhero{background:linear-gradient(135deg,var(--clr-red-dark,#8a0615),var(--clr-red,#de0000));}
 
+
+/* SmartQuote touch targets and visibility */
+#sqDynGroups .chip { min-height:40px; display:inline-flex; align-items:center; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+#sqDynGroups .chip.locked { pointer-events:none; opacity:.4; }
+#sqSb3 .group-label { font-size:11px; font-weight:700; color:#666; text-transform:uppercase; letter-spacing:.05em; margin:14px 0 6px; }
+#sqAdlibBox { border-left:4px solid var(--clr-red,#de0000); border-radius:0 12px 12px 0; }
+#sqAdlibSentence { line-height:2; display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
+
 </style>
     </head>
 
@@ -3228,7 +3236,7 @@ body.modal-active{overflow:hidden}
               <div class="adlib-label"><i class="ti ti-adjustments-horizontal" style="font-size:16px;color:var(--clr-red,#de0000)"></i> Review Job Statement</div>
               <div class="adlib-sentence" id="sqAdlibSentence"></div>
               <div class="adlib-confirm-row">
-                <button class="adlib-yes sq-stepflow" onclick="sqConfirmAdlib()"><i class="ti ti-calculator"></i> Calculate Estimate</button>
+                <button class="adlib-yes" onclick="sqConfirmAdlib()"><i class="ti ti-calculator"></i> Calculate Estimate</button>
                 <button class="adlib-no" onclick="sqEditAdlib()"><i class="ti ti-pencil"></i> Edit</button>
               </div>
             </div>
@@ -3390,36 +3398,61 @@ body.modal-active{overflow:hidden}
     if(!sent) return;
     sent.innerHTML='';
 
-    const addWord=t=>{const s=document.createElement('span');s.className='adlib-word';s.textContent=t+' ';sent.appendChild(s);};
-    const addPill=(key,val,opts,lbl)=>{
-      const p=document.createElement('span');p.className='adlib-pill sq-stepflow';
-      p.innerHTML=`${lbl}<i class="ti ti-chevron-down"></i>`;
+    // Helper: plain word span
+    const w=t=>{const s=document.createElement('span');s.className='adlib-word';s.textContent=t;sent.appendChild(s);};
+    // Helper: editable dropdown pill
+    const pill=(key,display,opts,currentVal)=>{
+      const p=document.createElement('span');
+      p.className='adlib-pill';
+      p.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:8px;background:#fff;border:1px solid #e2e8f0;font-size:14px;font-weight:600;cursor:pointer;position:relative;margin:0 2px;';
+      const lbl=document.createElement('span');lbl.textContent=display;
+      const ico=document.createElement('i');ico.className='ti ti-chevron-down';ico.style.fontSize='11px';ico.style.opacity='.5';
       const sel=document.createElement('select');
-      opts.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;if(o===val)op.selected=true;sel.appendChild(op);});
+      sel.style.cssText='position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;';
+      opts.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;if(o===currentVal)op.selected=true;sel.appendChild(op);});
       sel.addEventListener('change',function(){
-        p.childNodes[0].textContent=this.value;
+        lbl.textContent=this.value;
         if(key==='qty'){S.qty=parseInt(this.value)||1;document.getElementById('sqQtyV').textContent=S.qty;sqBuildAdlib();}
         if(key==='action'){S.stype=this.value.charAt(0).toUpperCase()+this.value.slice(1);sqBuildAdlib();}
       });
-      p.appendChild(sel);sent.appendChild(p);
+      p.appendChild(lbl);p.appendChild(ico);p.appendChild(sel);
+      sent.appendChild(p);
+    };
+    // Helper: removable condition tag
+    const cond=(tid,label)=>{
+      const pp=document.createElement('span');
+      pp.style.cssText='display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;font-size:13px;font-weight:600;cursor:pointer;margin:2px;';
+      pp.title='Tap to remove';
+      const txt=document.createElement('span');txt.textContent=label;
+      const x=document.createElement('i');x.className='ti ti-x';x.style.cssText='font-size:11px;opacity:.7;';
+      pp.appendChild(txt);pp.appendChild(x);
+      pp.addEventListener('click',()=>{
+        S.manTagIds=S.manTagIds.filter(id=>id!==tid);
+        S.detTagIds=S.detTagIds.filter(id=>id!==tid);
+        sqBuildStep3();
+      });
+      sent.appendChild(pp);
     };
 
-    addWord('I need a skilled handyman to');
-    addPill('action',S.stype?.toLowerCase()||'install',['repair','install','diagnose','assemble','set up'],S.stype?.toLowerCase()||'install');
-    addPill('qty',String(S.qty),['1','2','3','4','5','6','8','10','12'],S.qty+' '+(S.intent?.qtyLabel||'item'));
-    addWord('under the category of');
-    const cp=document.createElement('span');cp.className='adlib-pill sq-stepflow';cp.textContent=S.intent?.label||'general';sent.appendChild(cp);
+    // Build the sentence
+    // "I need 1 TV mounted on a drywall wall"
+    // Structure: action dropdown + qty dropdown + intent label (plain) + conditions
+    const actionVal=(S.stype||'Install').toLowerCase().replace('install','install');
+    const catLabel=S.intent?.label||'home service';
+    const qty=S.qty;
+    const qtyLabel=S.intent?.qtyLabel||'item';
+
+    w('I need');
+    pill('qty', qty+' '+qtyLabel, ['1','2','3','4','5','6','8','10','12'], String(qty));
+    w(catLabel);                                          // e.g. "neon sign" or "TV"
+    pill('action', actionVal, ['installed','repaired','assembled','set up','diagnosed'], actionVal==='install'?'installed':actionVal==='repair'?'repaired':actionVal==='assemble'?'assembled':actionVal==='set up'?'set up':actionVal==='diagnose'?'diagnosed':actionVal+'ed');
 
     const active=[...new Set([...S.detTagIds,...S.manTagIds])];
     if(active.length){
-      addWord('with conditions:');
+      w('·');
       active.forEach(tid=>{
         const t=tags[tid];if(!t)return;
-        const pp=document.createElement('span');pp.className='adlib-condition-pill sq-stepflow';
-        pp.innerHTML=`${sqTagLabel(t,tid)} <i class="ti ti-check"></i>`;
-        pp.title='Click to remove';
-        pp.onclick=()=>{S.manTagIds=S.manTagIds.filter(x=>x!==tid);S.detTagIds=S.detTagIds.filter(x=>x!==tid);sqBuildStep3();};
-        sent.appendChild(pp);
+        cond(tid, sqTagLabel(t,tid));
       });
     }
 
@@ -3770,6 +3803,21 @@ body.modal-active{overflow:hidden}
    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
    setViewportHeight();
   }
+
+
+  // Expose SmartQuote functions to global scope (needed for inline onclick handlers)
+  window.sqAnalyze        = sqAnalyze;
+  window.sqPickType       = sqPickType;
+  window.sqHandleStep2    = sqHandleStep2;
+  window.sqOpenStep       = sqOpenStep;
+  window.sqToggleTag      = sqToggleTag;
+  window.sqAdjQty         = sqAdjQty;
+  window.sqBuildAdlib     = sqBuildAdlib;
+  window.sqEditAdlib      = sqEditAdlib;
+  window.sqConfirmAdlib   = sqConfirmAdlib;
+  window.sqAddToCart      = sqAddToCart;
+  window.sqRestart        = sqRestart;
+  window.prefillSmartQuoteFromService = prefillSmartQuoteFromService;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
