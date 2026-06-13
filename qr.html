@@ -7061,32 +7061,25 @@
    return bestMatch;
   }
 
-  function getServiceFromIntent(intent) {
-   if (intent.serviceId) {
-    const svc = (SERVICE_DATA.services || []).find(s => s.id === intent.serviceId);
-    if (svc) return svc;
-   }
-   // fallback: find service by category + type if possible, else create generic
-   const generic = {
-    id: 'generic-' + intent.category,
-    service_type: intent.stype,
-    financial_engine: {
-     base_price: intent.base,
-     pricing_type: intent.stype
-    },
-    intake_chain: [],
-    default_estimates: {
-     disclaimer: 'flat_fee'
-    },
-    confidence_strategy: {
-     minimum_quote_confidence: 70,
-     maximum_followup_questions: 5,
-     diagnostic_threshold: 40
+function getServiceFromIntent(intent) {
+    // 1. If the intent has a specific serviceId, try to load it from the catalog
+    if (intent.serviceId && SERVICE_DATA.services) {
+        const matched = SERVICE_DATA.services.find(s => s.id === intent.serviceId);
+        if (matched) return matched;
     }
-   };
-   return generic;
-  }
 
+    // 2. Fallback to the generic handyman service (which has an intake chain)
+    const fallbackService = SERVICE_DATA.services?.find(s => s.id === 'generic_handyman_service');
+    if (fallbackService) return fallbackService;
+
+    // 3. Last resort – create a bare‑bones service (should never happen)
+    return {
+        id: 'generic-' + intent.category,
+        service_type: intent.stype,
+        financial_engine: { base_price: intent.base || 70 },
+        intake_chain: []   // empty, but at least it won't crash
+    };
+}
   // --- Confidence & missing modules ---------------------------------
   function calculateConfidence(service, answers, nlpScore) {
    let conf = nlpScore || 0;
