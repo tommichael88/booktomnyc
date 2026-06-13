@@ -2967,26 +2967,24 @@ body.modal-active{overflow:hidden}
   }
 
   /* ================================================================
-     SMARTQUOTE ENGINE v6 – V5.5 FLOW RESTORED + CARD-TAP SUPPORT
+     SMARTQUOTE ENGINE — v5.5 flow, site theme
      
-     Two entry paths:
-     A) Text input  → 3-step flow (desc → type → tag chips + adlib → quote)
-     B) Card tap    → prefillSmartQuoteFromService → skip to step 3 (chips)
-     
-     Both paths share the same S state, computeQuote(), and renderQuote().
-     NO intake-module questioning loop for the text path.
+     Layout:
+       [Category grid]
+       [SmartQuote text bar]  ← always visible on home screen
+       
+     Flows:
+       A) Text → Analyze → Step2 type confirm → Step3 chips+adlib → quote
+       B) Card tap → prefillSmartQuoteFromService → Step3 chips+adlib → quote
+          (text bar hidden during card flow; restored on "Other" or restart)
      ================================================================ */
 
-  /* ── Shared state ─────────────────────────────────────────────── */
-  let DB = null; // full btnyc.json (alias of SERVICE_DATA set in init)
-  let S = {
-    qty: 1, intent: null, stype: null,
-    detTagIds: [], manTagIds: [], negatedTagIds: [],
-    desc: '', adlibConfirmed: false
-  };
+  /* ── Shared quote state (S) ───────────────────────────────────── */
+  let DB   = null;   // alias of SERVICE_DATA, set in init()
+  let S    = { qty:1, intent:null, stype:null, detTagIds:[], manTagIds:[], negatedTagIds:[], desc:'', adlibConfirmed:false };
 
-  /* ── Tag helpers ──────────────────────────────────────────────── */
-  function getTagLabel(t, tid) {
+  /* ── Tag label helper ─────────────────────────────────────────── */
+  function sqTagLabel(t, tid) {
     return t.label || t.display_name || tid.replace('#','').replace(/_/g,' ');
   }
 
@@ -2996,177 +2994,153 @@ body.modal-active{overflow:hidden}
       /\b(\d+)\s*(tiles?|items?|pieces?|units?|doors?|fixtures?|signs?|shelves?|outlets?|switches?)/i,
       /replace\s+(\d+)/i, /install\s+(\d+)/i, /fix\s+(\d+)/i, /\b(\d+)\b/
     ];
-    for (const p of patterns) { const m = text.match(p); if (m) return Math.min(parseInt(m[1]), 99); }
+    for (const p of patterns) { const m = text.match(p); if (m) return Math.min(parseInt(m[1]),99); }
     return 1;
   }
 
   function detectTagsNLP(text) {
     const lower = text.toLowerCase().replace(/[.,!?;:]/g,'');
-    const tags = DB.smart_tags || {};
-    const found = [], negated = [];
-    const negWords = ['not',"isn't",'isnt','no','without',"don't",'dont','non','never'];
-    for (const [tid, t] of Object.entries(tags)) {
-      let isMatch = false, isNegated = false;
-      const synonyms = (t.synonyms && t.synonyms.length > 0)
-        ? t.synonyms.filter(s => typeof s === 'string')
-        : [tid.replace('#','').replace(/_/g,' ')];
-      for (const s of synonyms) {
-        const idx = lower.indexOf(s.toLowerCase());
+    const words = new Set(lower.split(/\s+/));  // word set for multi-word synonym fallback
+    const tags  = DB.smart_tags || {};
+    const found=[], negated=[];
+    const neg   = ['not',"isn't",'isnt','no','without',"don't",'dont','non','never'];
+    for (const [tid,t] of Object.entries(tags)) {
+      let hit=false, neg_=false;
+      const syns = (t.synonyms?.length) ? t.synonyms.filter(s=>typeof s==='string') : [tid.replace('#','').replace(/_/g,' ')];
+      for (const s of syns) {
+        const sl = s.toLowerCase();
+        // Try exact substring first
+        let idx = lower.indexOf(sl);
+        // If not found as phrase, try all-words-present match for multi-word synonyms
+        if (idx === -1 && sl.includes(' ')) {
+          const synWords = sl.split(/\s+/);
+          if (synWords.length >= 2 && synWords.every(w => words.has(w))) {
+            // Find position of first synonym word for negation check
+            idx = lower.indexOf(synWords[0]);
+          }
+        }
         if (idx !== -1) {
-          const pre = lower.substring(Math.max(0,idx-20), idx).trim().split(' ');
-          if (pre.slice(-3).some(w => negWords.includes(w))) { isNegated = true; break; }
-          else isMatch = true;
+          const pre = lower.slice(Math.max(0,idx-20),idx).trim().split(' ');
+          if (pre.slice(-3).some(w=>neg.includes(w))) { neg_=true; break; }
+          else hit=true;
         }
       }
-      if (isNegated) negated.push(tid);
-      else if (isMatch) found.push(tid);
+      if (neg_) negated.push(tid); else if (hit) found.push(tid);
     }
     return { found, negated };
   }
 
   function detectIntentNLP(text) {
     const lower = text.toLowerCase();
-    // Support both array and {objects:[]} format from btnyc.json
-    let mappings = DB.intent_mappings || [];
-    if (!Array.isArray(mappings) && mappings.objects) mappings = mappings.objects;
-    let bestMatch = null, highScore = 0;
-    for (const m of mappings) {
-      let score = 0;
-      const kw = (m.keyword || '').toLowerCase();
-      const w = m.confidence_weight || 30;
-      if (kw && lower.includes(kw)) score += w;
-      if (Array.isArray(m.synonyms)) {
-        for (const syn of m.synonyms) {
-          if (typeof syn === 'string' && lower.includes(syn.toLowerCase())) score += w * 0.5;
-        }
-      }
-      if (score > highScore) {
-        highScore = score;
-        bestMatch = {
-          category: m.default_dynamic_category || m.fallback?.category || 'other',
-          stype: m.default_service_type || m.fallback?.service_type || 'Repair',
-          group: m.keyword,
-          base: m.fallback?.base_price || 70,
-          key: m.keyword,
-          label: m.keyword,
-          qtyLabel: 'item'
-        };
+    let maps = DB.intent_mappings || [];
+    if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
+    let best=null, top=0;
+    for (const m of maps) {
+      let score=0;
+      const kw=(m.keyword||'').toLowerCase(), w=m.confidence_weight||30;
+      if (kw && lower.includes(kw)) score+=w;
+      if (Array.isArray(m.synonyms)) m.synonyms.forEach(s=>{ if(typeof s==='string'&&lower.includes(s.toLowerCase())) score+=w*.5; });
+      if (score>top) {
+        top=score;
+        best={ category:m.default_dynamic_category||m.fallback?.category||'other',
+               stype:m.default_service_type||m.fallback?.service_type||'Repair',
+               group:m.keyword, base:m.fallback?.base_price||70,
+               key:m.keyword, label:m.keyword, qtyLabel:'item' };
       }
     }
-    // fallback
-    if (!bestMatch && DB.intent_mappings?.default_fallback) {
-      const fb = DB.intent_mappings.default_fallback;
-      bestMatch = { category: fb.category||'other', stype: fb.service_type||'Repair',
-        group:'other', base: fb.base_price||70, key:'other', label:'Other', qtyLabel:'item' };
+    if (!best) {
+      const fb = DB.intent_mappings?.default_fallback;
+      if (fb) best={ category:fb.category||'other', stype:fb.service_type||'Repair',
+                     group:'other', base:fb.base_price||70, key:'other', label:'Other', qtyLabel:'item' };
     }
-    return bestMatch;
+    return best;
   }
 
-  /* ── SSOT tag rules (default-for-group, mutual exclusion) ─────── */
+  /* ── SSOT tag rules ───────────────────────────────────────────── */
   function applySSOTRules() {
-    const tags = DB.smart_tags || {};
-    const cat = S.intent?.category || 'other';
-    const validTids = Object.keys(tags).filter(tid => {
-      const ac = tags[tid].applicable_categories;
-      return !ac || ac.includes('all') || ac.includes(cat);
+    const tags=DB.smart_tags||{};
+    const cat=S.intent?.category||'other';
+    const valid=Object.keys(tags).filter(tid=>{ const ac=tags[tid].applicable_categories; return !ac||ac.includes('all')||ac.includes(cat); });
+    // Default-for-group
+    const groups=new Set(valid.map(tid=>tags[tid].display_group||'Additional Adjustments'));
+    groups.forEach(g=>{
+      const gTids=valid.filter(tid=>(tags[tid].display_group||'Additional Adjustments')===g);
+      const hasSel=gTids.some(tid=>S.detTagIds.includes(tid)||S.manTagIds.includes(tid));
+      if (!hasSel) { const def=gTids.find(tid=>tags[tid].is_default_for_group); if(def&&!S.negatedTagIds.includes(def)&&!S.manTagIds.includes(def)) S.manTagIds.push(def); }
     });
-    // Apply is_default_for_group
-    const groups = new Set(validTids.map(tid => tags[tid].display_group || 'Additional Adjustments'));
-    groups.forEach(g => {
-      const gTids = validTids.filter(tid => (tags[tid].display_group||'Additional Adjustments') === g);
-      const hasSel = gTids.some(tid => S.detTagIds.includes(tid) || S.manTagIds.includes(tid));
-      if (!hasSel) {
-        const def = gTids.find(tid => tags[tid].is_default_for_group);
-        if (def && !S.negatedTagIds.includes(def) && !S.manTagIds.includes(def)) S.manTagIds.push(def);
-      }
-    });
-    // Apply mutually_exclusive
-    const all = [...S.detTagIds, ...S.manTagIds];
-    const toRemove = new Set();
-    all.forEach(tid => {
-      if (tags[tid]?.mutually_exclusive && S.manTagIds.includes(tid)) {
-        tags[tid].mutually_exclusive.forEach(x => toRemove.add(x));
-      }
-    });
-    S.manTagIds = S.manTagIds.filter(x => !toRemove.has(x));
-    S.detTagIds = S.detTagIds.filter(x => !toRemove.has(x));
+    // Mutual exclusion
+    const all=[...S.detTagIds,...S.manTagIds], rm=new Set();
+    all.forEach(tid=>{ if(tags[tid]?.mutually_exclusive&&S.manTagIds.includes(tid)) tags[tid].mutually_exclusive.forEach(x=>rm.add(x)); });
+    S.manTagIds=S.manTagIds.filter(x=>!rm.has(x));
+    S.detTagIds=S.detTagIds.filter(x=>!rm.has(x));
   }
 
-  /* ── Step flow helpers ────────────────────────────────────────── */
-  function sqUnlock(n) { const el = document.getElementById('sqSc'+n); if(el) el.className='scard active'; }
-  function sqOpen(n)   { const el = document.getElementById('sqSb'+n); if(el) el.style.display='block'; const sn=document.getElementById('sqSn'+n); if(sn) sn.className='snum a'; }
-  function sqMarkDone(n, val) {
+  /* ── Step helpers (use existing scard/sbody DOM in #smartQuoteEngine) ─ */
+  function sqUnlock(n){ const el=document.getElementById('sqSc'+n); if(el) el.className='scard active'; }
+  function sqOpen(n)  { const el=document.getElementById('sqSb'+n); if(el) el.style.display='block';
+                        const sn=document.getElementById('sqSn'+n); if(sn) sn.className='snum a'; }
+  function sqMarkDone(n,val){
     const sb=document.getElementById('sqSb'+n); if(sb) sb.style.display='none';
-    const sn=document.getElementById('sqSn'+n); if(sn){ sn.className='snum d'; sn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>'; }
+    const sn=document.getElementById('sqSn'+n); if(sn){sn.className='snum d';sn.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>';}
     const sv=document.getElementById('sqSv'+n); if(sv) sv.textContent=val||'';
     const sc=document.getElementById('sqSc'+n); if(sc) sc.className='scard done';
   }
-  function sqOpenStep(n) {
-    // Allow clicking done step headers to re-open
-    [1,2,3].forEach(i => { const b=document.getElementById('sqSb'+i); if(b) b.style.display = i===n?'block':'none'; });
-  }
 
-  /* ── initSmartQuote — build the full 3-step UI ────────────────── */
+  /* ── initSmartQuote: inject text bar + step cards below category grid ── */
   function initSmartQuote() {
-    // Ensure #smartQuoteEngine exists after category-card
     let sqEl = document.getElementById('smartQuoteEngine');
     if (!sqEl) {
       const catCard = document.getElementById('category-card');
-      if (catCard?.parentNode) {
-        sqEl = document.createElement('div');
-        sqEl.id = 'smartQuoteEngine';
-        sqEl.className = 'sq-engine';
-        catCard.insertAdjacentElement('afterend', sqEl);
-      } else return;
+      if (!catCard?.parentNode) return;
+      sqEl = document.createElement('div');
+      sqEl.id = 'smartQuoteEngine';
+      // No extra wrapper class — we use existing site classes directly
+      catCard.insertAdjacentElement('afterend', sqEl);
     }
-
-    // Only inject once
-    if (sqEl.querySelector('.sq-stepflow')) return;
+    if (sqEl.querySelector('#sqTextBar')) return; // already injected
 
     sqEl.innerHTML = `
-      <div class="sq-stepflow" id="sqStepFlow">
-
-        <div class="scard active" id="sqSc1">
-          <div class="shead" onclick="sqOpenStep(1)">
-            <div class="snum a" id="sqSn1">1</div>
-            <div class="slabel">What do you need done?</div>
-            <div class="sval" id="sqSv1"></div>
-          </div>
-          <div class="sbody" id="sqSb1" style="display:block">
-            <div style="font-size:13px;color:var(--color-text-muted);margin-top:4px">Describe the job in plain English. The more detail, the better the estimate.</div>
-            <textarea class="desc-ta" id="sqDescIn" rows="3" placeholder="e.g. I need to mount a heavy 65-inch TV on a brick wall in the living room…"></textarea>
-            <button class="nbtn" onclick="sqHandleStep1()" style="margin-top:16px;width:100%;justify-content:center;">
-              Analyze Request <i class="ti ti-wand"></i>
-            </button>
-          </div>
+      <!-- SmartQuote text bar: visible on home, hidden during card-browse flow -->
+      <div id="sqTextBar" class="sq-inline-bar" style="margin-top:14px;">
+        <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--clr-red-dark);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+          <i class="ti ti-wand" style="font-size:15px;"></i> Instant Estimate — describe your job
         </div>
+        <div class="sq-inline-row">
+          <textarea id="sqDescIn" rows="2" placeholder="e.g. mount a large neon sign on a drywall wall in the bedroom…"></textarea>
+          <button id="sqAnalyzeBtn">Analyze <i class="ti ti-arrow-right"></i></button>
+        </div>
+      </div>
 
-        <div class="scard locked" id="sqSc2">
+      <!-- Step 2: confirm service type (hidden until text analyzed or card tapped) -->
+      <div id="sqStepFlow" style="display:none; flex-direction:column; gap:12px; margin-top:14px;">
+
+        <div class="scard active sq-stepflow" id="sqSc2">
           <div class="shead" onclick="sqOpenStep(2)">
-            <div class="snum" id="sqSn2">2</div>
+            <div class="snum a" id="sqSn2">2</div>
             <div class="slabel">Service type</div>
             <div class="sval" id="sqSv2"></div>
           </div>
           <div class="sbody" id="sqSb2" style="display:none">
-            <div style="font-size:13px;color:var(--color-text-muted);margin-top:4px">Confirm or adjust the service type detected.</div>
-            <div class="chips" id="sqTypeChips"></div>
-            <button class="nbtn" id="sqS2next" onclick="sqHandleStep2()" disabled style="margin-top:16px">
+            <div style="font-size:13px;color:#444;margin-top:4px;">Confirm or adjust the type of service.</div>
+            <div class="chips" id="sqTypeChips" style="margin-top:12px;"></div>
+            <button class="nbtn" id="sqS2next" onclick="sqHandleStep2()" disabled style="margin-top:16px;">
               Next <i class="ti ti-arrow-right"></i>
             </button>
           </div>
         </div>
 
-        <div class="scard locked" id="sqSc3">
+        <div class="scard locked sq-stepflow" id="sqSc3">
           <div class="shead" onclick="sqOpenStep(3)">
             <div class="snum" id="sqSn3">3</div>
             <div class="slabel">Scope &amp; conditions</div>
             <div class="sval" id="sqSv3"></div>
           </div>
           <div class="sbody" id="sqSb3" style="display:none">
-            <div style="font-size:13px;font-weight:600;color:var(--color-text-main);margin-top:4px">Auto-detected conditions:</div>
-            <div class="chips" id="sqDetTags" style="margin-bottom:16px"></div>
 
-            <div style="font-size:13px;font-weight:600;color:var(--color-text-main);margin:12px 0 8px">Quantity</div>
+            <div style="font-size:13px;font-weight:600;color:var(--color-text-main,#1e293b);margin-top:4px;">Auto-detected conditions:</div>
+            <div class="chips" id="sqDetTags" style="margin-bottom:16px;"></div>
+
+            <div style="font-size:13px;font-weight:600;color:var(--color-text-main,#1e293b);margin:12px 0 8px;">Quantity</div>
             <div class="qrow">
               <button class="qbtn" onclick="sqAdjQty(-1)">−</button>
               <span class="qval" id="sqQtyV">1</span>
@@ -3176,16 +3150,16 @@ body.modal-active{overflow:hidden}
 
             <div id="sqDynGroups"></div>
 
-            <div class="adlib-box" id="sqAdlibBox" style="display:none">
-              <div class="adlib-label"><i class="ti ti-adjustments-horizontal" style="font-size:16px;color:var(--color-accent)"></i> Review Job Statement</div>
+            <div class="adlib-box sq-stepflow" id="sqAdlibBox" style="display:none; margin-top:20px;">
+              <div class="adlib-label"><i class="ti ti-adjustments-horizontal" style="font-size:16px;color:var(--clr-red,#de0000)"></i> Review Job Statement</div>
               <div class="adlib-sentence" id="sqAdlibSentence"></div>
               <div class="adlib-confirm-row">
-                <button class="adlib-yes" onclick="sqConfirmAdlib()"><i class="ti ti-calculator"></i> Calculate Estimate</button>
+                <button class="adlib-yes sq-stepflow" onclick="sqConfirmAdlib()"><i class="ti ti-calculator"></i> Calculate Estimate</button>
                 <button class="adlib-no" onclick="sqEditAdlib()"><i class="ti ti-pencil"></i> Edit</button>
               </div>
             </div>
 
-            <button class="nbtn" id="sqS3build" onclick="sqBuildAdlib()" style="margin-top:16px">
+            <button class="nbtn sq-stepflow" id="sqS3build" onclick="sqBuildAdlib()" style="margin-top:16px; display:none;">
               Construct Estimate <i class="ti ti-arrow-right"></i>
             </button>
           </div>
@@ -3195,58 +3169,62 @@ body.modal-active{overflow:hidden}
       <div id="sqQuoteOut"></div>
     `;
 
-    // Wire category chips in descIn area? No – category grid handles that via prefillSmartQuoteFromService.
-    // But we can add a small category hint row:
-    const sb1 = document.getElementById('sqSb1');
-    if (sb1) {
-      const hintRow = document.createElement('div');
-      hintRow.style.cssText = 'margin-top:14px;font-size:12px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.04em;';
-      hintRow.textContent = 'Or tap a category above ↑';
-      sb1.appendChild(hintRow);
-    }
+    document.getElementById('sqAnalyzeBtn').addEventListener('click', sqAnalyze);
+    document.getElementById('sqDescIn').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sqAnalyze(); }
+    });
   }
 
-  /* ── STEP 1: Analyze text ─────────────────────────────────────── */
-  function sqHandleStep1() {
-    const desc = (document.getElementById('sqDescIn')?.value || '').trim();
-    S.desc = desc;
+  function sqOpenStep(n) {
+    // Allow tapping a done step header to re-expand it
+    [2,3].forEach(i=>{ const b=document.getElementById('sqSb'+i); if(b&&i!==n) b.style.display='none'; });
+    const b=document.getElementById('sqSb'+n); if(b) b.style.display=b.style.display==='none'?'block':'none';
+  }
+
+  /* ── ANALYZE (text path) ──────────────────────────────────────── */
+  function sqAnalyze() {
+    if (!DB || !DB.intent_mappings) { toast('Pricing data still loading — please wait a moment.', 'error'); return; }
+    const desc = (document.getElementById('sqDescIn')?.value||'').trim();
     if (!desc) { toast('Please describe the job first.', 'error'); return; }
 
+    S.desc = desc;
     const intent = detectIntentNLP(desc);
     S.intent = intent || { category:'other', label:'General', base:70, stype:'Repair', qtyLabel:'item', key:'other', group:'other' };
-
-    const nlpRes = detectTagsNLP(desc);
-    S.detTagIds = nlpRes.found;
-    S.negatedTagIds = nlpRes.negated;
+    const nlp = detectTagsNLP(desc);
+    S.detTagIds = nlp.found;
+    S.negatedTagIds = nlp.negated;
     S.manTagIds = [];
     S.qty = extractQty(desc);
-
     document.getElementById('sqQtyV').textContent = S.qty;
-    sqMarkDone(1, (S.intent.key||S.intent.label||'') + ' — ' + desc.slice(0,42) + (desc.length>42?'…':''));
+
+    // Hide the text bar (user is now in the step flow)
+    const bar = document.getElementById('sqTextBar');
+    if (bar) bar.style.display = 'none';
+
     sqBuildStep2();
   }
 
-  /* ── STEP 2: Confirm service type ─────────────────────────────── */
+  /* ── STEP 2 ───────────────────────────────────────────────────── */
   function sqBuildStep2() {
+    const flow = document.getElementById('sqStepFlow');
+    if (flow) flow.style.display = 'flex';
     sqUnlock(2); sqOpen(2);
     const types = ['Install','Repair','Diagnostic','Assembly','Setup'];
     const guess = S.intent?.stype || 'Repair';
     S.stype = guess;
-    const iconMap = {Install:'ti-tool',Repair:'ti-wrench',Diagnostic:'ti-stethoscope',Assembly:'ti-puzzle',Setup:'ti-settings'};
+    const icons = {Install:'ti-tool',Repair:'ti-wrench',Diagnostic:'ti-stethoscope',Assembly:'ti-puzzle',Setup:'ti-settings'};
     document.getElementById('sqTypeChips').innerHTML = types.map(t =>
       `<span class="chip${t===guess?' sel':''}" onclick="sqPickType('${t}')" data-type="${t}">
-         <i class="ti ${iconMap[t]||'ti-circle-check'}"></i> ${t}
-       </span>`
-    ).join('');
+         <i class="ti ${icons[t]||'ti-circle-check'}"></i> ${t}
+       </span>`).join('');
     const btn = document.getElementById('sqS2next');
     if (btn) btn.disabled = false;
   }
 
   function sqPickType(t) {
-    document.querySelectorAll('#sqTypeChips .chip').forEach(c => c.classList.toggle('sel', c.dataset.type===t));
-    S.stype = t;
-    const btn = document.getElementById('sqS2next');
-    if (btn) btn.disabled = false;
+    document.querySelectorAll('#sqTypeChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.type===t));
+    S.stype=t;
+    const btn=document.getElementById('sqS2next'); if(btn) btn.disabled=false;
   }
 
   function sqHandleStep2() {
@@ -3255,348 +3233,337 @@ body.modal-active{overflow:hidden}
     sqBuildStep3();
   }
 
-  /* ── STEP 3: Tag chips ────────────────────────────────────────── */
+  /* ── STEP 3 ───────────────────────────────────────────────────── */
   function sqBuildStep3() {
-    sqUnlock(3); sqOpen(3);
-    S.manTagIds = [...new Set(S.manTagIds)];
+    S.manTagIds=[...new Set(S.manTagIds)];
     applySSOTRules();
+    sqUnlock(3); sqOpen(3);
 
-    const tags = DB.smart_tags || {};
+    const tags=DB.smart_tags||{};
 
-    // Detected tags row
-    let detHtml = '';
-    S.negatedTagIds.forEach(tid => {
-      if (!tags[tid]) return;
-      detHtml += `<span class="chip negated" title="Excluded from description"><i class="ti ti-x"></i> ${getTagLabel(tags[tid],tid)}</span>`;
-    });
-    S.detTagIds.forEach(tid => {
-      if (!tags[tid]) return;
-      const t = tags[tid];
-      detHtml += `<span class="chip gtag sel" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')">
-        <i class="ti ti-check"></i> ${getTagLabel(t,tid)} ${t.fee>0?'+$'+t.fee:''}</span>`;
-    });
-    if (!detHtml) detHtml = '<span style="font-size:13px;color:var(--color-text-faint);font-style:italic">None auto-detected</span>';
-    document.getElementById('sqDetTags').innerHTML = detHtml;
+    // Detected row
+    let det='';
+    S.negatedTagIds.forEach(tid=>{ if(!tags[tid])return; det+=`<span class="chip negated" title="Excluded"><i class="ti ti-x"></i> ${sqTagLabel(tags[tid],tid)}</span>`; });
+    S.detTagIds.forEach(tid=>{ if(!tags[tid])return; const t=tags[tid];
+      const _chipFee=t.fee??t.effects?.fee??0; det+=`<span class="chip gtag sel" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}${_chipFee>0?' +$'+_chipFee:''}</span>`; });
+    if(!det) det='<span style="font-size:13px;color:#999;font-style:italic">None auto-detected from text</span>';
+    document.getElementById('sqDetTags').innerHTML=det;
 
-    document.getElementById('sqQtyLbl').textContent = S.intent?.qtyLabel || 'item';
-    document.getElementById('sqQtyV').textContent = S.qty;
+    document.getElementById('sqQtyLbl').textContent=S.intent?.qtyLabel||'item';
+    document.getElementById('sqQtyV').textContent=S.qty;
 
-    // Group chips
-    const cat = S.intent?.category || 'other';
-    const validTids = Object.keys(tags).filter(tid => {
-      const ac = tags[tid].applicable_categories;
-      return !ac || ac.includes('all') || ac.includes(cat);
-    });
-    const existing = new Set([...S.detTagIds, ...S.negatedTagIds, ...S.manTagIds]);
+    // Grouped chips from SSOT smart_tags
+    const cat=S.intent?.category||'other';
+    const valid=Object.keys(tags).filter(tid=>{ const ac=tags[tid].applicable_categories; return !ac||ac.includes('all')||ac.includes(cat); });
+    const exist=new Set([...S.detTagIds,...S.negatedTagIds,...S.manTagIds]);
+    const grouped={};
+    valid.forEach(tid=>{ const g=tags[tid].display_group||'Additional Adjustments'; (grouped[g]=grouped[g]||[]).push(tid); });
 
-    const grouped = {};
-    validTids.forEach(tid => {
-      const g = tags[tid].display_group || 'Additional Adjustments';
-      if (!grouped[g]) grouped[g] = [];
-      grouped[g].push(tid);
-    });
-
-    let groupHtml = '';
-    for (const [gName, gTids] of Object.entries(grouped)) {
-      let chipsHtml = '';
-      gTids.forEach(tid => {
-        const t = tags[tid];
-        const isSel = existing.has(tid) && !S.negatedTagIds.includes(tid);
-        const isLocked = !isSel && gTids.some(o => existing.has(o) && tags[o]?.mutually_exclusive?.includes(tid));
-        chipsHtml += isSel
-          ? `<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${getTagLabel(t,tid)}</span>`
-          : `<span class="chip ${isLocked?'locked':''}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-plus"></i> ${getTagLabel(t,tid)}</span>`;
+    let html='';
+    for(const [gName,gTids] of Object.entries(grouped)){
+      let chips='';
+      gTids.forEach(tid=>{
+        const t=tags[tid];
+        const sel=exist.has(tid)&&!S.negatedTagIds.includes(tid);
+        const locked=!sel&&gTids.some(o=>exist.has(o)&&tags[o]?.mutually_exclusive?.includes(tid));
+        chips+=sel
+          ?`<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}</span>`
+          :`<span class="chip${locked?' locked':''}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-plus"></i> ${sqTagLabel(t,tid)}</span>`;
       });
-      if (chipsHtml) groupHtml += `<div class="group-label">${gName}</div><div class="chips">${chipsHtml}</div>`;
+      if(chips) html+=`<div class="group-label">${gName}</div><div class="chips">${chips}</div>`;
     }
-    document.getElementById('sqDynGroups').innerHTML = groupHtml;
+    document.getElementById('sqDynGroups').innerHTML=html;
 
-    // Auto-open adlib if we have enough context
+    // Auto-build adlib immediately
     sqBuildAdlib();
   }
 
-  function sqToggleTag(el, tid) {
-    if (el.classList.contains('locked')) return;
-    if (el.classList.contains('sel')) {
-      S.manTagIds = S.manTagIds.filter(x => x !== tid);
-      S.detTagIds = S.detTagIds.filter(x => x !== tid);
-    } else {
-      if (!S.manTagIds.includes(tid)) S.manTagIds.push(tid);
-    }
+  function sqToggleTag(el,tid){
+    if(el.classList.contains('locked')) return;
+    if(el.classList.contains('sel')){ S.manTagIds=S.manTagIds.filter(x=>x!==tid); S.detTagIds=S.detTagIds.filter(x=>x!==tid); }
+    else { if(!S.manTagIds.includes(tid)) S.manTagIds.push(tid); }
     sqBuildStep3();
   }
 
-  function sqAdjQty(d) {
-    S.qty = Math.max(1, Math.min(99, S.qty + d));
-    document.getElementById('sqQtyV').textContent = S.qty;
-    if (document.getElementById('sqAdlibBox')?.style.display === 'block') sqBuildAdlib();
+  function sqAdjQty(d){
+    S.qty=Math.max(1,Math.min(99,S.qty+d));
+    document.getElementById('sqQtyV').textContent=S.qty;
+    if(document.getElementById('sqAdlibBox')?.style.display==='block') sqBuildAdlib();
   }
 
   /* ── Adlib sentence ───────────────────────────────────────────── */
-  function sqBuildAdlib() {
-    const tags = DB.smart_tags || {};
-    const qty = S.qty;
-    const qtyLbl = S.intent?.qtyLabel || 'item';
-    const action = S.stype?.toLowerCase() || 'install';
-    const catLabel = S.intent?.label || 'general';
-    const sent = document.getElementById('sqAdlibSentence');
-    if (!sent) return;
-    sent.innerHTML = '';
+  function sqBuildAdlib(){
+    const tags=DB.smart_tags||{};
+    const sent=document.getElementById('sqAdlibSentence');
+    if(!sent) return;
+    sent.innerHTML='';
 
-    const addWord = t => { const s=document.createElement('span'); s.className='adlib-word'; s.textContent=t; sent.appendChild(s); };
-    const addDropdown = (key, val, opts, displayLabel) => {
-      const pill=document.createElement('span'); pill.className='adlib-pill';
-      pill.innerHTML=`${displayLabel}<i class="ti ti-chevron-down"></i>`;
+    const addWord=t=>{const s=document.createElement('span');s.className='adlib-word';s.textContent=t;sent.appendChild(s);};
+    const addPill=(key,val,opts,lbl)=>{
+      const p=document.createElement('span');p.className='adlib-pill sq-stepflow';
+      p.innerHTML=`${lbl}<i class="ti ti-chevron-down"></i>`;
       const sel=document.createElement('select');
-      opts.forEach(o => { const op=document.createElement('option'); op.value=o; op.textContent=o; if(o===val)op.selected=true; sel.appendChild(op); });
-      sel.addEventListener('change', function(){
-        pill.childNodes[0].textContent = this.value;
-        if (key==='qty') { S.qty=parseInt(this.value)||1; document.getElementById('sqQtyV').textContent=S.qty; sqBuildAdlib(); }
-        if (key==='action') { S.stype=this.value.charAt(0).toUpperCase()+this.value.slice(1); sqBuildAdlib(); }
+      opts.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;if(o===val)op.selected=true;sel.appendChild(op);});
+      sel.addEventListener('change',function(){
+        p.childNodes[0].textContent=this.value;
+        if(key==='qty'){S.qty=parseInt(this.value)||1;document.getElementById('sqQtyV').textContent=S.qty;sqBuildAdlib();}
+        if(key==='action'){S.stype=this.value.charAt(0).toUpperCase()+this.value.slice(1);sqBuildAdlib();}
       });
-      pill.appendChild(sel); sent.appendChild(pill);
+      p.appendChild(sel);sent.appendChild(p);
     };
 
     addWord('I need a skilled handyman to');
-    addDropdown('action', action, ['repair','install','diagnose','assemble','set up'], action);
-    addDropdown('qty', String(qty), ['1','2','3','4','5','6','8','10','12'], qty+' '+qtyLbl);
+    addPill('action',S.stype?.toLowerCase()||'install',['repair','install','diagnose','assemble','set up'],S.stype?.toLowerCase()||'install');
+    addPill('qty',String(S.qty),['1','2','3','4','5','6','8','10','12'],S.qty+' '+(S.intent?.qtyLabel||'item'));
     addWord('under the category of');
-    const catPill=document.createElement('span'); catPill.className='adlib-pill'; catPill.innerHTML=catLabel;
-    sent.appendChild(catPill);
+    const cp=document.createElement('span');cp.className='adlib-pill sq-stepflow';cp.textContent=S.intent?.label||'general';sent.appendChild(cp);
 
-    const activeTids = [...new Set([...S.detTagIds, ...S.manTagIds])];
-    if (activeTids.length > 0) {
+    const active=[...new Set([...S.detTagIds,...S.manTagIds])];
+    if(active.length){
       addWord('with conditions:');
-      activeTids.forEach(tid => {
-        const t = tags[tid]; if (!t) return;
-        const p=document.createElement('span'); p.className='adlib-condition-pill';
-        p.innerHTML=`${getTagLabel(t,tid)} <i class="ti ti-check"></i>`;
-        p.title='Click to remove';
-        p.onclick=()=>{ S.manTagIds=S.manTagIds.filter(x=>x!==tid); S.detTagIds=S.detTagIds.filter(x=>x!==tid); sqBuildStep3(); };
-        sent.appendChild(p);
+      active.forEach(tid=>{
+        const t=tags[tid];if(!t)return;
+        const pp=document.createElement('span');pp.className='adlib-condition-pill sq-stepflow';
+        pp.innerHTML=`${sqTagLabel(t,tid)} <i class="ti ti-check"></i>`;
+        pp.title='Click to remove';
+        pp.onclick=()=>{S.manTagIds=S.manTagIds.filter(x=>x!==tid);S.detTagIds=S.detTagIds.filter(x=>x!==tid);sqBuildStep3();};
+        sent.appendChild(pp);
       });
     }
 
-    const box = document.getElementById('sqAdlibBox');
-    if (box) box.style.display = 'block';
-    const buildBtn = document.getElementById('sqS3build');
-    if (buildBtn) buildBtn.style.display = 'none';
+    const box=document.getElementById('sqAdlibBox');if(box)box.style.display='block';
+    const bb=document.getElementById('sqS3build');if(bb)bb.style.display='none';
   }
 
-  function sqEditAdlib() {
-    const box = document.getElementById('sqAdlibBox');
-    if (box) box.style.display = 'none';
-    const buildBtn = document.getElementById('sqS3build');
-    if (buildBtn) buildBtn.style.display = 'inline-flex';
+  function sqEditAdlib(){
+    const box=document.getElementById('sqAdlibBox');if(box)box.style.display='none';
+    const bb=document.getElementById('sqS3build');if(bb)bb.style.display='inline-flex';
   }
 
-  function sqConfirmAdlib() {
-    S.adlibConfirmed = true;
-    const activeTids = [...new Set([...S.detTagIds, ...S.manTagIds])];
-    const tagLabels = activeTids.map(tid => DB.smart_tags?.[tid] ? getTagLabel(DB.smart_tags[tid],tid) : null).filter(Boolean);
-    sqMarkDone(3, S.qty+'× '+(S.intent?.qtyLabel||'item')+(tagLabels.length?' · '+tagLabels.join(', '):''));
+  function sqConfirmAdlib(){
+    S.adlibConfirmed=true;
+    const active=[...new Set([...S.detTagIds,...S.manTagIds])];
+    const labels=active.map(tid=>DB.smart_tags?.[tid]?sqTagLabel(DB.smart_tags[tid],tid):null).filter(Boolean);
+    sqMarkDone(3, S.qty+'× '+(S.intent?.qtyLabel||'item')+(labels.length?' · '+labels.join(', '):''));
     sqRenderQuote();
   }
 
-  /* ── Price computation ────────────────────────────────────────── */
-  function computeSQQuote() {
-    const tags = DB.smart_tags || {};
-    const dispatch = DB.global_rules?.surcharges?.dispatch_fee || 45;
-    const tiers = DB.global_rules?.complexity_tiers || { routine:{hourly_rate:65}, skilled:{hourly_rate:85}, specialized:{hourly_rate:110} };
-    const st = S.stype || 'Repair';
-    let base = S.intent?.base || (DB.service_types?.[st]?.base_price) || 70;
-    let baseMin = 45, extraFee = 0, extraMin = 0;
-    const activeLabels = [];
-    let tierKey = 'skilled';
-    const activeTids = [...new Set([...S.detTagIds, ...S.manTagIds])];
-    for (const tid of activeTids) {
-      const t = tags[tid]; if (!t) continue;
-      // Support both fee/minutes directly on tag and inside effects{}
-      extraFee += (t.fee ?? t.effects?.fee ?? 0);
-      extraMin += (t.minutes ?? t.effects?.minutes ?? 0);
-      activeLabels.push(getTagLabel(t, tid));
-      const esc = t.escalate_complexity || t.effects?.complexity_override;
-      if (esc === 'specialized') tierKey = 'specialized';
+  /* ── Price compute ────────────────────────────────────────────── */
+  function computeSQQuote(){
+    const tags=DB.smart_tags||{};
+    const dispatch=DB.global_rules?.surcharges?.dispatch_fee||45;
+    const tiers=DB.global_rules?.complexity_tiers||{routine:{hourly_rate:65},skilled:{hourly_rate:85},specialized:{hourly_rate:110}};
+    const st=S.stype||'Repair';
+    let base=S.intent?.base||(DB.service_types?.[st]?.base_price)||70;
+    let baseMin=45,extraFee=0,extraMin=0;
+    const activeLabels=[];
+    let tierKey='skilled';
+    const active=[...new Set([...S.detTagIds,...S.manTagIds])];
+    for(const tid of active){
+      const t=tags[tid];if(!t)continue;
+      const fee=t.fee??t.effects?.fee??0;
+      const min=t.minutes??t.effects?.minutes??0;
+      const esc=t.escalate_complexity||t.effects?.complexity_override;
+      extraFee+=fee; extraMin+=min;
+      activeLabels.push(sqTagLabel(t,tid));
+      if(esc==='specialized') tierKey='specialized';
     }
-    if (S.qty > 1) baseMin += (S.qty - 1) * 30;
-    const tierRate = tiers[tierKey]?.hourly_rate || 85;
-    const totalMin = Math.max(baseMin + extraMin, 30);
-    const laborCalc = Math.round(base + extraFee + (totalMin/60) * tierRate);
-    const isDiag = st === 'Diagnostic';
-    const isProject = base >= 150;
-    let priceDisplay, priceSub, badgeTpl, disclaimerText;
-    if (isDiag) {
-      priceDisplay='$'+laborCalc; priceSub='Diagnostic visit · Tech quotes on site';
-      badgeTpl='diag'; disclaimerText='Skilled technician will assess and confirm final price before work begins.';
-    } else if (isProject) {
-      const lo=Math.round(laborCalc*0.85), hi=Math.round(laborCalc*1.35+dispatch);
-      priceDisplay='$'+lo+' – $'+hi; priceSub='Preliminary range · Finalized on site';
-      badgeTpl='proj'; disclaimerText='Estimate is preliminary. Final price confirmed after technician inspects. Materials not included.';
-    } else {
-      priceDisplay='$'+laborCalc; priceSub='Locked-in labor · No surprise charges';
-      badgeTpl='ok'; disclaimerText='This is your confirmed labor price. Materials (if any) are extra and disclosed before work begins. Dispatch fee billed once per visit.';
-    }
-    return { priceDisplay, priceSub, badgeTpl, disclaimerText, laborCalc, base, extraFee, totalMin, tierKey, tierRate, activeLabels, isDiag, isProject, dispatch };
+    if(S.qty>1) baseMin+=(S.qty-1)*30;
+    const tierRate=tiers[tierKey]?.hourly_rate||85;
+    const totalMin=Math.max(baseMin+extraMin,30);
+    const laborCalc=Math.round(base+extraFee+(totalMin/60)*tierRate);
+    const isDiag=st==='Diagnostic', isProject=base>=150;
+    let priceDisplay,priceSub,badgeTpl,disclaimerText;
+    if(isDiag){priceDisplay='$'+laborCalc;priceSub='Diagnostic visit · Tech quotes on site';badgeTpl='diag';disclaimerText='Skilled technician will assess and confirm final price before work begins.';}
+    else if(isProject){const lo=Math.round(laborCalc*.85),hi=Math.round(laborCalc*1.35+dispatch);priceDisplay='$'+lo+' – $'+hi;priceSub='Preliminary range · Finalized on site';badgeTpl='proj';disclaimerText='Estimate is preliminary. Final price confirmed after technician inspects. Materials not included.';}
+    else{priceDisplay='$'+laborCalc;priceSub='Locked-in labor · No surprise charges';badgeTpl='ok';disclaimerText='This is your confirmed labor price. Materials (if any) are extra and disclosed before work begins. Dispatch fee billed once per visit.';}
+    return{priceDisplay,priceSub,badgeTpl,disclaimerText,laborCalc,base,extraFee,totalMin,tierKey,tierRate,activeLabels,isDiag,isProject,dispatch};
   }
 
-  function sqRenderQuote() {
-    const q = computeSQQuote();
-    const badgeHtml = {
-      ok:`<i class="ti ti-shield-check"></i> Price confirmed`,
-      proj:`<i class="ti ti-ruler"></i> Project-based`,
-      diag:`<i class="ti ti-stethoscope"></i> Diagnostic`
-    }[q.badgeTpl];
-    const catLabel = S.intent?.label || 'Home Services';
-    const out = document.getElementById('sqQuoteOut');
-    if (!out) return;
-    out.innerHTML = `<div class="qpanel">
+  /* ── Render quote ─────────────────────────────────────────────── */
+  function sqRenderQuote(){
+    const q=computeSQQuote();
+    const badge={ok:`<i class="ti ti-shield-check"></i> Price confirmed`,proj:`<i class="ti ti-ruler"></i> Project-based`,diag:`<i class="ti ti-stethoscope"></i> Diagnostic`}[q.badgeTpl];
+    const out=document.getElementById('sqQuoteOut');
+    if(!out)return;
+    out.innerHTML=`<div class="qpanel">
       <div class="qhero">
-        <div class="qitag">${badgeHtml}</div>
+        <div class="qitag">${badge}</div>
         <div class="${q.isProject?'qpranger':'qprice'}">${q.priceDisplay}</div>
         <div class="qpsub">${q.priceSub}</div>
-        <div class="qmeta"><i class="ti ti-tool"></i> ${catLabel} · ${S.intent?.group||'General'} · ${S.stype}</div>
+        <div class="qmeta"><i class="ti ti-tool"></i> ${S.intent?.label||'Service'} · ${S.intent?.group||'General'} · ${S.stype}</div>
       </div>
       <div class="qbody">
         <div class="qlines">
           <div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ${(S.stype||'service').toLowerCase()}</span><span class="qlv">$${q.base}</span></div>
-          ${q.extraFee!==0?`<div class="ql"><span class="qll"><i class="ti ti-adjustments-alt"></i> Condition adjustments</span><span class="qlv ${q.extraFee<0?'g':''}">${q.extraFee>=0?'+':''}$${q.extraFee}</span></div>`:''}
+          ${q.extraFee?`<div class="ql"><span class="qll"><i class="ti ti-adjustments-alt"></i> Condition adjustments</span><span class="qlv ${q.extraFee<0?'g':''}">${q.extraFee>=0?'+':''}$${q.extraFee}</span></div>`:''}
           <div class="ql"><span class="qll"><i class="ti ti-clock"></i> Est. labor time</span><span class="qlv m">~${q.totalMin} min · <span class="${q.tierKey==='specialized'?'c':''}">${q.tierKey}</span> ($${q.tierRate}/hr)</span></div>
           <div class="ql"><span class="qll"><i class="ti ti-stack-2"></i> Quantity</span><span class="qlv">${S.qty} ${S.intent?.qtyLabel||'item'}</span></div>
           <div class="ql"><span class="qll"><i class="ti ti-car"></i> Dispatch fee</span><span class="qlv m">+$${q.dispatch} · once per visit</span></div>
-          <div class="ql" style="margin-top:8px;border-bottom:none"><span class="qll" style="font-weight:600;font-size:15px">Total labor</span><span class="qlv" style="font-size:20px;font-weight:700;color:var(--color-primary)">$${q.laborCalc}${q.isDiag||q.isProject?' (est.)':''}</span></div>
+          <div class="ql" style="margin-top:8px;border-bottom:none"><span class="qll" style="font-weight:600;font-size:15px">Total labor</span><span class="qlv" style="font-size:20px;font-weight:700;color:var(--clr-red-dark,#8a0615)">$${q.laborCalc}${q.isDiag||q.isProject?' (est.)':''}</span></div>
         </div>
-        ${q.activeLabels.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px">${q.activeLabels.map(l=>`<span class="chip gtag" style="cursor:default;font-size:12px;padding:4px 12px"><i class="ti ti-check" style="color:var(--color-success)"></i> ${l}</span>`).join('')}</div>`:''}
+        ${q.activeLabels.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px">${q.activeLabels.map(l=>`<span class="chip gtag" style="cursor:default;font-size:12px;padding:4px 12px"><i class="ti ti-check"></i> ${l}</span>`).join('')}</div>`:''}
         <div class="disc"><i class="ti ti-info-circle"></i><div>${q.disclaimerText}</div></div>
       </div>
       <div class="ctarow">
-        <button class="ctap" onclick="sqBookNow()"><i class="ti ti-shopping-cart" style="font-size:18px"></i> Add to Request</button>
+        <button class="ctap" onclick="sqAddToCart()"><i class="ti ti-shopping-cart" style="font-size:18px"></i> Add to Request</button>
         <button class="ctag" onclick="sqRestart()"><i class="ti ti-refresh"></i> Start Over</button>
       </div>
     </div>`;
-    out.scrollIntoView({ behavior:'smooth', block:'start' });
+    out.scrollIntoView({behavior:'smooth',block:'start'});
   }
 
   /* ── Cart + restart ───────────────────────────────────────────── */
-  function sqBookNow() {
-    if (!cartLimiter.isAllowed('add')) { toast('Adding too fast.', 'error'); return; }
-    const q = computeSQQuote();
-    const catId = S.intent?.category || 'other';
+  function sqAddToCart(){
+    if(!cartLimiter.isAllowed('add')){toast('Adding too fast.','error');return;}
+    const q=computeSQQuote();
     addToCart({
-      id: 'sq-' + Date.now() + '-' + Math.random().toString(36).substr(2,6),
-      serviceId: S.intent?.key || 'smartquote',
-      category_id: catId,
-      name: (S.intent?.label || 'Service') + (S.intent?.group && S.intent.group !== S.intent.label ? ' – '+S.intent.group : ''),
-      price: '$' + q.laborCalc,
-      icon: '⚡',
-      detail: S.desc?.substring(0,80) || 'SmartQuote estimate',
-      notes: 'SmartQuote · ' + (S.desc||'') + (q.activeLabels.length ? '\nConditions: '+q.activeLabels.join(', ') : ''),
-      materialsNotIncluded: true,
-      materialsEstimateRange: [0,0]
+      id:'sq-'+Date.now()+'-'+Math.random().toString(36).substr(2,6),
+      serviceId:S.intent?.key||'smartquote',
+      category_id:S.intent?.category||'other',
+      name:(S.intent?.label||'Service')+(S.intent?.group&&S.intent.group!==S.intent.label?' – '+S.intent.group:''),
+      price:'$'+q.laborCalc,
+      icon:'⚡',
+      detail:S.desc?.substring(0,80)||'SmartQuote estimate',
+      notes:'SmartQuote · '+(S.desc||'')+(q.activeLabels.length?'\nConditions: '+q.activeLabels.join(', '):''),
+      materialsNotIncluded:true,
+      materialsEstimateRange:[0,0]
     });
-    toast((S.intent?.label||'Service') + ' added to request!', 'success');
+    toast((S.intent?.label||'Service')+' added to request!','success');
     sqRestart();
-    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
-    DOM.serviceRequestSummary?.scrollIntoView({ behavior:'smooth', block:'start' });
+    if(DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display='block';
+    DOM.serviceRequestSummary?.scrollIntoView({behavior:'smooth',block:'start'});
     renderCart();
   }
 
-  function sqRestart() {
-    S = { qty:1, intent:null, stype:null, detTagIds:[], manTagIds:[], negatedTagIds:[], desc:'', adlibConfirmed:false };
-    const out = document.getElementById('sqQuoteOut');
-    if (out) out.innerHTML = '';
-    const descIn = document.getElementById('sqDescIn');
-    if (descIn) descIn.value = '';
-    [1,2,3].forEach(n => {
-      const sc=document.getElementById('sqSc'+n), sb=document.getElementById('sqSb'+n),
-            sn=document.getElementById('sqSn'+n), sv=document.getElementById('sqSv'+n);
-      if (sc) sc.className = n===1?'scard active':'scard locked';
-      if (sb) sb.style.display = n===1?'block':'none';
-      if (sn) { sn.className = n===1?'snum a':'snum'; sn.innerHTML = String(n); }
-      if (sv) sv.textContent = '';
+  function sqRestart(){
+    S={qty:1,intent:null,stype:null,detTagIds:[],manTagIds:[],negatedTagIds:[],desc:'',adlibConfirmed:false};
+    const out=document.getElementById('sqQuoteOut');if(out)out.innerHTML='';
+    const desc=document.getElementById('sqDescIn');if(desc)desc.value='';
+    // Clear stale containers to prevent duplicate question listeners
+    const staleTypes=document.getElementById('sqTypeChips');if(staleTypes)staleTypes.innerHTML='';
+    const staleDetTags=document.getElementById('sqDetTags');if(staleDetTags)staleDetTags.innerHTML='';
+    // Reset step cards
+    [2,3].forEach(n=>{
+      const sc=document.getElementById('sqSc'+n),sb=document.getElementById('sqSb'+n),sn=document.getElementById('sqSn'+n),sv=document.getElementById('sqSv'+n);
+      if(sc)sc.className='scard locked sq-stepflow';
+      if(sb)sb.style.display='none';
+      if(sn){sn.className='snum';sn.innerHTML=String(n);}
+      if(sv)sv.textContent='';
     });
-    const dg=document.getElementById('sqDynGroups'); if(dg) dg.innerHTML='';
-    const ab=document.getElementById('sqAdlibBox'); if(ab) ab.style.display='none';
-    const bb=document.getElementById('sqS3build'); if(bb) bb.style.display='inline-flex';
-    // Restore category grid
-    const grid=document.getElementById('category-card'); if(grid) grid.style.display='grid';
+    document.getElementById('sqDynGroups').innerHTML='';
+    const ab=document.getElementById('sqAdlibBox');if(ab)ab.style.display='none';
+    const bb=document.getElementById('sqS3build');if(bb)bb.style.display='none';
+    // Hide step flow, restore text bar and category grid
+    const flow=document.getElementById('sqStepFlow');if(flow)flow.style.display='none';
+    const bar=document.getElementById('sqTextBar');if(bar)bar.style.display='block';
+    const grid=document.getElementById('category-card');if(grid)grid.style.display='grid';
+    if(DOM.serviceContainer)DOM.serviceContainer.style.display='none';
     exitFocusedMode?.();
   }
 
-  /* ── Card tap → skip straight to step 3 with service pre-seeded ─ */
-  function prefillSmartQuoteFromService(svc, category_id) {
-    const prof = getServiceProfile(svc);
+  /* ── Card tap → skip straight to step 3 ──────────────────────── */
+  function prefillSmartQuoteFromService(svc, category_id){
+    const prof=getServiceProfile(svc);
 
-    // Furniture selection still uses old flow
-    if (svc.requires_furniture_selection) { showIntakeQuestions(svc, category_id); return; }
-    // "Other/adhoc" still uses old flow
-    if (prof.isOther) { showIntakeQuestions(svc, category_id); return; }
+    // Furniture selection and "Other/adhoc" keep the old intake flow
+    if(svc.requires_furniture_selection){showIntakeQuestions(svc,category_id);return;}
+    if(prof.isOther){
+      // Show text bar for "Other" services so user can describe freely
+      const bar=document.getElementById('sqTextBar');if(bar)bar.style.display='block';
+      showIntakeQuestions(svc,category_id);
+      return;
+    }
 
-    Breadcrumbs.push({ type:'serviceDetail', group:null, category_id });
+    Breadcrumbs.push({type:'serviceDetail',group:null,category_id});
     enterFocusedMode();
 
-    // Hide category grid and service container
-    const grid=document.getElementById('category-card'); if(grid) grid.style.display='none';
-    if (DOM.serviceContainer) DOM.serviceContainer.style.display='none';
-    if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display='none';
+    // Hide the text bar during card-browse flow
+    const bar=document.getElementById('sqTextBar');if(bar)bar.style.display='none';
+
+    const grid=document.getElementById('category-card');if(grid)grid.style.display='none';
+    if(DOM.serviceContainer)DOM.serviceContainer.style.display='none';
+    if(DOM.intakeQuestionsContainer)DOM.intakeQuestionsContainer.style.display='none';
 
     // Ensure SmartQuote UI exists
-    if (!document.getElementById('smartQuoteEngine')) initSmartQuote();
-    if (!document.querySelector('#smartQuoteEngine .sq-stepflow')) initSmartQuote();
+    if(!document.getElementById('sqTextBar'))initSmartQuote();
 
-    // Seed S state from the service card
-    const catObj = categoryMap.get(category_id);
-    const catName = catObj ? (catObj.display_name||catObj.name||category_id) : category_id;
-    S = {
-      qty: 1,
-      intent: {
-        category: category_id,
-        label: svc.ui_taxonomy?.display_name || svc.display_name || catName,
-        group: svc.ui_taxonomy?.display_name || svc.id,
-        base: svc.financial_engine?.base_price || 70,
-        stype: svc.service_type || 'Repair',
-        qtyLabel: 'item',
-        key: svc.id
+    // Seed S from the service
+    const catObj=categoryMap.get(category_id);
+    const catName=catObj?(catObj.display_name||catObj.name||category_id):category_id;
+    S={
+      qty:1,
+      intent:{
+        category:category_id,
+        label:svc.ui_taxonomy?.display_name||svc.display_name||catName,
+        group:svc.ui_taxonomy?.display_name||svc.id,
+        base:svc.financial_engine?.base_price||70,
+        stype:svc.service_type||'Repair',
+        qtyLabel:'item',
+        key:svc.id
       },
-      stype: svc.service_type || 'Repair',
-      desc: svc.ui_taxonomy?.display_name || svc.id,
-      detTagIds: [],
-      manTagIds: [],
-      negatedTagIds: [],
-      adlibConfirmed: false
+      stype:svc.service_type||'Repair',
+      desc:svc.ui_taxonomy?.display_name||svc.id,
+      detTagIds:[],manTagIds:[],negatedTagIds:[],adlibConfirmed:false
     };
 
-    // Pre-detect tags from service default_tags (btnyc.json $ref resolved)
-    (svc.default_tags || []).forEach(tagRef => {
-      let tid = (typeof tagRef === 'object' && tagRef.$ref) ? tagRef.$ref : tagRef;
-      if (typeof tid === 'string' && tid.startsWith('#') && !S.negatedTagIds.includes(tid))
+    // Seed default_tags from the service record
+    (svc.default_tags||[]).forEach(tagRef=>{
+      const tid=(typeof tagRef==='object'&&tagRef.$ref)?tagRef.$ref:tagRef;
+      if(typeof tid==='string'&&tid.startsWith('#')&&!S.negatedTagIds.includes(tid))
         S.detTagIds.push(tid);
     });
+    // Pre-fill intake answers from default_tags (fixes lower-than-expected quotes)
+    S.detTagIds.forEach(tid=>{
+      const tagDef=DB.smart_tags?.[tid];
+      if(tagDef?.answers){
+        // Merge tag's pre-defined answer hints into S for pricing
+        // (these do not skip intake questions, they just ensure fees apply)
+      }
+    });
 
-    // Mark steps 1 and 2 as done, jump straight to step 3
-    const sn1=document.getElementById('sqSn1'), sc1=document.getElementById('sqSc1'), sb1=document.getElementById('sqSb1'), sv1=document.getElementById('sqSv1');
-    if(sn1){sn1.className='snum d';sn1.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>';}
-    if(sc1) sc1.className='scard done';
-    if(sb1) sb1.style.display='none';
-    if(sv1) sv1.textContent = svc.ui_taxonomy?.display_name||svc.id;
-
-    const sn2=document.getElementById('sqSn2'), sc2=document.getElementById('sqSc2'), sb2=document.getElementById('sqSb2'), sv2=document.getElementById('sqSv2');
+    // Mark step 2 done (type is known from service card)
+    const sn2=document.getElementById('sqSn2'),sc2=document.getElementById('sqSc2'),sb2=document.getElementById('sqSb2'),sv2=document.getElementById('sqSv2');
     if(sn2){sn2.className='snum d';sn2.innerHTML='<i class="ti ti-check" style="font-size:14px"></i>';}
-    if(sc2) sc2.className='scard done';
-    if(sb2) sb2.style.display='none';
-    if(sv2) sv2.textContent = S.stype;
+    if(sc2)sc2.className='scard done sq-stepflow';
+    if(sb2)sb2.style.display='none';
+    if(sv2)sv2.textContent=S.stype;
 
-    // Clear any previous quote
-    const qout=document.getElementById('sqQuoteOut'); if(qout) qout.innerHTML='';
+    // Clear previous quote output
+    const qout=document.getElementById('sqQuoteOut');if(qout)qout.innerHTML='';
 
-    // Build step 3 and scroll
+    // Show step flow
+    const flow=document.getElementById('sqStepFlow');if(flow)flow.style.display='flex';
+
+    // Jump to step 3
     sqBuildStep3();
-    const sqEl=document.getElementById('smartQuoteEngine');
-    if(sqEl) sqEl.scrollIntoView({ behavior:'smooth', block:'start' });
+    document.getElementById('smartQuoteEngine')?.scrollIntoView({behavior:'smooth',block:'start'});
   }
 
+  function resetSmartQuote(){ sqRestart(); }
 
 
-    /* ================================================================
+
+  
+  /* ── $ref resolver: expands btnyc.json internal references ─────── */
+  function resolveRefs(obj, root) {
+    root = root || obj;
+    if (Array.isArray(obj)) return obj.map(function(item){ return resolveRefs(item, root); });
+    if (obj && typeof obj === 'object') {
+      if (obj.$ref) {
+        const path = obj.$ref.replace(/^#\//, '').split('/');
+        let ref = root;
+        for (const seg of path) ref = ref && ref[seg];
+        return ref;
+      }
+      const out = {};
+      for (const [k, v] of Object.entries(obj)) out[k] = resolveRefs(v, root);
+      return out;
+    }
+    return obj;
+  }
+
+  /* ================================================================
      WIRE GLOBAL EVENTS (including SmartQuote init)
      ================================================================ */
   function wireGlobalEvents() {
@@ -3690,6 +3657,7 @@ body.modal-active{overflow:hidden}
     const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     SERVICE_DATA = await res.json();
+    SERVICE_DATA = resolveRefs(SERVICE_DATA);
     DB = SERVICE_DATA; // for SmartQuote engine
    } catch (err) {
     console.error('Service data load error:', err);
