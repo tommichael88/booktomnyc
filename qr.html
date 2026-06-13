@@ -890,116 +890,6 @@ let complexityBadge = null;
                     btn.addEventListener('click', onClick);
                     container.appendChild(btn);
                 }
-
-                /* ================================================================
-                   SMARTQUOTE PREFILL & SERVICE INTAKE
-                   ================================================================ */
-function prefillSmartQuoteFromService(svc, category_id) {
-    // Wait until SmartQuote catalogue is ready
-    onSmartQuoteReady(() => {
-        // Ensure SmartQuote engine DOM exists
-        if (typeof initSmartQuote === 'function') initSmartQuote();
-
-        const catObj = (SERVICE_DATA.category || []).find(c => c.id === category_id);
-        const categoryName = catObj ? (catObj.display_name || catObj.name) : 'General';
-
-        let serviceType = svc.service_type || 'Repair';
-        if (svc.default_service_type) serviceType = svc.default_service_type;
-
-        let basePrice = svc.financial_engine?.base_price || svc.base_price;
-        if (!basePrice && SERVICE_DATA.service_types && SERVICE_DATA.service_types[serviceType]) {
-            basePrice = SERVICE_DATA.service_types[serviceType].base_price;
-        }
-        if (!basePrice) basePrice = 70;
-
-        // Build navigation context string from Breadcrumbs
-        let navCrumbs = [];
-        const catIcon = catObj ? catObj.icon : '🏠';
-        if (catObj) navCrumbs.push(catIcon + ' ' + catObj.display_name);
-        Breadcrumbs.stack.forEach(f => {
-            if (f.type === 'subgroup' || f.type === 'subgroups') {
-                const g = groupMap.get(f.groups || f.group);
-                if (g) navCrumbs.push(g.display_name || g.name);
-            }
-        });
-        const navContext = navCrumbs.join(' › ');
-
-        const intent = {
-            category: category_id,
-            displayName: categoryName,
-            label: svc.display_name || svc.ui_taxonomy?.display_name || svc.name || 'Other',
-            key: svc.id,
-            base: basePrice,
-            baseMin: 45,
-            stype: serviceType,
-            qtyLabel: 'item',
-            serviceId: svc.id,
-            intakeChain: svc.intake_chain || [],
-            intakeAnswers: svc.intakeAnswers || {},
-            navContext: navContext
-        };
-
-        if (typeof S !== 'undefined') {
-            S.intent = intent;
-            S.stype = serviceType;
-            S.detTagIds = [];
-            S.manTagIds = [];
-            S.negatedTagIds = [];
-            S.qty = 1;
-
-            let descText = `Service: ${intent.label}`;
-            if (navContext) descText += ` (${navContext})`;
-            if (svc.ui_taxonomy?.description) descText += ` — ${svc.ui_taxonomy.description}`;
-            S.desc = descText;
-            S.adlibConfirmed = false;
-
-            // Pre‑fill default tags as auto‑detected conditions
-            if (svc.default_tags && Array.isArray(svc.default_tags)) {
-                svc.default_tags.forEach(tagRef => {
-                    let tagId = tagRef;
-                    if (typeof tagRef === 'object' && tagRef.$ref) tagId = tagRef.$ref;
-                    if (tagId && !S.detTagIds.includes(tagId) && !S.negatedTagIds.includes(tagId)) {
-                        S.detTagIds.push(tagId);
-                    }
-                });
-            }
-
-            // Apply category‑wide default tags from catalogue (DB is now ready)
-            const tags = DB?.smart_tags || {};
-            for (const [tid, t] of Object.entries(tags)) {
-                if (t.applicable_categories && (t.applicable_categories.includes('all') || t.applicable_categories.includes(category_id))) {
-                    if (t.is_default_for_group && !S.manTagIds.includes(tid) && !S.detTagIds.includes(tid)) {
-                        S.manTagIds.push(tid);
-                    }
-                }
-            }
-        }
-
-        // Hide category grid, show SmartQuote flow
-        const grid = document.getElementById('category-card');
-        if (grid) grid.style.display = 'none';
-
-        const stepFlow = document.getElementById('stepFlow');
-        if (stepFlow) {
-            stepFlow.style.display = 'block';
-            const descInput = document.getElementById('descIn');
-            if (descInput) descInput.value = S.desc;
-
-            if (typeof markDone === 'function') {
-                markDone(1, intent.label);
-                markDone(2, serviceType);
-            }
-            if (typeof buildStep3 === 'function') buildStep3();
-            setTimeout(() => {
-                if (typeof buildAdlib === 'function') buildAdlib();
-            }, 100);
-        }
-
-        if (typeof enterFocusedMode === 'function') enterFocusedMode();
-        if (stepFlow) stepFlow.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-}
-
                 function showIntakeQuestions(svc, category_id, fromBack = false) {
                     if (!fromBack) Breadcrumbs.push({ type: 'serviceDetail', group: null, category_id });
                     enterFocusedMode();
@@ -1935,103 +1825,6 @@ function _renderFlatConfirm(svc, category_id, container, prof) {
                    · Long chain / project: chips + required detail textarea
                    Price updates live as user answers; CTA unlocks when done.
                    ================================================================ */
-function resetSmartQuote() {
-    SQ = {
-        step: 1,
-        currentService: null,
-        answers: {},
-        confidence: 0,
-        nlpScore: 0,
-        missingModules: [],
-        askedModules: new Set(),
-        diagnosticReason: null,
-        maxQuestions: 5
-    };
-    const stepFlow = document.getElementById('stepFlow');
-    if (stepFlow) stepFlow.style.display = 'none';
-    const quoteOut = document.getElementById('quoteOut');
-    if (quoteOut) quoteOut.innerHTML = '';
-    const descTextarea = document.getElementById('sqInlineDesc');
-    if (descTextarea) descTextarea.value = '';
-    // Show the category grid again
-    const grid = document.getElementById('category-card');
-    if (grid) grid.style.display = 'grid';
-    exitFocusedMode();
-}
-                function prefillSmartQuoteFromService(svc, category_id) {
-                    onSmartQuoteReady(() => {
-                        // 1. Reset any active SmartQuote session
-                        if (typeof resetSmartQuote === 'function') resetSmartQuote();
-                        
-                        // 2. Hide category grid & show step flow
-                        const grid = document.getElementById('category-card');
-                        if (grid) grid.style.display = 'none';
-                        const stepFlow = document.getElementById('stepFlow');
-                        if (stepFlow) stepFlow.style.display = 'block';
-                        enterFocusedMode();
-                
-                        // 3. Prepare new SmartQuote state
-                        SQ.currentService = svc;
-                        SQ.answers = {};                 // will be filled from svc.intakeAnswers or default
-                        SQ.askedModules.clear();
-                        SQ.nlpScore = 80;                // user explicitly selected this service → high confidence base
-                        SQ.desc = svc.ui_taxonomy?.display_name || svc.name || 'Selected service';
-                        
-                        // Pre‑fill intake answers if they were already stored on the service object
-                        if (svc.intakeAnswers && typeof svc.intakeAnswers === 'object') {
-                            Object.assign(SQ.answers, svc.intakeAnswers);
-                        }
-                        // Always add quantity if present
-                        if (!SQ.answers.__qty) SQ.answers.__qty = 1;
-                        
-                        // 4. Compute initial confidence and missing modules
-                        SQ.confidence = calculateConfidence(svc, SQ.answers, SQ.nlpScore);
-                        SQ.missingModules = getMissingModules(svc, SQ.answers);
-                        
-                        // 5. Decide next step
-                        const minConf = svc.confidence_strategy?.minimum_quote_confidence || 70;
-                        const isReady = (SQ.confidence >= minConf && SQ.missingModules.length === 0);
-                        const needsDiag = requiresDiagnostic(svc, SQ.answers, SQ.confidence, SQ.missingModules);
-                        
-                        if (isReady) {
-                            // Instant quote
-                            renderQuotePanel();
-                            return;
-                        }
-                        
-                        if (needsDiag) {
-                            SQ.diagnosticReason = 'Low confidence or no further questions available for this service';
-                            renderDiagnosticFallback();
-                            return;
-                        }
-                        
-                        // 6. Not ready → ask the best missing question
-                        const nextQ = selectBestQuestion(SQ.missingModules);
-                        if (nextQ) {
-                            SQ.askedModules.add(nextQ);
-                            // Set UI to step 2 (questioning step)
-                            const sb1 = document.getElementById('sb1');
-                            const sb2 = document.getElementById('sb2');
-                            const sb3 = document.getElementById('sb3');
-                            if (sb1) sb1.style.display = 'none';
-                            if (sb2) sb2.style.display = 'block';
-                            if (sb3) sb3.style.display = 'none';
-                            // Ensure dynamic container exists
-                            let dynContainer = document.getElementById('dynamicQuestionContainer');
-                            if (!dynContainer) {
-                                dynContainer = create('div', { id: 'dynamicQuestionContainer' });
-                                const step2Body = document.getElementById('sb2');
-                                if (step2Body) step2Body.appendChild(dynContainer);
-                            }
-                            renderCurrentQuestion(nextQ);
-                        } else {
-                            // No question to ask → diagnostic fallback
-                            SQ.diagnosticReason = 'No relevant follow‑up questions defined';
-                            renderDiagnosticFallback();
-                        }
-                    });
-}
-                function _renderStructuredIntake(svc, category_id, container, prof) {
                     const allModules = _resolveIntakeChain(svc);
                     const answers = {};
                     let qty = 1;
@@ -3065,7 +2858,7 @@ function resetSmartQuote() {
                 }
 
                 /* ================================================================
-                   SMARTQUOTE ENGINE (complete working version)
+                   SMARTQUOTE ENGINE v2 — Confidence-driven, diagnostic-last-resort
                    ================================================================ */
                 let DB = null;
                 let S = {
@@ -3079,25 +2872,39 @@ function resetSmartQuote() {
                     adlibConfirmed: false
                 };
 
+                /* ── SQ session state ─────────────────────────────────────────── */
+                let SQ = {
+                    step: 1,
+                    currentService: null,
+                    answers: {},
+                    confidence: 0,
+                    nlpScore: 0,
+                    missingModules: [],
+                    askedModules: new Set(),
+                    diagnosticReason: null,
+                    maxQuestions: 6,
+                    questionCount: 0
+                };
+
+                /* ── Tags & labels ─────────────────────────────────────────────── */
                 function getTagFee(tag) {
                     if (tag.effects && typeof tag.effects.fee === 'number') return tag.effects.fee;
                     return tag.fee || 0;
                 }
-
                 function getTagMinutes(tag) {
                     if (tag.effects && typeof tag.effects.minutes === 'number') return tag.effects.minutes;
                     return tag.minutes || 0;
                 }
-
                 function getTagLabel(tag, tid) {
                     return tag.label || tag.display_name || tid.replace('#', '').replace(/_/g, ' ');
                 }
 
+                /* ── NLP helpers ────────────────────────────────────────────────── */
                 function extractQty(text) {
                     const unitPattern = /\b(\d+)\s*(signs?|items?|pieces?|units?|doors?|fixtures?|shelves?|outlets?|switches?|tiles?)\b/i;
                     let m = text.match(unitPattern);
                     if (m) return Math.min(parseInt(m[1]), 99);
-                    let cleaned = text.replace(/\b\d+\s*(ft|feet|inch|in|’|")\b/gi, '');
+                    let cleaned = text.replace(/\b\d+\s*(ft|feet|inch|in|'|")\b/gi, '');
                     cleaned = cleaned.replace(/\b\d+\s*[xX]\s*\d+\b/g, '');
                     cleaned = cleaned.replace(/\b\d+\s*by\s*\d+\b/gi, '');
                     const genericNumber = cleaned.match(/\b(\d+)\b/);
@@ -3108,12 +2915,10 @@ function resetSmartQuote() {
                 function detectTagsNLP(text) {
                     const lower = text.toLowerCase().replace(/[.,!?;:]/g, '');
                     const tags = DB.smart_tags || {};
-                    const found = [],
-                        negated = [];
+                    const found = [], negated = [];
                     const negWords = ['not', "isn't", 'isnt', 'no', 'without', "don't", 'dont', 'non', 'never'];
                     for (const [tid, t] of Object.entries(tags)) {
-                        let isMatch = false,
-                            isNegated = false;
+                        let isMatch = false, isNegated = false;
                         let synonyms = t.synonyms || [];
                         if (synonyms.length === 0) synonyms = [tid.replace('#', '').replace(/_/g, ' ')];
                         for (const s of synonyms) {
@@ -3124,21 +2929,14 @@ function resetSmartQuote() {
                                 const precedingText = lower.substring(Math.max(0, idx - 20), idx).trim().split(' ');
                                 const recentWords = precedingText.slice(-3);
                                 const hasNegation = recentWords.some(w => negWords.includes(w));
-                                if (hasNegation) {
-                                    isNegated = true;
-                                    break;
-                                } else {
-                                    isMatch = true;
-                                }
+                                if (hasNegation) { isNegated = true; break; }
+                                else isMatch = true;
                             }
                         }
                         if (isNegated) negated.push(tid);
                         else if (isMatch) found.push(tid);
                     }
-                    return {
-                        found,
-                        negated
-                    };
+                    return { found, negated };
                 }
 
                 function detectIntentNLP(text) {
@@ -3149,18 +2947,16 @@ function resetSmartQuote() {
                         else if (DB.intent_mappings.objects && Array.isArray(DB.intent_mappings.objects))
                             mappingsArray = DB.intent_mappings.objects;
                     }
-                    let bestMatch = null,
-                        highestConfidence = 0;
+                    let bestMatch = null, highestConfidence = 0;
                     for (const mapping of mappingsArray) {
                         let currentScore = 0;
-                        const kw = mapping.keyword ? mapping.keyword.toLowerCase() : "";
+                        const kw = mapping.keyword ? mapping.keyword.toLowerCase() : '';
                         const baseWeight = mapping.confidence_weight || 30;
                         if (kw && lower.includes(kw)) currentScore += baseWeight;
                         if (mapping.synonyms && Array.isArray(mapping.synonyms)) {
                             for (const syn of mapping.synonyms) {
-                                if (typeof syn === 'string' && lower.includes(syn.toLowerCase())) {
+                                if (typeof syn === 'string' && lower.includes(syn.toLowerCase()))
                                     currentScore += (baseWeight * 0.5);
-                                }
                             }
                         }
                         if (currentScore > highestConfidence) {
@@ -3168,311 +2964,590 @@ function resetSmartQuote() {
                             let categoryId = mapping.default_dynamic_category || mapping.default_category || 'other';
                             let stype = mapping.default_service_type || 'Repair';
                             let basePrice = mapping.fallback?.base_price || 70;
-                            bestMatch = {
-                                category: categoryId,
-                                stype: stype,
-                                key: mapping.keyword,
-                                label: mapping.keyword,
-                                base: basePrice,
-                                group: mapping.keyword
-                            };
+                            bestMatch = { category: categoryId, stype, key: mapping.keyword, label: mapping.keyword, base: basePrice, group: mapping.keyword };
                         }
                     }
                     return bestMatch;
                 }
 
-                function initStep1() {
-                    unlock(1);
-                    open(1);
-                    const cats = DB.category || [];
-                    let catHtml = '';
-                    if (cats.length > 0) {
-                        catHtml = cats.map(c => `<span class="chip" onclick="pickCat('${c.id}','${c.display_name || c.name || c.label}')" data-cat="${c.id}"><i class="ti ${c.icon || 'ti-tool'}"></i> ${c.display_name || c.name || c.label}</span>`).join('');
-                    } else {
-                        catHtml = `<span class="chip" onclick="pickCat('other','General')">General Home Service</span>`;
-                    }
-                    document.getElementById('catChips').innerHTML = catHtml;
-                }
+                /* ── Confidence engine ─────────────────────────────────────────── */
+                /**
+                 * Confidence weights per module purpose & answer state.
+                 * Each answered pricing module adds 20; scheduling adds 5.
+                 * NLP score is scaled from 0–100 where 100 = exact keyword match.
+                 */
+                function calculateConfidence(svc, answers, nlpScore) {
+                    let conf = Math.min(50, nlpScore * 0.5); // NLP contributes up to 50 pts
 
-                function pickCat(id, displayName) {
-                    document.querySelectorAll('#catChips .chip').forEach(c => c.classList.toggle('sel', c.dataset.cat === id));
-                    S.intent = {
-                        category: id,
-                        displayName: displayName,
-                        label: displayName,
-                        base: 70,
-                        baseMin: 60,
-                        stype: 'Repair',
-                        qtyLabel: 'item'
-                    };
-                }
-
-                function handleStep1() {
-                    const desc = document.getElementById('descIn').value.trim();
-                    S.desc = desc;
-                    if (desc) {
-                        const i = detectIntentNLP(desc);
-                        if (i) {
-                            S.intent = i;
-                            const catObj = (DB.category || []).find(c => c.id === i.category);
-                            if (catObj) S.intent.displayName = catObj.display_name || catObj.name || catObj.label;
-                            else S.intent.displayName = i.category;
-                        }
-                    }
-                    if (!S.intent) {
-                        S.intent = {
-                            category: 'other',
-                            displayName: 'Other/unlisted job',
-                            label: 'Other/unlisted job',
-                            base: 70,
-                            baseMin: 60,
-                            stype: 'Repair',
-                            qtyLabel: 'item'
-                        };
-                    }
-                    if (desc && /(mount|install|hang)/i.test(desc) && S.intent.stype !== 'Install') {
-                        S.intent.stype = 'Install';
-                        S.stype = 'Install';
-                    } else {
-                        S.stype = S.intent.stype;
-                    }
-                    if (desc) {
-                        const nlpRes = detectTagsNLP(desc);
-                        S.detTagIds = nlpRes.found;
-                        S.negatedTagIds = nlpRes.negated;
-                    } else {
-                        S.detTagIds = [];
-                        S.negatedTagIds = [];
-                    }
-                    S.qty = desc ? extractQty(desc) : 1;
-                    document.getElementById('qtyv').textContent = S.qty;
-                    let summary = S.intent.key ? `${S.intent.key} (${S.intent.displayName})` : S.intent.displayName;
-                    if (desc) summary += ' — ' + desc.slice(0, 42) + '...';
-                    markDone(1, summary);
-                    buildStep2();
-                }
-
-                function buildStep2() {
-                    unlock(2);
-                    open(2);
-                    const types = ["Install", "Repair", "Diagnostic", "Assembly", "Setup"];
-                    const guess = S.intent?.stype || 'Repair';
-                    S.stype = guess;
-                    const icons = {
-                        Install: 'ti-tool',
-                        Repair: 'ti-toolbox',
-                        Diagnostic: 'ti-stethoscope',
-                        Assembly: 'ti-puzzle',
-                        Setup: 'ti-settings'
-                    };
-                    document.getElementById('typeChips').innerHTML = types.map(t => `<span class="chip${t === guess ? ' sel' : ''}" onclick="pickType('${t}')" data-type="${t}"><i class="ti ${icons[t]}"></i> ${t}</span>`).join('');
-                    document.getElementById('s2next').disabled = false;
-                }
-
-                function pickType(t) {
-                    document.querySelectorAll('#typeChips .chip').forEach(c => c.classList.toggle('sel', c.dataset.type === t));
-                    S.stype = t;
-                    document.getElementById('s2next').disabled = false;
-                }
-
-                function handleStep2() {
-                    if (!S.stype) return;
-                    markDone(2, S.stype);
-                    buildStep3();
-                }
-
-                function applySSOTRules() {
-                    const tags = DB.smart_tags || {};
-                    const cat = S.intent.category;
-                    let validTids = Object.keys(tags).filter(tid => !tags[tid].applicable_categories || tags[tid].applicable_categories.includes('all') || tags[tid].applicable_categories.includes(cat));
-                    let groupsPresent = new Set(validTids.map(tid => tags[tid].display_group || 'Additional Adjustments'));
-                    groupsPresent.forEach(g => {
-                        const groupTids = validTids.filter(tid => (tags[tid].display_group || 'Additional Adjustments') === g);
-                        const hasSelection = groupTids.some(tid => S.detTagIds.includes(tid) || S.manTagIds.includes(tid));
-                        if (!hasSelection) {
-                            const defaultTid = groupTids.find(tid => tags[tid].is_default_for_group);
-                            if (defaultTid && !S.negatedTagIds.includes(defaultTid)) {
-                                if (!S.manTagIds.includes(defaultTid)) S.manTagIds.push(defaultTid);
-                            }
+                    const chain = (svc && svc.intake_chain) ? svc.intake_chain : [];
+                    chain.forEach(step => {
+                        const mod = (DB.intake_modules || {})[step.module];
+                        if (!mod) return;
+                        if (answers[step.module] !== undefined) {
+                            const gain = mod.purpose === 'pricing' ? 20 : 8;
+                            conf += gain;
                         }
                     });
-                    const allSelected = [...S.detTagIds, ...S.manTagIds];
-                    const toRemove = new Set();
-                    allSelected.forEach(tid => {
-                        if (tags[tid] && tags[tid].mutually_exclusive) {
-                            tags[tid].mutually_exclusive.forEach(conflictTid => {
-                                if (S.manTagIds.includes(tid)) toRemove.add(conflictTid);
+
+                    // Bonus for quantity answered
+                    if (answers.__qty && answers.__qty > 0) conf += 5;
+
+                    return Math.min(100, Math.round(conf));
+                }
+
+                /* ── Missing modules engine ──────────────────────────────────── */
+                function getMissingModules(svc, answers) {
+                    if (!svc || !svc.intake_chain) return [];
+                    return svc.intake_chain
+                        .filter(step => {
+                            // Skip modules whose depends_on isn't satisfied
+                            const mod = (DB.intake_modules || {})[step.module];
+                            if (!mod) return false;
+                            if (mod.depends_on) {
+                                for (const [k, v] of Object.entries(mod.depends_on)) {
+                                    if (answers[k] !== v) return false;
+                                }
+                            }
+                            return answers[step.module] === undefined;
+                        })
+                        .map(step => step.module);
+                }
+
+                /* ── Question prioritization ─────────────────────────────────── */
+                function selectBestQuestion(missingModules) {
+                    if (!missingModules || missingModules.length === 0) return null;
+                    const mods = DB.intake_modules || {};
+                    // Sort: pricing purpose first (higher confidence gain), then scheduling
+                    const sorted = [...missingModules].sort((a, b) => {
+                        const pa = (mods[a]?.purpose === 'pricing') ? 20 : 8;
+                        const pb = (mods[b]?.purpose === 'pricing') ? 20 : 8;
+                        return pb - pa;
+                    });
+                    // Skip already asked
+                    return sorted.find(m => !SQ.askedModules.has(m)) || null;
+                }
+
+                /* ── Diagnostic eligibility ──────────────────────────────────── */
+                const DIAGNOSTIC_TAGS = new Set([
+                    'board_level', 'two_trip_minimum', 'hidden_damage',
+                    'fault_tracing', 'unknown_root_cause'
+                ]);
+
+                function requiresDiagnostic(svc, answers, confidence, missingModules) {
+                    // Check if any selected tags force diagnostic
+                    const allTags = [...(S.detTagIds || []), ...(S.manTagIds || [])];
+                    for (const tid of allTags) {
+                        const t = (DB.smart_tags || {})[tid];
+                        if (!t) continue;
+                        const tTags = t.tags || t.answers || {};
+                        for (const tv of Object.values(tTags)) {
+                            if (DIAGNOSTIC_TAGS.has(tv)) return true;
+                        }
+                        // Check effects tags
+                        if (t.effects?.tags) {
+                            for (const et of (t.effects.tags || [])) {
+                                if (DIAGNOSTIC_TAGS.has(et)) return true;
+                            }
+                        }
+                    }
+                    // Check intake answer effects
+                    const chain = (svc && svc.intake_chain) ? svc.intake_chain : [];
+                    for (const step of chain) {
+                        const mod = (DB.intake_modules || {})[step.module];
+                        if (!mod || answers[step.module] === undefined) continue;
+                        const chosen = (mod.client_response || []).find(r => r.label === answers[step.module]);
+                        if (!chosen) continue;
+                        const eTags = chosen.effects?.tags || [];
+                        for (const et of eTags) {
+                            if (DIAGNOSTIC_TAGS.has(et)) return true;
+                        }
+                    }
+                    // Genuine electrical/plumbing fault tracing
+                    if (svc) {
+                        const fe = svc.financial_engine || {};
+                        if (fe.checkout_state === 'diagnostic' && svc.intake_chain?.length === 0) {
+                            // True diagnostic-only service (no intake chain to gather info from)
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+                /* ── SmartQuote UI rendering ─────────────────────────────────── */
+                function renderCurrentQuestion(moduleKey) {
+                    const mod = (DB.intake_modules || {})[moduleKey];
+                    if (!mod) return;
+
+                    ensureSQContainer();
+                    const stepFlow = document.getElementById('stepFlow');
+                    if (stepFlow) stepFlow.style.display = 'block';
+                    enterFocusedMode();
+
+                    let dynContainer = document.getElementById('sqDynContainer');
+                    if (!dynContainer) {
+                        const sfc = document.getElementById('smartQuoteEngine') || document.querySelector('.sq-engine');
+                        if (!sfc) return;
+                        const wrapper = document.createElement('div');
+                        wrapper.id = 'sqDynContainer';
+                        wrapper.className = 'sq-card';
+                        sfc.appendChild(wrapper);
+                        dynContainer = wrapper;
+                    }
+
+                    const svc = SQ.currentService;
+                    const svcName = svc ? (svc.ui_taxonomy?.display_name || svc.display_name || 'this service') : 'this service';
+                    const questionNum = SQ.questionCount + 1;
+                    const totalQ = (svc?.intake_chain?.length || 1);
+                    const confPct = SQ.confidence;
+
+                    dynContainer.innerHTML = `
+                        <div class="sq-topbar">
+                            <div class="sq-topbar-left">
+                                <div class="sq-tbi"><i class="ti ti-help-octagon" style="font-size:20px;color:#fff;"></i></div>
+                                <div>
+                                    <div class="sq-tbtt">${svcName}</div>
+                                    <div class="sq-tbsub">Question ${questionNum} — building your estimate</div>
+                                </div>
+                            </div>
+                            <div style="font-size:.75rem;font-weight:700;color:#8a0615;background:#fef2f2;padding:4px 10px;border-radius:20px;">${confPct}% confident</div>
+                        </div>
+                        <div class="sq-step active" id="sqQuestionBody">
+                            <div style="font-size:1rem;font-weight:700;color:#111;margin-bottom:14px;">${mod.question}</div>
+                            <div class="chips" id="sqAnswerChips"></div>
+                            <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+                                <button class="lbtn" id="sqSkipBtn"><i class="ti ti-arrow-right"></i> Skip</button>
+                                <button class="lbtn" id="sqBackBtn"><i class="ti ti-arrow-left"></i> Back</button>
+                            </div>
+                        </div>`;
+
+                    const chipsEl = document.getElementById('sqAnswerChips');
+                    (mod.client_response || []).forEach(resp => {
+                        const chip = document.createElement('span');
+                        chip.className = 'chip' + (SQ.answers[moduleKey] === resp.label ? ' sel' : '');
+                        chip.innerHTML = `<i class="ti ti-circle-check"></i> ${resp.label}`;
+                        const fee = resp.effects?.fee;
+                        if (fee > 0) chip.innerHTML += ` <span style="font-size:.72rem;background:#de00001a;color:#8a0615;border-radius:12px;padding:1px 7px;margin-left:4px;">+$${fee}</span>`;
+                        chip.addEventListener('click', () => {
+                            SQ.answers[moduleKey] = resp.label;
+                            SQ.askedModules.add(moduleKey);
+                            SQ.questionCount++;
+
+                            // Re-detect tags from answer effects
+                            const eTags = resp.effects?.tags || [];
+                            eTags.forEach(et => {
+                                if (!S.detTagIds.includes(et) && !S.negatedTagIds.includes(et))
+                                    S.detTagIds.push(et);
                             });
+
+                            advanceSQ();
+                        });
+                        chipsEl.appendChild(chip);
+                    });
+
+                    document.getElementById('sqSkipBtn').addEventListener('click', () => {
+                        SQ.askedModules.add(moduleKey);
+                        SQ.questionCount++;
+                        advanceSQ();
+                    });
+                    document.getElementById('sqBackBtn').addEventListener('click', () => {
+                        dynContainer.innerHTML = '';
+                        if (SQ.questionCount > 0) SQ.questionCount--;
+                    });
+                }
+
+                function advanceSQ() {
+                    const svc = SQ.currentService;
+                    if (!svc) return;
+
+                    SQ.confidence = calculateConfidence(svc, SQ.answers, SQ.nlpScore);
+                    SQ.missingModules = getMissingModules(svc, SQ.answers);
+
+                    const minConf = svc.confidence_strategy?.minimum_quote_confidence || 60;
+                    const isReady = SQ.confidence >= minConf || SQ.missingModules.length === 0;
+                    const hitLimit = SQ.questionCount >= SQ.maxQuestions;
+
+                    if (requiresDiagnostic(svc, SQ.answers, SQ.confidence, SQ.missingModules)) {
+                        renderDiagnosticFallback();
+                        return;
+                    }
+
+                    if (isReady || hitLimit) {
+                        renderQuotePanel();
+                        return;
+                    }
+
+                    const nextQ = selectBestQuestion(SQ.missingModules);
+                    if (nextQ) {
+                        renderCurrentQuestion(nextQ);
+                    } else {
+                        renderQuotePanel();
+                    }
+                }
+
+                function renderDiagnosticFallback() {
+                    ensureSQContainer();
+                    const sfc = document.getElementById('smartQuoteEngine') || document.querySelector('.sq-engine');
+                    if (!sfc) return;
+
+                    const svc = SQ.currentService;
+                    const svcName = svc ? (svc.ui_taxonomy?.display_name || 'this service') : 'this service';
+                    const basePrice = svc?.financial_engine?.base_price || 85;
+
+                    let cont = document.getElementById('sqDynContainer');
+                    if (!cont) { cont = document.createElement('div'); cont.id = 'sqDynContainer'; cont.className = 'sq-card'; sfc.appendChild(cont); }
+
+                    cont.innerHTML = `
+                        <div class="sq-topbar">
+                            <div class="sq-topbar-left">
+                                <div class="sq-tbi" style="background:#f97316;"><i class="ti ti-stethoscope" style="font-size:20px;color:#fff;"></i></div>
+                                <div>
+                                    <div class="sq-tbtt">On-Site Diagnostic Required</div>
+                                    <div class="sq-tbsub">${svcName}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sq-step active">
+                            <div style="background:#fff8ee;border:1px solid #fdc56a;border-left:4px solid #f97316;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#6b3a00;">
+                                <b>⚙️ This job requires on-site assessment.</b><br>
+                                The technician will diagnose the issue and provide a fixed price before any work begins.
+                                ${SQ.diagnosticReason ? `<br><span style="opacity:.75;font-size:.78rem;">Reason: ${SQ.diagnosticReason}</span>` : ''}
+                            </div>
+                            <div style="background:#f8f8f8;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+                                <div style="font-size:.8rem;color:#777;margin-bottom:4px;">DIAGNOSTIC VISIT</div>
+                                <div style="font-size:2rem;font-weight:900;color:#8a0615;">$${basePrice}</div>
+                                <div style="font-size:.8rem;color:#555;">Credited toward repair cost if you proceed.</div>
+                            </div>
+                            <button class="sq-btn" id="sqDiagAddBtn">Book Diagnostic Visit — $${basePrice}</button>
+                            <button class="lbtn" id="sqDiagRestartBtn" style="margin-top:10px;width:100%;">Start Over</button>
+                        </div>`;
+
+                    document.getElementById('sqDiagAddBtn').addEventListener('click', () => {
+                        if (!cartLimiter.isAllowed('add')) { toast('Adding too fast.', 'error'); return; }
+                        const catId = S.intent?.category || 'other';
+                        addToCart({
+                            id: 'diag-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                            serviceId: svc?.id || 'diagnostic',
+                            category_id: catId,
+                            name: svcName + ' — Diagnostic Visit',
+                            price: '$' + basePrice,
+                            icon: '🔍',
+                            detail: S.desc?.substring(0, 80) || 'Diagnostic',
+                            notes: 'On-site diagnostic. Tech confirms price before work begins.\n' + (SQ.diagnosticReason || ''),
+                            furnitureItems: [],
+                            intakeAnswers: { ...SQ.answers },
+                            materialsNotIncluded: true,
+                            materialsEstimateRange: [0, 0],
+                            complexityOverride: 'specialized',
+                            totalMinutes: 60
+                        });
+                        resetSmartQuote();
+                        toast(svcName + ' diagnostic booked!', 'success');
+                        if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
+                        DOM.serviceRequestSummary?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        renderCart();
+                    });
+                    document.getElementById('sqDiagRestartBtn').addEventListener('click', resetSmartQuote);
+                }
+
+                function renderQuotePanel() {
+                    ensureSQContainer();
+                    const sfc = document.getElementById('smartQuoteEngine') || document.querySelector('.sq-engine');
+                    if (!sfc) return;
+
+                    let cont = document.getElementById('sqDynContainer');
+                    if (!cont) { cont = document.createElement('div'); cont.id = 'sqDynContainer'; cont.className = 'sq-card'; sfc.appendChild(cont); }
+
+                    // Use full computeQuote for the S-state based quote (covers global tags)
+                    const q = computeQuote();
+                    const svc = SQ.currentService;
+                    const svcName = svc ? (svc.ui_taxonomy?.display_name || S.intent?.displayName || 'Service') : (S.intent?.displayName || 'Service');
+
+                    // Also incorporate intake answers into price display
+                    let intakeNotes = '';
+                    if (svc && svc.intake_chain) {
+                        svc.intake_chain.forEach(step => {
+                            if (SQ.answers[step.module]) {
+                                intakeNotes += `\n${step.module}: ${SQ.answers[step.module]}`;
+                            }
+                        });
+                    }
+
+                    const badgeHtml = {
+                        ok: '<i class="ti ti-shield-check"></i> Price confirmed',
+                        proj: '<i class="ti ti-ruler"></i> Project-based',
+                        diag: '<i class="ti ti-stethoscope"></i> Diagnostic'
+                    }[q.badgeTpl];
+
+                    cont.innerHTML = `
+                        <div class="sq-topbar">
+                            <div class="sq-topbar-left">
+                                <div class="sq-tbi"><i class="ti ti-calculator" style="font-size:20px;color:#fff;"></i></div>
+                                <div>
+                                    <div class="sq-tbtt">${svcName}</div>
+                                    <div class="sq-tbsub">${SQ.confidence}% confidence · ${SQ.questionCount} question${SQ.questionCount !== 1 ? 's' : ''} answered</div>
+                                </div>
+                            </div>
+                            <div style="background:#ecfdf5;color:#065f46;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px;">Quote ready</div>
+                        </div>
+                        <div class="sq-step active">
+                            <div class="qpanel">
+                                <div class="qhero">
+                                    <div class="qitag">${badgeHtml}</div>
+                                    <div class="${q.isProject ? 'qpranger' : 'qprice'}">${q.priceDisplay}</div>
+                                    <div class="qpsub">${q.priceSub}</div>
+                                    <div class="qmeta"><i class="ti ti-tool"></i> ${svcName} · ${S.stype || 'Service'}</div>
+                                </div>
+                                <div class="qbody">
+                                    <div class="qlines">
+                                        <div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ${S.stype?.toLowerCase() || 'service'}</span><span class="qlv">$${q.base}</span></div>
+                                        ${q.extraFee !== 0 ? `<div class="ql"><span class="qll"><i class="ti ti-adjustments-alt"></i> Adjustments</span><span class="qlv">${q.extraFee >= 0 ? '+' : ''}$${q.extraFee}</span></div>` : ''}
+                                        <div class="ql"><span class="qll"><i class="ti ti-clock"></i> Est. time</span><span class="qlv m">~${q.totalMin} min · ${q.tierKey} ($${q.tierRate}/hr)</span></div>
+                                        <div class="ql"><span class="qll"><i class="ti ti-stack-2"></i> Quantity</span><span class="qlv">${S.qty} ${S.intent?.qtyLabel || 'item'}</span></div>
+                                        <div class="ql"><span class="qll"><i class="ti ti-car"></i> Dispatch fee</span><span class="qlv m">+$${q.dispatch} · once per visit</span></div>
+                                        <div class="ql" style="border-bottom:none;"><span class="qll" style="font-weight:600;">Total labor</span><span class="qlv" style="font-size:20px;font-weight:700;">$${q.laborCalc}${q.isDiag || q.isProject ? ' (est.)' : ''}</span></div>
+                                    </div>
+                                    ${q.activeLabels.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px">${q.activeLabels.map(l => `<span class="chip gtag" style="cursor:default;font-size:12px;padding:4px 12px;"><i class="ti ti-check"></i> ${l}</span>`).join('')}</div>` : ''}
+                                    <div class="disc"><i class="ti ti-info-circle"></i><div>${q.disclaimerText}</div></div>
+                                </div>
+                                <div class="ctarow">
+                                    <button class="ctap" id="sqAddToCartBtn"><i class="ti ti-shopping-cart"></i> Add to Request</button>
+                                    <button class="ctag" id="sqRestartBtn"><i class="ti ti-refresh"></i> Start Over</button>
+                                </div>
+                            </div>
+                        </div>`;
+
+                    document.getElementById('sqAddToCartBtn').addEventListener('click', () => {
+                        if (!cartLimiter.isAllowed('add')) { toast('Adding too fast.', 'error'); return; }
+                        const catId = S.intent?.category || 'other';
+                        const notes = (S.desc || '').substring(0, 100) + intakeNotes + (q.activeLabels.length ? '\nConditions: ' + q.activeLabels.join(', ') : '');
+                        addToCart({
+                            id: 'sq-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                            serviceId: svc?.id || 'smart_quote',
+                            category_id: catId,
+                            name: svcName,
+                            price: '$' + q.laborCalc,
+                            icon: svc?.ui_taxonomy?.icon || '⚡',
+                            detail: S.desc?.substring(0, 80) || svcName,
+                            notes,
+                            furnitureItems: [],
+                            intakeAnswers: { ...SQ.answers },
+                            materialsNotIncluded: !q.isProject && !q.isDiag,
+                            materialsEstimateRange: [0, 0],
+                            complexityOverride: q.tierKey,
+                            totalMinutes: q.totalMin
+                        });
+                        toast(svcName + ' added!', 'success');
+                        resetSmartQuote();
+                        if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
+                        DOM.serviceRequestSummary?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        renderCart();
+                    });
+                    document.getElementById('sqRestartBtn').addEventListener('click', resetSmartQuote);
+
+                    cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                /* ── Ensure SQ container exists ──────────────────────────────── */
+                function ensureSQContainer() {
+                    if (document.getElementById('smartQuoteEngine')) return;
+                    const categoryCard = document.getElementById('category-card');
+                    if (!categoryCard || !categoryCard.parentNode) return;
+                    const sqContainer = document.createElement('div');
+                    sqContainer.id = 'smartQuoteEngine';
+                    sqContainer.className = 'sq-engine';
+                    categoryCard.insertAdjacentElement('afterend', sqContainer);
+                    const sf = document.createElement('div');
+                    sf.id = 'stepFlow';
+                    sf.style.display = 'none';
+                    sqContainer.appendChild(sf);
+                    const qo = document.createElement('div');
+                    qo.id = 'quoteOut';
+                    sqContainer.appendChild(qo);
+                }
+
+                /* ── resetSmartQuote ─────────────────────────────────────────── */
+                function resetSmartQuote() {
+                    SQ = {
+                        step: 1,
+                        currentService: null,
+                        answers: {},
+                        confidence: 0,
+                        nlpScore: 0,
+                        missingModules: [],
+                        askedModules: new Set(),
+                        diagnosticReason: null,
+                        maxQuestions: 6,
+                        questionCount: 0
+                    };
+                    S = { qty: 1, intent: null, stype: null, detTagIds: [], manTagIds: [], negatedTagIds: [], desc: '', adlibConfirmed: false };
+                    const dynCont = document.getElementById('sqDynContainer');
+                    if (dynCont) dynCont.innerHTML = '';
+                    const stepFlow = document.getElementById('stepFlow');
+                    if (stepFlow) stepFlow.style.display = 'none';
+                    const quoteOut = document.getElementById('quoteOut');
+                    if (quoteOut) quoteOut.innerHTML = '';
+                    const sqInline = document.getElementById('sqInlineDesc');
+                    if (sqInline) sqInline.value = '';
+                    const grid = document.getElementById('category-card');
+                    if (grid) grid.style.display = 'grid';
+                    exitFocusedMode();
+                }
+
+                /* ── prefillSmartQuoteFromService (updated) ──────────────────── */
+                function prefillSmartQuoteFromService(svc, category_id) {
+                    onSmartQuoteReady(() => {
+                        resetSmartQuote();
+                        ensureSQContainer();
+
+                        const catObj = categoryMap.get(category_id);
+                        const categoryName = catObj ? (catObj.display_name || catObj.name) : 'General';
+
+                        // Populate S state
+                        S.intent = {
+                            category: category_id,
+                            displayName: categoryName,
+                            label: svc.ui_taxonomy?.display_name || svc.display_name || 'Service',
+                            key: svc.id,
+                            base: svc.financial_engine?.base_price || svc.base_price || 70,
+                            baseMin: 45,
+                            stype: svc.service_type || 'Repair',
+                            qtyLabel: 'item',
+                            serviceId: svc.id,
+                            intakeChain: svc.intake_chain || [],
+                            intakeAnswers: {}
+                        };
+                        S.stype = svc.service_type || 'Repair';
+                        S.desc = svc.ui_taxonomy?.display_name || '';
+                        S.qty = 1;
+
+                        // Pre-fill default tags
+                        (svc.default_tags || []).forEach(tagRef => {
+                            let tagId = tagRef;
+                            if (typeof tagRef === 'object' && tagRef.$ref) tagId = tagRef.$ref;
+                            if (tagId && typeof tagId === 'string' && tagId.startsWith('#')) {
+                                if (!S.detTagIds.includes(tagId) && !S.negatedTagIds.includes(tagId))
+                                    S.detTagIds.push(tagId);
+                            }
+                        });
+
+                        // NLP score based on how much we know
+                        const hasIntakeChain = (svc.intake_chain || []).length > 0;
+                        SQ.nlpScore = hasIntakeChain ? 55 : 75;  // more intake = less certain upfront
+                        SQ.currentService = svc;
+                        SQ.answers = {};
+                        SQ.askedModules.clear();
+                        SQ.questionCount = 0;
+
+                        SQ.confidence = calculateConfidence(svc, SQ.answers, SQ.nlpScore);
+                        SQ.missingModules = getMissingModules(svc, SQ.answers);
+
+                        const minConf = svc.confidence_strategy?.minimum_quote_confidence || 60;
+
+                        if (requiresDiagnostic(svc, SQ.answers, SQ.confidence, SQ.missingModules)) {
+                            SQ.diagnosticReason = 'Service requires on-site diagnosis to determine scope';
+                            renderDiagnosticFallback();
+                            return;
+                        }
+
+                        if (SQ.confidence >= minConf && SQ.missingModules.length === 0) {
+                            renderQuotePanel();
+                            return;
+                        }
+
+                        const nextQ = selectBestQuestion(SQ.missingModules);
+                        if (nextQ) {
+                            const grid = document.getElementById('category-card');
+                            if (grid) grid.style.display = 'none';
+                            enterFocusedMode();
+                            renderCurrentQuestion(nextQ);
+                        } else {
+                            renderQuotePanel();
                         }
                     });
-                    S.manTagIds = S.manTagIds.filter(x => !toRemove.has(x));
-                    S.detTagIds = S.detTagIds.filter(x => !toRemove.has(x));
                 }
 
-                function buildStep3() {
-                    unlock(3);
-                    open(3);
-                    const tags = DB.smart_tags || {};
-                    S.manTagIds = [...new Set([...S.manTagIds])];
-                    applySSOTRules();
-
-                    const detEl = document.getElementById('detTags');
-                    let detHtml = '';
-                    S.negatedTagIds.forEach(tid => {
-                        if (!tags[tid]) return;
-                        detHtml += `<span class="chip negated" title="Excluded"><i class="ti ti-x"></i> ${getTagLabel(tags[tid], tid)}</span>`;
-                    });
-                    S.detTagIds.forEach(tid => {
-                        if (!tags[tid]) return;
-                        const t = tags[tid];
-                        const fee = getTagFee(t);
-                        detHtml += `<span class="chip gtag sel" data-tid="${tid}" onclick="toggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${getTagLabel(t, tid)} ${fee>0?'+$'+fee:''}</span>`;
-                    });
-                    if (!detHtml) detHtml = '<span style="font-size:14px;color:#aaa;">None found from text</span>';
-                    detEl.innerHTML = detHtml;
-
-                    document.getElementById('qtyLbl').textContent = S.intent?.qtyLabel || 'item';
-                    document.getElementById('qtyv').textContent = S.qty;
-
-                    const cat = S.intent.category;
-                    let validTids = Object.keys(tags).filter(tid => !tags[tid].applicable_categories || tags[tid].applicable_categories.includes('all') || tags[tid].applicable_categories.includes(cat));
-                    const existing = new Set([...S.detTagIds, ...S.negatedTagIds, ...S.manTagIds]);
-                    const grouped = {};
-                    validTids.forEach(tid => {
-                        const g = tags[tid].display_group || 'Additional Adjustments';
-                        if (!grouped[g]) grouped[g] = [];
-                        grouped[g].push(tid);
-                    });
-                    let groupHtml = '';
-                    for (const [gName, gTids] of Object.entries(grouped)) {
-                        let chipsHtml = '';
-                        gTids.forEach(tid => {
-                            const t = tags[tid];
-                            const isSelected = existing.has(tid) && !S.negatedTagIds.includes(tid);
-                            const isConflictLocked = !isSelected && gTids.some(otherTid => existing.has(otherTid) && tags[otherTid]?.mutually_exclusive?.includes(tid));
-                            if (isSelected) {
-                                chipsHtml += `<span class="chip sel gtag" data-tid="${tid}" onclick="toggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${getTagLabel(t, tid)}</span>`;
-                            } else {
-                                chipsHtml += `<span class="chip ${isConflictLocked ? 'locked' : ''}" data-tid="${tid}" onclick="toggleTag(this,'${tid}')"><i class="ti ti-plus"></i> ${getTagLabel(t, tid)}</span>`;
-                            }
-                        });
-                        if (chipsHtml) groupHtml += `<div class="group-label">${gName}</div><div class="chips">${chipsHtml}</div>`;
+                /* ── Inline SmartQuote bar (text description path) ───────────── */
+                function startSmartQuoteFromText(desc) {
+                    if (!desc || desc.trim().length < 5) {
+                        toast('Please describe what you need help with.', 'error');
+                        return;
                     }
-                    document.getElementById('dynamicGroupsContainer').innerHTML = groupHtml;
-                }
+                    resetSmartQuote();
+                    ensureSQContainer();
 
-                function toggleTag(el, tid) {
-                    if (el.classList.contains('locked')) return;
-                    if (el.classList.contains('sel')) {
-                        S.manTagIds = S.manTagIds.filter(x => x !== tid);
-                        S.detTagIds = S.detTagIds.filter(x => x !== tid);
+                    S.desc = desc.trim();
+                    S.qty = extractQty(desc);
+
+                    const nlpRes = detectTagsNLP(desc);
+                    S.detTagIds = nlpRes.found;
+                    S.negatedTagIds = nlpRes.negated;
+
+                    const intent = detectIntentNLP(desc);
+                    if (intent) {
+                        S.intent = { ...intent, displayName: intent.label || intent.category };
+                        S.stype = intent.stype;
+                        SQ.nlpScore = 60;
                     } else {
-                        if (!S.manTagIds.includes(tid)) S.manTagIds.push(tid);
+                        S.intent = { category: 'other', displayName: 'Home Service', label: 'Home Service', base: 70, baseMin: 45, stype: 'Repair', qtyLabel: 'item' };
+                        S.stype = 'Repair';
+                        SQ.nlpScore = 30;
                     }
-                    buildStep3();
-                    if (document.getElementById('adlibBox').style.display === 'block') buildAdlib();
-                }
 
-                function adjQty(d) {
-                    S.qty = Math.max(1, Math.min(99, S.qty + d));
-                    document.getElementById('qtyv').textContent = S.qty;
-                    if (document.getElementById('adlibBox').style.display === 'block') buildAdlib();
-                }
-
-                function buildAdlib() {
-                    const tags = DB.smart_tags || {};
-                    const qty = S.qty;
-                    const qtyLbl = S.intent?.qtyLabel || 'item';
-                    const action = S.stype?.toLowerCase() || 'repair';
-                    const catLabel = S.intent?.displayName || S.intent?.label || 'general';
-                    const sent = document.getElementById('adlibSentence');
-                    sent.innerHTML = '';
-                    const addWord = (t) => {
-                        const s = document.createElement('span');
-                        s.className = 'adlib-word';
-                        s.textContent = t;
-                        sent.appendChild(s);
-                    };
-                    const addDropdown = (key, val, opts, label) => {
-                        const pill = document.createElement('span');
-                        pill.className = 'adlib-pill';
-                        pill.innerHTML = `${label}<i class="ti ti-chevron-down"></i>`;
-                        const sel = document.createElement('select');
-                        opts.forEach(o => {
-                            const op = document.createElement('option');
-                            op.value = o;
-                            op.textContent = o;
-                            if (o === val || o === label.split(' ')[0]) op.selected = true;
-                            sel.appendChild(op);
-                        });
-                        sel.addEventListener('change', function() {
-                            pill.childNodes[0].textContent = this.value;
-                            if (key === 'qty') {
-                                S.qty = parseInt(this.value) || 1;
-                                document.getElementById('qtyv').textContent = S.qty;
-                                buildAdlib();
-                            }
-                            if (key === 'action') {
-                                S.stype = this.value.charAt(0).toUpperCase() + this.value.slice(1);
-                                buildAdlib();
-                            }
-                        });
-                        pill.appendChild(sel);
-                        sent.appendChild(pill);
-                    };
-                    addWord('I need a skilled handyman to');
-                    addDropdown('action', action, ['repair', 'install', 'diagnose', 'assemble', 'set up'], action);
-                    addDropdown('qty', String(qty), ['1', '2', '3', '4', '5', '6', '8', '10', '12'], qty + ' ' + qtyLbl);
-                    addWord('under the category of');
-                    const catPill = document.createElement('span');
-                    catPill.className = 'adlib-pill';
-                    catPill.innerHTML = `${catLabel}`;
-                    sent.appendChild(catPill);
-                    const activeTids = [...new Set([...S.detTagIds, ...S.manTagIds])];
-                    if (activeTids.length > 0) {
-                        addWord('with the following conditions:');
-                        activeTids.forEach(tid => {
-                            const t = tags[tid];
-                            if (!t) return;
-                            const cPill = document.createElement('span');
-                            cPill.className = 'adlib-condition-pill';
-                            cPill.innerHTML = `${getTagLabel(t, tid)} <i class="ti ti-check"></i>`;
-                            cPill.title = "Click to remove";
-                            cPill.onclick = () => {
-                                S.manTagIds = S.manTagIds.filter(x => x !== tid);
-                                S.detTagIds = S.detTagIds.filter(x => x !== tid);
-                                buildStep3();
-                                buildAdlib();
-                            };
-                            sent.appendChild(cPill);
-                        });
+                    // Try to find the best matching service from SERVICE_DATA
+                    let matchedSvc = null;
+                    if (S.intent.key && SERVICE_DATA) {
+                        matchedSvc = (SERVICE_DATA.services || []).find(sv => sv.id === S.intent.key);
                     }
-                    document.getElementById('adlibBox').style.display = 'block';
-                    document.getElementById('s3build').style.display = 'none';
+                    // Fallback: find a non-diagnostic service in the detected category
+                    if (!matchedSvc && SERVICE_DATA && S.intent.category) {
+                        const candidates = (SERVICE_DATA.services || []).filter(sv => {
+                            const cid = sv.ui_taxonomy?.category_id;
+                            return cid === S.intent.category && (sv.intake_chain?.length > 0) && !sv.override_root;
+                        });
+                        if (candidates.length > 0) matchedSvc = candidates[0];
+                    }
+
+                    SQ.currentService = matchedSvc;
+                    SQ.answers = {};
+                    SQ.askedModules.clear();
+                    SQ.questionCount = 0;
+
+                    if (matchedSvc) {
+                        SQ.confidence = calculateConfidence(matchedSvc, SQ.answers, SQ.nlpScore);
+                        SQ.missingModules = getMissingModules(matchedSvc, SQ.answers);
+                        const minConf = matchedSvc.confidence_strategy?.minimum_quote_confidence || 60;
+
+                        if (requiresDiagnostic(matchedSvc, SQ.answers, SQ.confidence, SQ.missingModules)) {
+                            SQ.diagnosticReason = 'Service requires on-site diagnosis';
+                            renderDiagnosticFallback();
+                            return;
+                        }
+                        if (SQ.confidence >= minConf && SQ.missingModules.length === 0) {
+                            renderQuotePanel();
+                            return;
+                        }
+                        const nextQ = selectBestQuestion(SQ.missingModules);
+                        if (nextQ) {
+                            const grid = document.getElementById('category-card');
+                            if (grid) grid.style.display = 'none';
+                            enterFocusedMode();
+                            renderCurrentQuestion(nextQ);
+                        } else {
+                            renderQuotePanel();
+                        }
+                    } else {
+                        // No matched service — go straight to quote with what we have
+                        renderQuotePanel();
+                    }
                 }
 
-                function confirmAdlib() {
-                    S.adlibConfirmed = true;
-                    const qty = S.qty;
-                    const activeTids = [...new Set([...S.detTagIds, ...S.manTagIds])];
-                    const tagLabels = activeTids.map(tid => getTagLabel(DB.smart_tags[tid], tid)).filter(Boolean);
-                    const summary = qty + '× ' + (S.intent?.qtyLabel || 'item') + (tagLabels.length ? ' · ' + tagLabels.join(', ') : '');
-                    markDone(3, summary);
-                    renderQuote();
-                }
-
-                function editAdlib() {
-                    document.getElementById('adlibBox').style.display = 'none';
-                    document.getElementById('s3build').style.display = 'inline-flex';
-                }
-
+                /* ── computeQuote (shared pricing) ──────────────────────────── */
                 function computeQuote() {
-                    // Carry any intake-module fee adjustments into SmartQuote pricing
-                    const intakeAnswers = S.intent?.intakeAnswers;
+                    const intakeAnswers = SQ.answers || {};
                     let intakeExtraFee = 0;
-                    if (intakeAnswers && SERVICE_DATA?.intake_modules) {
+                    if (SQ.currentService && DB?.intake_modules) {
                         Object.entries(intakeAnswers).forEach(([modKey, label]) => {
-                            const mod = SERVICE_DATA.intake_modules[modKey];
+                            const mod = DB.intake_modules[modKey];
                             if (!mod) return;
                             const resp = (mod.client_response || []).find(r => r.label === label);
                             if (resp?.effects?.fee) intakeExtraFee += resp.effects.fee;
@@ -3481,24 +3556,13 @@ function resetSmartQuote() {
                     const tags = DB.smart_tags || {};
                     const dispatch = DB.global_rules?.surcharges?.dispatch_fee || 45;
                     const tiers = DB.global_rules?.complexity_tiers || {
-                        routine: {
-                            hourly_rate: 65
-                        },
-                        skilled: {
-                            hourly_rate: 85
-                        },
-                        specialized: {
-                            hourly_rate: 110
-                        }
+                        routine: { hourly_rate: 65 }, skilled: { hourly_rate: 85 }, specialized: { hourly_rate: 110 }
                     };
                     const st = S.stype || 'Repair';
                     let base = S.intent?.base || 70;
-                    if (DB.service_types && DB.service_types[st] && typeof DB.service_types[st].base_price === 'number') {
+                    if (DB.service_types && DB.service_types[st] && typeof DB.service_types[st].base_price === 'number')
                         base = DB.service_types[st].base_price;
-                    }
-                    let baseMin = 45;
-                    let extraFee = 0,
-                        extraMin = 0;
+                    let baseMin = 45, extraFee = intakeExtraFee, extraMin = 0;
                     const activeLabels = [];
                     let currentTierKey = 'skilled';
                     const activeTids = [...new Set([...S.detTagIds, ...S.manTagIds])];
@@ -3530,343 +3594,125 @@ function resetSmartQuote() {
                         priceDisplay = '$' + lo + ' – $' + hi;
                         priceSub = 'Preliminary range · Finalized on site';
                         badgeTpl = 'proj';
-                        disclaimerText = 'Estimate is preliminary. Final price confirmed after technician measures and you approve scope. Materials not included.';
+                        disclaimerText = 'Estimate is preliminary. Final price confirmed after technician inspects. Materials not included.';
                     } else {
                         priceDisplay = '$' + laborCalc;
                         priceSub = 'Locked-in labor · No surprise charges';
                         badgeTpl = 'ok';
                         disclaimerText = 'This is your confirmed labor price. Materials (if any) are extra and disclosed before work begins. Dispatch fee billed once per visit.';
                     }
-                    return {
-                        priceDisplay,
-                        priceSub,
-                        badgeTpl,
-                        disclaimerText,
-                        laborCalc,
-                        base,
-                        extraFee,
-                        totalMin,
-                        tierKey: currentTierKey,
-                        tierRate,
-                        activeLabels,
-                        isDiag,
-                        isProject,
-                        dispatch
-                    };
+                    return { priceDisplay, priceSub, badgeTpl, disclaimerText, laborCalc, base, extraFee, totalMin, tierKey: currentTierKey, tierRate, activeLabels, isDiag, isProject, dispatch };
                 }
 
-                function renderQuote() {
-                    const q = computeQuote();
-                    const badgeHtml = {
-                        ok: '<i class="ti ti-shield-check"></i> Price confirmed',
-                        proj: '<i class="ti ti-ruler"></i> Project-based',
-                        diag: '<i class="ti ti-stethoscope"></i> Diagnostic'
-                    } [q.badgeTpl];
-                    const categoryDisplay = S.intent?.displayName || S.intent?.label || 'Home Services';
-                    const itemKeyword = S.intent?.key || S.intent?.label || '';
-                    // Build intake context banner if available
-                    const intakeCtx = S.intent?.intakeAnswers;
-                    const intakeNav = S.intent?.navContext;
-                    let ctxBannerHtml = '';
-                    if (intakeCtx && Object.keys(intakeCtx).length > 0) {
-                        const ctxLines = Object.entries(intakeCtx).map(([k, v]) => v).filter(Boolean).join(' · ');
-                        ctxBannerHtml = `<div class="sq-context-banner"><i class="ti ti-route"></i><div><b>Service context:</b> ${intakeNav || ''}<br><span style="opacity:0.75">${ctxLines}</span></div></div>`;
-                    }
-                    const quoteHtml = `
-                ${ctxBannerHtml}<div class="qpanel">
-                    <div class="qhero">
-                        <div class="qitag">${badgeHtml}</div>
-                        <div class="${q.isProject ? 'qpranger' : 'qprice'}">${q.priceDisplay}</div>
-                        <div class="qpsub">${q.priceSub}</div>
-                        <div class="qmeta"><i class="ti ti-tool"></i> ${categoryDisplay} ${itemKeyword ? '· ' + itemKeyword : ''} · ${S.stype}</div>
-                    </div>
-                    <div class="qbody">
-                        <div class="qlines">
-                            <div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ${S.stype?.toLowerCase()}</span><span class="qlv">$${q.base}</span></div>
-                            ${q.extraFee !== 0 ? `<div class="ql"><span class="qll"><i class="ti ti-adjustments-alt"></i> Condition Adjustments</span><span class="qlv">${q.extraFee >= 0 ? '+' : ''}$${q.extraFee}</span></div>` : ''}
-                            <div class="ql"><span class="qll"><i class="ti ti-clock"></i> Est. labor time</span><span class="qlv m">~${q.totalMin} min · <span class="${q.tierKey === 'specialized' ? 'c' : ''}">${q.tierKey}</span> ($${q.tierRate}/hr)</span></div>
-                            <div class="ql"><span class="qll"><i class="ti ti-stack-2"></i> Quantity</span><span class="qlv">${S.qty} ${S.intent?.qtyLabel || 'item'}</span></div>
-                            <div class="ql"><span class="qll"><i class="ti ti-car"></i> Dispatch fee</span><span class="qlv m">+$${q.dispatch} · once per visit</span></div>
-                            <div class="ql" style="margin-top:8px; border-bottom:none;"><span class="qll" style="font-weight:600;">Total labor</span><span class="qlv" style="font-size:20px;font-weight:700;">$${q.laborCalc}${q.isDiag || q.isProject ? ' (est.)' : ''}</span></div>
-                        </div>
-                        ${q.activeLabels.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px">${q.activeLabels.map(l => `<span class="chip gtag" style="cursor:default;font-size:12px;padding:4px 12px;"><i class="ti ti-check"></i> ${l}</span>`).join('')}</div>` : ''}
-                        <div class="disc"><i class="ti ti-info-circle"></i> <div>${q.disclaimerText}</div></div>
-                    </div>
-                    <div class="ctarow">
-                        <button class="ctap" id="addQuoteToCartBtn"><i class="ti ti-shopping-cart"></i> Add to Request</button>
-                        <button class="ctag" id="restartQuoteBtn"><i class="ti ti-refresh"></i> Start Over</button>
-                    </div>
-                </div>
-            `;
-                    document.getElementById('quoteOut').innerHTML = quoteHtml;
-                    document.getElementById('addQuoteToCartBtn').onclick = () => {
-                        const cartEntry = {
-                            id: `quote-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-                            serviceId: 'smart_quote',
-                            category_id: S.intent.category,
-                            name: `${categoryDisplay} - ${itemKeyword || 'Custom'}`,
-                            price: `$${q.laborCalc}`,
-                            icon: '⚡',
-                            detail: S.desc.substring(0, 100),
-                            notes: `SmartQuote: ${S.desc}\nConditions: ${q.activeLabels.join(', ')}`,
-                            materialsNotIncluded: !q.isProject && !q.isDiag,
-                            materialsEstimateRange: [0, 0]
-                        };
-                        if (typeof addToCart === 'function') {
-                            addToCart(cartEntry);
-                            toast('Quote added to request', 'success');
-                            document.getElementById('restartQuoteBtn').click();
-                        } else {
-                            console.error('addToCart not available');
-                            alert('Cart system not ready. Please refresh.');
-                        }
-                    };
-                    document.getElementById('restartQuoteBtn').onclick = () => {
-                        document.getElementById('stepFlow').style.display = 'none';
-                        document.getElementById('quoteOut').innerHTML = '';
-                        if (document.getElementById('category-card')) document.getElementById('category-card').style.display = 'grid';
-                        if (typeof exitFocusedMode === 'function') exitFocusedMode();
-                        S = {
-                            qty: 1,
-                            intent: null,
-                            stype: null,
-                            detTagIds: [],
-                            manTagIds: [],
-                            negatedTagIds: [],
-                            desc: '',
-                            adlibConfirmed: false
-                        };
-                        if (document.getElementById('sqInlineDesc')) document.getElementById('sqInlineDesc').value = '';
-                    };
-                    document.getElementById('quoteOut').scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-
-                function unlock(n) {
-                    document.getElementById('sc' + n).className = 'scard active';
-                }
-
-                function open(n) {
-                    document.getElementById('sb' + n).style.display = 'block';
-                    document.getElementById('sn' + n).className = 'snum a';
-                }
-
+                /* ── Legacy step-card helpers (kept for compatibility) ─────────── */
+                function unlock(n) { const el = document.getElementById('sc' + n); if (el) el.className = 'scard active'; }
+                function open(n) { const el = document.getElementById('sb' + n); if (el) el.style.display = 'block'; const sn = document.getElementById('sn' + n); if (sn) sn.className = 'snum a'; }
                 function markDone(n, val) {
-                    document.getElementById('sb' + n).style.display = 'none';
-                    document.getElementById('sn' + n).className = 'snum d';
-                    document.getElementById('sn' + n).innerHTML = '<i class="ti ti-check" style="font-size:14px"></i>';
-                    document.getElementById('sv' + n).textContent = val || '';
-                    document.getElementById('sc' + n).className = 'scard done';
+                    const sb = document.getElementById('sb' + n); if (sb) sb.style.display = 'none';
+                    const sn = document.getElementById('sn' + n); if (sn) { sn.className = 'snum d'; sn.innerHTML = '<i class="ti ti-check" style="font-size:14px"></i>'; }
+                    const sv = document.getElementById('sv' + n); if (sv) sv.textContent = val || '';
+                    const sc = document.getElementById('sc' + n); if (sc) sc.className = 'scard done';
                 }
 
+                /* ── loadSmartQuoteCatalog ───────────────────────────────────── */
                 async function loadSmartQuoteCatalog() {
                     try {
                         const res = await fetch('btnyc.json');
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        const data = await res.json();
-                        DB = data;
-                        console.log('SmartQuote: loaded btnyc.json');
-       smartQuoteReady = true;
-        smartQuoteCallbacks.forEach(fn => fn());
-        smartQuoteCallbacks = [];
-                        initStep1();
+                        DB = await res.json();
+                        console.log('SmartQuote v2: catalog loaded');
                     } catch (err) {
-                        console.warn('SmartQuote: using built-in fallback', err);
+                        console.warn('SmartQuote: using fallback DB', err);
                         DB = {
-                            global_rules: {
-                                surcharges: {
-                                    dispatch_fee: 45
-                                },
-                                complexity_tiers: {
-                                    routine: {
-                                        hourly_rate: 65
-                                    },
-                                    skilled: {
-                                        hourly_rate: 85
-                                    },
-                                    specialized: {
-                                        hourly_rate: 110
-                                    }
-                                }
-                            },
-                            service_types: {
-                                Install: {
-                                    base_price: 65
-                                },
-                                Repair: {
-                                    base_price: 70
-                                },
-                                Diagnostic: {
-                                    base_price: 85
-                                },
-                                Assembly: {
-                                    base_price: 55
-                                },
-                                Setup: {
-                                    base_price: 45
-                                }
-                            },
+                            global_rules: { surcharges: { dispatch_fee: 45 }, complexity_tiers: { routine: { hourly_rate: 65 }, skilled: { hourly_rate: 85 }, specialized: { hourly_rate: 110 } } },
+                            service_types: { Install: { base_price: 65 }, Repair: { base_price: 70 }, Diagnostic: { base_price: 85 }, Assembly: { base_price: 55 }, Setup: { base_price: 45 } },
                             smart_tags: {
-                                "#drywall": {
-                                    synonyms: ["drywall"],
-                                    fee: 0,
-                                    minutes: 0,
-                                    label: "Standard Drywall",
-                                    display_group: "Surface / Material",
-                                    is_default_for_group: true,
-                                    applicable_categories: ["wall_mounting"]
-                                },
-                                "#brick_wall": {
-                                    synonyms: ["brick", "concrete"],
-                                    fee: 25,
-                                    minutes: 20,
-                                    label: "Brick/Concrete",
-                                    display_group: "Surface / Material",
-                                    mutually_exclusive: ["#drywall"],
-                                    escalate_complexity: "specialized",
-                                    applicable_categories: ["wall_mounting"]
-                                },
-                                "#oversized": {
-                                    synonyms: ["huge", "oversized", "massive", "very large", "large", "big", "jumbo"],
-                                    fee: 20,
-                                    minutes: 15,
-                                    label: "Oversized/Large",
-                                    display_group: "Item Specs",
-                                    applicable_categories: ["wall_mounting"]
-                                }
+                                "#brick_wall": { synonyms: ["brick","concrete"], effects: { fee: 25, minutes: 20, complexity_override: "skilled" }, label: "Brick/Concrete", display_group: "Wall Material", mutually_exclusive: ["#drywall"], escalate_complexity: "specialized" },
+                                "#drywall": { synonyms: ["drywall","sheetrock","plaster"], effects: { fee: 0, minutes: 0 }, label: "Drywall/Plaster", display_group: "Wall Material", mutually_exclusive: ["#brick_wall"], is_default_for_group: true },
+                                "#heavy_item": { synonyms: ["heavy","large TV","big screen","50 lbs"], effects: { fee: 40, minutes: 30, complexity_override: "skilled" }, label: "Heavy Item", display_group: "Job Constraints" },
+                                "#high_ceiling": { synonyms: ["high ceiling","vaulted","tall"], effects: { fee: 40, minutes: 30, complexity_override: "specialized" }, label: "High Ceiling", display_group: "Job Constraints" }
                             },
-                            intent_mappings: [{
-                                keyword: "neon sign",
-                                confidence_weight: 85,
-                                default_dynamic_category: "wall_mounting",
-                                default_service_type: "Install",
-                                fallback: {
-                                    base_price: 75
-                                }
-                            }],
-                            category: [{
-                                id: "wall_mounting",
-                                name: "Wall Mounting",
-                                display_name: "Wall Mounting",
-                                icon: "ti-viewport-wide"
-                            }, {
-                                id: "other",
-                                name: "Other",
-                                display_name: "Other",
-                                icon: "ti-dots"
-                            }]
+                            intent_mappings: { objects: [
+                                { keyword: "tv mounting", synonyms: ["tv","mount tv","flatscreen","television"], confidence_weight: 85, default_dynamic_category: "wall_mounting", default_service_type: "Install", fallback: { base_price: 60 } },
+                                { keyword: "toilet", synonyms: ["toilet","commode"], confidence_weight: 80, default_dynamic_category: "plumbing_help", default_service_type: "Install", fallback: { base_price: 100 } }
+                            ]},
+                            intake_modules: DB?.intake_modules || {},
+                            category: [
+                                { id: "wall_mounting", display_name: "Wall Mounting", icon: "🖼" },
+                                { id: "plumbing_help", display_name: "Plumbing Help", icon: "🚿" },
+                                { id: "other", display_name: "Other", icon: "🔧" }
+                            ]
                         };
-                        initStep1();
-                               smartQuoteReady = true;
-        smartQuoteCallbacks.forEach(fn => fn());
-        smartQuoteCallbacks = [];
                     }
+                    smartQuoteReady = true;
+                    smartQuoteCallbacks.forEach(fn => fn());
+                    smartQuoteCallbacks = [];
                 }
 
-function createStepCard(stepNum, label, innerHtml) {
-    const card = document.createElement('div');
-    card.className = `scard ${stepNum === 1 ? 'active' : 'locked'}`;
-    card.id = `sc${stepNum}`;
+                /* ── createStepCard helper ───────────────────────────────────── */
+                function createStepCard(stepNum, label, innerHtml) {
+                    const card = document.createElement('div');
+                    card.className = `scard ${stepNum === 1 ? 'active' : 'locked'}`;
+                    card.id = `sc${stepNum}`;
+                    const head = document.createElement('div');
+                    head.className = 'shead';
+                    const snum = document.createElement('div');
+                    snum.className = `snum ${stepNum === 1 ? 'a' : ''}`;
+                    snum.id = `sn${stepNum}`;
+                    snum.textContent = stepNum;
+                    const slabel = document.createElement('div');
+                    slabel.className = 'slabel';
+                    slabel.textContent = label;
+                    const sval = document.createElement('div');
+                    sval.className = 'sval';
+                    sval.id = `sv${stepNum}`;
+                    head.appendChild(snum); head.appendChild(slabel); head.appendChild(sval);
+                    const body = document.createElement('div');
+                    body.className = 'sbody';
+                    body.id = `sb${stepNum}`;
+                    body.style.display = stepNum === 1 ? 'block' : 'none';
+                    body.innerHTML = innerHtml;
+                    card.appendChild(head); card.appendChild(body);
+                    return card;
+                }
 
-    const head = document.createElement('div');
-    head.className = 'shead';
-    head.setAttribute('onclick', `openStep(${stepNum})`);
-    const snum = document.createElement('div');
-    snum.className = `snum ${stepNum === 1 ? 'a' : ''}`;
-    snum.id = `sn${stepNum}`;
-    snum.textContent = stepNum;
-    const slabel = document.createElement('div');
-    slabel.className = 'slabel';
-    slabel.textContent = label;
-    const sval = document.createElement('div');
-    sval.className = 'sval';
-    sval.id = `sv${stepNum}`;
-    head.appendChild(snum);
-    head.appendChild(slabel);
-    head.appendChild(sval);
+                /* ── initSmartQuote — inline text-bar UI ─────────────────────── */
+                function initSmartQuote() {
+                    ensureSQContainer();
+                    const sqContainer = document.getElementById('smartQuoteEngine');
+                    if (!sqContainer) return;
 
-    const body = document.createElement('div');
-    body.className = 'sbody';
-    body.id = `sb${stepNum}`;
-    body.style.display = stepNum === 1 ? 'block' : 'none';
-    body.innerHTML = innerHtml;
+                    // Only inject once
+                    if (sqContainer.querySelector('.sq-inline-bar')) return;
 
-    card.appendChild(head);
-    card.appendChild(body);
-    return card;
-}
+                    const inlineBar = document.createElement('div');
+                    inlineBar.className = 'sq-inline-bar';
 
-function initSmartQuote() {
-    let sqContainer = document.getElementById('smartQuoteEngine');
-    if (!sqContainer) {
-        const categoryCard = document.getElementById('category-card');
-        if (!categoryCard || !categoryCard.parentNode) {
-            console.warn('Cannot find #category-card, SmartQuote will not be injected');
-            return;
-        }
-        sqContainer = document.createElement('div');
-        sqContainer.id = 'smartQuoteEngine';
-        sqContainer.className = 'sq-engine';
-        categoryCard.insertAdjacentElement('afterend', sqContainer);
-    }
-    if (sqContainer.querySelector('.sq-inline-bar')) return; // already initialized
+                    const header = document.createElement('div');
+                    header.style.cssText = 'font-size:.8rem;font-weight:700;color:#8a0615;margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase;';
+                    header.textContent = '⚡ Instant Estimate';
+                    inlineBar.appendChild(header);
 
-    // Build using DOM elements (no hardcoded style attributes)
-    const inlineBar = document.createElement('div');
-    inlineBar.className = 'sq-inline-bar';
+                    const row = document.createElement('div');
+                    row.className = 'sq-inline-row';
+                    const textarea = document.createElement('textarea');
+                    textarea.id = 'sqInlineDesc';
+                    textarea.rows = 2;
+                    textarea.placeholder = 'Describe what you need — e.g. "mount a 65" TV on brick wall" or "fix a running toilet"…';
+                    const btn = document.createElement('button');
+                    btn.id = 'sqInlineAnalyzeBtn';
+                    btn.textContent = 'Get Quote';
+                    btn.addEventListener('click', () => startSmartQuoteFromText(textarea.value));
+                    textarea.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); startSmartQuoteFromText(textarea.value); } });
+                    row.appendChild(textarea); row.appendChild(btn);
+                    inlineBar.appendChild(row);
 
-    const header = document.createElement('div');
-    header.className = 'sq-inline-header';
-    header.innerHTML = '⚡𝐼𝑛𝑠𝑡𝑎𝑛𝑡𝗘𝘀𝘁𝗶𝗺𝗮𝘁𝗲';
-    inlineBar.appendChild(header);
+                    // Insert before existing stepFlow
+                    const sf = document.getElementById('stepFlow');
+                    if (sf) sqContainer.insertBefore(inlineBar, sf);
+                    else sqContainer.appendChild(inlineBar);
+                }
 
-    const row = document.createElement('div');
-    row.className = 'sq-inline-row';
-    const textarea = document.createElement('textarea');
-    textarea.id = 'sqInlineDesc';
-    textarea.rows = 2;
-    textarea.placeholder = 'I need to mount a heavy TV on a brick wall in the living room…';
-    const button = document.createElement('button');
-    button.id = 'sqInlineAnalyzeBtn';
-    button.textContent = 'Analyze';
-    row.appendChild(textarea);
-    row.appendChild(button);
-    inlineBar.appendChild(row);
-
-    const contextChips = document.createElement('div');
-    contextChips.id = 'sqContextChips';
-    contextChips.style.display = 'none'; // keep as dynamic control, not a layout style
-    inlineBar.appendChild(contextChips);
-
-    sqContainer.appendChild(inlineBar);
-
-    // Step flow – build similarly with class names
-    const stepFlow = document.createElement('div');
-    stepFlow.id = 'stepFlow';
-    stepFlow.className = 'stepflow';
-    stepFlow.style.display = 'none'; // toggle via JS, not a theme concern
-
-    // Helper to create a step card (example for sc1)
-    const sc1 = createStepCard(1, 'What do you need done?', `
-        <div class="step-desc-hint">Describe the job — the more detail, the sharper the estimate.</div>
-        <textarea class="desc-ta" id="descIn" placeholder="I have a huge 6ft neon sign to mount on a brick wall..."></textarea>
-        <div class="chip-container" id="catChips"></div>
-        <button class="nbtn" data-step="1">Analyze Request <i class="ti ti-wand"></i></button>
-    `);
-    stepFlow.appendChild(sc1);
-    // ... similarly for sc2, sc3
-
-    sqContainer.appendChild(stepFlow);
-
-    const quoteOut = document.createElement('div');
-    quoteOut.id = 'quoteOut';
-    sqContainer.appendChild(quoteOut);
-
-    // Attach event listeners (as before, but using class-based selectors)
-    attachSmartQuoteEvents();
-}
 
                 /* ================================================================
                    WIRE GLOBAL EVENTS (replaces missing wireGlobalEvents)
