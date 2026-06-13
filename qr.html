@@ -3034,6 +3034,8 @@ body.modal-active{overflow:hidden}
     const lower = text.toLowerCase();
     let maps = DB.intent_mappings || [];
     if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
+    // Normalize service type strings from btnyc.json to our chip labels
+    const normStype = s => (s||'Repair').replace('Install / Mount','Install').replace('Install/Mount','Install');
     let best=null, top=0;
     for (const m of maps) {
       let score=0;
@@ -3043,7 +3045,7 @@ body.modal-active{overflow:hidden}
       if (score>top) {
         top=score;
         best={ category:m.default_dynamic_category||m.fallback?.category||'other',
-               stype:m.default_service_type||m.fallback?.service_type||'Repair',
+               stype:normStype(m.default_service_type||m.fallback?.service_type||'Repair'),
                group:m.keyword, base:m.fallback?.base_price||70,
                key:m.keyword, label:m.keyword, qtyLabel:'item' };
       }
@@ -3201,7 +3203,21 @@ body.modal-active{overflow:hidden}
     const bar = document.getElementById('sqTextBar');
     if (bar) bar.style.display = 'none';
 
+    // High-confidence intent (e.g. 'neon sign', 'tv mount') → skip Step 2, go direct to Step 3
+    const intentConf = (() => {
+      let maps = DB.intent_mappings || [];
+      if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
+      const kw = (S.intent?.key||'').toLowerCase();
+      const m = maps.find(x=>(x.keyword||'').toLowerCase()===kw);
+      return m?.confidence_weight || 0;
+    })();
+
     sqBuildStep2();
+    if (intentConf >= 60 && S.intent?.stype) {
+      // Auto-advance: mark step 2 done and jump straight to tag chips
+      sqMarkDone(2, S.stype);
+      sqBuildStep3();
+    }
   }
 
   /* ── STEP 2 ───────────────────────────────────────────────────── */
@@ -3210,7 +3226,9 @@ body.modal-active{overflow:hidden}
     if (flow) flow.style.display = 'flex';
     sqUnlock(2); sqOpen(2);
     const types = ['Install','Repair','Diagnostic','Assembly','Setup'];
-    const guess = S.intent?.stype || 'Repair';
+    // Normalize stype in case it came from btnyc.json with 'Install / Mount'
+    const raw = S.intent?.stype || 'Repair';
+    const guess = raw.replace('Install / Mount','Install').replace('Install/Mount','Install');
     S.stype = guess;
     const icons = {Install:'ti-tool',Repair:'ti-wrench',Diagnostic:'ti-stethoscope',Assembly:'ti-puzzle',Setup:'ti-settings'};
     document.getElementById('sqTypeChips').innerHTML = types.map(t =>
@@ -3498,11 +3516,11 @@ body.modal-active{overflow:hidden}
         label:svc.ui_taxonomy?.display_name||svc.display_name||catName,
         group:svc.ui_taxonomy?.display_name||svc.id,
         base:svc.financial_engine?.base_price||70,
-        stype:svc.service_type||'Repair',
+        stype:(svc.service_type||'Repair').replace('Install / Mount','Install').replace('Install/Mount','Install'),
         qtyLabel:'item',
         key:svc.id
       },
-      stype:svc.service_type||'Repair',
+      stype:(svc.service_type||'Repair').replace('Install / Mount','Install').replace('Install/Mount','Install'),
       desc:svc.ui_taxonomy?.display_name||svc.id,
       detTagIds:[],manTagIds:[],negatedTagIds:[],adlibConfirmed:false
     };
