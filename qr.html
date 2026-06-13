@@ -667,6 +667,120 @@ body.modal-active{overflow:hidden}
 #sqTextBar button:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(222,0,0,.35); }
 .sq-inline-row { display:flex; gap:8px; align-items:flex-end; }
 
+
+/* ── Guided "Write it for me" builder ───────────────────────────── */
+#sqBuilder {
+  background:var(--glass-bg,rgba(255,255,255,.92));
+  backdrop-filter:var(--glass-blur,blur(14px));
+  -webkit-backdrop-filter:var(--glass-blur,blur(14px));
+  border:var(--glass-border,.5px solid rgba(192,192,192,.95));
+  border-radius:var(--radius-md,15px);
+  padding:16px; margin-top:14px;
+  box-shadow:0 2px 16px rgba(0,0,0,.1);
+  display:none;
+}
+#sqBuilder .sq-builder-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:14px;
+}
+#sqBuilder .sq-builder-title {
+  font-size:.7rem; font-weight:800; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--clr-red-dark,#8a0615);
+  display:flex; align-items:center; gap:6px;
+}
+/* Live sentence preview at top of builder */
+#sqBuilderSentence {
+  font-size:15px; font-weight:600; color:#1a1a1a;
+  line-height:1.8; padding:10px 14px;
+  background:rgba(222,0,0,.05);
+  border-left:3px solid var(--clr-red,#de0000);
+  border-radius:0 8px 8px 0;
+  margin-bottom:14px; min-height:44px;
+}
+#sqBuilderSentence .bw { color:#888; font-weight:400; }
+#sqBuilderSentence .bs {
+  color:var(--clr-red-dark,#8a0615); font-weight:700;
+  border-bottom:1.5px solid var(--clr-red,#de0000);
+  padding-bottom:1px;
+}
+#sqBuilderSentence .bp {
+  display:inline-block; width:80px; height:16px;
+  background:rgba(222,0,0,.12); border-radius:4px;
+  vertical-align:middle; margin:0 3px; animation:blink .9s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+/* Step prompt */
+.sq-step-prompt {
+  font-size:13px; font-weight:600; color:#333;
+  margin:0 0 10px; display:flex; align-items:center; gap:6px;
+}
+.sq-step-prompt i { color:var(--clr-red,#de0000); font-size:14px; }
+
+/* Builder chip options */
+.sq-b-chips { display:flex; flex-wrap:wrap; gap:7px; }
+.sq-b-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 16px; border-radius:999px;
+  border:1.5px solid rgba(0,0,0,.15);
+  background:#fff; color:#222;
+  font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .18s ease;
+  min-height:40px; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+.sq-b-chip:active { transform:scale(.93); }
+.sq-b-chip.sq-b-sel {
+  background:var(--clr-red,#de0000); color:#fff;
+  border-color:var(--clr-red,#de0000);
+  box-shadow:0 2px 8px rgba(222,0,0,.3);
+}
+.sq-b-chip i { font-size:14px; }
+
+/* Back / progress */
+.sq-builder-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-top:14px; padding-top:12px;
+  border-top:1px solid rgba(0,0,0,.07);
+}
+.sq-b-back {
+  font-size:12px; font-weight:600; color:#888;
+  background:none; border:none; cursor:pointer;
+  display:flex; align-items:center; gap:4px;
+  padding:6px 0; touch-action:manipulation;
+}
+.sq-b-back:hover { color:#444; }
+.sq-b-progress {
+  display:flex; gap:5px; align-items:center;
+}
+.sq-b-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:rgba(0,0,0,.15); transition:var(--transition);
+}
+.sq-b-dot.active { background:var(--clr-red,#de0000); transform:scale(1.4); }
+.sq-b-dot.done { background:var(--clr-red-dark,#8a0615); }
+
+/* Toggle button in text bar */
+#sqWriteForMeBtn {
+  background:none; border:1.5px solid rgba(222,0,0,.3);
+  color:var(--clr-red-dark,#8a0615);
+  border-radius:8px; padding:6px 12px;
+  font-size:11px; font-weight:700; cursor:pointer;
+  display:inline-flex; align-items:center; gap:5px;
+  white-space:nowrap; transition:var(--transition);
+  touch-action:manipulation; letter-spacing:.02em;
+  margin-top:8px; align-self:flex-start;
+}
+#sqWriteForMeBtn:hover {
+  background:rgba(222,0,0,.07);
+  border-color:var(--clr-red,#de0000);
+}
+#sqWriteForMeBtn.active {
+  background:var(--clr-red-dark,#8a0615); color:#fff;
+  border-color:var(--clr-red-dark,#8a0615);
+}
+
 </style>
     </head>
 
@@ -3520,6 +3634,31 @@ body.modal-active{overflow:hidden}
           <textarea id="sqDescIn" rows="2" placeholder="e.g. mount a large neon sign on a drywall wall in the bedroom…"></textarea>
           <button id="sqAnalyzeBtn">Analyze <i class="ti ti-arrow-right"></i></button>
         </div>
+        <button id="sqWriteForMeBtn" onclick="sqToggleBuilder()">
+          <i class="ti ti-sparkles"></i> Write it for me
+        </button>
+      </div>
+
+      <!-- Guided builder: shown when user taps "Write it for me" -->
+      <div id="sqBuilder">
+        <div class="sq-builder-header">
+          <div class="sq-builder-title">
+            <i class="ti ti-sparkles"></i> Build your request
+          </div>
+          <button class="sq-b-back" onclick="sqToggleBuilder()" style="font-size:11px;color:var(--clr-red-dark,#8a0615);">
+            <i class="ti ti-x"></i> Close
+          </button>
+        </div>
+        <div id="sqBuilderSentence"></div>
+        <div class="sq-step-prompt" id="sqBuilderPrompt"></div>
+        <div class="sq-b-chips" id="sqBuilderChips"></div>
+        <div class="sq-builder-footer">
+          <button class="sq-b-back" id="sqBuilderBack" onclick="sqBuilderBack()" style="display:none;">
+            <i class="ti ti-arrow-left"></i> Back
+          </button>
+          <div class="sq-b-progress" id="sqBuilderProgress"></div>
+          <div style="width:60px"></div>
+        </div>
       </div>
 
       <!-- Step 2: confirm service type (hidden until text analyzed or card tapped) -->
@@ -4243,6 +4382,10 @@ body.modal-active{overflow:hidden}
     if(DOM.serviceContainer)DOM.serviceContainer.style.display='none';
     // Clear NLP enrichment
     S._objectNoun=null; S._location=null; S._sizeHint=null; S._notes=null;
+    BLD = { step:0, action:null, object:null, specific:null, condition:null, location:null, qty:1 };
+    const bldr=document.getElementById('sqBuilder'); if(bldr) bldr.style.display='none';
+    const bBtn=document.getElementById('sqWriteForMeBtn'); if(bBtn) bBtn.classList.remove('active');
+    const inRow=document.querySelector('#sqTextBar .sq-inline-row'); if(inRow) inRow.style.display='flex';
     exitFocusedMode?.();
   }
 
@@ -4376,6 +4519,360 @@ body.modal-active{overflow:hidden}
     return obj;
   }
 
+
+  /* ================================================================
+     GUIDED BUILDER — "Write it for me"
+     
+     State: BLD = { step, action, object, specific, condition, location, qty }
+     Steps: action → object → specific? → condition? → location → review
+     After completing, synthesizes a description string and feeds into
+     sqAnalyze() exactly as if the user had typed it.
+  ================================================================ */
+
+  let BLD = { step:0, action:null, object:null, specific:null, condition:null, location:null, qty:1 };
+
+  // ── Step definitions ──────────────────────────────────────────────
+  // Each step: { id, prompt, icon, choices[], next(choice) }
+  // choices: { label, icon, value, meta: { category?, stype?, keyword? } }
+
+  const BLD_STEPS = [
+    {
+      id: 'action',
+      prompt: 'What do you need done?',
+      icon: 'ti-tool',
+      choices: [
+        { label:'Fix / Repair',    icon:'ti-wrench',       value:'fix',      stype:'Repair' },
+        { label:'Install',         icon:'ti-tool',         value:'install',  stype:'Install' },
+        { label:'Hang / Mount',    icon:'ti-viewport-wide',value:'mount',    stype:'Install' },
+        { label:'Assemble',        icon:'ti-puzzle',       value:'assemble', stype:'Assembly' },
+        { label:'Remove',          icon:'ti-trash',        value:'remove',   stype:'Repair' },
+        { label:'Set up / Config', icon:'ti-settings',     value:'set up',   stype:'Setup' },
+      ]
+    },
+    {
+      id: 'object',
+      prompt: 'What is it?',
+      icon: 'ti-package',
+      choices: (bld) => {
+        // Context-aware choices based on action
+        const isInstall = ['install','mount','set up'].includes(bld.action);
+        const isFix     = ['fix','remove'].includes(bld.action);
+        const isAssemble = bld.action === 'assemble';
+        const all = [
+          { label:'TV / Screen',         icon:'ti-device-tv',       value:'TV',              cat:'wall_mounting',         keyword:'mount' },
+          { label:'Shelf / Artwork',     icon:'ti-artboard',        value:'shelf',           cat:'wall_mounting',         keyword:'mount' },
+          { label:'Neon / Sign',         icon:'ti-bulb',            value:'neon sign',       cat:'wall_mounting',         keyword:'mount' },
+          { label:'Mirror',              icon:'ti-frame',           value:'mirror',          cat:'wall_mounting',         keyword:'mount' },
+          { label:'Light Fixture',       icon:'ti-bulb',            value:'light fixture',   cat:'electric_lighting',     keyword:'light fixture' },
+          { label:'Ceiling Fan',         icon:'ti-wind',            value:'ceiling fan',     cat:'electric_lighting',     keyword:'light fixture' },
+          { label:'Outlet / Switch',     icon:'ti-plug',            value:'outlet',          cat:'electric_lighting',     keyword:'light fixture' },
+          { label:'Faucet / Sink',       icon:'ti-droplet',         value:'faucet',          cat:'plumbing_help',         keyword:'faucet / sink' },
+          { label:'Toilet',              icon:'ti-droplet-half',    value:'toilet',          cat:'plumbing_help',         keyword:'toilet' },
+          { label:'Shower Head',         icon:'ti-shower',          value:'shower head',     cat:'plumbing_help',         keyword:'faucet / sink' },
+          { label:'Appliance',           icon:'ti-device-desktop',  value:'appliance',       cat:'minor_home_repairs',    keyword:'other' },
+          { label:'Door / Lock',         icon:'ti-door',            value:'door',            cat:'minor_home_repairs',    keyword:'door' },
+          { label:'Tile / Floor',        icon:'ti-border-all',      value:'floor tile',      cat:'minor_home_repairs',    keyword:'tile / floor' },
+          { label:'Drywall / Wall',      icon:'ti-square',          value:'drywall',         cat:'minor_home_repairs',    keyword:'drywall / wall' },
+          { label:'Furniture',           icon:'ti-armchair',        value:'furniture',       cat:'furniture_fixes_assembly', keyword:'furniture' },
+          { label:'Router / Network',    icon:'ti-wifi',            value:'router',          cat:'tech_trouble',          keyword:'other' },
+          { label:'Computer / Device',   icon:'ti-device-laptop',   value:'computer',        cat:'tech_trouble',          keyword:'other' },
+        ];
+        // Filter by action context
+        if (isAssemble) return all.filter(c => ['furniture','shelf','light fixture','ceiling fan'].includes(c.value));
+        return all;
+      }
+    },
+    {
+      id: 'specific',
+      prompt: 'Which one?',
+      icon: 'ti-list',
+      // Only shown for objects that have sub-choices
+      choices: (bld) => {
+        const specs = {
+          'appliance': [
+            { label:'Washer',       icon:'ti-wash',             value:'washer' },
+            { label:'Dryer',        icon:'ti-wind',             value:'dryer' },
+            { label:'Dishwasher',   icon:'ti-device-desktop',   value:'dishwasher' },
+            { label:'Refrigerator', icon:'ti-snowflake',        value:'refrigerator' },
+            { label:'Microwave',    icon:'ti-microwave',        value:'microwave' },
+            { label:'AC Unit',      icon:'ti-air-conditioning', value:'AC unit' },
+          ],
+          'furniture': [
+            { label:'Chair',        icon:'ti-armchair',   value:'chair' },
+            { label:'Dresser',      icon:'ti-box',        value:'dresser' },
+            { label:'Bed frame',    icon:'ti-bed',        value:'bed frame' },
+            { label:'Desk',         icon:'ti-desk',       value:'desk' },
+            { label:'Shelving',     icon:'ti-layout-rows',value:'shelving unit' },
+            { label:'Sofa / Couch', icon:'ti-armchair',   value:'sofa' },
+          ],
+        };
+        return specs[bld.object] || null; // null = skip this step
+      }
+    },
+    {
+      id: 'condition',
+      prompt: "What's the issue?",
+      icon: 'ti-alert-circle',
+      choices: (bld) => {
+        const conds = {
+          // Fix/Repair conditions
+          'fix': [
+            { label:"It's leaking",       icon:'ti-droplet',       value:'leaking' },
+            { label:"Won't turn on",      icon:'ti-power',         value:"won't turn on" },
+            { label:"Makes noise",        icon:'ti-volume',        value:'making noise' },
+            { label:"Is loose / wobbly",  icon:'ti-arrows-move',   value:'loose or wobbly' },
+            { label:"Cracked / broken",   icon:'ti-tool',          value:'cracked or broken' },
+            { label:"Runs constantly",    icon:'ti-refresh',       value:'running constantly' },
+            { label:"Slow / clogged",     icon:'ti-wave-sine',     value:'slow or clogged' },
+          ],
+          'remove': [
+            { label:'Replace old one',    icon:'ti-replace',       value:'replacing old unit' },
+            { label:'No longer needed',   icon:'ti-trash',         value:'no longer needed' },
+          ],
+          'mount': null, // no condition step for mounting
+          'install': null,
+          'assemble': null,
+          'set up': null,
+        };
+        return conds[bld.action] || null;
+      }
+    },
+    {
+      id: 'location',
+      prompt: 'Where in the home?',
+      icon: 'ti-map-pin',
+      choices: [
+        { label:'Living Room',  icon:'ti-sofa',           value:'living room' },
+        { label:'Bedroom',      icon:'ti-bed',            value:'bedroom' },
+        { label:'Kitchen',      icon:'ti-tools-kitchen-2',value:'kitchen' },
+        { label:'Bathroom',     icon:'ti-bath',           value:'bathroom' },
+        { label:'Office',       icon:'ti-briefcase',      value:'home office' },
+        { label:'Dining Room',  icon:'ti-armchair',       value:'dining room' },
+        { label:'Basement',     icon:'ti-stairs-down',    value:'basement' },
+        { label:'Other',        icon:'ti-dots',           value:null }, // skip
+      ]
+    }
+  ];
+
+  // ── Builder helpers ───────────────────────────────────────────────
+  function sqToggleBuilder() {
+    const builder = document.getElementById('sqBuilder');
+    const textarea = document.querySelector('#sqTextBar .sq-inline-row');
+    const btn = document.getElementById('sqWriteForMeBtn');
+    if (!builder) return;
+    const isOpen = builder.style.display !== 'none';
+    if (isOpen) {
+      // Close builder, show textarea
+      builder.style.display = 'none';
+      if (textarea) textarea.style.display = 'flex';
+      btn?.classList.remove('active');
+    } else {
+      // Open builder, hide textarea
+      builder.style.display = 'block';
+      if (textarea) textarea.style.display = 'none';
+      btn?.classList.add('active');
+      // Reset and start
+      BLD = { step:0, action:null, object:null, specific:null, condition:null, location:null, qty:1 };
+      sqBuilderRender();
+    }
+  }
+
+  // Get the ordered list of active step IDs for this flow
+  function sqBuilderGetSteps() {
+    const steps = ['action', 'object'];
+    // specific: only if object has sub-choices
+    const specStep = BLD_STEPS.find(s => s.id === 'specific');
+    const specChoices = typeof specStep?.choices === 'function'
+      ? specStep.choices(BLD) : specStep?.choices;
+    if (specChoices && specChoices.length > 0) steps.push('specific');
+    // condition: only for fix/remove
+    const condStep = BLD_STEPS.find(s => s.id === 'condition');
+    const condChoices = typeof condStep?.choices === 'function'
+      ? condStep.choices(BLD) : condStep?.choices;
+    if (condChoices && condChoices.length > 0) steps.push('condition');
+    // location always
+    steps.push('location');
+    return steps;
+  }
+
+  function sqBuilderCurrentStep() {
+    const steps = sqBuilderGetSteps();
+    return BLD_STEPS.find(s => s.id === steps[BLD.step]);
+  }
+
+  function sqBuilderRender() {
+    const stepDef = sqBuilderCurrentStep();
+    if (!stepDef) { sqBuilderFinish(); return; }
+
+    const allSteps = sqBuilderGetSteps();
+    const totalSteps = allSteps.length;
+
+    // Choices
+    const choices = typeof stepDef.choices === 'function'
+      ? stepDef.choices(BLD)
+      : stepDef.choices;
+
+    if (!choices || choices.length === 0) {
+      // Skip this step
+      BLD.step++;
+      sqBuilderRender();
+      return;
+    }
+
+    // Update live sentence preview
+    sqBuilderUpdateSentence();
+
+    // Update prompt
+    const prompt = document.getElementById('sqBuilderPrompt');
+    if (prompt) {
+      prompt.innerHTML = `<i class="ti ${stepDef.icon}"></i> ${stepDef.prompt}`;
+    }
+
+    // Render chips
+    const chipsEl = document.getElementById('sqBuilderChips');
+    if (chipsEl) {
+      chipsEl.innerHTML = '';
+      choices.forEach(ch => {
+        const btn = document.createElement('button');
+        btn.className = 'sq-b-chip';
+        // Pre-select if already chosen
+        const curVal = BLD[stepDef.id];
+        if (curVal === ch.value || (ch.value === null && curVal === null)) {
+          btn.classList.add('sq-b-sel');
+        }
+        btn.innerHTML = ch.icon ? `<i class="ti ${ch.icon}"></i>${ch.label}` : ch.label;
+        btn.addEventListener('click', () => sqBuilderChoose(stepDef.id, ch));
+        chipsEl.appendChild(btn);
+      });
+    }
+
+    // Back button
+    const back = document.getElementById('sqBuilderBack');
+    if (back) back.style.display = BLD.step > 0 ? 'flex' : 'none';
+
+    // Progress dots
+    const prog = document.getElementById('sqBuilderProgress');
+    if (prog) {
+      prog.innerHTML = allSteps.map((_, i) =>
+        `<div class="sq-b-dot ${i < BLD.step ? 'done' : i === BLD.step ? 'active' : ''}"></div>`
+      ).join('');
+    }
+  }
+
+  function sqBuilderUpdateSentence() {
+    const el = document.getElementById('sqBuilderSentence');
+    if (!el) return;
+    const w = (txt, cls='bw') => `<span class="${cls}">${txt}</span>`;
+    const s = (txt) => `<span class="bs">${txt}</span>`;
+    const placeholder = (n) => Array(n).fill(`<span class="bp"></span>`).join('');
+
+    let parts = [w('I need to ')];
+
+    if (BLD.action) parts.push(s(BLD.action));
+    else parts.push(placeholder(1));
+
+    if (BLD.action) {
+      parts.push(w(' my '));
+      const obj = BLD.specific || BLD.object;
+      if (obj) parts.push(s(obj));
+      else parts.push(placeholder(1));
+    }
+
+    if (BLD.condition) {
+      parts.push(w(' because it is '));
+      parts.push(s(BLD.condition));
+    }
+
+    if (BLD.location) {
+      parts.push(w(' in my '));
+      parts.push(s(BLD.location));
+    }
+
+    el.innerHTML = parts.join('');
+  }
+
+  function sqBuilderChoose(stepId, choice) {
+    // Animate selection
+    const chips = document.querySelectorAll('#sqBuilderChips .sq-b-chip');
+    chips.forEach(c => c.classList.remove('sq-b-sel'));
+
+    // Store choice
+    BLD[stepId] = choice.value;
+
+    // Store metadata for intent resolution
+    if (stepId === 'action') BLD._stype = choice.stype;
+    if (stepId === 'object') {
+      BLD._cat     = choice.cat;
+      BLD._keyword = choice.keyword;
+    }
+
+    // Advance to next step
+    BLD.step++;
+    sqBuilderRender();
+  }
+
+  function sqBuilderBack() {
+    if (BLD.step > 0) {
+      BLD.step--;
+      sqBuilderRender();
+    }
+  }
+
+  function sqBuilderFinish() {
+    // Synthesize a natural description from the BLD state
+    const obj     = BLD.specific || BLD.object || 'item';
+    const action  = BLD.action || 'fix';
+    const cond    = BLD.condition;
+    const loc     = BLD.location;
+
+    // Build the text description
+    let desc = `I need to ${action} my ${obj}`;
+    if (cond) desc += ` because it is ${cond}`;
+    if (loc)  desc += ` in my ${loc}`;
+
+    // Pre-seed S with builder context for smarter NLP
+    S._objectNoun = obj;
+    S._location   = loc || null;
+    S._sizeHint   = null;
+
+    // Put the text in the textarea and close builder
+    const textarea = document.getElementById('sqDescIn');
+    if (textarea) textarea.value = desc;
+
+    // Hide builder, show textarea briefly for UX feedback, then analyze
+    const builder = document.getElementById('sqBuilder');
+    if (builder) builder.style.display = 'none';
+    const btn = document.getElementById('sqWriteForMeBtn');
+    btn?.classList.remove('active');
+    const inlineRow = document.querySelector('#sqTextBar .sq-inline-row');
+    if (inlineRow) inlineRow.style.display = 'flex';
+
+    // Brief delay so user sees the constructed sentence, then auto-analyze
+    setTimeout(() => {
+      // Override intent detection with builder context
+      S.desc = desc;
+
+      // Manually seed intent from builder choices (more accurate than NLP for builder path)
+      const normStype = (BLD._stype || 'Repair').replace('Install / Mount','Install');
+      S.intent = {
+        category: BLD._cat || 'other',
+        label:    obj,
+        group:    BLD._keyword || obj,
+        base:     0, // will be filled by dynamic_services
+        stype:    normStype,
+        qtyLabel: 'item',
+        key:      BLD._keyword || obj
+      };
+      S.stype   = normStype;
+      S.qty     = BLD.qty || 1;
+
+      // Let sqAnalyze handle the rest (NLP tags, dynamic_services, focused mode, etc.)
+      sqAnalyze();
+    }, 350);
+  }
+
+
+
   /* ================================================================
      WIRE GLOBAL EVENTS (including SmartQuote init)
      ================================================================ */
@@ -4495,6 +4992,8 @@ body.modal-active{overflow:hidden}
 
   // Expose SmartQuote functions to global scope (needed for inline onclick handlers)
   window.sqAnalyze        = sqAnalyze;
+  window.sqToggleBuilder  = sqToggleBuilder;
+  window.sqBuilderBack    = sqBuilderBack;
   window.sqPickType       = sqPickType;
   window.sqHandleStep2    = sqHandleStep2;
   window.sqOpenStep       = sqOpenStep;
