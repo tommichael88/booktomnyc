@@ -3238,7 +3238,7 @@ body.modal-active{overflow:hidden}
 
   /* ── Shared quote state (S) ───────────────────────────────────── */
   let DB   = null;   // alias of SERVICE_DATA, set in init()
-  let S    = { qty:1, intent:null, stype:null, detTagIds:[], manTagIds:[], negatedTagIds:[], desc:'', adlibConfirmed:false };
+  let S    = { qty:1, intent:null, stype:null, detTagIds:[], manTagIds:[], negatedTagIds:[], desc:'', adlibConfirmed:false, _objectNoun:null, _location:null, _sizeHint:null, _notes:null };
 
   /* ── Tag label helper ─────────────────────────────────────────── */
   function sqTagLabel(t, tid) {
@@ -3358,6 +3358,113 @@ body.modal-active{overflow:hidden}
     const cats = TAG_CATEGORY_MAP[tid];
     if (!cats) return false; // unknown tag — hide it
     return cats.includes('all') || cats.includes(cat);
+  }
+
+
+  /* ── NLP helpers for smart adlib construction ──────────────────── */
+  const _SKIP_WORDS = new Set(['a','an','the','my','our','your','i','to','need','want','get',
+    'have','would','like','please','can','could','about','just','also','very','really',
+    'large','big','small','tiny','heavy','light','old','new','broken','leaky','loose',
+    'cracked','damaged','faulty','some','few','all','both','its','it','is','be','been']);
+  const _SERVICE_VERBS = new Set(['mount','hang','install','fix','repair','replace','setup',
+    'assemble','mounting','hanging','installing','fixing','repairing','replacing','set up',
+    'putting up','put up','remove','clean','unclog','swap','change','add','upgrade']);
+  const _STOP_PREPS = new Set(['in','on','at','above','below','near','next','behind','for',
+    'from','over','under','into','onto','by','of','with','against','inside','outside']);
+  const _ROOMS = new Set(['bedroom','living room','livingroom','kitchen','bathroom','hallway',
+    'office','dining room','dining','garage','basement','attic','closet','nursery',
+    'playroom','den','foyer','laundry','study','guest room','master bedroom','living area']);
+  const _BRICK_HINTS = new Set(['fireplace','brick','concrete','stone','mantel','mantle',
+    'chimney','masonry','cinder block','cinderblock','tile wall','cement']);
+
+  function extractObject(text, intentKeyword) {
+    // Remove the intent keyword and surrounding service words from description
+    // to isolate what the user is actually having worked on
+    const lower = text.toLowerCase();
+    const kw = (intentKeyword || '').toLowerCase();
+    const words = lower.replace(/[.,!?;:]/g,' ').split(/\s+/);
+    let objWords = [], inObj = false, foundVerb = false;
+
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      // Skip when we hit a stop preposition (but only after we've started collecting)
+      if (_STOP_PREPS.has(w) && objWords.length > 0) break;
+      // Skip full stop sentences
+      if (w === '' || w.length > 20) continue;
+
+      if (_SERVICE_VERBS.has(w) || w === kw) { foundVerb = true; inObj = true; continue; }
+      if (!inObj) continue;
+      if (_SKIP_WORDS.has(w)) continue;
+      if (/^\d/.test(w)) continue; // skip numbers (handled as qty)
+      if (w.match(/^\d+x\d+$/)) continue; // skip dimensions
+
+      objWords.push(w);
+      if (objWords.length >= 3) break; // max 3-word object
+    }
+
+    // Clean up
+    let obj = objWords.join(' ').trim();
+    // If nothing found, fall back to intent label
+    if (!obj || obj.length < 2) obj = null;
+    return obj;
+  }
+
+  function extractLocation(text) {
+    const lower = text.toLowerCase();
+    // Pattern: "in my/the/our [room]" or "in [room]"
+    const locMatch = lower.match(/\b(?:in|into)\s+(?:my|the|our|a)?\s*([a-z][a-z\s]{2,20})\b/);
+    if (!locMatch) return null;
+    const loc = locMatch[1].trim().replace(/\s+/g,' ');
+    // Check if it matches a room
+    for (const room of _ROOMS) {
+      if (loc.startsWith(room) || loc === room) return room;
+    }
+    // Accept any short phrase (2-3 words) that comes after "in my"
+    const locWords = loc.split(' ');
+    if (locWords.length <= 3 && locWords.every(w => w.length > 1)) return loc;
+    return null;
+  }
+
+  function extractSizeHint(text, tags) {
+    // Detect dimensions like 12x12, 6ft, 65 inch
+    const lower = text.toLowerCase();
+    const dimMatch = lower.match(/(\d+)\s*[x×]\s*(\d+)/);
+    if (dimMatch) {
+      const area = parseInt(dimMatch[1]) * parseInt(dimMatch[2]);
+      if (area > 600) return 'oversized';
+      if (area > 200) return 'large';
+      return 'standard'; // Means NOT oversized, NOT heavy
+    }
+    // "12 inch", "65 inch" TV → heavy/large
+    const inchMatch = lower.match(/(\d+)\s*(?:inch|in\b|")/);
+    if (inchMatch) {
+      const n = parseInt(inchMatch[1]);
+      if (n >= 65) return 'large'; // 65"+ TV → heavy_item candidate
+      if (n <= 24) return 'standard';
+    }
+    return null;
+  }
+
+  function inferTagsFromContext(text, cat) {
+    // Infer tags from contextual hints in the text
+    const lower = text.toLowerCase();
+    const inferred = [];
+    // Fireplace / brick context
+    for (const hint of _BRICK_HINTS) {
+      if (lower.includes(hint) && tagValidForCategory('#brick_wall', cat)) {
+        inferred.push({ tid: '#brick_wall', source: 'context' });
+        break;
+      }
+    }
+    // High ceiling hints
+    if (/(vaulted|cathedral|very high|high ceiling|12 ?ft|14 ?ft|tall ceiling)/i.test(text)) {
+      if (tagValidForCategory('#high_ceiling', cat)) inferred.push({ tid: '#high_ceiling', source: 'context' });
+    }
+    // Emergency
+    if (/(urgent|emergency|asap|today|right now|flooding|leak|critical)/i.test(text)) {
+      inferred.push({ tid: '#emergency', source: 'context' });
+    }
+    return inferred;
   }
 
   /* ── SSOT tag rules ───────────────────────────────────────────── */
@@ -3493,6 +3600,11 @@ body.modal-active{overflow:hidden}
 
     S.desc = desc;
     const intent = detectIntentNLP(desc);
+
+    // Extract richer context from the user's description
+    S._objectNoun  = extractObject(desc, intent?.key);
+    S._location    = extractLocation(desc);
+    S._sizeHint    = extractSizeHint(desc, DB.smart_tags || {});
     // SSOT: if intent matched, check dynamic_services for a richer base definition
     const baseIntent = intent || { category:'other', label:'General', base:70, stype:'Repair', qtyLabel:'item', key:'other', group:'other' };
     const normSt = (baseIntent.stype||'Repair').replace('Install / Mount','Install');
@@ -3513,6 +3625,27 @@ body.modal-active{overflow:hidden}
     const detCat = S.intent?.category || 'other';
     S.detTagIds = nlp.found.filter(tid => tagValidForCategory(tid, detCat));
     S.negatedTagIds = nlp.negated.filter(tid => tagValidForCategory(tid, detCat));
+
+    // Apply contextual inferred tags (e.g. fireplace → #brick_wall)
+    const ctxTags = inferTagsFromContext(desc, detCat);
+    ctxTags.forEach(({tid}) => {
+      if (!S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid)) {
+        // Contextual tags: mark as detected (not manual) so they show in auto-detected row
+        S.detTagIds.push(tid);
+      }
+    });
+
+    // Size hint: if 'standard' detected, negate oversized/heavy to prevent auto-default
+    if (S._sizeHint === 'standard') {
+      ['#heavy_item','#very_heavy'].forEach(tid => {
+        if (!S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid)) {
+          S.negatedTagIds.push(tid);
+        }
+      });
+    }
+
+    // Enter focused mode for the quote flow
+    enterFocusedMode();
 
     // SSOT: dynamic_services suggested_tags — add as default manTagIds (not det, so removable)
     // These are already resolved by resolveRefs to full tag objects; find their keys
@@ -3659,36 +3792,51 @@ body.modal-active{overflow:hidden}
     if(document.getElementById('sqAdlibBox')?.style.display==='block') sqBuildAdlib();
   }
 
-  /* ── Adlib sentence ───────────────────────────────────────────── */
+  /* ── Adlib sentence — smart NLP-enriched job statement ─────────
+     Structure: I need [qty ▾] [object ✎] [action ▾] · [tag ×] [in location]
+     - qty:    editable dropdown
+     - object: the actual thing from NLP ("neon sign") — inline-editable span
+     - action: verb dropdown ("installed", "repaired", etc.)
+     - tags:   each active tag as a removable pill
+     - location: if detected, shown as context (non-removable, for notes)
+  ─────────────────────────────────────────────────────────────── */
   function sqBuildAdlib(){
     const tags = DB.smart_tags || {};
     const sent = document.getElementById('sqAdlibSentence');
     if (!sent) return;
     sent.innerHTML = '';
 
-    // Verb map: stype → past tense verb shown in adlib
+    // ── Verb mapping ───────────────────────────────────────────────
     const verbMap = {
       install:'installed', Install:'installed',
       repair:'repaired',   Repair:'repaired',
-      diagnostic:'diagnosed', Diagnostic:'diagnosed',
+      diagnostic:'assessed', Diagnostic:'assessed',
       assembly:'assembled', Assembly:'assembled',
       setup:'set up',      Setup:'set up'
     };
-    const verb = verbMap[S.stype] || S.stype?.toLowerCase() || 'installed';
-    const verbOpts = ['installed','repaired','assembled','set up','diagnosed'];
+    const verb = verbMap[S.stype] || 'installed';
+    const verbOpts = ['installed','repaired','assembled','set up','assessed'];
 
-    // Service label — prefer a human-readable description, not raw keyword
-    const svcLabel = S.intent?.label || S.intent?.group || 'item';
+    // ── Object noun ────────────────────────────────────────────────
+    // Priority: 1) NLP-extracted object, 2) intent label (if not raw keyword), 3) "item"
+    const rawKw = (S.intent?.key || '').toLowerCase();
+    const intentLbl = (S.intent?.label || '').toLowerCase();
+    // Use extracted object if we have one; otherwise use intent label if it's
+    // more specific than the keyword (e.g. "faucet / sink" > "faucet")
+    let objectNoun = S._objectNoun
+      || (intentLbl !== rawKw && intentLbl.length > 2 ? S.intent.label : null)
+      || 'item';
+
     const qty = S.qty;
+    const qtyLabel = S.intent?.qtyLabel || 'item';
 
-    // Helper: plain text node
+    // ── DOM helpers ────────────────────────────────────────────────
     const w = text => {
       const s = document.createElement('span');
       s.className = 'adlib-word'; s.textContent = text;
       sent.appendChild(s);
     };
 
-    // Helper: editable dropdown pill
     const pill = (key, displayText, opts, currentVal) => {
       const p = document.createElement('span');
       p.className = 'adlib-pill';
@@ -3710,7 +3858,8 @@ body.modal-active{overflow:hidden}
           sqBuildAdlib();
         }
         if (key === 'verb') {
-          const revMap = {installed:'Install',repaired:'Repair',assembled:'Assembly','set up':'Setup',diagnosed:'Diagnostic'};
+          const revMap = {installed:'Install',repaired:'Repair',assembled:'Assembly',
+                          'set up':'Setup',assessed:'Diagnostic'};
           S.stype = revMap[this.value] || 'Install';
           sqBuildAdlib();
         }
@@ -3719,11 +3868,38 @@ body.modal-active{overflow:hidden}
       sent.appendChild(p);
     };
 
-    // Helper: removable condition pill (red theme)
-    const cond = (tid, label) => {
+    // Inline-editable object noun — user can correct NLP extraction
+    const editableObject = noun => {
+      const span = document.createElement('span');
+      span.className = 'adlib-object';
+      span.contentEditable = 'true';
+      span.spellcheck = false;
+      span.textContent = noun;
+      span.title = 'Tap to edit the item description';
+      span.style.cssText = [
+        'display:inline-block','min-width:48px','padding:5px 10px',
+        'border-radius:8px','border:1.5px dashed rgba(222,0,0,.35)',
+        'color:var(--clr-red-dark,#8a0615)','font-weight:700','font-size:14px',
+        'cursor:text','outline:none','background:rgba(222,0,0,.05)',
+        'transition:border-color .2s'
+      ].join(';');
+      span.addEventListener('focus', () => { span.style.borderColor='var(--clr-red,#de0000)'; span.style.background='#fff'; });
+      span.addEventListener('blur',  () => {
+        span.style.borderColor='rgba(222,0,0,.35)'; span.style.background='rgba(222,0,0,.05)';
+        // Save back to S
+        S._objectNoun = span.textContent.trim() || 'item';
+      });
+      // Prevent Enter key from inserting newline
+      span.addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); span.blur(); }});
+      sent.appendChild(span);
+    };
+
+    // Removable condition pill
+    const cond = (tid, label, feeAmt) => {
       const pp = document.createElement('span');
       pp.className = 'adlib-cond';
-      const txt = document.createElement('span'); txt.textContent = label;
+      const txt = document.createElement('span');
+      txt.textContent = label + (feeAmt > 0 ? ' +$' + feeAmt : '');
       const x = document.createElement('i'); x.className = 'ti ti-x';
       pp.appendChild(txt); pp.appendChild(x);
       pp.title = 'Tap to remove';
@@ -3735,25 +3911,47 @@ body.modal-active{overflow:hidden}
       sent.appendChild(pp);
     };
 
-    // ── Build sentence ─────────────────────────────────────────────
-    // "I need  [2 neon signs ▾]  installed ▾  ·  drywall ×"
+    // Non-removable context badge (location, size)
+    const ctxBadge = (text, icon) => {
+      const pp = document.createElement('span');
+      pp.style.cssText = [
+        'display:inline-flex','align-items:center','gap:4px',
+        'padding:4px 10px','border-radius:8px',
+        'background:rgba(0,0,0,.05)','color:#666',
+        'border:1px solid rgba(0,0,0,.1)',
+        'font-size:12px','font-weight:500','margin:2px'
+      ].join(';');
+      pp.innerHTML = icon ? '<i class="ti ' + icon + '" style="font-size:11px;opacity:.6"></i> ' + text : text;
+      sent.appendChild(pp);
+    };
+
+    // ── Build the sentence ─────────────────────────────────────────
     w('I need');
-
-    // Qty + label combined in one pill: "1 neon sign"
-    const qtyDisplay = qty + ' ' + svcLabel + (qty > 1 && !svcLabel.endsWith('s') ? '' : '');
-    pill('qty', qtyDisplay, ['1','2','3','4','5','6','8','10','12'].map(n => n + ' ' + svcLabel), qtyDisplay);
-
-    // Verb pill: "installed ▾"
+    pill('qty', qty + ' ▾', Array.from({length:12},(_, i)=>[1,2,3,4,5,6,8,10,12][i]||null).filter(Boolean).map(String), String(qty));
+    editableObject(objectNoun);
     pill('verb', verb, verbOpts, verb);
 
-    // Active conditions as removable pills
+    // Active tag conditions as removable pills
     const active = [...new Set([...S.detTagIds, ...S.manTagIds])];
     if (active.length) {
       w('·');
       active.forEach(tid => {
         const t = tags[tid]; if (!t) return;
-        cond(tid, sqTagLabel(t, tid));
+        const feeAmt = t.fee ?? t.effects?.fee ?? 0;
+        cond(tid, sqTagLabel(t, tid), feeAmt);
       });
+    }
+
+    // Location context (non-removable — just shown for confirmation & notes)
+    if (S._location) {
+      ctxBadge('in ' + S._location, 'ti-map-pin');
+    }
+
+    // Size context badge
+    if (S._sizeHint === 'standard') {
+      ctxBadge('standard size', 'ti-ruler');
+    } else if (S._sizeHint === 'large' || S._sizeHint === 'oversized') {
+      ctxBadge(S._sizeHint, 'ti-arrows-maximize');
     }
 
     const box = document.getElementById('sqAdlibBox');
@@ -3768,10 +3966,21 @@ body.modal-active{overflow:hidden}
   }
 
   function sqConfirmAdlib(){
-    S.adlibConfirmed=true;
-    const active=[...new Set([...S.detTagIds,...S.manTagIds])];
-    const labels=active.map(tid=>DB.smart_tags?.[tid]?sqTagLabel(DB.smart_tags[tid],tid):null).filter(Boolean);
-    sqMarkDone(3, S.qty+'× '+(S.intent?.qtyLabel||'item')+(labels.length?' · '+labels.join(', '):''));
+    S.adlibConfirmed = true;
+    // Capture any edits the user made to the object noun inline
+    const objEl = document.querySelector('#sqAdlibSentence .adlib-object');
+    if (objEl) S._objectNoun = objEl.textContent.trim() || S._objectNoun;
+
+    const active = [...new Set([...S.detTagIds, ...S.manTagIds])];
+    const labels = active.map(tid => DB.smart_tags?.[tid] ? sqTagLabel(DB.smart_tags[tid],tid) : null).filter(Boolean);
+    const objLabel = S._objectNoun || S.intent?.label || 'item';
+    const locNote = S._location ? ' · ' + S._location : '';
+    sqMarkDone(3, S.qty + '× ' + objLabel + (labels.length ? ' · ' + labels.join(', ') : '') + locNote);
+
+    // Append location to notes for the handyman
+    if (S._location && S.desc) {
+      S._notes = (S._notes || '') + ' Location: ' + S._location;
+    }
     sqRenderQuote();
   }
 
@@ -3997,7 +4206,8 @@ body.modal-active{overflow:hidden}
       price:'$'+q.laborCalc,
       icon:'⚡',
       detail:S.desc?.substring(0,80)||'SmartQuote estimate',
-      notes:'SmartQuote · '+(S.desc||'')+(q.activeLabels.length?'\nConditions: '+q.activeLabels.join(', '):''),
+      notes:'SmartQuote · '+(S.desc||'')+(q.activeLabels.length?'\nConditions: '+q.activeLabels.join(', '):'')+
+           (S._location?'\nLocation: '+S._location:'')+(S._objectNoun?'\nItem: '+S._objectNoun:''),
       materialsNotIncluded:true,
       materialsEstimateRange:[0,0]
     });
@@ -4031,6 +4241,8 @@ body.modal-active{overflow:hidden}
     const bar=document.getElementById('sqTextBar');if(bar)bar.style.display='block';
     const grid=document.getElementById('category-card');if(grid)grid.style.display='grid';
     if(DOM.serviceContainer)DOM.serviceContainer.style.display='none';
+    // Clear NLP enrichment
+    S._objectNoun=null; S._location=null; S._sizeHint=null; S._notes=null;
     exitFocusedMode?.();
   }
 
