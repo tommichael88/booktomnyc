@@ -919,15 +919,21 @@ body.modal-active{overflow:hidden}
                             <h3><i>view invoices • make payments • review quotes • upload documents • view transactions</i></h3>
                             <center><p>Access Zoho invoices via the CLIENT PORTAL</p></center>
                             <div class="login-client-button" id="clientLoginBtn" role="button" tabindex="0"><br>🔐 LOGIN</div>
-   </div>
+                        </div>
                     </div>
                 </div>
-                <center><img src=https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/tht_logo.png alt="HandyTech logo" style=width:auto;height:25rem;display:flex;margin:3rem;opacity:75%></center><span>
-                    <footer style="display:flex;gap:12px;justify-content:center;padding:4px 8px 20px;background:rgba(0,0,0,.9);box-shadow:15px 15px 30px #bebebe,-15px -15px 30px #fff"><a href=https://tommichael88.github.io/booktomnyc/Privacy%20Policy style=color:rgba(255,255,255,.9)>Privacy Policy</a> | <a href=https://tommichael88.github.io/booktomnyc/ServiceAgreement#annex-a style=color:rgba(255,255,255,.9)>Service Scope</a> | <a href=https://tommichael88.github.io/booktomnyc/ServiceAgreement style=color:rgba(255,255,255,.9)>Service Agreement</a></footer>
+                <center><img src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/tht_logo.png" alt="HandyTech logo"></center>
+                <span>
+                    <footer>
+                        <a href="https://tommichael88.github.io/booktomnyc/Privacy%20Policy">Privacy Policy</a> |
+                        <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#annex-a">Service Scope</a> |
+                        <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement">Service Agreement</a>
+                    </footer>
                 </span>
             </div>
         </div>
     </div>
+
     <script>
     if (!window.__booktom_qr_loaded) {
  window.__booktom_qr_loaded = true;
@@ -4446,13 +4452,32 @@ body.modal-active{overflow:hidden}
 
     const tierRate = tiers[tierKey]?.hourly_rate || globalRates.specialized_repair || 85;
     const totalMin = Math.max(baseMin + extraMin, 30);
-    const laborCalc = Math.round(base + extraFee + (totalMin / 60) * tierRate);
+
+    // SSOT: if the service is flat_rate, base IS the labor — no hourly on top
+    // Check S.intent._pricingType (set by prefillSmartQuoteFromService for card-taps)
+    const _pricingType  = S.intent?._pricingType;
+    const _engineDef    = _pricingType ? (DB.global_rules?.pricing_engines?.[_pricingType] || {}) : {};
+    const _components   = _engineDef.formula_components || [];
+    const _isFlatRate   = _pricingType === 'flat_rate' || (_components.length && !_components.includes('calculated_labor'));
+    const _isHourly     = _pricingType === 'hourly' || _components.includes('calculated_labor');
+
+    let laborCalc;
+    if (_isFlatRate && _pricingType) {
+      // flat_rate: base + intake_fees only — no time multiplication
+      laborCalc = Math.round(base + extraFee);
+    } else {
+      laborCalc = Math.round(base + extraFee + (totalMin / 60) * tierRate);
+    }
 
     // SSOT: resolve all copy/messaging from checkout_states
     const checkoutStateKey = S.intent?.checkoutState || deriveCheckoutState(st);
+    // For flat_rate services, hide the time estimate line (it's misleading)
+    // base_price already accounts for expected time — showing hrs × rate implies time-billing
     const cs = resolveCheckoutState(checkoutStateKey, laborCalc);
 
     const isDiag = st === 'Diagnostic' || checkoutStateKey === 'diagnostic';
+    // Flat_rate: hide time line — base_price already bakes in expected time
+    if (_isFlatRate && _pricingType) cs.hideTime = true;
     const isProject = base >= 150 || checkoutStateKey === 'project_based';
     const isAssembly = checkoutStateKey === 'database_summation';
 
@@ -4659,7 +4684,8 @@ body.modal-active{overflow:hidden}
         stype:(svc.service_type||'Repair').replace('Install / Mount','Install').replace('Install/Mount','Install'),
         qtyLabel:'item',
         key:svc.id,
-        _groupId:svc.ui_taxonomy?.group_id||null
+        _groupId:svc.ui_taxonomy?.group_id||null,
+        _pricingType:svc.financial_engine?.pricing_type||null
       },
       stype:(svc.service_type||'Repair').replace('Install / Mount','Install').replace('Install/Mount','Install'),
       desc:svc.ui_taxonomy?.display_name||svc.id,
@@ -5317,15 +5343,34 @@ body.modal-active{overflow:hidden}
     const chain = svc.intake_chain || [];
     const hasQtyChain = chain.some(m => ['item_count','count','hybrid_qty','global_quantity'].includes(m.module));
 
-    // Compute the fixed price so user sees it immediately
-    const om = svc.operational_metrics || {};
-    const tiers = DB.global_rules?.complexity_tiers || {routine:{hourly_rate:65},skilled:{hourly_rate:85},specialized:{hourly_rate:110}};
+    // Compute the price using the correct pricing_type from the JSON
+    // flat_rate: formula_components = ['base_price','intake_fees'] → no hourly multiplication
+    // hourly:    formula_components = ['calculated_labor','intake_fees'] → base + (mins/60)*rate
+    const om       = svc.operational_metrics || {};
+    const fe       = svc.financial_engine || {};
+    const tiers    = DB.global_rules?.complexity_tiers || {routine:{hourly_rate:65},skilled:{hourly_rate:85},specialized:{hourly_rate:110}};
     const dispatch = DB.global_rules?.surcharges?.dispatch_fee || 45;
-    const tierRate = tiers[om.complexity_tier || 'skilled']?.hourly_rate || 85;
-    const basePrice = svc.financial_engine?.base_price || 70;
-    const mins = om.expected_minutes || 60;
-    // For qty-based services, show per-item price
-    const perItemLabor = Math.round(basePrice + (mins/60)*tierRate);
+    const pricingType = fe.pricing_type || 'flat_rate';
+    const basePrice   = fe.base_price || 70;
+
+    // Read pricing engine formula_components from SSOT
+    const engineDef   = DB.global_rules?.pricing_engines?.[pricingType] || {};
+    const components  = engineDef.formula_components || ['base_price'];
+    const isHourly    = components.includes('calculated_labor') || pricingType === 'hourly';
+    const isFormula   = pricingType === 'assembly_formula';
+
+    let perItemLabor;
+    if (isHourly) {
+      const tierRate = tiers[om.complexity_tier || 'skilled']?.hourly_rate || 85;
+      const mins     = om.expected_minutes || 60;
+      perItemLabor   = Math.round(basePrice + (mins / 60) * tierRate);
+    } else if (isFormula) {
+      // Assembly formula: delegate to applyFormula when available
+      perItemLabor = basePrice; // fallback
+    } else {
+      // flat_rate: base_price IS the labor total — no hourly on top
+      perItemLabor = basePrice;
+    }
     const totalLabor = Math.round(perItemLabor * S.qty);
 
     // Build minimal adlib inside sqAdlibBox
@@ -5368,24 +5413,51 @@ body.modal-active{overflow:hidden}
       sent.appendChild(p);
     };
 
+    // Grammatically correct structure:
+    // "I need [service name] [verb]"  (qty=1, fixed)
+    // "I need [service name] × [qty pill]" (qty variable)
+    // The service name is the object — it already implies what's being done.
+    // Verb is only added when it adds meaning (e.g. "adjusted", "installed").
     w('I need');
-    if (hasQtyChain) {
-      pill('qty', S.qty+' item'+(S.qty!==1?'s':''), ['1','2','3','4','5','6','8','10','12'], String(S.qty));
-    }
-    // Service name as static bold span (not editable — it's a confirmed service)
+
+    // Service name — the confirmed thing being worked on
     const nameSpan = document.createElement('span');
-    nameSpan.style.cssText = 'font-weight:700;color:var(--clr-red-dark,#8a0615);padding:0 3px;';
+    nameSpan.style.cssText = 'font-weight:700;color:var(--clr-red-dark,#8a0615);padding:0 4px;font-size:15px;';
     nameSpan.textContent = svcName;
     sent.appendChild(nameSpan);
-    w(verb);
 
-    // Show estimated price in the confirm button immediately
+    // Qty: only show pill if the service has a qty intake chain
+    if (hasQtyChain) {
+      const timesSpan = document.createElement('span');
+      timesSpan.className = 'adlib-word';
+      timesSpan.style.color = '#999';
+      timesSpan.textContent = '×';
+      sent.appendChild(timesSpan);
+      pill('qty', String(S.qty), ['1','2','3','4','5','6','8','10','12'], String(S.qty));
+    }
+
+    // Verb — only when it adds meaning beyond the service name
+    // e.g. "Cabinet Door Adjustment" → skip verb (name is self-explaining)
+    // e.g. "Shower Head" → add "replaced"
+    const nameImpliesAction = ['adjustment','replacement','install','removal','repair',
+      'clearing','cleaning','restore','setup','configuration','management'].some(w => svcName.toLowerCase().includes(w));
+    if (!nameImpliesAction) {
+      w(verb);
+    }
+
+    // Price display: for flat_rate show "From $base" or "×qty total"
+    // dispatch is added at cart/booking stage — not shown in estimate for flat_rate
     const confirmRow = document.getElementById('sqAdlibBox').querySelector('.adlib-confirm-row');
     if (confirmRow) {
-      const estTotal = totalLabor + dispatch;
-      confirmRow.innerHTML = `
-        <button class="adlib-yes" onclick="sqConfirmAdlib()"><i class="ti ti-calculator"></i> Confirm · Est. $${estTotal}</button>
-        <button class="adlib-no" onclick="sqRestart()"><i class="ti ti-arrow-left"></i> Back</button>`;
+      const estLabel = isHourly
+        ? 'Est. $' + (totalLabor + dispatch)          // hourly: show full total incl dispatch
+        : (S.qty > 1
+            ? S.qty + '× $' + perItemLabor + ' = $' + totalLabor  // flat multi-qty
+            : '$' + perItemLabor);                     // flat single: just the service price
+      const dispatchNote = isHourly ? '' : ' <span style="font-size:11px;opacity:.6">+ $' + dispatch + ' dispatch</span>';
+      confirmRow.innerHTML =
+        '<button class="adlib-yes" onclick="sqConfirmAdlib()"><i class="ti ti-calculator"></i> Confirm · ' + estLabel + dispatchNote + '</button>' +
+        '<button class="adlib-no" onclick="sqRestart()"><i class="ti ti-arrow-left"></i> Back</button>';
     }
 
     // Store for computeSQQuote
