@@ -781,6 +781,8 @@ body.modal-active{overflow:hidden}
   border-color:var(--clr-red-dark,#8a0615);
 }
 
+
+#smartQuoteEngine .chip.sq-hint { border-style:dashed; border-color:rgba(222,0,0,.3); color:var(--clr-red-dark,#8a0615); background:rgba(222,0,0,.04); }
 </style>
     </head>
 
@@ -3352,7 +3354,7 @@ body.modal-active{overflow:hidden}
 
   /* ── Shared quote state (S) ───────────────────────────────────── */
   let DB   = null;   // alias of SERVICE_DATA, set in init()
-  let S    = { qty:1, intent:null, stype:null, detTagIds:[], manTagIds:[], negatedTagIds:[], desc:'', adlibConfirmed:false, _objectNoun:null, _location:null, _sizeHint:null, _notes:null };
+  let S    = { qty:1, intent:null, stype:null, detTagIds:[], manTagIds:[], negatedTagIds:[], userTagIds:[], desc:'', adlibConfirmed:false, _objectNoun:null, _location:null, _sizeHint:null, _notes:null, _suggestedTagIds:[] };
 
   /* ── Tag label helper ─────────────────────────────────────────── */
   function sqTagLabel(t, tid) {
@@ -3374,7 +3376,7 @@ body.modal-active{overflow:hidden}
     const words = new Set(lower.split(/\s+/));  // word set for multi-word synonym fallback
     const tags  = DB.smart_tags || {};
     const found=[], negated=[];
-    const neg   = ['not',"isn't",'isnt','no','without',"don't",'dont','non','never'];
+    const neg   = ['not',"isn't",'isnt','no','without',"don't",'dont','non','never','neither','nor','nothing','nowhere','hardly','barely','wont','won\'t'];
     for (const [tid,t] of Object.entries(tags)) {
       let hit=false, neg_=false;
       const syns = (t.synonyms?.length) ? t.synonyms.filter(s=>typeof s==='string') : [tid.replace('#','').replace(/_/g,' ')];
@@ -3405,77 +3407,82 @@ body.modal-active{overflow:hidden}
     const lower = text.toLowerCase();
     let maps = DB.intent_mappings || [];
     if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
-    // Normalize service type strings from btnyc.json to our chip labels
     const normStype = s => (s||'Repair').replace('Install / Mount','Install').replace('Install/Mount','Install');
-    let best=null, top=0;
+
+    let best = null, top = 0, bestMapping = null;
     for (const m of maps) {
-      let score=0;
-      const kw=(m.keyword||'').toLowerCase(), w=m.confidence_weight||30;
-      if (kw && lower.includes(kw)) score+=w;
-      if (Array.isArray(m.synonyms)) m.synonyms.forEach(s=>{ if(typeof s==='string'&&lower.includes(s.toLowerCase())) score+=w*.5; });
-      if (score>top) {
-        top=score;
-        best={ category:m.default_dynamic_category||m.fallback?.category||'other',
-               stype:normStype(m.default_service_type||m.fallback?.service_type||'Repair'),
-               group:m.keyword, base:m.fallback?.base_price||70,
-               key:m.keyword, label:m.keyword, qtyLabel:'item',
-               // SSOT: default_service_sku → recommend the specific service
-               recommendedSku: m.default_service_sku||null };
+      let score = 0;
+      const kw = (m.keyword||'').toLowerCase(), w = m.confidence_weight || 30;
+      if (kw && lower.includes(kw)) score += w;
+      if (Array.isArray(m.synonyms))
+        m.synonyms.forEach(s => { if (typeof s==='string' && lower.includes(s.toLowerCase())) score += w * .5; });
+      if (score > top) {
+        top = score;
+        bestMapping = m;
+        best = {
+          category:     m.default_dynamic_category || m.fallback?.category || 'other',
+          stype:        normStype(m.default_service_type || m.fallback?.service_type || 'Repair'),
+          group:        m.keyword,
+          base:         m.fallback?.base_price || 70,
+          key:          m.keyword,
+          label:        m.keyword,
+          qtyLabel:     'item',
+          recommendedSku: m.default_service_sku || null,
+          dynamic_rule: m.dynamic_rule || null,
+          _ctxFee: 0, _ctxMin: 0, _ctxTags: []
+        };
       }
     }
+
+    // SSOT: contextual_overrides — secondary keyword refinements
+    // e.g. "toilet" + "flushometer" → inject #flushometer tag + +$75 +45min
+    // e.g. "light fixture" + "chandelier" → override base to $90
+    if (best && bestMapping?.contextual_overrides) {
+      for (const ctx of bestMapping.contextual_overrides) {
+        const ctxKws = (ctx.keywords || []).filter(k => typeof k === 'string');
+        // Match: exact phrase OR all individual words present (handles multi-word ctx keywords)
+        const ctxWords = new Set(lower.split(/\s+/));
+        const ctxMatched = ctxKws.some(kw => {
+          const kwl = kw.toLowerCase();
+          if (lower.includes(kwl)) return true;
+          // Multi-word: check all words present
+          const kwParts = kwl.split(/\s+/);
+          return kwParts.length > 1 && kwParts.every(w => ctxWords.has(w));
+        });
+        if (!ctxMatched) continue;
+        // Override base price
+        if (ctx.override_base_price) best.base = ctx.override_base_price;
+        // Accumulate fee/time adjustments
+        if (ctx.adjustment_fee)     best._ctxFee += ctx.adjustment_fee;
+        if (ctx.adjustment_minutes) best._ctxMin += ctx.adjustment_minutes;
+        // Resolve smart_tag $ref → find tag ID
+        if (ctx.smart_tag && ctx.smart_tag.$ref) {
+          // $ref like '#/smart_tags/#flushometer' → tag ID '#flushometer'
+          const segments = ctx.smart_tag.$ref.replace(/^#\//, '').split('/');
+          const tagId = segments[segments.length - 1]; // '#flushometer'
+          if (DB.smart_tags?.[tagId] && !best._ctxTags.includes(tagId))
+            best._ctxTags.push(tagId);
+        }
+      }
+    }
+
     if (!best) {
       const fb = DB.intent_mappings?.default_fallback;
-      if (fb) best={ category:fb.category||'other', stype:fb.service_type||'Repair',
-                     group:'other', base:fb.base_price||70, key:'other', label:'Other', qtyLabel:'item' };
+      if (fb) best = { category: fb.category||'other', stype: normStype(fb.service_type||'Repair'),
+                       group:'other', base:fb.base_price||70, key:'other', label:'Other',
+                       qtyLabel:'item', dynamic_rule:null, _ctxFee:0, _ctxMin:0, _ctxTags:[] };
     }
     return best;
   }
 
 
-  /* ── Tag→Category relevance map (btnyc.json lacks applicable_categories) ── */
-  const TAG_CATEGORY_MAP = {
-    '#leaky_faucet':        ['plumbing_help'],
-    '#clogged_drain':       ['plumbing_help'],
-    '#toilet_running':      ['plumbing_help'],
-    '#high_ceiling':        ['wall_mounting','electric_lighting','minor_home_repairs'],
-    '#very_high_ceiling':   ['wall_mounting','electric_lighting','minor_home_repairs'],
-    '#brick_wall':          ['wall_mounting','electric_lighting','minor_home_repairs_drywall','minor_home_repairs_tile'],
-    '#drywall':             ['wall_mounting','electric_lighting','minor_home_repairs_drywall','minor_home_repairs_tile'],
-    '#heavy_item':          ['wall_mounting','furniture_fixes_assembly','minor_home_repairs'],
-    '#very_heavy':          ['wall_mounting','furniture_fixes_assembly','minor_home_repairs'],
-    '#cracked_tile':        ['minor_home_repairs'],
-    '#water_damage':        ['minor_home_repairs','plumbing_help'],
-    '#emergency':           ['all'],
-    '#no_parking':          ['all'],
-    '#pets_on_site':        ['all'],
-    '#multi_trip':          ['all'],
-    '#furniture_assembly_ikea': ['furniture_fixes_assembly'],
-    '#complex_assembly':    ['furniture_fixes_assembly'],
-    '#broken_leg':          ['furniture_fixes_assembly','minor_home_repairs'],
-    '#scratched_surface':   ['furniture_fixes_assembly','minor_home_repairs'],
-    '#wobbly':              ['furniture_fixes_assembly','minor_home_repairs'],
-    '#virus':               ['tech_trouble'],
-    '#wifi_dead_zone':      ['tech_trouble'],
-    '#data_recovery':       ['tech_trouble'],
-    '#fan_box_missing':     ['electric_lighting'],
-    '#high_volume':         ['all'],
-    '#disposal_needed':     ['all'],
-    '#access_obstructed':   ['all'],
-    '#two_person_required': ['wall_mounting','furniture_fixes_assembly','minor_home_repairs','electric_lighting'],
-    '#plumbing':            ['plumbing_help'],
-    '#electrical':          ['electric_lighting'],
-    '#wall_mount':          ['wall_mounting'],
-    '#flushometer':         ['plumbing_help'],
-    '#bidet_attachment':    ['plumbing_help'],
-    '#flushometer_bidet':   ['plumbing_help'],
-  };
-
-  function tagValidForCategory(tid, cat, groupId) {
-    const cats = TAG_CATEGORY_MAP[tid];
-    if (!cats) return false; // unknown tag — hide it
+    function tagValidForCategory(tid, cat, groupId) {
+    // Read directly from btnyc.json smart_tags[tid].applicable_categories
+    const tag = (DB.smart_tags || {})[tid];
+    if (!tag) return false; // tag not in JSON
+    const cats = tag.applicable_categories;
+    if (!cats || cats.length === 0) return true; // no restriction = all categories
     if (cats.includes('all') || cats.includes(cat)) return true;
-    // Check group-specific pseudo-categories (e.g. minor_home_repairs_drywall)
-    if (groupId && cats.some(c => c.startsWith(cat + '_') && groupId.includes(c.split('_').slice(-1)[0]))) return true;
     return false;
   }
 
@@ -3489,7 +3496,8 @@ body.modal-active{overflow:hidden}
     'assemble','mounting','hanging','installing','fixing','repairing','replacing','set up',
     'putting up','put up','remove','clean','unclog','swap','change','add','upgrade']);
   const _STOP_PREPS = new Set(['in','on','at','above','below','near','next','behind','for',
-    'from','over','under','into','onto','by','of','with','against','inside','outside']);
+    'from','over','under','into','onto','by','of','with','against','inside','outside',
+    'as','via','per','like','since','after','before','because','while','during','along']);
   const _ROOMS = new Set(['bedroom','living room','livingroom','kitchen','bathroom','hallway',
     'office','dining room','dining','garage','basement','attic','closet','nursery',
     'playroom','den','foyer','laundry','study','guest room','master bedroom','living area']);
@@ -3761,6 +3769,20 @@ body.modal-active{overflow:hidden}
     S.qty     = extractQty(desc);
     document.getElementById('sqQtyV').textContent = S.qty;
 
+    // SSOT: apply contextual_override injected tags as detected tags
+    if (S.intent._ctxTags?.length) {
+      const cat = S.intent.category || 'other';
+      S.intent._ctxTags.forEach(tid => {
+        if (tagValidForCategory(tid, cat, S.intent._groupId) &&
+            !S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
+          S.detTagIds.push(tid);
+      });
+    }
+
+    // SSOT: apply contextual adjustment fee/minutes to intent base for computeSQQuote
+    if (S.intent._ctxFee)  S.intent._ctxBaseAdjFee = S.intent._ctxFee;
+    if (S.intent._ctxMin)  S.intent._ctxBaseAdjMin = S.intent._ctxMin;
+
     // Hand off to shared pipeline — confidence_tiers decides step routing
     sqPrepareFlow(false);
   }
@@ -3805,17 +3827,18 @@ body.modal-active{overflow:hidden}
     if (dynDef) {
       if (!S.intent.base && dynDef.financial_engine?.base_price)
         S.intent.base = dynDef.financial_engine.base_price;
+      // Note: suggested_tags are NOT pre-selected — they just make chips available in the grid.
+      // Only NLP-detected tags (S.detTagIds) and service.default_tags are pre-selected.
+      // Storing hint IDs so sqBuildStep3 can show them prominently.
       if (dynDef.suggested_tags) {
         const tagEntries = Object.entries(DB.smart_tags || {});
+        S._suggestedTagIds = S._suggestedTagIds || [];
         dynDef.suggested_tags.forEach(tagObj => {
           if (!tagObj || typeof tagObj !== 'object') return;
-          const match = tagEntries.find(([tid, t]) => t === tagObj || (t.label && tagObj.label && t.label === tagObj.label));
-          if (match) {
-            const [tid] = match;
-            if (!S.detTagIds.includes(tid) && !S.manTagIds.includes(tid) &&
-                !S.negatedTagIds.includes(tid) && tagValidForCategory(tid, detCat, S.intent?._groupId))
-              S.manTagIds.push(tid);
-          }
+          const segments = tagObj?.$ref ? tagObj.$ref.replace(/^#\//, '').split('/') : null;
+          const tagId = segments ? '#' + segments[segments.length-1].replace('#','') : null;
+          if (tagId && DB.smart_tags?.[tagId] && !S._suggestedTagIds.includes(tagId))
+            S._suggestedTagIds.push(tagId);
         });
       }
     }
@@ -3825,19 +3848,66 @@ body.modal-active{overflow:hidden}
     if (bar) bar.style.display = 'none';
     enterFocusedMode();
 
+    // SSOT: accumulate confidence from intake_modules.confidence_gain
+    // Positive tags (detected/manual) = we know something → +gain
+    // Negated tags = we also know something (it's NOT that thing) → +gain * 0.75
+    let accumulatedConf = 0;
+    const detectedTagSet = new Set([...S.detTagIds, ...S.manTagIds]);
+    const negatedTagSet  = new Set(S.negatedTagIds);
+    const mods = DB.intake_modules || {};
+    for (const [modKey, mod] of Object.entries(mods)) {
+      if (!mod.confidence_gain) continue;
+      const allResponses = mod.client_response || [];
+      // Positive: tag detected matching a module response
+      const positiveAnswer = allResponses.some(resp => {
+        const respTags = resp.tags || [];
+        return respTags.some(rt => {
+          const tid = typeof rt === 'string' ? rt : rt?.$ref?.split('/').pop();
+          return tid && detectedTagSet.has('#' + tid.replace('#',''));
+        });
+      });
+      // Negative: a negated tag that matches a module response — we know it's ruled out
+      const negativeAnswer = !positiveAnswer && allResponses.some(resp => {
+        const respTags = resp.tags || [];
+        return respTags.some(rt => {
+          const tid = typeof rt === 'string' ? rt : rt?.$ref?.split('/').pop();
+          return tid && negatedTagSet.has('#' + tid.replace('#',''));
+        });
+      });
+      // Description-based implicit answers
+      const qLower = (mod.question || '').toLowerCase();
+      const descLower = (S.desc || '').toLowerCase();
+      const descAnswers = qLower && descLower && (
+        (qLower.includes('how many') && /\b\d+\b/.test(descLower)) ||
+        (qLower.includes('wall') && /drywall|brick|concrete|plaster/.test(descLower)) ||
+        (qLower.includes('weight') && /heavy|light|lbs|pounds/.test(descLower)) ||
+        (qLower.includes('location') && /bedroom|kitchen|bathroom|living|office/.test(descLower))
+      );
+      // User-tapped chips = 100% certainty → full gain + bonus
+      const userConfirmed = allResponses.some(resp => {
+        const respTags = resp.tags || [];
+        return respTags.some(rt => {
+          const tid = typeof rt === 'string' ? rt : rt?.$ref?.split('/').pop();
+          return tid && S.userTagIds && S.userTagIds.includes('#' + tid.replace('#',''));
+        });
+      });
+      if (userConfirmed) accumulatedConf += mod.confidence_gain;         // explicit tap = full gain
+      else if (positiveAnswer || descAnswers) accumulatedConf += Math.round(mod.confidence_gain * 0.8);
+      else if (negativeAnswer) accumulatedConf += Math.round(mod.confidence_gain * 0.6);
+    }
+
     // ── Route to step 2 or straight to step 3 ─────────────────────
     if (skipStep2) {
-      // Stype already known — mark step 2 done, go to chips
-      sqBuildStep2(); // builds the type chips (hidden) so the card renders correctly
+      sqBuildStep2();
       sqMarkDone(2, S.stype);
       sqBuildStep3();
     } else {
-      // Let confidence_tiers decide
       let maps = DB.intent_mappings || [];
       if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
       const kw = (S.intent?.key||'').toLowerCase();
       const m  = maps.find(x => (x.keyword||'').toLowerCase() === kw);
-      const intentConf = m?.confidence_weight || 0;
+      // Total confidence = NLP keyword weight + accumulated module confidence_gain
+      const intentConf = (m?.confidence_weight || 0) + Math.min(accumulatedConf, 40);
 
       const confTierKey = intentConf >= 75 ? 'high_confidence_simple'
                         : intentConf >= 45 ? 'medium_confidence_standard'
@@ -3916,9 +3986,11 @@ body.modal-active{overflow:hidden}
         const t=tags[tid];
         const sel=exist.has(tid)&&!S.negatedTagIds.includes(tid);
         const locked=!sel&&gTids.some(o=>exist.has(o)&&tags[o]?.mutually_exclusive?.includes(tid));
+        const isHint = (S._suggestedTagIds||[]).includes(tid) && !sel;
+        const chipExtra = isHint ? ' sq-hint' : '';
         chips+=sel
           ?`<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}</span>`
-          :`<span class="chip${locked?' locked':''}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-plus"></i> ${sqTagLabel(t,tid)}</span>`;
+          :`<span class="chip${locked?' locked':''}${chipExtra}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-${isHint?'bulb':'plus'}"></i> ${sqTagLabel(t,tid)}</span>`;
       });
       if(chips) html+=`<div class="group-label">${gName}</div><div class="chips">${chips}</div>`;
     }
@@ -3930,8 +4002,14 @@ body.modal-active{overflow:hidden}
 
   function sqToggleTag(el,tid){
     if(el.classList.contains('locked')) return;
-    if(el.classList.contains('sel')){ S.manTagIds=S.manTagIds.filter(x=>x!==tid); S.detTagIds=S.detTagIds.filter(x=>x!==tid); }
-    else { if(!S.manTagIds.includes(tid)) S.manTagIds.push(tid); }
+    if(el.classList.contains('sel')){
+      S.manTagIds  = S.manTagIds.filter(x=>x!==tid);
+      S.detTagIds  = S.detTagIds.filter(x=>x!==tid);
+      S.userTagIds = S.userTagIds.filter(x=>x!==tid);  // un-confirm
+    } else {
+      if(!S.manTagIds.includes(tid)) S.manTagIds.push(tid);
+      if(!S.userTagIds.includes(tid)) S.userTagIds.push(tid); // user explicitly chose this → 100% confidence
+    }
     sqBuildStep3();
   }
 
@@ -3941,62 +4019,88 @@ body.modal-active{overflow:hidden}
     if(document.getElementById('sqAdlibBox')?.style.display==='block') sqBuildAdlib();
   }
 
-  /* ── Adlib sentence — smart NLP-enriched job statement ─────────
-     Structure: I need [qty ▾] [object ✎] [action ▾] · [tag ×] [in location]
-     - qty:    editable dropdown
-     - object: the actual thing from NLP ("neon sign") — inline-editable span
-     - action: verb dropdown ("installed", "repaired", etc.)
-     - tags:   each active tag as a removable pill
-     - location: if detected, shown as context (non-removable, for notes)
+  /* ── Adlib sentence — linguistically correct, SSOT-driven ─────
+     Sentence structure varies by tag display_group (from btnyc.json):
+     
+     "I need [qty] [object] [verb]
+       + Wall Material    → "on a drywall wall" / "on brick"
+       + Plumbing Cond.   → "with a leak" / "that is clogged"
+       + Job Constraints  → "(heavy item)" / "(high ceiling)"
+       + Add. Adjustments → "(emergency)" etc.
+       + Negated tags     → "[✓ not heavy]" — shown as confirmations
+       + Location         → "in my bedroom"
+
+     Negation also boosts confidence score (+0.75× gain per negated answer).
   ─────────────────────────────────────────────────────────────── */
   function sqBuildAdlib(){
-    const tags = DB.smart_tags || {};
-    const sent = document.getElementById('sqAdlibSentence');
+    const tags    = DB.smart_tags || {};
+    const sent    = document.getElementById('sqAdlibSentence');
     if (!sent) return;
     sent.innerHTML = '';
 
-    // ── Verb mapping ───────────────────────────────────────────────
-    const verbMap = {
+    // Tags that describe LOGISTICS (scheduling/access surcharges) rather than the work itself.
+    // These should NOT appear in the sentence — they stay as chips only and go to booking notes.
+    // Sentence only contains SCOPE tags that describe what the job actually involves.
+    const LOGISTIC_TAGS = new Set([
+      '#no_parking','#pets_on_site','#multi_trip','#disposal_needed',
+      '#access_obstructed','#high_volume','#emergency','#furniture_assembly_ikea',
+      '#complex_assembly','#broken_leg','#scratched_surface','#wobbly',
+      '#virus','#wifi_dead_zone','#data_recovery','#bidet_attachment',
+      '#plumbing','#electrical','#flushometer_bidet'
+    ]);
+
+    // ── Verb: past tense, refined by object/service context ───────
+    const stypeVerbMap = {
       install:'installed', Install:'installed',
       repair:'repaired',   Repair:'repaired',
       diagnostic:'assessed', Diagnostic:'assessed',
       assembly:'assembled', Assembly:'assembled',
       setup:'set up',      Setup:'set up'
     };
-    // Refine verb from service name context (cabinet adjustment → adjusted, not installed)
-    const _objLower = (S._objectNoun || S.intent?.label || '').toLowerCase();
-    let verb = verbMap[S.stype] || 'installed';
-    if (_objLower.includes('adjustment') || _objLower.includes('repair')) verb = 'repaired';
-    else if (_objLower.includes('replacement') || _objLower.includes('replace')) verb = 'replaced';
-    else if (_objLower.includes('assembly') || _objLower.includes('assemble')) verb = 'assembled';
-    else if (_objLower.includes('config') || _objLower.includes('setup')) verb = 'configured';
-    const verbOpts = ['installed','repaired','assembled','set up','assessed'];
+    const _objCtx = (S._objectNoun || S.intent?.label || '').toLowerCase();
+    let verb = stypeVerbMap[S.stype] || 'installed';
+    if (_objCtx.includes('adjustment')) verb = 'adjusted';
+    else if (_objCtx.includes('replacement') || _objCtx.includes('replace')) verb = 'replaced';
+    else if (_objCtx.includes('repair') && S.stype !== 'Repair') verb = 'repaired';
+    else if (_objCtx.includes('assembly') || _objCtx.includes('assemble')) verb = 'assembled';
+    else if (_objCtx.includes('config') || _objCtx.includes('setup')) verb = 'configured';
+    const verbOpts = ['installed','repaired','replaced','assembled','adjusted','set up','assessed'];
 
-    // ── Object noun ────────────────────────────────────────────────
-    // Priority: 1) NLP-extracted object, 2) intent label (if not raw keyword), 3) "item"
-    const rawKw = (S.intent?.key || '').toLowerCase();
-    const intentLbl = (S.intent?.label || '').toLowerCase();
-    // Use extracted object if we have one; otherwise use intent label if it's
-    // more specific than the keyword (e.g. "faucet / sink" > "faucet")
-    let objectNoun = S._objectNoun
-      || (intentLbl !== rawKw && intentLbl.length > 2 ? S.intent.label : null)
+    // ── Object noun — NLP extracted, intent label, or fallback ────
+    const rawKw     = (S.intent?.key || '').toLowerCase();
+    const intentLbl = S.intent?.label || '';
+    let objectNoun  = S._objectNoun
+      || (intentLbl.toLowerCase() !== rawKw && intentLbl.length > 2 ? intentLbl : null)
       || 'item';
 
-    const qty = S.qty;
+    const qty      = S.qty;
     const qtyLabel = S.intent?.qtyLabel || 'item';
 
+    // ── Classify active tags: SCOPE (in sentence) vs LOGISTIC (notes only) ──
+    const activeTids   = [...new Set([...S.detTagIds, ...S.manTagIds])];
+    const scopeTids    = activeTids.filter(tid => !LOGISTIC_TAGS.has(tid));
+    const logisticTids = activeTids.filter(tid => LOGISTIC_TAGS.has(tid));
+    const byGroup      = {};
+    scopeTids.forEach(tid => {
+      const t = tags[tid]; if (!t) return;
+      const g = t.display_group || 'Additional Adjustments';
+      (byGroup[g] = byGroup[g] || []).push(tid);
+    });
+
     // ── DOM helpers ────────────────────────────────────────────────
-    const w = text => {
+    const w = (text, muted) => {
       const s = document.createElement('span');
-      s.className = 'adlib-word'; s.textContent = text;
+      s.className = 'adlib-word';
+      if (muted) s.style.cssText = 'color:#aaa;font-size:12px;margin:0 2px;';
+      s.textContent = text;
       sent.appendChild(s);
     };
 
     const pill = (key, displayText, opts, currentVal) => {
-      const p = document.createElement('span');
+      const p   = document.createElement('span');
       p.className = 'adlib-pill';
       const lbl = document.createElement('span'); lbl.textContent = displayText;
-      const ico = document.createElement('i'); ico.className = 'ti ti-chevron-down';
+      const ico = document.createElement('i');    ico.className = 'ti ti-chevron-down';
       const sel = document.createElement('select');
       sel.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;';
       opts.forEach(o => {
@@ -4013,8 +4117,8 @@ body.modal-active{overflow:hidden}
           sqBuildAdlib();
         }
         if (key === 'verb') {
-          const revMap = {installed:'Install',repaired:'Repair',assembled:'Assembly',
-                          'set up':'Setup',assessed:'Diagnostic'};
+          const revMap = { installed:'Install', repaired:'Repair', replaced:'Repair',
+            assembled:'Assembly', adjusted:'Repair', 'set up':'Setup', assessed:'Diagnostic' };
           S.stype = revMap[this.value] || 'Install';
           sqBuildAdlib();
         }
@@ -4023,39 +4127,30 @@ body.modal-active{overflow:hidden}
       sent.appendChild(p);
     };
 
-    // Inline-editable object noun — user can correct NLP extraction
+    // Inline-editable object noun
     const editableObject = noun => {
       const span = document.createElement('span');
-      span.className = 'adlib-object';
+      span.className      = 'adlib-object';
       span.contentEditable = 'true';
-      span.spellcheck = false;
-      span.textContent = noun;
-      span.title = 'Tap to edit the item description';
-      span.style.cssText = [
-        'display:inline-block','min-width:48px','padding:5px 10px',
-        'border-radius:8px','border:1.5px dashed rgba(222,0,0,.35)',
-        'color:var(--clr-red-dark,#8a0615)','font-weight:700','font-size:14px',
-        'cursor:text','outline:none','background:rgba(222,0,0,.05)',
-        'transition:border-color .2s'
-      ].join(';');
+      span.spellcheck     = false;
+      span.textContent    = noun;
+      span.title          = 'Tap to edit';
+      span.style.cssText  = 'display:inline-block;min-width:48px;padding:4px 10px;border-radius:8px;border:1.5px dashed rgba(222,0,0,.3);color:var(--clr-red-dark,#8a0615);font-weight:700;font-size:14px;cursor:text;outline:none;background:rgba(222,0,0,.05);';
       span.addEventListener('focus', () => { span.style.borderColor='var(--clr-red,#de0000)'; span.style.background='#fff'; });
-      span.addEventListener('blur',  () => {
-        span.style.borderColor='rgba(222,0,0,.35)'; span.style.background='rgba(222,0,0,.05)';
-        // Save back to S
-        S._objectNoun = span.textContent.trim() || 'item';
-      });
-      // Prevent Enter key from inserting newline
+      span.addEventListener('blur',  () => { span.style.borderColor='rgba(222,0,0,.3)'; span.style.background='rgba(222,0,0,.05)'; S._objectNoun = span.textContent.trim() || 'item'; });
       span.addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); span.blur(); }});
       sent.appendChild(span);
     };
 
-    // Removable condition pill
-    const cond = (tid, label, feeAmt) => {
-      const pp = document.createElement('span');
+    // Removable condition pill — label varies by display_group
+    const condPill = (tid, phrase) => {
+      const pp  = document.createElement('span');
       pp.className = 'adlib-cond';
+      const t   = tags[tid];
+      const fee = (t?.fee ?? t?.effects?.fee ?? 0);
       const txt = document.createElement('span');
-      txt.textContent = label + (feeAmt > 0 ? ' +$' + feeAmt : '');
-      const x = document.createElement('i'); x.className = 'ti ti-x';
+      txt.textContent = phrase + (fee > 0 ? ' +$' + fee : '');
+      const x   = document.createElement('i'); x.className = 'ti ti-x';
       pp.appendChild(txt); pp.appendChild(x);
       pp.title = 'Tap to remove';
       pp.addEventListener('click', () => {
@@ -4066,47 +4161,144 @@ body.modal-active{overflow:hidden}
       sent.appendChild(pp);
     };
 
-    // Non-removable context badge (location, size)
-    const ctxBadge = (text, icon) => {
+    // Confirmed-negative badge (negated tag)
+    const negBadge = (label) => {
       const pp = document.createElement('span');
-      pp.style.cssText = [
-        'display:inline-flex','align-items:center','gap:4px',
-        'padding:4px 10px','border-radius:8px',
-        'background:rgba(0,0,0,.05)','color:#666',
-        'border:1px solid rgba(0,0,0,.1)',
-        'font-size:12px','font-weight:500','margin:2px'
-      ].join(';');
-      pp.innerHTML = icon ? '<i class="ti ' + icon + '" style="font-size:11px;opacity:.6"></i> ' + text : text;
+      pp.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;font-size:12px;font-weight:600;margin:2px;';
+      pp.innerHTML = '<i class="ti ti-check" style="font-size:11px"></i> ' + label;
+      pp.title = 'Confirmed from your description';
       sent.appendChild(pp);
     };
 
-    // ── Build the sentence ─────────────────────────────────────────
+    // Context badge (location, size — non-removable)
+    const ctxBadge = (text, icon) => {
+      const pp = document.createElement('span');
+      pp.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:rgba(0,0,0,.04);color:#666;border:1px solid rgba(0,0,0,.1);font-size:12px;font-weight:500;margin:2px;';
+      pp.innerHTML = (icon ? '<i class="ti ' + icon + '" style="font-size:11px;opacity:.5"></i> ' : '') + text;
+      sent.appendChild(pp);
+    };
+
+    // ── Assemble the sentence ──────────────────────────────────────
+    // Core: "I need [qty object] [verb]"
     w('I need');
-    pill('qty', qty + ' ▾', Array.from({length:12},(_, i)=>[1,2,3,4,5,6,8,10,12][i]||null).filter(Boolean).map(String), String(qty));
+
+    // Qty pill — shows "2 neon signs" not just "2"
+    const qtyDisplay = qty + (qty > 1 ? ' ' + (objectNoun + 's').replace('ss','s') : ' ' + objectNoun);
+    const qtyOpts = ['1','2','3','4','5','6','8','10','12'];
+    pill('qty', qty > 1 ? String(qty) : String(qty), qtyOpts, String(qty));
     editableObject(objectNoun);
     pill('verb', verb, verbOpts, verb);
 
-    // Active tag conditions as removable pills
-    const active = [...new Set([...S.detTagIds, ...S.manTagIds])];
-    if (active.length) {
-      w('·');
-      active.forEach(tid => {
-        const t = tags[tid]; if (!t) return;
-        const feeAmt = t.fee ?? t.effects?.fee ?? 0;
-        cond(tid, sqTagLabel(t, tid), feeAmt);
+    // Wall Material → "on a drywall wall" or "on brick/concrete"
+    const wallTags = byGroup['Wall Material'] || [];
+    if (wallTags.length) {
+      const wallPhrases = {
+        '#drywall':    'on a drywall wall',
+        '#brick_wall': 'on brick or concrete',
+      };
+      wallTags.forEach(tid => {
+        const phrase = wallPhrases[tid] || ('on ' + sqTagLabel(tags[tid], tid));
+        w(phrase);
+        // Wall tags are removable
+        const rm = document.createElement('span');
+        rm.style.cssText = 'color:var(--clr-red,#de0000);cursor:pointer;font-size:11px;margin-left:2px;';
+        rm.innerHTML = '<i class="ti ti-x"></i>';
+        rm.title = 'Remove';
+        rm.addEventListener('click', () => {
+          S.manTagIds = S.manTagIds.filter(id => id !== tid);
+          S.detTagIds = S.detTagIds.filter(id => id !== tid);
+          sqBuildStep3();
+        });
+        // Append remove icon to the last word span
+        const lastWord = sent.lastElementChild;
+        if (lastWord) lastWord.appendChild(rm);
       });
     }
 
-    // Location context (non-removable — just shown for confirmation & notes)
-    if (S._location) {
-      ctxBadge('in ' + S._location, 'ti-map-pin');
+    // Plumbing Conditions → "with a leak" / "that is clogged"
+    const plumbTags = byGroup['Plumbing Conditions'] || [];
+    if (plumbTags.length) {
+      const plumbPhrases = {
+        '#leaky_faucet':   'with a leak',
+        '#clogged_drain':  'that is clogged',
+        '#toilet_running': 'that runs constantly',
+      };
+      plumbTags.forEach(tid => {
+        const phrase = plumbPhrases[tid] || ('with ' + sqTagLabel(tags[tid], tid));
+        condPill(tid, phrase);
+      });
     }
 
-    // Size context badge
-    if (S._sizeHint === 'standard') {
-      ctxBadge('standard size', 'ti-ruler');
-    } else if (S._sizeHint === 'large' || S._sizeHint === 'oversized') {
+    // Job Constraints → "(heavy item)" "(high ceiling)"
+    const constraintTags = byGroup['Job Constraints'] || [];
+    if (constraintTags.length) {
+      const constraintPhrases = {
+        '#heavy_item':      'heavy item',
+        '#very_heavy':      'very heavy',
+        '#high_ceiling':    'high ceiling',
+        '#very_high_ceiling':'very high ceiling',
+        '#high_volume':     'high volume',
+      };
+      constraintTags.forEach(tid => {
+        const phrase = constraintPhrases[tid] || sqTagLabel(tags[tid], tid);
+        condPill(tid, phrase);
+      });
+    }
+
+    // Additional Adjustments → parenthetical notes
+    const adjTags = byGroup['Additional Adjustments'] || [];
+    if (adjTags.length) {
+      adjTags.forEach(tid => {
+        condPill(tid, sqTagLabel(tags[tid], tid));
+      });
+    }
+
+    // Negated tags — shown as green confirmations (reduce uncertainty)
+    const negPhrases = {
+      '#heavy_item':   'not heavy',
+      '#very_heavy':   'not very heavy',
+      '#brick_wall':   'drywall / not brick',
+      '#drywall':      'brick / not drywall',
+      '#high_ceiling': 'standard ceiling height',
+    };
+    S.negatedTagIds.forEach(tid => {
+      if (!tags[tid]) return;
+      const phrase = negPhrases[tid] || ('not ' + sqTagLabel(tags[tid], tid));
+      negBadge(phrase);
+    });
+
+    // Location
+    if (S._location) ctxBadge('in my ' + S._location, 'ti-map-pin');
+
+    // Size
+    if (S._sizeHint === 'standard')   ctxBadge('standard size', 'ti-ruler-2');
+    else if (S._sizeHint === 'large' || S._sizeHint === 'oversized')
       ctxBadge(S._sizeHint, 'ti-arrows-maximize');
+
+    // Logistic surcharges — shown as a compact note below sentence, not inline
+    if (logisticTids.length) {
+      const noteEl = document.createElement('div');
+      noteEl.style.cssText = 'margin-top:10px;padding:7px 12px;background:rgba(0,0,0,.03);border-radius:8px;border:1px solid rgba(0,0,0,.07);font-size:12px;color:#666;display:flex;flex-wrap:wrap;gap:6px;align-items:center;';
+      const label = document.createElement('span');
+      label.style.cssText = 'font-weight:600;color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-right:4px;';
+      label.textContent = 'Surcharges:';
+      noteEl.appendChild(label);
+      logisticTids.forEach(tid => {
+        const t = tags[tid]; if (!t) return;
+        const fee = t.fee ?? t.effects?.fee ?? 0;
+        const chip = document.createElement('span');
+        chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;background:#fff;border:1px solid rgba(0,0,0,.12);font-size:12px;cursor:pointer;';
+        chip.innerHTML = sqTagLabel(t,tid) + (fee > 0 ? ' <span style="color:var(--clr-red-dark,#8a0615);font-weight:700">+$' + fee + '</span>' : '') + ' <i class="ti ti-x" style="font-size:10px;opacity:.5;margin-left:2px"></i>';
+        chip.title = 'Tap to remove';
+        chip.addEventListener('click', () => {
+          S.manTagIds = S.manTagIds.filter(id => id !== tid);
+          S.detTagIds = S.detTagIds.filter(id => id !== tid);
+          S.userTagIds = (S.userTagIds||[]).filter(id => id !== tid);
+          sqBuildStep3();
+        });
+        noteEl.appendChild(chip);
+      });
+      sent.parentElement?.insertBefore(noteEl, sent.nextSibling);
     }
 
     const box = document.getElementById('sqAdlibBox');
@@ -4114,7 +4306,6 @@ body.modal-active{overflow:hidden}
     const bb = document.getElementById('sqS3build');
     if (bb) bb.style.display = 'none';
   }
-
   function sqEditAdlib(){
     const box=document.getElementById('sqAdlibBox');if(box)box.style.display='none';
     const bb=document.getElementById('sqS3build');if(bb)bb.style.display='inline-flex';
@@ -4223,11 +4414,17 @@ body.modal-active{overflow:hidden}
 
     const active = [...new Set([...S.detTagIds, ...S.manTagIds])];
 
-    // SSOT: check if intent matches a service with a dynamic_rule (pricing formula)
-    const dynKey = (S.intent?.category || 'other') + '+' + st.toLowerCase();
-    const dynSvc = DB.dynamic_services?.[dynKey] || DB.dynamic_services?.[(S.intent?.category||'other')+'+install'];
+    // SSOT: dynamic_rule from intent_mapping object (tile, drywall, furniture formulas)
     const formulaId = S.intent?.dynamic_rule;
     const formulaResult = formulaId ? applyFormula(formulaId, S.answers || {}, S.qty) : null;
+
+    // SSOT: contextual_overrides base adjustments (e.g. flushometer +$75 +45min)
+    const ctxFee = S.intent?._ctxBaseAdjFee || 0;
+    const ctxMin = S.intent?._ctxBaseAdjMin || 0;
+
+    // Apply contextual_overrides adjustments (before tags)
+    extraFee += ctxFee;
+    extraMin += ctxMin;
 
     if (formulaResult) {
       extraFee += formulaResult.extraFee;
@@ -4398,7 +4595,7 @@ body.modal-active{overflow:hidden}
   }
 
   function sqRestart(){
-    S={qty:1,intent:null,stype:null,detTagIds:[],manTagIds:[],negatedTagIds:[],desc:'',adlibConfirmed:false};
+    S={qty:1,intent:null,stype:null,detTagIds:[],manTagIds:[],negatedTagIds:[],userTagIds:[],desc:'',adlibConfirmed:false,_suggestedTagIds:[]};
     const out=document.getElementById('sqQuoteOut');if(out)out.innerHTML='';
     const desc=document.getElementById('sqDescIn');if(desc)desc.value='';
     // Clear stale containers to prevent duplicate question listeners
@@ -4495,18 +4692,15 @@ body.modal-active{overflow:hidden}
       if (dynDefPrefill.operational_metrics?.checkout_state) {
         S.intent.checkoutState = dynDefPrefill.operational_metrics.checkout_state;
       }
-      // Seed suggested_tags (resolve from resolved tag objects in dynamic_services)
+      // suggested_tags: store as hints only — NOT pre-selected
       if (dynDefPrefill.suggested_tags) {
-        const tagEntries = Object.entries(DB.smart_tags || {});
+        S._suggestedTagIds = S._suggestedTagIds || [];
         dynDefPrefill.suggested_tags.forEach(tagObj => {
           if (!tagObj || typeof tagObj !== 'object') return;
-          const match = tagEntries.find(([tid, t]) => t === tagObj || (t.label && tagObj.label && t.label === tagObj.label));
-          if (match) {
-            const [tid] = match;
-            if (!S.detTagIds.includes(tid) && !S.manTagIds.includes(tid) && tagValidForCategory(tid, category_id)) {
-              S.manTagIds.push(tid);
-            }
-          }
+          const segments = tagObj?.$ref ? tagObj.$ref.replace(/^#\//, '').split('/') : null;
+          const tagId = segments ? '#' + segments[segments.length-1].replace('#','') : null;
+          if (tagId && DB.smart_tags?.[tagId] && !S._suggestedTagIds.includes(tagId))
+            S._suggestedTagIds.push(tagId);
         });
       }
     }
@@ -4606,126 +4800,194 @@ body.modal-active{overflow:hidden}
 
   let BLD = { step:0, action:null, object:null, specific:null, condition:null, location:null, qty:1 };
 
-  // ── Step definitions ──────────────────────────────────────────────
-  // Each step: { id, prompt, icon, choices[], next(choice) }
-  // choices: { label, icon, value, meta: { category?, stype?, keyword? } }
+  // ── Step definitions — driven from btnyc.json SSOT ─────────────
+  //
+  // Step 1 (action): minimal hardcoding — service_type keys exist in JSON
+  //   but human verb labels ("Fix", "Hang") are not in the SSOT. These 5 stay.
+  //
+  // Step 2 (object): 100% from DB.group — top-level groups per category.
+  //   group.display_name = label, group.icon = emoji, group.category_id = routing.
+  //
+  // Step 3 (specific): 100% from DB.group — sub-groups (have parent_group).
+  //   Only shown when the chosen group has children.
+  //
+  // Step 4 (condition): from DB.intake_modules[symptom/issue] when available,
+  //   falling back to a small universal list for fix/remove actions.
+  //
+  // Step 5 (location): NOT in btnyc.json — UI-only, stays hardcoded.
 
+  // Action step: maps service_types + human-friendly verb labels
+  // JSON service_types keys: Install, Repair, Diagnostic, Assembly, Setup
+  // We add "Hang/Mount" and "Remove" as UI aliases — not in the SSOT.
+  const BLD_ACTION_MAP = [
+    { label:'Fix / Repair',    icon:'🔧', value:'fix',      stype:'Repair',      verbLabel:'fixed' },
+    { label:'Install',         icon:'🔩', value:'install',  stype:'Install',     verbLabel:'installed' },
+    { label:'Hang / Mount',    icon:'🖼',  value:'mount',    stype:'Install',     verbLabel:'mounted' },
+    { label:'Assemble',        icon:'🧩', value:'assemble', stype:'Assembly',    verbLabel:'assembled' },
+    { label:'Remove',          icon:'🗑',  value:'remove',   stype:'Repair',      verbLabel:'removed' },
+    { label:'Set up / Config', icon:'⚙️', value:'set up',   stype:'Setup',       verbLabel:'set up' },
+  ];
+
+  // Location step: NOT in btnyc.json — hardcoded UI list
+  const BLD_LOCATIONS = [
+    { label:'Living Room',  icon:'🛋️', value:'living room' },
+    { label:'Bedroom',      icon:'🛏️', value:'bedroom' },
+    { label:'Kitchen',      icon:'🍳', value:'kitchen' },
+    { label:'Bathroom',     icon:'🚿', value:'bathroom' },
+    { label:'Office',       icon:'💼', value:'home office' },
+    { label:'Dining Room',  icon:'🍽️', value:'dining room' },
+    { label:'Basement',     icon:'🪜', value:'basement' },
+    { label:'Other',        icon:'📍', value:null },
+  ];
+
+  // Universal fallback conditions (used when no intake_module matches)
+  const BLD_FALLBACK_CONDITIONS = [
+    { label:"It's leaking",      icon:'💧', value:'leaking' },
+    { label:"Won't turn on",     icon:'⚡', value:"won't turn on" },
+    { label:"Makes noise",       icon:'🔊', value:'making noise' },
+    { label:"Loose / wobbly",    icon:'↔️', value:'loose or wobbly' },
+    { label:"Cracked / broken",  icon:'🪓', value:'cracked or broken' },
+    { label:"Runs constantly",   icon:'🔄', value:'running constantly' },
+    { label:"Slow / clogged",    icon:'🐌', value:'slow or clogged' },
+  ];
+
+  // ── Builder step engine — reads from DB (btnyc.json) ─────────────
+  function bldGetObjectChoices(action) {
+    if (!DB) return [];
+    // Get all top-level groups (no parent_group)
+    const topGroups = DB.group.filter(g => !g.parent_group);
+
+    // Filter by action context
+    // "assemble" only shows groups with Assembly in dynamic_service_types
+    // "fix"/"remove" only shows groups with Repair
+    // "install"/"mount"/"set up" shows Install/Mount groups
+    // No filter → show all (fallback)
+    const stypeFilter = {
+      fix:     ['Repair','Diagnostic'],
+      remove:  ['Repair','Diagnostic'],
+      install: ['Install / Mount','Install'],
+      mount:   ['Install / Mount','Install'],
+      assemble:['Assembly'],
+      'set up':['Setup','Install / Mount'],
+    }[action] || null;
+
+    let groups = topGroups;
+    if (stypeFilter) {
+      groups = topGroups.filter(g => {
+        const types = g.dynamic_service_types || [];
+        return types.some(t => stypeFilter.includes(t));
+      });
+      // If filter leaves too few options, fall back to all
+      if (groups.length < 2) groups = topGroups;
+    }
+
+    return groups.map(g => ({
+      label:   g.display_name,
+      icon:    g.icon || '🔧',
+      value:   g.id,          // use group ID as value (not display_name)
+      cat:     g.category_id,
+      groupId: g.id,
+      // Map to closest intent_mapping keyword for NLP accuracy
+      keyword: bldGroupToKeyword(g.id, g.category_id),
+    }));
+  }
+
+  function bldGetSpecificChoices(groupId) {
+    if (!DB || !groupId) return null;
+    const subGroups = DB.group.filter(g => g.parent_group === groupId);
+    if (!subGroups.length) return null;
+    return subGroups.map(g => ({
+      label:   g.display_name,
+      icon:    g.icon || '🔧',
+      value:   g.id,
+      cat:     g.category_id,
+      groupId: g.id,
+      keyword: bldGroupToKeyword(g.id, g.category_id),
+    }));
+  }
+
+  function bldGetConditionChoices(action, groupId) {
+    // Try to find a relevant intake_module for this group's services
+    if (DB && groupId) {
+      // Find services in this group and check their intake_chain for symptom/issue modules
+      const grpServices = (DB.services || []).filter(s =>
+        s.ui_taxonomy?.group_id === groupId &&
+        s.financial_engine?.checkout_state !== 'diagnostic'
+      );
+      for (const svc of grpServices) {
+        const chain = svc.intake_chain || [];
+        const condModule = chain.find(m => ['symptom','issue','damage_type','state'].includes(m.module));
+        if (condModule) {
+          const mod = DB.intake_modules?.[condModule.module];
+          if (mod?.client_response?.length) {
+            return mod.client_response.map(r => ({
+              label: r.label,
+              icon:  '🔍',
+              value: r.label.toLowerCase(),
+            }));
+          }
+        }
+      }
+    }
+    // Fix/remove: show universal fallback conditions
+    if (['fix','remove'].includes(action)) return BLD_FALLBACK_CONDITIONS;
+    // Install/mount/assemble/set up: no condition step
+    return null;
+  }
+
+  // Map a group ID to the best matching intent_mapping keyword
+  // This ensures the NLP path picks the right base price and formula
+  function bldGroupToKeyword(groupId, catId) {
+    if (!DB) return null;
+    const maps = DB.intent_mappings?.objects || [];
+    // Direct keyword match on group display_name or category
+    for (const m of maps) {
+      const cat = m.default_dynamic_category;
+      if (cat && cat === catId) return m.keyword;
+    }
+    // Partial fallback by category
+    const catKeywordMap = {
+      wall_mounting:            'mount',
+      plumbing_help:            'faucet / sink',
+      electric_lighting:        'light fixture',
+      furniture_fixes_assembly: 'furniture',
+      minor_home_repairs:       'tile / floor',
+      tech_trouble:             'other',
+    };
+    return catKeywordMap[catId] || 'other';
+  }
+
+  // BLD_STEPS is now a thin router — all data comes from DB via the functions above
   const BLD_STEPS = [
     {
-      id: 'action',
+      id:     'action',
       prompt: 'What do you need done?',
-      icon: 'ti-tool',
-      choices: [
-        { label:'Fix / Repair',    icon:'ti-wrench',       value:'fix',      stype:'Repair' },
-        { label:'Install',         icon:'ti-tool',         value:'install',  stype:'Install' },
-        { label:'Hang / Mount',    icon:'ti-viewport-wide',value:'mount',    stype:'Install' },
-        { label:'Assemble',        icon:'ti-puzzle',       value:'assemble', stype:'Assembly' },
-        { label:'Remove',          icon:'ti-trash',        value:'remove',   stype:'Repair' },
-        { label:'Set up / Config', icon:'ti-settings',     value:'set up',   stype:'Setup' },
-      ]
+      icon:   'ti-tool',
+      choices: () => BLD_ACTION_MAP
     },
     {
-      id: 'object',
+      id:     'object',
       prompt: 'What is it?',
-      icon: 'ti-package',
-      choices: (bld) => {
-        // Context-aware choices based on action
-        const isInstall = ['install','mount','set up'].includes(bld.action);
-        const isFix     = ['fix','remove'].includes(bld.action);
-        const isAssemble = bld.action === 'assemble';
-        const all = [
-          { label:'TV / Screen',         icon:'ti-device-tv',       value:'TV',              cat:'wall_mounting',         keyword:'mount' },
-          { label:'Shelf / Artwork',     icon:'ti-artboard',        value:'shelf',           cat:'wall_mounting',         keyword:'mount' },
-          { label:'Neon / Sign',         icon:'ti-bulb',            value:'neon sign',       cat:'wall_mounting',         keyword:'mount' },
-          { label:'Mirror',              icon:'ti-frame',           value:'mirror',          cat:'wall_mounting',         keyword:'mount' },
-          { label:'Light Fixture',       icon:'ti-bulb',            value:'light fixture',   cat:'electric_lighting',     keyword:'light fixture' },
-          { label:'Ceiling Fan',         icon:'ti-wind',            value:'ceiling fan',     cat:'electric_lighting',     keyword:'light fixture' },
-          { label:'Outlet / Switch',     icon:'ti-plug',            value:'outlet',          cat:'electric_lighting',     keyword:'light fixture' },
-          { label:'Faucet / Sink',       icon:'ti-droplet',         value:'faucet',          cat:'plumbing_help',         keyword:'faucet / sink' },
-          { label:'Toilet',              icon:'ti-droplet-half',    value:'toilet',          cat:'plumbing_help',         keyword:'toilet' },
-          { label:'Shower Head',         icon:'ti-shower',          value:'shower head',     cat:'plumbing_help',         keyword:'faucet / sink' },
-          { label:'Appliance',           icon:'ti-device-desktop',  value:'appliance',       cat:'minor_home_repairs',    keyword:'other' },
-          { label:'Door / Lock',         icon:'ti-door',            value:'door',            cat:'minor_home_repairs',    keyword:'door' },
-          { label:'Tile / Floor',        icon:'ti-border-all',      value:'floor tile',      cat:'minor_home_repairs',    keyword:'tile / floor' },
-          { label:'Drywall / Wall',      icon:'ti-square',          value:'drywall',         cat:'minor_home_repairs',    keyword:'drywall / wall' },
-          { label:'Furniture',           icon:'ti-armchair',        value:'furniture',       cat:'furniture_fixes_assembly', keyword:'furniture' },
-          { label:'Router / Network',    icon:'ti-wifi',            value:'router',          cat:'tech_trouble',          keyword:'other' },
-          { label:'Computer / Device',   icon:'ti-device-laptop',   value:'computer',        cat:'tech_trouble',          keyword:'other' },
-        ];
-        // Filter by action context
-        if (isAssemble) return all.filter(c => ['furniture','shelf','light fixture','ceiling fan'].includes(c.value));
-        return all;
-      }
+      icon:   'ti-package',
+      choices: (bld) => bldGetObjectChoices(bld.action)
     },
     {
-      id: 'specific',
+      id:     'specific',
       prompt: 'Which one?',
-      icon: 'ti-list',
-      // Only shown for objects that have sub-choices
-      choices: (bld) => {
-        const specs = {
-          'appliance': [
-            { label:'Washer',       icon:'ti-wash',             value:'washer' },
-            { label:'Dryer',        icon:'ti-wind',             value:'dryer' },
-            { label:'Dishwasher',   icon:'ti-device-desktop',   value:'dishwasher' },
-            { label:'Refrigerator', icon:'ti-snowflake',        value:'refrigerator' },
-            { label:'Microwave',    icon:'ti-microwave',        value:'microwave' },
-            { label:'AC Unit',      icon:'ti-air-conditioning', value:'AC unit' },
-          ],
-          'furniture': [
-            { label:'Chair',        icon:'ti-armchair',   value:'chair' },
-            { label:'Dresser',      icon:'ti-box',        value:'dresser' },
-            { label:'Bed frame',    icon:'ti-bed',        value:'bed frame' },
-            { label:'Desk',         icon:'ti-desk',       value:'desk' },
-            { label:'Shelving',     icon:'ti-layout-rows',value:'shelving unit' },
-            { label:'Sofa / Couch', icon:'ti-armchair',   value:'sofa' },
-          ],
-        };
-        return specs[bld.object] || null; // null = skip this step
-      }
+      icon:   'ti-list',
+      choices: (bld) => bldGetSpecificChoices(bld.object)  // null = skip step
     },
     {
-      id: 'condition',
+      id:     'condition',
       prompt: "What's the issue?",
-      icon: 'ti-alert-circle',
-      choices: (bld) => {
-        const conds = {
-          // Fix/Repair conditions
-          'fix': [
-            { label:"It's leaking",       icon:'ti-droplet',       value:'leaking' },
-            { label:"Won't turn on",      icon:'ti-power',         value:"won't turn on" },
-            { label:"Makes noise",        icon:'ti-volume',        value:'making noise' },
-            { label:"Is loose / wobbly",  icon:'ti-arrows-move',   value:'loose or wobbly' },
-            { label:"Cracked / broken",   icon:'ti-tool',          value:'cracked or broken' },
-            { label:"Runs constantly",    icon:'ti-refresh',       value:'running constantly' },
-            { label:"Slow / clogged",     icon:'ti-wave-sine',     value:'slow or clogged' },
-          ],
-          'remove': [
-            { label:'Replace old one',    icon:'ti-replace',       value:'replacing old unit' },
-            { label:'No longer needed',   icon:'ti-trash',         value:'no longer needed' },
-          ],
-          'mount': null, // no condition step for mounting
-          'install': null,
-          'assemble': null,
-          'set up': null,
-        };
-        return conds[bld.action] || null;
-      }
+      icon:   'ti-alert-circle',
+      choices: (bld) => bldGetConditionChoices(bld.action, bld.specific || bld.object)
     },
     {
-      id: 'location',
+      id:     'location',
       prompt: 'Where in the home?',
-      icon: 'ti-map-pin',
-      choices: [
-        { label:'Living Room',  icon:'ti-sofa',           value:'living room' },
-        { label:'Bedroom',      icon:'ti-bed',            value:'bedroom' },
-        { label:'Kitchen',      icon:'ti-tools-kitchen-2',value:'kitchen' },
-        { label:'Bathroom',     icon:'ti-bath',           value:'bathroom' },
-        { label:'Office',       icon:'ti-briefcase',      value:'home office' },
-        { label:'Dining Room',  icon:'ti-armchair',       value:'dining room' },
-        { label:'Basement',     icon:'ti-stairs-down',    value:'basement' },
-        { label:'Other',        icon:'ti-dots',           value:null }, // skip
-      ]
+      icon:   'ti-map-pin',
+      choices: () => BLD_LOCATIONS
     }
   ];
 
@@ -4904,13 +5166,20 @@ body.modal-active{overflow:hidden}
 
     let parts = [w('I need to ')];
 
-    if (BLD.action) parts.push(s(BLD.action));
+    if (BLD.action) {
+      const _actObj = BLD_ACTION_MAP.find(a => a.value === BLD.action);
+      parts.push(s(_actObj?.verbLabel || BLD.action));
+    }
     else parts.push(placeholder(1));
 
     if (BLD.action) {
       parts.push(w(' my '));
-      const obj = BLD.specific || BLD.object;
-      if (obj) parts.push(s(obj));
+      const _rawObj = BLD.specific || BLD.object;
+      if (_rawObj) {
+        // _rawObj is now a group ID — resolve to display_name
+        const _grpDisp = DB ? (DB.group||[]).find(g=>g.id===_rawObj) : null;
+        parts.push(s(_grpDisp?.display_name || _rawObj));
+      }
       else parts.push(placeholder(1));
     }
 
@@ -4928,21 +5197,22 @@ body.modal-active{overflow:hidden}
   }
 
   function sqBuilderChoose(stepId, choice) {
-    // Animate selection
     const chips = document.querySelectorAll('#sqBuilderChips .sq-b-chip');
     chips.forEach(c => c.classList.remove('sq-b-sel'));
 
-    // Store choice
     BLD[stepId] = choice.value;
 
-    // Store metadata for intent resolution
-    if (stepId === 'action') BLD._stype = choice.stype;
-    if (stepId === 'object') {
-      BLD._cat     = choice.cat;
-      BLD._keyword = choice.keyword;
+    // Store metadata — now includes groupId from JSON
+    if (stepId === 'action') {
+      BLD._stype    = choice.stype;
+      BLD._verbLabel = choice.verbLabel || choice.value;
+    }
+    if (stepId === 'object' || stepId === 'specific') {
+      if (choice.cat)     BLD._cat     = choice.cat;
+      if (choice.groupId) BLD._groupId = choice.groupId;
+      if (choice.keyword) BLD._keyword = choice.keyword;
     }
 
-    // Advance to next step
     BLD.step++;
     sqBuilderRender();
   }
@@ -4955,7 +5225,10 @@ body.modal-active{overflow:hidden}
   }
 
   function sqBuilderFinish() {
-    const obj    = BLD.specific || BLD.object || 'item';
+    // Resolve human label from group ID (BLD.object/specific are now group IDs)
+    const _rawBldObj = BLD.specific || BLD.object;
+    const _bldGrp    = _rawBldObj && DB ? (DB.group||[]).find(g=>g.id===_rawBldObj) : null;
+    const obj        = _bldGrp?.display_name || _rawBldObj || 'item';
     const action = BLD.action || 'fix';
     const cond   = BLD.condition;
     const loc    = BLD.location;
@@ -4986,14 +5259,19 @@ body.modal-active{overflow:hidden}
     S.negatedTagIds = [];
     S.qty         = BLD.qty || 1;
     S.stype       = normStype;
+    // Resolve display label from group if we have a groupId
+    const _grpObj = BLD._groupId ? (DB.group||[]).find(g => g.id === BLD._groupId) : null;
+    const _label  = _grpObj?.display_name || obj;
+
     S.intent      = {
-      category: BLD._cat  || 'other',
-      label:    obj,
-      group:    BLD._keyword || obj,
-      base:     0,            // dynamic_services will fill this
+      category: BLD._cat     || 'other',
+      label:    _label,
+      group:    BLD._keyword || _label,
+      base:     0,
       stype:    normStype,
       qtyLabel: 'item',
-      key:      BLD._keyword || obj
+      key:      BLD._keyword || _label,
+      _groupId: BLD._groupId || null,
     };
 
     document.getElementById('sqQtyV').textContent = S.qty;
