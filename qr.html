@@ -3596,21 +3596,48 @@ body.modal-active{overflow:hidden}
 
   /* ── SSOT tag rules ───────────────────────────────────────────── */
   function applySSOTRules() {
-    const tags=DB.smart_tags||{};
-    const cat=S.intent?.category||'other';
-    const valid=Object.keys(tags).filter(tid=>tagValidForCategory(tid, cat, S.intent?._groupId));
+    const tags = DB.smart_tags || {};
+    const cat  = S.intent?.category || 'other';
+    const valid = Object.keys(tags).filter(tid => tagValidForCategory(tid, cat, S.intent?._groupId));
+
     // Default-for-group — only for tags valid for this category
-    const groups=new Set(valid.map(tid=>tags[tid].display_group||'Additional Adjustments'));
-    groups.forEach(g=>{
-      const gTids=valid.filter(tid=>(tags[tid].display_group||'Additional Adjustments')===g);
-      const hasSel=gTids.some(tid=>S.detTagIds.includes(tid)||S.manTagIds.includes(tid));
-      if (!hasSel) { const def=gTids.find(tid=>tags[tid].is_default_for_group&&tagValidForCategory(tid,cat)); if(def&&!S.negatedTagIds.includes(def)&&!S.manTagIds.includes(def)) S.manTagIds.push(def); }
+    const groups = new Set(valid.map(tid => tags[tid].display_group || 'Additional Adjustments'));
+    groups.forEach(g => {
+      const gTids  = valid.filter(tid => (tags[tid].display_group || 'Additional Adjustments') === g);
+      const hasSel = gTids.some(tid => S.detTagIds.includes(tid) || S.manTagIds.includes(tid));
+      if (!hasSel) {
+        const def = gTids.find(tid => tags[tid].is_default_for_group && tagValidForCategory(tid, cat));
+        if (def && !S.negatedTagIds.includes(def) && !S.manTagIds.includes(def))
+          S.manTagIds.push(def);
+      }
     });
-    // Mutual exclusion
-    const all=[...S.detTagIds,...S.manTagIds], rm=new Set();
-    all.forEach(tid=>{ if(tags[tid]?.mutually_exclusive&&S.manTagIds.includes(tid)) tags[tid].mutually_exclusive.forEach(x=>rm.add(x)); });
-    S.manTagIds=S.manTagIds.filter(x=>!rm.has(x));
-    S.detTagIds=S.detTagIds.filter(x=>!rm.has(x));
+
+    // Mutual exclusion — reads fully from btnyc.json smart_tags[tid].mutually_exclusive
+    // manTagIds (user tap) take priority: remove their exclusive siblings everywhere
+    const rm = new Set();
+    S.manTagIds.forEach(tid => {
+      (tags[tid]?.mutually_exclusive || []).forEach(x => rm.add(x));
+    });
+    // detTagIds (NLP) also enforce exclusion — but only if not overridden by a manTag
+    S.detTagIds.forEach(tid => {
+      if (!rm.has(tid)) {
+        (tags[tid]?.mutually_exclusive || []).forEach(x => {
+          if (!S.manTagIds.includes(x)) rm.add(x); // NLP tag wins unless user picked the sibling
+        });
+      }
+    });
+    S.manTagIds     = S.manTagIds.filter(x => !rm.has(x));
+    S.detTagIds     = S.detTagIds.filter(x => !rm.has(x));
+    S.userTagIds    = (S.userTagIds || []).filter(x => !rm.has(x));
+
+    // Clean negatedTagIds: if an exclusive sibling IS selected, the negation is no longer valid
+    // e.g. #heavy_item is selected → remove any negation of its sibling #very_heavy
+    const activeSet = new Set([...S.manTagIds, ...S.detTagIds]);
+    S.negatedTagIds = S.negatedTagIds.filter(tid => {
+      const t = tags[tid]; if (!t) return false;
+      // Keep the negation only if none of this tag's exclusive siblings are active
+      return !(t.mutually_exclusive || []).some(sib => activeSet.has(sib));
+    });
   }
 
   /* ── Step helpers (use existing scard/sbody DOM in #smartQuoteEngine) ─ */
@@ -3813,9 +3840,11 @@ body.modal-active{overflow:hidden}
     });
 
     // Size hint → negate heavy/oversized tags when size is standard
+    // Only negate if the user hasn't explicitly selected the tag
     if (S._sizeHint === 'standard') {
       ['#heavy_item','#very_heavy'].forEach(tid => {
-        if (!S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
+        const userSelected = S.manTagIds.includes(tid) || (S.userTagIds||[]).includes(tid);
+        if (!S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid) && !userSelected)
           S.negatedTagIds.push(tid);
       });
     }
@@ -4000,15 +4029,38 @@ body.modal-active{overflow:hidden}
     sqBuildAdlib();
   }
 
-  function sqToggleTag(el,tid){
-    if(el.classList.contains('locked')) return;
-    if(el.classList.contains('sel')){
-      S.manTagIds  = S.manTagIds.filter(x=>x!==tid);
-      S.detTagIds  = S.detTagIds.filter(x=>x!==tid);
-      S.userTagIds = S.userTagIds.filter(x=>x!==tid);  // un-confirm
+  function sqToggleTag(el, tid){
+    if (el.classList.contains('locked')) return;
+    const tag = (DB.smart_tags || {})[tid] || {};
+    const mutuallyExclusive = tag.mutually_exclusive || [];
+
+    if (el.classList.contains('sel')) {
+      // ── DE-SELECT: remove from all active sets ─────────────────
+      S.manTagIds  = S.manTagIds.filter(x => x !== tid);
+      S.detTagIds  = S.detTagIds.filter(x => x !== tid);
+      S.userTagIds = (S.userTagIds||[]).filter(x => x !== tid);
+      // Do NOT re-add to negatedTagIds — user explicitly removed it → neutral state
     } else {
-      if(!S.manTagIds.includes(tid)) S.manTagIds.push(tid);
-      if(!S.userTagIds.includes(tid)) S.userTagIds.push(tid); // user explicitly chose this → 100% confidence
+      // ── SELECT: user is explicitly choosing this tag ────────────
+
+      // 1. Remove from negatedTagIds — user is overriding any NLP negation
+      S.negatedTagIds = S.negatedTagIds.filter(x => x !== tid);
+
+      // 2. Remove mutually exclusive siblings from ALL state arrays
+      //    and also clear their negation (can't show "not heavy" if user picked "very heavy")
+      mutuallyExclusive.forEach(sibId => {
+        S.manTagIds     = S.manTagIds.filter(x => x !== sibId);
+        S.detTagIds     = S.detTagIds.filter(x => x !== sibId);
+        S.userTagIds    = (S.userTagIds||[]).filter(x => x !== sibId);
+        S.negatedTagIds = S.negatedTagIds.filter(x => x !== sibId);
+      });
+
+      // 3. Add to active sets
+      if (!S.manTagIds.includes(tid))  S.manTagIds.push(tid);
+      if (!(S.userTagIds||[]).includes(tid)) {
+        S.userTagIds = S.userTagIds || [];
+        S.userTagIds.push(tid); // explicit user tap → 100% confidence
+      }
     }
     sqBuildStep3();
   }
@@ -4019,97 +4071,113 @@ body.modal-active{overflow:hidden}
     if(document.getElementById('sqAdlibBox')?.style.display==='block') sqBuildAdlib();
   }
 
-  /* ── Adlib sentence — linguistically correct, SSOT-driven ─────
-     Sentence structure varies by tag display_group (from btnyc.json):
+  /* ════════════════════════════════════════════════════════════════
+     ADLIB SENTENCE GENERATOR
      
-     "I need [qty] [object] [verb]
-       + Wall Material    → "on a drywall wall" / "on brick"
-       + Plumbing Cond.   → "with a leak" / "that is clogged"
-       + Job Constraints  → "(heavy item)" / "(high ceiling)"
-       + Add. Adjustments → "(emergency)" etc.
-       + Negated tags     → "[✓ not heavy]" — shown as confirmations
-       + Location         → "in my bedroom"
-
-     Negation also boosts confidence score (+0.75× gain per negated answer).
-  ─────────────────────────────────────────────────────────────── */
+     Purpose: psychological bridge between uncertainty and confidence.
+     The sentence confirms exactly what the system understood, shows
+     every cost driver as a removable pill, and lets the user correct
+     the object noun inline. Trust is built through transparency.
+     
+     Final sentence structure (natural English):
+     
+       "I need [qty ▾] [object noun ✎] [verb ▾]
+              [· on brick (+$25) ×]
+              [· heavy item (+$40) ×]
+              [· high ceiling (+$40) ×]
+              [· with a leak ×]
+              [✓ not heavy]  ← negation confirmations
+              [📍 in my bedroom]  ← location context
+              [📐 standard size]  ← size context"
+     
+     Logistic surcharges (parking, pets, etc.) appear in a separate
+     compact strip below — they are fees but not part of the job
+     description sentence.
+  ════════════════════════════════════════════════════════════════ */
   function sqBuildAdlib(){
-    const tags    = DB.smart_tags || {};
-    const sent    = document.getElementById('sqAdlibSentence');
+    const tags = DB.smart_tags || {};
+    const sent = document.getElementById('sqAdlibSentence');
     if (!sent) return;
+    // Clear sentence AND any previous logistic note strip
     sent.innerHTML = '';
+    const prevNote = document.getElementById('sqAdlibLogisticNote');
+    if (prevNote) prevNote.remove();
 
-    // Tags that describe LOGISTICS (scheduling/access surcharges) rather than the work itself.
-    // These should NOT appear in the sentence — they stay as chips only and go to booking notes.
-    // Sentence only contains SCOPE tags that describe what the job actually involves.
-    const LOGISTIC_TAGS = new Set([
+    // ── Logistic tags: fees but not job description ───────────────
+    // These go in a separate strip below the sentence, not inline.
+    const LOGISTIC = new Set([
       '#no_parking','#pets_on_site','#multi_trip','#disposal_needed',
-      '#access_obstructed','#high_volume','#emergency','#furniture_assembly_ikea',
-      '#complex_assembly','#broken_leg','#scratched_surface','#wobbly',
-      '#virus','#wifi_dead_zone','#data_recovery','#bidet_attachment',
-      '#plumbing','#electrical','#flushometer_bidet'
+      '#access_obstructed','#high_volume','#emergency',
+      '#furniture_assembly_ikea','#complex_assembly',
+      '#broken_leg','#scratched_surface','#wobbly',
+      '#virus','#wifi_dead_zone','#data_recovery',
+      '#bidet_attachment','#plumbing','#electrical','#flushometer_bidet'
     ]);
 
-    // ── Verb: past tense, refined by object/service context ───────
-    const stypeVerbMap = {
+    // ── Verb ──────────────────────────────────────────────────────
+    // Past-tense, refined by object context so "Cabinet Adjustment"
+    // → "adjusted" not "installed".
+    const stypeVerb = {
       install:'installed', Install:'installed',
       repair:'repaired',   Repair:'repaired',
       diagnostic:'assessed', Diagnostic:'assessed',
       assembly:'assembled', Assembly:'assembled',
       setup:'set up',      Setup:'set up'
     };
-    const _objCtx = (S._objectNoun || S.intent?.label || '').toLowerCase();
-    let verb = stypeVerbMap[S.stype] || 'installed';
-    if (_objCtx.includes('adjustment')) verb = 'adjusted';
-    else if (_objCtx.includes('replacement') || _objCtx.includes('replace')) verb = 'replaced';
-    else if (_objCtx.includes('repair') && S.stype !== 'Repair') verb = 'repaired';
-    else if (_objCtx.includes('assembly') || _objCtx.includes('assemble')) verb = 'assembled';
-    else if (_objCtx.includes('config') || _objCtx.includes('setup')) verb = 'configured';
+    const _ctx = (S._objectNoun || S.intent?.label || '').toLowerCase();
+    let verb = stypeVerb[S.stype] || 'installed';
+    if (_ctx.includes('adjustment'))                      verb = 'adjusted';
+    else if (_ctx.includes('replacement') || _ctx.includes('replace')) verb = 'replaced';
+    else if (_ctx.includes('repair') && S.stype !== 'Repair') verb = 'repaired';
+    else if (_ctx.includes('assembl'))                    verb = 'assembled';
+    else if (_ctx.includes('config') || _ctx.includes('setup')) verb = 'configured';
     const verbOpts = ['installed','repaired','replaced','assembled','adjusted','set up','assessed'];
 
-    // ── Object noun — NLP extracted, intent label, or fallback ────
-    const rawKw     = (S.intent?.key || '').toLowerCase();
-    const intentLbl = S.intent?.label || '';
-    let objectNoun  = S._objectNoun
-      || (intentLbl.toLowerCase() !== rawKw && intentLbl.length > 2 ? intentLbl : null)
+    // ── Object noun ───────────────────────────────────────────────
+    const rawKw    = (S.intent?.key || '').toLowerCase();
+    const lbl      = S.intent?.label || '';
+    let   noun     = S._objectNoun
+      || (lbl.toLowerCase() !== rawKw && lbl.length > 2 ? lbl : null)
       || 'item';
 
-    const qty      = S.qty;
-    const qtyLabel = S.intent?.qtyLabel || 'item';
+    // ── Classify scope tags by display_group ──────────────────────
+    const active  = [...new Set([...S.detTagIds, ...S.manTagIds])];
+    const scope   = active.filter(t => !LOGISTIC.has(t));
+    const logistic = active.filter(t => LOGISTIC.has(t));
 
-    // ── Classify active tags: SCOPE (in sentence) vs LOGISTIC (notes only) ──
-    const activeTids   = [...new Set([...S.detTagIds, ...S.manTagIds])];
-    const scopeTids    = activeTids.filter(tid => !LOGISTIC_TAGS.has(tid));
-    const logisticTids = activeTids.filter(tid => LOGISTIC_TAGS.has(tid));
-    const byGroup      = {};
-    scopeTids.forEach(tid => {
+    const byGroup = {};
+    scope.forEach(tid => {
       const t = tags[tid]; if (!t) return;
       const g = t.display_group || 'Additional Adjustments';
       (byGroup[g] = byGroup[g] || []).push(tid);
     });
 
-    // ── DOM helpers ────────────────────────────────────────────────
-    const w = (text, muted) => {
+    // ── DOM helpers ───────────────────────────────────────────────
+    // Plain connective word
+    const w = (text, style) => {
       const s = document.createElement('span');
       s.className = 'adlib-word';
-      if (muted) s.style.cssText = 'color:#aaa;font-size:12px;margin:0 2px;';
+      if (style) s.style.cssText = style;
       s.textContent = text;
       sent.appendChild(s);
+      return s;
     };
 
-    const pill = (key, displayText, opts, currentVal) => {
+    // Editable dropdown pill
+    const pill = (key, display, opts, current) => {
       const p   = document.createElement('span');
       p.className = 'adlib-pill';
-      const lbl = document.createElement('span'); lbl.textContent = displayText;
+      const lbl = document.createElement('span'); lbl.textContent = display;
       const ico = document.createElement('i');    ico.className = 'ti ti-chevron-down';
       const sel = document.createElement('select');
       sel.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;';
       opts.forEach(o => {
         const op = document.createElement('option');
         op.value = o; op.textContent = o;
-        if (o === currentVal) op.selected = true;
+        if (o === current) op.selected = true;
         sel.appendChild(op);
       });
-      sel.addEventListener('change', function() {
+      sel.addEventListener('change', function(){
         lbl.textContent = this.value;
         if (key === 'qty') {
           S.qty = parseInt(this.value) || 1;
@@ -4117,9 +4185,9 @@ body.modal-active{overflow:hidden}
           sqBuildAdlib();
         }
         if (key === 'verb') {
-          const revMap = { installed:'Install', repaired:'Repair', replaced:'Repair',
-            assembled:'Assembly', adjusted:'Repair', 'set up':'Setup', assessed:'Diagnostic' };
-          S.stype = revMap[this.value] || 'Install';
+          const rev = { installed:'Install', repaired:'Repair', replaced:'Repair',
+            assembled:'Assembly', adjusted:'Repair', 'set up':'Setup', assessed:'Diagnostic'};
+          S.stype = rev[this.value] || 'Install';
           sqBuildAdlib();
         }
       });
@@ -4127,178 +4195,219 @@ body.modal-active{overflow:hidden}
       sent.appendChild(p);
     };
 
-    // Inline-editable object noun
-    const editableObject = noun => {
-      const span = document.createElement('span');
-      span.className      = 'adlib-object';
-      span.contentEditable = 'true';
-      span.spellcheck     = false;
-      span.textContent    = noun;
-      span.title          = 'Tap to edit';
-      span.style.cssText  = 'display:inline-block;min-width:48px;padding:4px 10px;border-radius:8px;border:1.5px dashed rgba(222,0,0,.3);color:var(--clr-red-dark,#8a0615);font-weight:700;font-size:14px;cursor:text;outline:none;background:rgba(222,0,0,.05);';
-      span.addEventListener('focus', () => { span.style.borderColor='var(--clr-red,#de0000)'; span.style.background='#fff'; });
-      span.addEventListener('blur',  () => { span.style.borderColor='rgba(222,0,0,.3)'; span.style.background='rgba(222,0,0,.05)'; S._objectNoun = span.textContent.trim() || 'item'; });
-      span.addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); span.blur(); }});
-      sent.appendChild(span);
+    // Inline-editable object noun (the KEY interactive element —
+    // user corrects NLP extraction here; fee doesn't change, understanding does)
+    const editNoun = text => {
+      const s = document.createElement('span');
+      s.className = 'adlib-object';
+      s.contentEditable = 'true';
+      s.spellcheck = false;
+      s.textContent = text;
+      s.title = 'Tap to correct';
+      s.style.cssText = [
+        'display:inline-block','min-width:52px','padding:3px 10px',
+        'border-radius:8px','border:1.5px dashed rgba(222,0,0,.3)',
+        'color:var(--clr-red-dark,#8a0615)','font-weight:700','font-size:15px',
+        'cursor:text','outline:none','background:rgba(222,0,0,.05)',
+        'transition:border-color .15s,background .15s'
+      ].join(';');
+      s.addEventListener('focus', () => {
+        s.style.borderColor = 'var(--clr-red,#de0000)';
+        s.style.background  = '#fff';
+      });
+      s.addEventListener('blur', () => {
+        s.style.borderColor = 'rgba(222,0,0,.3)';
+        s.style.background  = 'rgba(222,0,0,.05)';
+        S._objectNoun = s.textContent.trim() || noun;
+      });
+      s.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); s.blur(); }});
+      sent.appendChild(s);
     };
 
-    // Removable condition pill — label varies by display_group
+    // Removable condition pill — shows fee, removes tag on tap
+    // phrase: natural English fragment (e.g. "on brick +$25", "very heavy +$80")
     const condPill = (tid, phrase) => {
       const pp  = document.createElement('span');
       pp.className = 'adlib-cond';
       const t   = tags[tid];
-      const fee = (t?.fee ?? t?.effects?.fee ?? 0);
+      const fee = t?.fee ?? t?.effects?.fee ?? 0;
+      // Show fee inline so user sees exactly why price changes when they remove it
       const txt = document.createElement('span');
       txt.textContent = phrase + (fee > 0 ? ' +$' + fee : '');
-      const x   = document.createElement('i'); x.className = 'ti ti-x';
+      const x = document.createElement('i'); x.className = 'ti ti-x';
       pp.appendChild(txt); pp.appendChild(x);
-      pp.title = 'Tap to remove';
+      pp.title = 'Tap to remove — price will update';
       pp.addEventListener('click', () => {
-        S.manTagIds = S.manTagIds.filter(id => id !== tid);
-        S.detTagIds = S.detTagIds.filter(id => id !== tid);
+        S.manTagIds  = S.manTagIds.filter(id => id !== tid);
+        S.detTagIds  = S.detTagIds.filter(id => id !== tid);
+        S.userTagIds = (S.userTagIds||[]).filter(id => id !== tid);
         sqBuildStep3();
       });
       sent.appendChild(pp);
     };
 
-    // Confirmed-negative badge (negated tag)
-    const negBadge = (label) => {
+    // Green negation badge — confirms a detail was understood as absent
+    // (e.g. "✓ not heavy" → tells user the system won't charge the heavy surcharge)
+    const negBadge = label => {
       const pp = document.createElement('span');
-      pp.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;font-size:12px;font-weight:600;margin:2px;';
+      pp.style.cssText = [
+        'display:inline-flex','align-items:center','gap:4px',
+        'padding:3px 9px','border-radius:8px',
+        'background:#f0fdf4','color:#166534','border:1px solid #bbf7d0',
+        'font-size:12px','font-weight:600','margin:2px'
+      ].join(';');
       pp.innerHTML = '<i class="ti ti-check" style="font-size:11px"></i> ' + label;
-      pp.title = 'Confirmed from your description';
+      pp.title = 'Confirmed: system understood this from your description';
       sent.appendChild(pp);
     };
 
-    // Context badge (location, size — non-removable)
+    // Grey context badge — non-removable context (location, size)
     const ctxBadge = (text, icon) => {
       const pp = document.createElement('span');
-      pp.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:rgba(0,0,0,.04);color:#666;border:1px solid rgba(0,0,0,.1);font-size:12px;font-weight:500;margin:2px;';
+      pp.style.cssText = [
+        'display:inline-flex','align-items:center','gap:4px',
+        'padding:3px 9px','border-radius:8px',
+        'background:rgba(0,0,0,.04)','color:#666','border:1px solid rgba(0,0,0,.1)',
+        'font-size:12px','font-weight:500','margin:2px'
+      ].join(';');
       pp.innerHTML = (icon ? '<i class="ti ' + icon + '" style="font-size:11px;opacity:.5"></i> ' : '') + text;
       sent.appendChild(pp);
     };
 
-    // ── Assemble the sentence ──────────────────────────────────────
-    // Core: "I need [qty object] [verb]"
+    // ── BUILD THE SENTENCE ────────────────────────────────────────
+    // Target natural English: 
+    //   "I need 2 neon signs installed on brick +$25 · heavy item +$40 · in my bedroom"
+
     w('I need');
 
-    // Qty pill — shows "2 neon signs" not just "2"
-    const qtyDisplay = qty + (qty > 1 ? ' ' + (objectNoun + 's').replace('ss','s') : ' ' + objectNoun);
-    const qtyOpts = ['1','2','3','4','5','6','8','10','12'];
-    pill('qty', qty > 1 ? String(qty) : String(qty), qtyOpts, String(qty));
-    editableObject(objectNoun);
+    // Qty pill (number only — noun comes right after in the editable span)
+    pill('qty', String(S.qty), ['1','2','3','4','5','6','8','10','12'], String(S.qty));
+
+    // Object noun — NLP-extracted, inline editable, naturally follows the qty
+    // Pluralise naively when qty > 1
+    const displayNoun = (() => {
+      if (S.qty <= 1) return noun;
+      if (noun.endsWith('s')) return noun;          // already plural
+      if (noun.endsWith('ey') || noun.endsWith('ay')) return noun + 's';
+      return noun + 's';
+    })();
+    editNoun(displayNoun);
+
+    // Verb pill — "installed ▾", "repaired ▾" etc.
     pill('verb', verb, verbOpts, verb);
 
-    // Wall Material → "on a drywall wall" or "on brick/concrete"
-    const wallTags = byGroup['Wall Material'] || [];
-    if (wallTags.length) {
-      const wallPhrases = {
-        '#drywall':    'on a drywall wall',
-        '#brick_wall': 'on brick or concrete',
-      };
-      wallTags.forEach(tid => {
-        const phrase = wallPhrases[tid] || ('on ' + sqTagLabel(tags[tid], tid));
-        w(phrase);
-        // Wall tags are removable
-        const rm = document.createElement('span');
-        rm.style.cssText = 'color:var(--clr-red,#de0000);cursor:pointer;font-size:11px;margin-left:2px;';
-        rm.innerHTML = '<i class="ti ti-x"></i>';
-        rm.title = 'Remove';
-        rm.addEventListener('click', () => {
-          S.manTagIds = S.manTagIds.filter(id => id !== tid);
-          S.detTagIds = S.detTagIds.filter(id => id !== tid);
-          sqBuildStep3();
-        });
-        // Append remove icon to the last word span
-        const lastWord = sent.lastElementChild;
-        if (lastWord) lastWord.appendChild(rm);
-      });
-    }
+    // ── SCOPE CONDITIONS (in sentence, each removable) ────────────
+    // A "·" separator appears before the first condition — keeps the sentence
+    // visually clear: "I need 1 neon sign installed · on brick · heavy item"
+    const _anyScope = scope.length > 0;
+    if (_anyScope) w('·', 'color:#bbb;margin:0 2px;font-weight:300;');
 
-    // Plumbing Conditions → "with a leak" / "that is clogged"
-    const plumbTags = byGroup['Plumbing Conditions'] || [];
-    if (plumbTags.length) {
-      const plumbPhrases = {
-        '#leaky_faucet':   'with a leak',
-        '#clogged_drain':  'that is clogged',
-        '#toilet_running': 'that runs constantly',
-      };
-      plumbTags.forEach(tid => {
-        const phrase = plumbPhrases[tid] || ('with ' + sqTagLabel(tags[tid], tid));
-        condPill(tid, phrase);
-      });
-    }
+    // Wall Material: "on a drywall wall" / "on brick or concrete"
+    const wallPhrases = {
+      '#drywall':    'on a drywall wall',
+      '#brick_wall': 'on brick or concrete',
+    };
+    (byGroup['Wall Material'] || []).forEach(tid => {
+      const phrase = wallPhrases[tid] || 'on ' + sqTagLabel(tags[tid], tid);
+      condPill(tid, phrase);
+    });
 
-    // Job Constraints → "(heavy item)" "(high ceiling)"
-    const constraintTags = byGroup['Job Constraints'] || [];
-    if (constraintTags.length) {
-      const constraintPhrases = {
-        '#heavy_item':      'heavy item',
-        '#very_heavy':      'very heavy',
-        '#high_ceiling':    'high ceiling',
-        '#very_high_ceiling':'very high ceiling',
-        '#high_volume':     'high volume',
-      };
-      constraintTags.forEach(tid => {
-        const phrase = constraintPhrases[tid] || sqTagLabel(tags[tid], tid);
-        condPill(tid, phrase);
-      });
-    }
+    // Plumbing Conditions: "with a leak" / "that is clogged"
+    const plumbPhrases = {
+      '#leaky_faucet':   'with a leak',
+      '#clogged_drain':  'that is clogged',
+      '#toilet_running': 'that runs constantly',
+    };
+    (byGroup['Plumbing Conditions'] || []).forEach(tid => {
+      condPill(tid, plumbPhrases[tid] || 'with ' + sqTagLabel(tags[tid], tid));
+    });
 
-    // Additional Adjustments → parenthetical notes
-    const adjTags = byGroup['Additional Adjustments'] || [];
-    if (adjTags.length) {
-      adjTags.forEach(tid => {
-        condPill(tid, sqTagLabel(tags[tid], tid));
-      });
-    }
+    // Job Constraints: "heavy item" / "high ceiling" etc.
+    const constraintPhrases = {
+      '#heavy_item':       'heavy item',
+      '#very_heavy':       'very heavy item',
+      '#high_ceiling':     'high ceiling',
+      '#very_high_ceiling':'very high ceiling',
+      '#high_volume':      'high volume job',
+    };
+    (byGroup['Job Constraints'] || []).forEach(tid => {
+      condPill(tid, constraintPhrases[tid] || sqTagLabel(tags[tid], tid));
+    });
 
-    // Negated tags — shown as green confirmations (reduce uncertainty)
+    // Other scope adjustments (wall mount, flushometer, fan box, two-person)
+    const scopeAdjPhrases = {
+      '#wall_mount':          'wall mount required',
+      '#flushometer':         'commercial flushometer',
+      '#fan_box_missing':     'fan box missing',
+      '#two_person_required': 'two-person job',
+      '#cracked_tile':        'cracked tile',
+      '#water_damage':        'water damage present',
+    };
+    (byGroup['Additional Adjustments'] || []).forEach(tid => {
+      if (!LOGISTIC.has(tid)) {
+        condPill(tid, scopeAdjPhrases[tid] || sqTagLabel(tags[tid], tid));
+      }
+    });
+
+    // ── NEGATION CONFIRMATIONS ────────────────────────────────────
+    // These show the user the system understood what's NOT the case.
+    // Green badge = "we got it, no surcharge for this"
     const negPhrases = {
-      '#heavy_item':   'not heavy',
-      '#very_heavy':   'not very heavy',
-      '#brick_wall':   'drywall / not brick',
-      '#drywall':      'brick / not drywall',
-      '#high_ceiling': 'standard ceiling height',
+      '#heavy_item':    '✓ not heavy',
+      '#very_heavy':    '✓ not very heavy',
+      '#brick_wall':    '✓ drywall (not brick)',
+      '#drywall':       '✓ not drywall',
+      '#high_ceiling':  '✓ standard ceiling height',
     };
     S.negatedTagIds.forEach(tid => {
       if (!tags[tid]) return;
-      const phrase = negPhrases[tid] || ('not ' + sqTagLabel(tags[tid], tid));
-      negBadge(phrase);
+      negBadge(negPhrases[tid] || '✓ not ' + sqTagLabel(tags[tid], tid));
     });
 
-    // Location
+    // ── CONTEXT BADGES ────────────────────────────────────────────
     if (S._location) ctxBadge('in my ' + S._location, 'ti-map-pin');
-
-    // Size
-    if (S._sizeHint === 'standard')   ctxBadge('standard size', 'ti-ruler-2');
+    if (S._sizeHint === 'standard')
+      ctxBadge('standard size', 'ti-ruler-2');
     else if (S._sizeHint === 'large' || S._sizeHint === 'oversized')
       ctxBadge(S._sizeHint, 'ti-arrows-maximize');
 
-    // Logistic surcharges — shown as a compact note below sentence, not inline
-    if (logisticTids.length) {
-      const noteEl = document.createElement('div');
-      noteEl.style.cssText = 'margin-top:10px;padding:7px 12px;background:rgba(0,0,0,.03);border-radius:8px;border:1px solid rgba(0,0,0,.07);font-size:12px;color:#666;display:flex;flex-wrap:wrap;gap:6px;align-items:center;';
-      const label = document.createElement('span');
-      label.style.cssText = 'font-weight:600;color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-right:4px;';
-      label.textContent = 'Surcharges:';
-      noteEl.appendChild(label);
-      logisticTids.forEach(tid => {
+    // ── LOGISTIC SURCHARGES STRIP ────────────────────────────────
+    // Below the sentence — fees the user should see but aren't part
+    // of describing the job (parking, pets, disposal, etc.)
+    if (logistic.length) {
+      const strip = document.createElement('div');
+      strip.id = 'sqAdlibLogisticNote';
+      strip.style.cssText = [
+        'margin-top:10px','padding:7px 12px',
+        'background:rgba(0,0,0,.03)','border-radius:8px',
+        'border:1px solid rgba(0,0,0,.07)',
+        'font-size:12px','color:#666',
+        'display:flex','flex-wrap:wrap','gap:6px','align-items:center'
+      ].join(';');
+      const lbl = document.createElement('span');
+      lbl.style.cssText = 'font-weight:700;color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;';
+      lbl.textContent = 'Surcharges:';
+      strip.appendChild(lbl);
+      logistic.forEach(tid => {
         const t = tags[tid]; if (!t) return;
         const fee = t.fee ?? t.effects?.fee ?? 0;
         const chip = document.createElement('span');
-        chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;background:#fff;border:1px solid rgba(0,0,0,.12);font-size:12px;cursor:pointer;';
-        chip.innerHTML = sqTagLabel(t,tid) + (fee > 0 ? ' <span style="color:var(--clr-red-dark,#8a0615);font-weight:700">+$' + fee + '</span>' : '') + ' <i class="ti ti-x" style="font-size:10px;opacity:.5;margin-left:2px"></i>';
-        chip.title = 'Tap to remove';
+        chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;background:#fff;border:1px solid rgba(0,0,0,.12);font-size:12px;cursor:pointer;';
+        chip.innerHTML = sqTagLabel(t,tid)
+          + (fee > 0 ? ' <strong style="color:var(--clr-red-dark,#8a0615)">+$' + fee + '</strong>' : '')
+          + ' <i class="ti ti-x" style="font-size:10px;opacity:.4;margin-left:2px"></i>';
+        chip.title = 'Tap to remove this surcharge';
         chip.addEventListener('click', () => {
-          S.manTagIds = S.manTagIds.filter(id => id !== tid);
-          S.detTagIds = S.detTagIds.filter(id => id !== tid);
+          S.manTagIds  = S.manTagIds.filter(id => id !== tid);
+          S.detTagIds  = S.detTagIds.filter(id => id !== tid);
           S.userTagIds = (S.userTagIds||[]).filter(id => id !== tid);
           sqBuildStep3();
         });
-        noteEl.appendChild(chip);
+        strip.appendChild(chip);
       });
-      sent.parentElement?.insertBefore(noteEl, sent.nextSibling);
+      // Insert strip after the adlib box
+      const box = document.getElementById('sqAdlibBox');
+      if (box?.parentNode) box.parentNode.insertBefore(strip, box.nextSibling);
     }
 
     const box = document.getElementById('sqAdlibBox');
@@ -4313,20 +4422,28 @@ body.modal-active{overflow:hidden}
 
   function sqConfirmAdlib(){
     S.adlibConfirmed = true;
-    // Capture any edits the user made to the object noun inline
+    // Capture any inline edits the user made to the object noun
     const objEl = document.querySelector('#sqAdlibSentence .adlib-object');
     if (objEl) S._objectNoun = objEl.textContent.trim() || S._objectNoun;
 
-    const active = [...new Set([...S.detTagIds, ...S.manTagIds])];
-    const labels = active.map(tid => DB.smart_tags?.[tid] ? sqTagLabel(DB.smart_tags[tid],tid) : null).filter(Boolean);
+    // Build the summary label for the step 3 header
+    const active   = [...new Set([...S.detTagIds, ...S.manTagIds])];
+    const labels   = active.map(tid => DB.smart_tags?.[tid] ? sqTagLabel(DB.smart_tags[tid],tid) : null).filter(Boolean);
     const objLabel = S._objectNoun || S.intent?.label || 'item';
-    const locNote = S._location ? ' · ' + S._location : '';
+    const locNote  = S._location ? ' · ' + S._location : '';
     sqMarkDone(3, S.qty + '× ' + objLabel + (labels.length ? ' · ' + labels.join(', ') : '') + locNote);
 
-    // Append location to notes for the handyman
-    if (S._location && S.desc) {
-      S._notes = (S._notes || '') + ' Location: ' + S._location;
+    // Append all context to handyman notes
+    const noteParts = [];
+    if (S._location)    noteParts.push('Location: ' + S._location);
+    if (S._objectNoun)  noteParts.push('Item: ' + S._objectNoun);
+    if (S._sizeHint)    noteParts.push('Size: ' + S._sizeHint);
+    if (S.negatedTagIds.length) {
+      const negLabels = S.negatedTagIds.map(tid => DB.smart_tags?.[tid] ? sqTagLabel(DB.smart_tags[tid],tid) : tid);
+      noteParts.push('Confirmed NOT: ' + negLabels.join(', '));
     }
+    if (noteParts.length) S._notes = noteParts.join(' | ');
+
     sqRenderQuote();
   }
 
