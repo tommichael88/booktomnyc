@@ -167,6 +167,8 @@ body.modal-active{overflow:hidden}
 .focused-search-input:not(:placeholder-shown)+.search-clear-btn{display:flex}
 .service-item-grid{display:inlin-block;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}
 .service-group-header{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#fff9;background:#ffffff73;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:var(--radius-sm);width:auto}
+.focused-mode .sq-inline-bar { display: none; } /* default hidden in focused mode */
+.focused-mode #category-card { display: none !important; }
 .focused-mode .service-tile{display:flex !important;flex-direction:row !important;align-items:flex-start !important;gap:10px;padding:16px 12px !important;position:relative !important;min-height:140px;text-align:left !important;background:#ffffffa6;backdrop-filter:blur(10px);border:1px solid #fff9;border-radius:var(--radius-md);transition:var(--transition);box-shadow:0 4px 15px #00000026;cursor:pointer}
 .focused-mode .service-tile .service-item-icon{flex-shrink:0;width:42px;text-align:center;font-size:2.2rem;margin-top:4px;filter:none;opacity:1}
 .focused-mode .service-tile>div[style*="flex-direction: column"]{flex:1;display:flex;flex-direction:column;align-items:flex-start !important;gap:4px;min-width:0;position:relative}
@@ -1099,6 +1101,16 @@ body.modal-active{overflow:hidden}
   let SERVICE_DATA = null;
   let smartQuoteReady = false;
   let smartQuoteCallbacks = [];
+  let __sqActive = false;   // true = user is inside SmartQuote flow
+
+function updateSmartQuoteBarVisibility() {
+    const bar = document.getElementById('sqTextBar');
+    if (!bar) return;
+    const isFocused = document.querySelector('.main-card-schedule-service.focused-mode') !== null;
+    // Visible when: (not in focused mode) OR (focused mode AND __sqActive === true)
+    const shouldShow = !isFocused || (isFocused && __sqActive);
+    bar.style.display = shouldShow ? 'block' : 'none';
+}
 
   function onSmartQuoteReady(fn) {
    if (smartQuoteReady) {
