@@ -98,6 +98,20 @@ body.modal-active{overflow:hidden}
 .category-card h2{color:#000;font-size:clamp(.5rem,2vw,1.5rem);line-height:1;margin:0;position:relative;padding:0;z-index:1;text-shadow:2px 2px 4px transparent !important}
 .category-card:focus-visible{outline:3px solid #de0000;outline-offset:2px}
 .main-card-schedule-service.focused-mode{position:fixed !important;top:0;left:0;right:0;bottom:0;width:100vw !important;height:100dvh !important;margin:0 !important;padding:0 !important;background:#14141459 !important;backdrop-filter:blur(20px) saturate(1.6) !important;-webkit-backdrop-filter:blur(20px) saturate(1.6) !important;border:none !important;border-radius:0 !important;box-shadow:0 12px 40px #00000040 inset 0 1px 2px #ffffffb3 !important;z-index:9999 !important;overflow:hidden;display:flex;flex-direction:column;color:#1a1a1a}
+.step-node { transition: transform 0.2s ease; }
+.step-node:has(.step-dot.done), .step-node:has(.step-dot.active) { cursor: pointer; }
+.step-node:has(.step-dot.done):hover .step-dot, .step-node:has(.step-dot.active):hover .step-dot { transform: scale(1.15); box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+.step-node:not(:has(.step-dot.done)):not(:has(.step-dot.active)) { cursor: not-allowed; }
+.step-label { pointer-events: none; }
+.focused-mode .booking-step-bar { display: flex; background: #fff9; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid #00000014; box-shadow: 0 2px 10px #0000000f; color: #222; }
+.focused-mode .step-dot { background: #454545; border-color: #8a06154d; color: #fff; }
+.focused-mode .step-dot.active { background: #de0000; border-color: #ffffffb3; color: #fff; box-shadow: 0 0 0 4px #de000033; }
+.focused-mode .step-dot.done { background: #454545; border-color: #ffffff80; color: #fff; }
+.focused-mode .step-label { color: #444; }
+.focused-mode .step-dot.active + .step-label, .focused-mode .step-dot.done + .step-label { color: #111; font-weight: 700; }
+.focused-mode .step-connector { background: #0000001f; }
+.focused-mode .step-connector.done { background: #de0000; }
+.focused-mode .step-connector.active { background: #de0000 !important; }
 .focused-mode .booking-step-bar{display:flex;background:#fff9;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid #00000014;box-shadow:0 2px 10px #0000000f;color:#222}
 .focused-mode .step-dot{background:#454545;border-color:#8a06154d;color:#fff}
 .focused-mode .step-dot.active{background:#de0000;border-color:#ffffffb3;color:#fff;box-shadow:0 0 0 4px #de000033}
@@ -145,7 +159,6 @@ body.modal-active{overflow:hidden}
 .focused-mode .service-input-area{font-weight:400;min-height:80px;resize:vertical}
 .focused-mode .service-input-area::placeholder{color:#666}
 .focused-mode .summaryMainContainer{background:#ffffffbf;backdrop-filter:blur(12px);border:1px solid #00000014;box-shadow:var(--glass-shadow);color:#1a1a1a;border-radius:var(--radius-sm);margin-top:8px;overflow:hidden}
-/* ── Focused mode: hide space-wasting elements to maximize intake viewport ── */
 .focused-mode .main-card-schedule-service-header { display:none !important; }
 .focused-mode .new-service-request-grid-topper   { display:none !important; }
 .focused-mode #sqTextBar                         { display:none !important; }
@@ -1160,6 +1173,45 @@ function updateSmartQuoteBarVisibility() {
     else if (i + 1 === step) conn.classList.add('active');
    });
   }
+
+ function wireStepNavigation() {
+    const steps = [
+        { dotId: 'step1dot', stepNum: 1 }, // Category
+        { dotId: 'step2dot', stepNum: 2 }, // Type / Group
+        { dotId: 'step3dot', stepNum: 3 }, // Service
+        { dotId: 'step4dot', stepNum: 4 }  // Final
+    ];
+
+    steps.forEach(stepInfo => {
+        const dotElement = document.getElementById(stepInfo.dotId);
+        if (!dotElement) return;
+
+        const stepNode = dotElement.closest('.step-node');
+        if (!stepNode) return;
+
+        stepNode.addEventListener('click', (e) => {
+            // Only proceed if the step is clickable
+            if (dotElement.classList.contains('done') || dotElement.classList.contains('active')) {
+                
+                // Routing based on your requirements:
+                if (stepInfo.stepNum === 1) {
+                    // "1 should return to the category grid and exit focused mode"
+                    if (typeof window.sqRestart === 'function') window.sqRestart();
+                } 
+                else if (stepInfo.stepNum === 2) {
+                    // "Type should return to the group view in the category grid"
+                    // sqBuilderBack() typically handles reversing out of the selected service 
+                    // back to the sub-category/group list.
+                    if (typeof window.sqBuilderBack === 'function') window.sqBuilderBack();
+                } 
+                else {
+                    // Steps 3 & 4: Open the corresponding panel in the SmartQuote engine
+                    if (typeof window.sqOpenStep === 'function') window.sqOpenStep(stepInfo.stepNum);
+                }
+            }
+        });
+    });
+}
 
   /* ================================================================
      BUILD DATA MAPS (unchanged)
