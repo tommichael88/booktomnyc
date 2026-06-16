@@ -503,10 +503,11 @@ body.modal-active{overflow:hidden}
 #sqWriteForMeBtn:hover { background:rgba(222,0,0,.07); border-color:var(--clr-red,#de0000); }
 #sqWriteForMeBtn.active { background:var(--clr-red-dark,#8a0615); color:#fff; border-color:var(--clr-red-dark,#8a0615); }
 #smartQuoteEngine .chip.sq-hint { border-style:dashed; border-color:rgba(222,0,0,.3); color:var(--clr-red-dark,#8a0615); background:rgba(222,0,0,.04); }
-/* Intake chain questions — inline in step 3 */
-#sqIntakeChainWrap { animation:slideDown .2s ease; }
-#sqIntakeChainWrap button:hover { background:rgba(222,0,0,.06) !important; border-color:rgba(222,0,0,.4) !important; }
-#sqIntakeChainWrap button:active { transform:scale(.94); }
+/* Curated intake flow */
+.conf-meter-bar { transition: width .35s ease; }
+#sqAdlibBox .adlib-yes:disabled { opacity:.4; cursor:not-allowed; }
+#sqSb3 .chips { display:flex; flex-wrap:wrap; gap:7px; }
+#sqSb3 textarea { box-sizing:border-box; }
 @keyframes blink { 0%,100%{opacity:.4} 50%{opacity:1} }
 @keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
@@ -3851,161 +3852,6 @@ sqEl.innerHTML = `
   }
 
   /* ── STEP 3 ───────────────────────────────────────────────────── */
-  /* ── Intake chain questions for complex services ──────────────────
-     When a service card was tapped and its intake_chain has real
-     (non-quantity) modules, render them inline in step 3 ABOVE the
-     tag chips. Answers are stored in S.answers and flow into both
-     _computePrice (for the live price display) and computeSQQuote
-     (for the final locked price).
-  ── */
-  function sqRenderIntakeChainQuestions() {
-    const svc = S._svc;
-    if (!svc) return;
-    const QTY_MODS = new Set(['item_count','count','hybrid_qty','global_quantity','Install / Mount','Install']);
-    const allMods = _resolveIntakeChain(svc);
-    const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
-    if (realMods.length === 0) return;  // nothing to show
-
-    // Container
-    let wrap = document.getElementById('sqIntakeChainWrap');
-    if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.id = 'sqIntakeChainWrap';
-      wrap.style.cssText = 'margin-bottom:18px;';
-      // Insert before sqDetTags label
-      const detLabel = document.getElementById('sqDetTags')?.previousElementSibling;
-      const parent   = document.getElementById('sqDetTags')?.parentNode;
-      if (parent && detLabel) parent.insertBefore(wrap, detLabel);
-      else if (parent) parent.insertBefore(wrap, parent.firstChild);
-    }
-
-    const answers = S.answers = S.answers || {};
-
-    const renderWrap = () => {
-      wrap.innerHTML = '';
-
-      // Section header
-      const hdr = document.createElement('div');
-      hdr.style.cssText = 'font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--clr-red-dark,#8a0615);display:flex;align-items:center;gap:6px;margin-bottom:12px;';
-      hdr.innerHTML = '<i class="ti ti-clipboard-list" style="font-size:14px"></i> A few quick questions — they affect your price';
-      wrap.appendChild(hdr);
-
-      let stepNum = 0;
-      let allAnswered = true;
-
-      realMods.forEach(mod => {
-        if (!_isModVisible(mod, answers)) return;
-        const answered = !!answers[mod.moduleKey];
-        if (!answered) allAnswered = false;
-        stepNum++;
-
-        const step = document.createElement('div');
-        step.style.cssText = 'margin-bottom:14px;padding:12px 14px;background:' + (answered ? 'rgba(222,0,0,.04)' : '#fff') + ';border-radius:10px;border:1.5px solid ' + (answered ? 'rgba(222,0,0,.18)' : 'rgba(0,0,0,.1)') + ';transition:all .2s ease;';
-
-        const lbl = document.createElement('div');
-        lbl.style.cssText = 'font-size:.82rem;font-weight:700;color:#1a1a1a;margin-bottom:8px;display:flex;align-items:center;gap:6px;';
-        lbl.innerHTML = `<span style="background:${answered?'var(--clr-red,#de0000)':'#e5e7eb'};color:${answered?'#fff':'#666'};border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0">${stepNum}</span>`;
-        lbl.appendChild(document.createTextNode(mod.question));
-        if (mod.purpose === 'pricing') {
-          const badge = document.createElement('span');
-          badge.style.cssText = 'font-size:.65rem;font-weight:700;background:rgba(222,0,0,.1);color:var(--clr-red-dark,#8a0615);padding:1px 6px;border-radius:10px;white-space:nowrap;';
-          badge.textContent = '💲 affects price';
-          lbl.appendChild(badge);
-        }
-        step.appendChild(lbl);
-
-        const chips = document.createElement('div');
-        chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:7px;';
-        (mod.client_response || []).forEach(resp => {
-          const isSel = answers[mod.moduleKey] === resp.label;
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:999px;border:1.5px solid ' + (isSel?'transparent':'rgba(0,0,0,.15)') + ';background:' + (isSel?'linear-gradient(135deg,#8a0615,#de0000)':'#fff') + ';color:' + (isSel?'#fff':'#333') + ';font-size:.8rem;font-weight:600;cursor:pointer;transition:all .18s ease;min-height:38px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
-          if (isSel) btn.style.boxShadow = '0 2px 8px rgba(222,0,0,.3)';
-          if (isSel) btn.innerHTML = '<i class="ti ti-check" style="font-size:.75rem"></i>';
-          btn.appendChild(document.createTextNode(resp.label));
-          const fee = resp.effects?.fee;
-          if (fee > 0) {
-            const fspan = document.createElement('span');
-            fspan.style.cssText = 'font-size:.7rem;opacity:.8;';
-            fspan.textContent = '+$' + fee;
-            btn.appendChild(fspan);
-          }
-          btn.addEventListener('click', () => {
-            answers[mod.moduleKey] = resp.label;
-            // Apply tag effects from this response
-            (resp.tags || []).forEach(tagRef => {
-              const tid = typeof tagRef === 'string' ? tagRef : (tagRef?.$ref?.split('/').pop() ? '#'+tagRef.$ref.split('/').pop() : null);
-              if (tid && !S.manTagIds.includes(tid) && !S.detTagIds.includes(tid)) {
-                S.detTagIds.push(tid);
-              }
-            });
-            renderWrap();
-            sqUpdateIntakeAdlib();
-          });
-          chips.appendChild(btn);
-        });
-        step.appendChild(chips);
-        wrap.appendChild(step);
-      });
-
-      // Confidence progress bar
-      const answered = Object.keys(answers).filter(k => realMods.some(m => m.moduleKey === k)).length;
-      const pct = realMods.length > 0 ? Math.round((answered / realMods.length) * 100) : 100;
-      const confBar = document.createElement('div');
-      confBar.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:4px;margin-bottom:2px;';
-      confBar.innerHTML = `
-        <div style="flex:1;height:4px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
-          <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#de0000,#8a0615);border-radius:4px;transition:width .3s ease;"></div>
-        </div>
-        <span style="font-size:.7rem;font-weight:700;color:${pct===100?'var(--clr-red-dark,#8a0615)':'#888'};white-space:nowrap;">${pct}% complete${pct===100?' ✓':''}</span>`;
-      wrap.appendChild(confBar);
-
-      // Update adlib calculate button state
-      const adlibYes = document.querySelector('#sqAdlibBox .adlib-yes');
-      if (adlibYes) {
-        if (allAnswered) {
-          adlibYes.disabled = false;
-          adlibYes.style.opacity = '';
-          adlibYes.style.cursor = '';
-        } else {
-          adlibYes.disabled = true;
-          adlibYes.style.opacity = '0.45';
-          adlibYes.style.cursor = 'not-allowed';
-        }
-      }
-    };
-
-    renderWrap();
-  }
-
-  /* ── Update adlib live price from intake answers ──── */
-  function sqUpdateIntakeAdlib() {
-    const svc = S._svc;
-    if (!svc) return;
-    const allMods = _resolveIntakeChain(svc);
-    const QTY_MODS = new Set(['item_count','count','hybrid_qty','global_quantity','Install / Mount','Install']);
-    const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
-    const answers = S.answers || {};
-    const visible = realMods.filter(m => _isModVisible(m, answers));
-    const allDone = visible.every(m => !!answers[m.moduleKey]);
-
-    // Feed intake fee effects into S for computeSQQuote
-    let intakeExtraFee = 0;
-    realMods.forEach(mod => {
-      if (!_isModVisible(mod, answers)) return;
-      const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
-      if (!chosen) return;
-      intakeExtraFee += (chosen.effects?.fee || 0);
-    });
-    S._intakeExtraFee = intakeExtraFee;
-
-    // Rebuild adlib so pill price reflects intake
-    if (document.getElementById('sqAdlibBox')?.style.display === 'block') {
-      sqBuildAdlib();
-    }
-  }
-
   function sqBuildStep3() {
     S.manTagIds=[...new Set(S.manTagIds)];
     applySSOTRules();
@@ -4051,9 +3897,6 @@ sqEl.innerHTML = `
 
     // Auto-build adlib immediately
     sqBuildAdlib();
-
-    // ── Intake chain questions: render for complex services (must happen AFTER adlib) ──
-    sqRenderIntakeChainQuestions();
   }
 
   function sqToggleTag(el, tid){
@@ -4066,15 +3909,18 @@ sqEl.innerHTML = `
       S.manTagIds  = S.manTagIds.filter(x => x !== tid);
       S.detTagIds  = S.detTagIds.filter(x => x !== tid);
       S.userTagIds = (S.userTagIds||[]).filter(x => x !== tid);
-      // Do NOT re-add to negatedTagIds — user explicitly removed it → neutral state
+      // Add to explicitly-deselected set so rebuild doesn't re-add via NLP
+      S._userDeselected = S._userDeselected || new Set();
+      S._userDeselected.add(tid);
     } else {
       // ── SELECT: user is explicitly choosing this tag ────────────
+      S._userDeselected = S._userDeselected || new Set();
+      S._userDeselected.delete(tid); // user is re-selecting — clear deselect flag
 
       // 1. Remove from negatedTagIds — user is overriding any NLP negation
       S.negatedTagIds = S.negatedTagIds.filter(x => x !== tid);
 
       // 2. Remove mutually exclusive siblings from ALL state arrays
-      //    and also clear their negation (can't show "not heavy" if user picked "very heavy")
       mutuallyExclusive.forEach(sibId => {
         S.manTagIds     = S.manTagIds.filter(x => x !== sibId);
         S.detTagIds     = S.detTagIds.filter(x => x !== sibId);
@@ -4084,12 +3930,16 @@ sqEl.innerHTML = `
 
       // 3. Add to active sets
       if (!S.manTagIds.includes(tid))  S.manTagIds.push(tid);
-      if (!(S.userTagIds||[]).includes(tid)) {
-        S.userTagIds = S.userTagIds || [];
-        S.userTagIds.push(tid); // explicit user tap → 100% confidence
-      }
+      S.userTagIds = S.userTagIds || [];
+      if (!S.userTagIds.includes(tid)) S.userTagIds.push(tid);
     }
-    sqBuildStep3();
+
+    // ── Re-render: curated mode uses its own render, standard uses sqBuildStep3 ──
+    if (S._curatedMode && window._sqCuratedRender) {
+      window._sqCuratedRender();
+    } else {
+      sqBuildStep3();
+    }
   }
 
   function sqAdjQty(d){
@@ -4570,26 +4420,26 @@ sqEl.innerHTML = `
     extraFee += ctxFee;
     extraMin += ctxMin;
 
-    // ── Intake chain fee effects (from structured questions in step 3) ──
-    // These are pre-computed in sqUpdateIntakeAdlib and stored on S._intakeExtraFee
-    // For flat_rate services they adjust the base; for others they add to extraFee
+    // ── Curated intake: apply fee/minutes from answered intake_chain questions ──
+    // S._intakeExtraFee is computed by sqBuildCuratedIntake render()
     if (S._intakeExtraFee) extraFee += S._intakeExtraFee;
-    // Also compute directly from S.answers + S._svc for accuracy
+    if (S._intakeExtraMin) extraMin += S._intakeExtraMin;
+    // Also directly compute from S.answers + S._svc to ensure accuracy at confirm time
     if (S._svc && S.answers && Object.keys(S.answers).length > 0) {
-      const _mods = _resolveIntakeChain(S._svc);
-      const _QM = new Set(['item_count','count','hybrid_qty','global_quantity','Install / Mount','Install']);
-      let _directFee = 0, _directMin = 0;
-      _mods.filter(m => !_QM.has(m.moduleKey)).forEach(mod => {
+      const _QM   = new Set(['item_count','count','hybrid_qty','global_quantity','Install / Mount','Install']);
+      const _mods = _resolveIntakeChain(S._svc).filter(m => !_QM.has(m.moduleKey));
+      let _df = 0, _dm = 0;
+      _mods.forEach(mod => {
         if (!_isModVisible(mod, S.answers)) return;
         const chosen = (mod.client_response || []).find(r => r.label === S.answers[mod.moduleKey]);
         if (!chosen) return;
-        _directFee += (chosen.effects?.fee || 0);
-        _directMin += (chosen.effects?.minutes || 0);
+        _df += (chosen.effects?.fee || 0);
+        _dm += (chosen.effects?.minutes || 0);
       });
-      // Use direct calculation (overrides the cached _intakeExtraFee to avoid double-counting)
-      if (_directFee || _directMin) {
-        extraFee = (extraFee - (S._intakeExtraFee || 0)) + _directFee;
-        extraMin += _directMin;
+      // Override cached values with fresh calculation at quote time
+      if (_df > 0 || _dm > 0) {
+        extraFee = extraFee - (S._intakeExtraFee || 0) + _df;
+        extraMin = extraMin - (S._intakeExtraMin || 0) + _dm;
       }
     }
 
@@ -4781,14 +4631,13 @@ sqEl.innerHTML = `
   }
 
   function sqRestart(){
-    S={qty:1,intent:null,stype:null,detTagIds:[],manTagIds:[],negatedTagIds:[],userTagIds:[],desc:'',adlibConfirmed:false,_suggestedTagIds:[],answers:{},_svc:null,_intakeExtraFee:0};
+    S={qty:1,intent:null,stype:null,detTagIds:[],manTagIds:[],negatedTagIds:[],userTagIds:[],desc:'',adlibConfirmed:false,_suggestedTagIds:[],answers:{},_svc:null,_intakeConf:0,_intakeExtraFee:0,_intakeExtraMin:0,_curatedMode:false,_jobNotes:'',_userDeselected:new Set()};
+    window._sqCuratedRender = null;
     const out=document.getElementById('sqQuoteOut');if(out)out.innerHTML='';
     const desc=document.getElementById('sqDescIn');if(desc)desc.value='';
     // Clear stale containers to prevent duplicate question listeners
     const staleTypes=document.getElementById('sqTypeChips');if(staleTypes)staleTypes.innerHTML='';
     const staleDetTags=document.getElementById('sqDetTags');if(staleDetTags)staleDetTags.innerHTML='';
-    // Clear intake chain questions
-    const sqICW=document.getElementById('sqIntakeChainWrap');if(sqICW)sqICW.remove();
     // Reset step cards
     [2,3].forEach(n=>{
       const sc=document.getElementById('sqSc'+n),sb=document.getElementById('sqSb'+n),sn=document.getElementById('sqSn'+n),sv=document.getElementById('sqSv'+n);
@@ -4908,6 +4757,346 @@ sqEl.innerHTML = `
 }
 
   /* ── Card tap → skip straight to step 3 ──────────────────────── */
+
+  /* ═══════════════════════════════════════════════════════════════
+     CURATED INTAKE FLOW — for complex services with real intake_chain
+     
+     Replaces the generic step-3 chip dump for services like
+     Prehung Door Install. Shows:
+       1. Service context header (icon, name, description, starting price)
+       2. Structured intake questions from intake_chain (one card each)
+       3. Job notes NLP text field (narrows chip suggestions)
+       4. Confidence meter (tracks toward minimum_quote_confidence)
+       5. Curated smart tags (filtered to only job-relevant chips)
+       6. Live-updating adlib summary
+  ═══════════════════════════════════════════════════════════════ */
+  function sqBuildCuratedIntake(svc) {
+    S._svc     = svc;
+    S.answers  = S.answers  || {};
+    S._intakeConf = S._intakeConf || 0;
+
+    // Open step 3
+    sqUnlock(3); sqOpen(3);
+
+    const sb3 = document.getElementById('sqSb3');
+    if (!sb3) return;
+
+    // ── Resolve intake modules ──────────────────────────────────
+    const QTY_MODS = new Set(['item_count','count','hybrid_qty','global_quantity','Install / Mount','Install']);
+    const allMods  = _resolveIntakeChain(svc);
+    const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
+
+    // ── Min confidence from service strategy ────────────────────
+    const minConf    = svc.confidence_strategy?.minimum_quote_confidence || 80;
+    const maxQs      = svc.confidence_strategy?.maximum_followup_questions || 5;
+
+    // ── Curated tags: ONLY relevant for this service type ───────
+    // For door installs: access, logistics, emergency — NOT tile/furniture/plumbing chips
+    const DOOR_GROUP_WHITELIST = new Set(['minor_home_repairs','minor_home_repairs_doors']);
+    const CURATED_TAG_WHITELIST = new Set([
+      '#high_ceiling','#very_high_ceiling','#two_person_required',
+      '#emergency','#no_parking','#access_obstructed',
+      '#disposal_needed','#high_volume'
+    ]);
+    const cat = S.intent?.category || 'other';
+    const groupId = svc.ui_taxonomy?.group_id || S.intent?._groupId;
+    const tags = DB.smart_tags || {};
+
+    // Build curated tag list: use whitelist for door-like services,
+    // otherwise fall back to category filtering with group restrictions
+    const getCuratedTags = () => {
+      // Check if this is a doors-type service
+      const isDoorLike = groupId && (groupId.includes('door') || groupId.includes('repair'));
+      const isWallMount = cat === 'wall_mounting';
+      const curatedKeys = Object.keys(tags).filter(tid => {
+        if (!tagValidForCategory(tid, cat, groupId)) return false;
+        const t = tags[tid];
+        const dg = t.display_group || '';
+        // For door services: restrict to job constraints + logistics, skip material/furniture
+        if (isDoorLike) {
+          return CURATED_TAG_WHITELIST.has(tid) || dg === 'Job Constraints';
+        }
+        // For wall mounting: include Wall Material
+        if (isWallMount) {
+          return ['Job Constraints','Wall Material'].includes(dg) || CURATED_TAG_WHITELIST.has(tid);
+        }
+        // Default: exclude clearly irrelevant groups
+        const IRRELEVANT_GROUPS = new Set(['Plumbing Conditions']);
+        if (IRRELEVANT_GROUPS.has(dg)) return false;
+        // Also exclude tiles/furniture chips for install jobs
+        const INSTALL_IRRELEVANT = new Set(['#cracked_tile','#broken_leg','#scratched_surface','#wobbly','#furniture_assembly_ikea']);
+        if (S.stype === 'Install' && INSTALL_IRRELEVANT.has(tid)) return false;
+        return true;
+      });
+      return curatedKeys;
+    };
+
+    // ── Build the full UI ────────────────────────────────────────
+    const render = () => {
+      const answers    = S.answers;
+      const manTagIds  = S.manTagIds;
+      const detTagIds  = S.detTagIds;
+      const noteText   = S._jobNotes || '';
+
+      // Compute current confidence
+      let conf = 0;
+      // Service type is known (came from card) → base confidence
+      conf += 25;
+      // Each answered intake question
+      realMods.forEach(mod => {
+        if (answers[mod.moduleKey]) conf += (mod.confidence_gain || 15);
+      });
+      // Job notes give partial NLP confidence
+      if (noteText && noteText.length > 10) conf += 10;
+      // Each selected tag chip gives a small boost
+      const activeTagCount = [...new Set([...manTagIds,...detTagIds])].length;
+      conf += Math.min(activeTagCount * 5, 15);
+      conf = Math.min(conf, 100);
+      S._intakeConf = conf;
+      const confReady = conf >= minConf;
+
+      // Compute intake fees so adlib shows live price
+      let intakeFeeAdj = 0, intakeMinAdj = 0;
+      realMods.forEach(mod => {
+        if (!_isModVisible(mod, answers)) return;
+        const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
+        if (!chosen) return;
+        intakeFeeAdj += (chosen.effects?.fee || 0);
+        intakeMinAdj += (chosen.effects?.minutes || 0);
+      });
+      S._intakeExtraFee = intakeFeeAdj;
+      S._intakeExtraMin = intakeMinAdj;
+
+      // Clear and rebuild step 3 body
+      sb3.innerHTML = '';
+
+      // ── Service context header ───────────────────────────────
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;padding:14px;background:rgba(222,0,0,.04);border-radius:10px;border:1.5px solid rgba(222,0,0,.12);';
+      const icon = svc.ui_taxonomy?.icon || '🔧';
+      const baseP = svc.financial_engine?.base_price || 0;
+      const dispP = baseP + intakeFeeAdj;
+      hdr.innerHTML = `
+        <span style="font-size:2rem;flex-shrink:0;line-height:1;">${icon}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.9rem;font-weight:800;color:#1a1a1a;margin-bottom:3px;">${svc.ui_taxonomy?.display_name || svc.id}</div>
+          <div style="font-size:.75rem;color:#555;line-height:1.4;margin-bottom:6px;">${svc.ui_taxonomy?.description || ''}</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--clr-red-dark,#8a0615);">
+            ${intakeFeeAdj > 0 ? `Labor from $${dispP} <span style="font-size:.65rem;opacity:.7">(+$${intakeFeeAdj} for selected options)</span>` : `Labor from $${baseP}`}
+          </div>
+        </div>`;
+      sb3.appendChild(hdr);
+
+      // ── Confidence meter ─────────────────────────────────────
+      const meterWrap = document.createElement('div');
+      meterWrap.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:14px;';
+      const pct = conf;
+      const meterColor = conf >= minConf ? '#16a34a' : conf >= 50 ? '#de0000' : '#f59e0b';
+      meterWrap.innerHTML = `
+        <div style="flex:1;height:6px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${meterColor};border-radius:4px;transition:width .35s ease;"></div>
+        </div>
+        <span style="font-size:.7rem;font-weight:800;color:${meterColor};white-space:nowrap;min-width:80px;text-align:right;">
+          ${conf >= minConf ? '✓ Ready to estimate' : `${pct}% — answer below`}
+        </span>`;
+      sb3.appendChild(meterWrap);
+
+      // ── Intake questions ─────────────────────────────────────
+      if (realMods.length > 0) {
+        const qHdr = document.createElement('div');
+        qHdr.style.cssText = 'font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--clr-red-dark,#8a0615);display:flex;align-items:center;gap:6px;margin-bottom:10px;';
+        qHdr.innerHTML = '<i class="ti ti-clipboard-list" style="font-size:13px"></i> Required — these affect your price';
+        sb3.appendChild(qHdr);
+
+        let visibleStep = 0;
+        realMods.forEach((mod, idx) => {
+          if (!_isModVisible(mod, answers)) return;
+          visibleStep++;
+          const answered = !!answers[mod.moduleKey];
+
+          const card = document.createElement('div');
+          card.style.cssText = `margin-bottom:10px;padding:12px 14px;border-radius:10px;border:1.5px solid ${answered ? 'rgba(222,0,0,.25)' : 'rgba(0,0,0,.1)'};background:${answered ? 'rgba(222,0,0,.03)' : '#fff'};transition:all .2s;`;
+
+          const lbl = document.createElement('div');
+          lbl.style.cssText = 'font-size:.83rem;font-weight:700;color:#1a1a1a;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;';
+          lbl.innerHTML = `<span style="background:${answered ? 'var(--clr-red,#de0000)' : '#e5e7eb'};color:${answered ? '#fff' : '#555'};width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0;">${visibleStep}</span>${mod.question}`;
+          if (mod.purpose === 'pricing') {
+            const badge = document.createElement('span');
+            badge.style.cssText = 'font-size:.62rem;font-weight:700;background:rgba(222,0,0,.1);color:var(--clr-red-dark,#8a0615);padding:1px 7px;border-radius:20px;white-space:nowrap;';
+            badge.textContent = '💲 affects price';
+            lbl.appendChild(badge);
+          }
+          card.appendChild(lbl);
+
+          const chipRow = document.createElement('div');
+          chipRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:7px;';
+          (mod.client_response || []).forEach(resp => {
+            const isSel = answers[mod.moduleKey] === resp.label;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const fee = resp.effects?.fee;
+            btn.style.cssText = `display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:999px;min-height:38px;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .18s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;border:1.5px solid ${isSel ? 'transparent' : 'rgba(0,0,0,.13)'};background:${isSel ? 'linear-gradient(135deg,#8a0615,#de0000)' : '#fff'};color:${isSel ? '#fff' : '#333'};${isSel ? 'box-shadow:0 2px 8px rgba(222,0,0,.3);' : ''}`;
+            if (isSel) btn.innerHTML = '<i class="ti ti-check" style="font-size:.72rem"></i>';
+            btn.appendChild(document.createTextNode(resp.label));
+            if (fee > 0) {
+              const fs = document.createElement('span');
+              fs.style.cssText = `font-size:.7rem;opacity:${isSel ? '.85' : '.6'};`;
+              fs.textContent = '+$' + fee;
+              btn.appendChild(fs);
+            }
+            btn.addEventListener('click', () => {
+              answers[mod.moduleKey] = resp.label;
+              // Apply tag effects from this response answer
+              (resp.tags || []).forEach(tagRef => {
+                const tid = typeof tagRef === 'string' ? tagRef : (tagRef?.$ref ? '#' + tagRef.$ref.split('/').pop().replace('#','') : null);
+                if (tid && tags[tid] && !S.detTagIds.includes(tid) && !S.manTagIds.includes(tid))
+                  S.detTagIds.push(tid);
+              });
+              render();
+            });
+            chipRow.appendChild(btn);
+          });
+          card.appendChild(chipRow);
+          sb3.appendChild(card);
+        });
+      }
+
+      // ── Job Notes (NLP) ──────────────────────────────────────
+      const notesWrap = document.createElement('div');
+      notesWrap.style.cssText = 'margin-bottom:14px;';
+      notesWrap.innerHTML = `
+        <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#555;display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <i class="ti ti-notes" style="font-size:13px"></i> Job Notes <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.7rem;color:#999;">— optional but helps refine estimate</span>
+        </div>`;
+      const notesTA = document.createElement('textarea');
+      notesTA.style.cssText = 'width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(0,0,0,.13);background:#fafafa;font-size:.83rem;line-height:1.5;color:#222;resize:none;min-height:64px;box-sizing:border-box;outline:none;font-family:inherit;transition:border .15s;';
+      notesTA.placeholder = 'e.g. door is 30" × 80", rough opening already prepped, standard interior hollow core preferred…';
+      notesTA.value = noteText;
+      notesTA.addEventListener('focus', () => notesTA.style.borderColor = 'var(--clr-red,#de0000)');
+      notesTA.addEventListener('blur',  () => notesTA.style.borderColor = 'rgba(0,0,0,.13)');
+      notesTA.addEventListener('input', () => {
+        S._jobNotes = notesTA.value;
+        // Run NLP on notes to suggest/detect tags
+        const nlp = detectTagsNLP(notesTA.value);
+        nlp.found.forEach(tid => {
+          if (tagValidForCategory(tid, cat, groupId) && !S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
+            S.detTagIds.push(tid);
+        });
+        // Rebuild confidence meter and adlib only (not full re-render to avoid textarea reset)
+        const meter = sb3.querySelector('.conf-meter-bar');
+        if (meter) {
+          const newConf = Math.min(S._intakeConf + (notesTA.value.length > 10 ? 10 : 0), 100);
+          meter.style.width = newConf + '%';
+        }
+        if (document.getElementById('sqAdlibBox')?.style.display === 'block') sqBuildAdlib();
+      });
+      notesWrap.appendChild(notesTA);
+      sb3.appendChild(notesWrap);
+
+      // ── Curated smart tag chips ──────────────────────────────
+      const curatedTids = getCuratedTags();
+      if (curatedTids.length > 0) {
+        const exist = new Set([...S.detTagIds,...S.negatedTagIds,...S.manTagIds]);
+        const grouped = {};
+        curatedTids.forEach(tid => {
+          const g = tags[tid].display_group || 'Job Conditions';
+          (grouped[g] = grouped[g] || []).push(tid);
+        });
+        const chipHdr = document.createElement('div');
+        chipHdr.style.cssText = 'font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#555;display:flex;align-items:center;gap:6px;margin-bottom:10px;';
+        chipHdr.innerHTML = '<i class="ti ti-adjustments" style="font-size:13px"></i> Any special conditions? <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.7rem;color:#999;">tap to add</span>';
+        sb3.appendChild(chipHdr);
+        const groupWrap = document.createElement('div');
+        groupWrap.id = 'sqDynGroups';
+        groupWrap.style.cssText = 'margin-bottom:14px;';
+        let chipHtml = '';
+        for (const [gName, gTids] of Object.entries(grouped)) {
+          let chips = '';
+          gTids.forEach(tid => {
+            const t = tags[tid];
+            const sel = exist.has(tid) && !S.negatedTagIds.includes(tid);
+            const locked = !sel && gTids.some(o => exist.has(o) && tags[o]?.mutually_exclusive?.includes(tid));
+            const hint = (S._suggestedTagIds || []).includes(tid) && !sel;
+            const fee = t.fee ?? t.effects?.fee ?? 0;
+            const lbl = sqTagLabel(t, tid);
+            chips += sel
+              ? `<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${lbl}${fee > 0 ? ' +$'+fee : ''}</span>`
+              : `<span class="chip${locked ? ' locked' : hint ? ' sq-hint' : ''}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-${hint ? 'bulb' : 'plus'}"></i> ${lbl}${fee > 0 ? ' <span style=\"opacity:.55;font-size:.75em\">+$'+fee+'</span>' : ''}</span>`;
+          });
+          if (chips) chipHtml += `<div class="group-label" style="font-size:.7rem;">${gName}</div><div class="chips" style="margin-bottom:8px;">${chips}</div>`;
+        }
+        groupWrap.innerHTML = chipHtml;
+        sb3.appendChild(groupWrap);
+      } else {
+        // Ensure sqDynGroups exists even if empty (needed by sqToggleTag)
+        const gw = document.createElement('div');
+        gw.id = 'sqDynGroups';
+        sb3.appendChild(gw);
+      }
+
+      // ── Auto-detected conditions (from NLP on notes) ──────────
+      const det = document.createElement('div');
+      det.id = 'sqDetTags';
+      det.className = 'chips';
+      det.style.cssText = 'margin-bottom:12px;';
+      const selDet = [...new Set([...S.detTagIds,...S.manTagIds])].filter(tid => tags[tid]);
+      if (selDet.length > 0) {
+        const detHdr = document.createElement('div');
+        detHdr.style.cssText = 'font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#555;margin-bottom:8px;';
+        detHdr.textContent = 'Detected from your notes:';
+        sb3.appendChild(detHdr);
+        selDet.forEach(tid => {
+          const t = tags[tid];
+          const fee = t.fee ?? t.effects?.fee ?? 0;
+          const span = document.createElement('span');
+          span.className = 'chip sel gtag';
+          span.setAttribute('data-tid', tid);
+          span.onclick = () => sqToggleTag(span, tid);
+          span.innerHTML = `<i class="ti ti-check"></i> ${sqTagLabel(t,tid)}${fee > 0 ? ' +$'+fee : ''}`;
+          det.appendChild(span);
+        });
+      }
+      sb3.appendChild(det);
+
+      // ── Qty stepper ───────────────────────────────────────────
+      const qtyWrap = document.createElement('div');
+      qtyWrap.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:16px;';
+      qtyWrap.innerHTML = `
+        <span style="font-size:.75rem;font-weight:600;color:#555;">Quantity:</span>
+        <button class="qbtn" onclick="sqAdjQty(-1)">−</button>
+        <span class="qval" id="sqQtyV" style="min-width:28px;text-align:center;">${S.qty}</span>
+        <button class="qbtn" onclick="sqAdjQty(1)">+</button>
+        <span class="qlabel" id="sqQtyLbl">${svc.ui_taxonomy?.display_name?.toLowerCase().includes('door') ? 'door' : 'item'}</span>`;
+      sb3.appendChild(qtyWrap);
+
+      // ── Adlib summary ─────────────────────────────────────────
+      const adlibBox = document.createElement('div');
+      adlibBox.id = 'sqAdlibBox';
+      adlibBox.className = 'adlib-box sq-stepflow';
+      adlibBox.style.cssText = 'display:block;margin-top:4px;';
+      adlibBox.innerHTML = `
+        <div class="adlib-label"><i class="ti ti-adjustments-horizontal" style="font-size:16px;color:var(--clr-red,#de0000)"></i> Job Summary</div>
+        <div class="adlib-sentence" id="sqAdlibSentence"></div>
+        <div class="adlib-confirm-row">
+          <button class="adlib-yes" onclick="sqConfirmAdlib()" ${confReady ? '' : 'disabled style="opacity:.4;cursor:not-allowed;"'}>
+            <i class="ti ti-calculator"></i> ${confReady ? 'Calculate Estimate' : 'Answer questions above first'}
+          </button>
+          <button class="adlib-no" onclick="sqRestart()"><i class="ti ti-arrow-left"></i> Back</button>
+        </div>`;
+      sb3.appendChild(adlibBox);
+
+      // Build adlib sentence
+      sqBuildAdlib();
+    };
+
+    // Override sqToggleTag to re-render curated intake (not full step 3)
+    S._curatedMode = true;
+    render();
+
+    // Expose render for sqToggleTag callback
+    window._sqCuratedRender = render;
+  }
+
   function prefillSmartQuoteFromService(svc, category_id){
     const prof=getServiceProfile(svc);
 
@@ -4952,8 +5141,10 @@ sqEl.innerHTML = `
       stype:(svc.service_type||'Repair').replace('Install / Mount','Install').replace('Install/Mount','Install'),
       desc:svc.ui_taxonomy?.display_name||svc.id,
       detTagIds:[],manTagIds:[],negatedTagIds:[],adlibConfirmed:false,
-      _svc: svc,          // ← store service reference for intake_chain access
-      answers: {}         // ← intake question answers (feeds _computePrice / computeSQQuote)
+      _svc: svc,
+      answers: {},
+      _intakeConf: 0,
+      userTagIds: []
     };
 
     // Seed default_tags from the service record
@@ -5043,8 +5234,13 @@ sqEl.innerHTML = `
       // Show focused adlib confirmation with just qty — no tag chips
       sqRenderSelfQuoteAdlib(svc);
     } else {
-      // Normal flow: show step 3 chip grid
-      sqBuildStep3();
+      // ── Complex service with real intake_chain → curated intake flow ──
+      const hasRealIntake = chain.some(m => !QTY_MODS.has(m.module));
+      if (hasRealIntake) {
+        sqBuildCuratedIntake(svc);
+      } else {
+        sqBuildStep3();
+      }
     }
     document.getElementById('smartQuoteEngine')?.scrollIntoView({behavior:'smooth',block:'start'});
   }
