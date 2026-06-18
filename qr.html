@@ -429,6 +429,8 @@ body.modal-active{overflow:hidden}
 .intake-cancel-btn:hover{background:#ffe;border-color:#de0000;color:#8a0615}
 .intake-live-price{font-size:.8rem;font-weight:700;color:#ffffffbf;text-align:center;margin-top:6px}
 .service-tile.intake-active{border-color:var(--clr-red) !important;box-shadow:0 0 0 3px #de000033 0 4px 15px #00000026 !important}
+.service-tile.service-tile-other{border-style:dashed;border-color:rgba(30,58,138,.3);background:rgba(30,58,138,.04);}
+.service-tile.service-tile-other:hover{border-color:#1e3a8a;background:rgba(30,58,138,.08);}
 .sq-context-banner{background:linear-gradient(135deg,#8a061514,#de00000a);border:1px solid #de000033;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#5a0010;display:flex;align-items:flex-start;gap:8px}
 .sq-context-banner i{color:#de0000;margin-top:1px;flex-shrink:0}
 #smartQuoteEngine { width:100%; display:flex; flex-direction:column; gap:0; margin-top:14px; }
@@ -1166,17 +1168,17 @@ function enableLiveAdLibPreview() {
         const label = document.getElementById('sqUnifiedActionLabel');
         const overrideLink = document.getElementById('sqManualOverrideLink');
         if (!btn || !label) return;
-        const CONFIDENT_THRESHOLD = 55; // roughly matches medium_confidence_standard
+        const CONFIDENT_THRESHOLD = 55;
         const hasText = !!(previewText && previewText.trim());
         const isConfident = hasText && confidence >= CONFIDENT_THRESHOLD;
 
         window._sqUnifiedMode = isConfident ? 'confirm' : 'build';
         if (isConfident) {
-            label.textContent = 'Looks right — continue';
+            label.textContent = 'Looks right — get an estimate';
             btn.classList.add('sq-unified-confident');
             if (overrideLink) overrideLink.style.display = 'block';
         } else {
-            label.textContent = hasText ? 'Not quite what we meant? Build it step by step' : 'Build it step by step';
+            label.textContent = hasText ? 'Get an estimate' : 'Describe your job step by step';
             btn.classList.remove('sq-unified-confident');
             if (overrideLink) overrideLink.style.display = 'none';
         }
@@ -2077,6 +2079,48 @@ function enableLiveAdLibPreview() {
                 }
 
 
+
+                /** createOtherTileElement — renders a synthetic '[Group] Other' tile.
+                 *  Visually distinct from named service cards: uses the GROUP'S own
+                 *  emoji (not a generic service-type icon) so it fits in context, and
+                 *  a dashed border to signal it's a 'describe your own' entry point
+                 *  rather than a fixed-price catalog item. */
+                function createOtherTileElement(tile, category_id) {
+                    const groupId = tile.ui_taxonomy?.group_id;
+                    const group = groupId ? groupMap.get(groupId) : null;
+                    // Inherit the GROUP's icon — the group context is already
+                    // established (user is browsing Cabinets, Windows, etc.) so
+                    // repeating the group emoji makes the Other tile feel like
+                    // a natural extension of the list rather than a foreign element.
+                    const groupIcon = group?.icon || tile.ui_taxonomy?.icon || '✏️';
+                    const card = create('div', {
+                        class: 'service-tile service-tile-other',
+                        tabindex: '0',
+                        role: 'button',
+                        'aria-label': tile.ui_taxonomy?.display_name + ' — describe your own'
+                    });
+                    const iconEl = create('div', { class: 'service-item-icon', text: groupIcon });
+                    const info = document.createElement('div');
+                    info.style.cssText = 'width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:3px;';
+                    info.appendChild(create('h4', { text: tile.ui_taxonomy?.display_name || 'Other' }));
+                    info.appendChild(create('span', {
+                        text: '✏️ Smart Quote',
+                        style: 'font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#1e3a5f;color:#bfdbfe;display:inline-block;margin-bottom:3px;'
+                    }));
+                    info.appendChild(create('div', {
+                        class: 'service-tile-expanded',
+                        text: tile.ui_taxonomy?.description || 'Describe what you need — we\'ll build a precise quote.',
+                        style: 'display:block;'
+                    }));
+                    card.appendChild(iconEl);
+                    card.appendChild(info);
+                    const handler = () => prefillSmartQuoteFromOtherTile(tile, category_id);
+                    card.addEventListener('click', handler);
+                    card.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+                    });
+                    return card;
+                }
 
                 function createServiceCardElement(svc, category_id) {
                     const card = create('div', {
@@ -3516,20 +3560,27 @@ function enableLiveAdLibPreview() {
                             return;
                         }
                     }
-                    // Soft duplicate warning — not a hard block since someone
-                    // may genuinely want two of the same service for different
-                    // rooms. Without this, identical entries could silently
-                    // accumulate (the only existing guard, cartLimiter, is a
-                    // pure time-window throttle, not content-based detection).
+                    // Duplicate detection: merge qty rather than showing a confirm()
+                    // dialog. A TV mount in two rooms, two drawer adjustments, etc.
+                    // are genuinely common multi-qty requests — interrupting with a
+                    // dialog is hostile UX. Instead, find an existing matching entry
+                    // and increment its qty (same pattern as furniture assembly merge),
+                    // show a toast, and return. The cart overlay shows qty with ±
+                    // controls so the user can adjust or remove if it was accidental.
                     const dupe = State.serviceRequest.find(item =>
                         item.name === entry.name &&
                         item.category_id === entry.category_id &&
-                        item.price === entry.price
+                        item.price === entry.price &&
+                        !item.furnitureItems // furniture has its own merge path above
                     );
                     if (dupe) {
-                        const ok = window.confirm(`"${entry.name}" (${entry.price}) is already in your request. Add another?`);
-                        if (!ok) return;
+                        dupe.qty = (dupe.qty || 1) + 1;
+                        dupe.notes = entry.notes || dupe.notes; // update with latest notes
+                        renderCart();
+                        toast(`${entry.name} — qty updated to ${dupe.qty}`, 'success');
+                        return;
                     }
+                    entry.qty = entry.qty || 1;
                     State.serviceRequest.push(entry);
                     if (DOM.cartFab) {
                         DOM.cartFab.style.animation = 'none';
@@ -4564,7 +4615,7 @@ function enableLiveAdLibPreview() {
       <i class="ti ti-sparkles"></i> <span id="sqUnifiedActionLabel">Build it step by step</span>
     </button>
     <button id="sqManualOverrideLink" type="button" onclick="window.sqToggleBuilder()" style="display:none;">
-      Not quite — let me build it instead
+      Not quite — let me adjust it
     </button>
   </div>
       <!-- Guided builder: shown when user taps "Write it for me" -->
@@ -4679,12 +4730,136 @@ function enableLiveAdLibPreview() {
                  *  confidence runs the real analysis and proceeds. Empty input
                  *  always opens the builder — there's nothing to be confident
                  *  about yet. */
+                /** resolveGroupFromIntent — maps NLP output (category + extracted
+                 *  object noun + stype) to the most relevant group ID within that
+                 *  category. This is the missing bridge that lets free-text entry
+                 *  route to the correct group's Other tile rather than a generic
+                 *  dynamic_service estimate. Rules are object-noun–keyword matching,
+                 *  with a sane catch-all for each category. Returns null if no
+                 *  clear group can be determined (caller falls back to plain wizard).*/
+                function resolveGroupFromIntent(category, objectNoun, stype) {
+                    if (!category || !DB?.group) return null;
+                    const obj = (objectNoun || '').toLowerCase();
+                    const groups = DB.group.filter(g => g.category_id === category);
+                    if (!groups.length) return null;
+
+                    // ── Cross-category override by object noun ─────────────────
+                    // 'install' keyword maps to minor_home_repairs but some objects
+                    // clearly belong in other categories — fan, router, thermostat etc.
+                    const crossCategory = [
+                        { keywords: ['fan','ceiling fan'], cat: 'electric_lighting', group: 'electric_lighting_fans' },
+                        { keywords: ['light','fixture','chandelier','pendant','sconce','bulb'], cat: 'electric_lighting', group: 'electric_lighting_light_fixtures' },
+                        { keywords: ['outlet','socket','gfci','usb outlet'], cat: 'electric_lighting', group: 'electric_lighting_outlets' },
+                        { keywords: ['switch','dimmer'], cat: 'electric_lighting', group: 'electric_lighting_switches' },
+                        { keywords: ['thermostat','nest','ecobee'], cat: 'electric_lighting', group: 'electric_lighting_thermostats' },
+                        { keywords: ['router','wifi','extender','network'], cat: 'tech_trouble', group: 'tech_trouble_networking' },
+                        { keywords: ['smart home','smart plug','smart speaker','alexa','google home'], cat: 'tech_trouble', group: 'tech_trouble_smart_home' },
+                        { keywords: ['faucet','tap','sink'], cat: 'plumbing_help', group: 'plumbing_help_sinks' },
+                        { keywords: ['toilet','bidet'], cat: 'plumbing_help', group: 'plumbing_help_toilets' },
+                        { keywords: ['disposal','garbage disposal'], cat: 'plumbing_help', group: 'plumbing_help_garbage_disposals' },
+                        { keywords: ['shower','tub','spout'], cat: 'plumbing_help', group: 'plumbing_help_showers_tubs' },
+                    ];
+                    for (const cc of crossCategory) {
+                        if (cc.keywords.some(kw => obj.includes(kw))) {
+                            const ccGroup = (DB.group || []).find(g => g.id === cc.group);
+                            if (ccGroup) return cc.group;
+                        }
+                    }
+
+                    // ── Per-category routing rules ──────────────────────────────
+                    const rules = {
+                        wall_mounting: [
+                            { keywords: ['tv','television','flatscreen','flat screen','monitor','screen','display'], group: 'wall_mounting_tv_flatscreen' },
+                            { keywords: ['blind','curtain','drape','shade','roman shade'], group: 'wall_mounting_blinds_curtain' },
+                            { keywords: ['brick','concrete','masonry','stone','cinder block'], group: 'wall_mounting_brick_or_concrete' },
+                            { keywords: ['drywall','plaster','gypsum'], group: 'wall_mounting_drywall_or_plaster' },
+                            // catch-all for wall_mounting: frames, shelves, signs, neon, art, etc.
+                            { keywords: [], group: 'wall_mounting_frames_shelves', catchAll: true }
+                        ],
+                        minor_home_repairs: [
+                            { keywords: ['washer','washing machine'], group: 'minor_home_repairs_appliances_washer' },
+                            { keywords: ['dryer'], group: 'minor_home_repairs_appliances_dryer' },
+                            { keywords: ['stove','oven','range','cooktop','burner'], group: 'minor_home_repairs_appliances_stove_range' },
+                            { keywords: ['fridge','refrigerator','freezer','frig'], group: 'minor_home_repairs_appliances_refrigerator' },
+                            { keywords: ['dishwasher'], group: 'minor_home_repairs_appliances_dishwasher' },
+                            { keywords: ['microwave'], group: 'minor_home_repairs_appliances_microwave' },
+                            { keywords: ['window ac','air conditioner','ac unit','window unit'], group: 'minor_home_repairs_appliances_window_ac' },
+                            { keywords: ['cabinet','drawer','cupboard','pantry','wardrobe'], group: 'minor_home_repairs_cabinets_drawers' },
+                            { keywords: ['door','hinge','knob','deadbolt','entry'], group: 'minor_home_repairs_doors' },
+                            { keywords: ['floor','tile','baseboard','trim','molding','moulding','grout','hardwood'], group: 'minor_home_repairs_floors_trim' },
+                            { keywords: ['chair','sofa','couch','desk','table','furniture','bed frame','dresser'], group: 'minor_home_repairs_furniture' },
+                            { keywords: ['wall','drywall','plaster','crack','hole','stucco','patch'], group: 'minor_home_repairs_walls' },
+                            { keywords: ['window','sash','pane','screen','sill'], group: 'minor_home_repairs_windows' },
+                            // appliance catch-all
+                            { keywords: ['appliance'], group: 'minor_home_repairs_appliances' }
+                        ],
+                        plumbing_help: [
+                            { keywords: ['disposal','garbage disposal'], group: 'plumbing_help_garbage_disposals' },
+                            { keywords: ['sink','faucet','tap','basin'], group: 'plumbing_help_sinks' },
+                            { keywords: ['shower','tub','bath','spout'], group: 'plumbing_help_showers_tubs' },
+                            { keywords: ['toilet','commode','bidet'], group: 'plumbing_help_toilets' },
+                            { keywords: ['water line','pipe','supply line'], group: 'plumbing_help_water_lines' }
+                        ],
+                        electric_lighting: [
+                            { keywords: ['bulb','light bulb','lamp'], group: 'electric_lighting_bulbs' },
+                            { keywords: ['fan','ceiling fan'], group: 'electric_lighting_fans' },
+                            { keywords: ['fixture','light fixture','chandelier','pendant','sconce'], group: 'electric_lighting_light_fixtures' },
+                            { keywords: ['outlet','plug','socket','gfci','usb outlet'], group: 'electric_lighting_outlets' },
+                            { keywords: ['switch','dimmer','light switch'], group: 'electric_lighting_switches' },
+                            { keywords: ['thermostat','nest','ecobee'], group: 'electric_lighting_thermostats' }
+                        ],
+                        tech_trouble: [
+                            { keywords: ['computer','laptop','desktop','pc','mac','hard drive','virus','slow computer'], group: 'tech_trouble_computer_repair' },
+                            { keywords: ['cable','cord','wire','hdmi','power strip'], group: 'tech_trouble_cable_management' },
+                            { keywords: ['wifi','router','network','internet','extender'], group: 'tech_trouble_networking' },
+                            { keywords: ['smart home','alexa','google home','smart plug','smart switch','smart speaker'], group: 'tech_trouble_smart_home' }
+                        ],
+                        furniture_fixes_assembly: [
+                            { keywords: [], group: 'furniture_fixes_assembly_assembly', stypes: ['Assembly'] },
+                            { keywords: [], group: 'furniture_fixes_assembly_repair', stypes: ['Repair'] },
+                            { keywords: [], group: 'furniture_fixes_assembly_disassembly', stypes: ['Disassembly'] }
+                        ]
+                    };
+
+                    const catRules = rules[category];
+                    if (!catRules) return groups[0]?.id || null; // single group fallback
+
+                    // Match object noun against keyword lists
+                    for (const rule of catRules) {
+                        if (rule.catchAll) continue; // skip catch-alls in first pass
+                        // stype-only rules (furniture_fixes_assembly)
+                        if (rule.stypes && !rule.keywords.length) {
+                            if (stype && rule.stypes.some(st => stype.toLowerCase().includes(st.toLowerCase()))) {
+                                if (groups.find(g => g.id === rule.group)) return rule.group;
+                            }
+                            continue;
+                        }
+                        if (rule.keywords.some(kw => obj.includes(kw))) {
+                            if (groups.find(g => g.id === rule.group)) return rule.group;
+                        }
+                    }
+
+                    // Second pass: catch-alls
+                    for (const rule of catRules) {
+                        if (rule.catchAll && groups.find(g => g.id === rule.group)) return rule.group;
+                    }
+
+                    // Final fallback: first group in category
+                    return groups[0]?.id || null;
+                }
+
                 function sqUnifiedAction() {
                     const desc = (document.getElementById('sqDescIn')?.value || '').trim();
-                    if (!desc || window._sqUnifiedMode !== 'confirm') {
+                    if (!desc) {
+                        // Nothing typed — open the guided builder directly
                         sqToggleBuilder();
                         return;
                     }
+                    // Any text goes through sqAnalyze, which routes to:
+                    // 1. Named service auto-select (high confidence + recommendedSku)
+                    // 2. Best-match group Other tile (category known, no specific match)
+                    // 3. Generic SmartQuote wizard (low confidence / unknown category)
+                    // The user never needs to know which path ran — it just works.
                     sqAnalyze();
                 }
 
@@ -4777,28 +4952,11 @@ function enableLiveAdLibPreview() {
                     if (S.intent._ctxFee) S.intent._ctxBaseAdjFee = S.intent._ctxFee;
                     if (S.intent._ctxMin) S.intent._ctxBaseAdjMin = S.intent._ctxMin;
 
-                    // ── High-confidence catalog match: auto-select ──────────────────
-                    // If NLP confidently resolved to a SPECIFIC named service (not just
-                    // a category), switch directly into that service's own flow rather
-                    // than showing the generic dynamic_services estimate with a buried
-                    // "Use this" banner as an afterthought. Threshold (70) sits below
-                    // real high-confidence keywords like "mount" (85) / "toilet" (90)
-                    // but above lower-confidence ones like "door" (55) / "furniture" (50)
-                    // where auto-switching would be wrong often enough to be annoying.
-                    // Reversible: prefillSmartQuoteFromService is the SAME function the
-                    // recommendedSku banner's manual "Use this" button already calls —
-                    // auto-select and manual-select converge on identical behavior,
-                    // and S._autoSelectedFrom below is what lets "not this" cleanly
-                    // revert to the generic estimate using the user's original text.
+                    // ── High-confidence catalog match: auto-select named service ──
                     const AUTO_SELECT_THRESHOLD = 70;
                     const recSku = S.intent?.recommendedSku;
                     const recSvc = recSku ? (DB.services || []).find(sv => sv.id === recSku) : null;
                     if (recSvc && (S.intent._matchConfidence || 0) >= AUTO_SELECT_THRESHOLD) {
-                        // IMPORTANT: prefillSmartQuoteFromService does a full S = {...}
-                        // reassignment (not a mutation), which would silently wipe any
-                        // field set on the OLD S object — including this one — before
-                        // sqRenderQuote ever gets to read it. Snapshot locally, call
-                        // the function, then restore onto the freshly-created S.
                         const autoSelectSnapshot = { desc, intent: S.intent, qty: S.qty };
                         const catId = S.intent.category || recSvc.ui_taxonomy?.category_id || null;
                         prefillSmartQuoteFromService(recSvc, catId);
@@ -4806,7 +4964,51 @@ function enableLiveAdLibPreview() {
                         return;
                     }
 
-                    // Hand off to shared pipeline — confidence_tiers decides step routing
+                    // ── Category-matched but no specific service: route to the
+                    // best-match group's Other tile. This is what makes
+                    // "mount a neon sign" land in wall_mounting_frames_shelves
+                    // rather than a generic $70 SmartQuote estimate — the
+                    // wizard starts pre-seeded with action + extracted object,
+                    // asking only what's still unknown (wall type, weight, etc.)
+                    const hasCategory = S.intent?.category && S.intent.category !== 'other';
+                    const hasMatchConf = (S.intent?._matchConfidence || 0) >= 50;
+                    if (hasCategory && hasMatchConf) {
+                        const targetGroupId = resolveGroupFromIntent(
+                            S.intent.category,
+                            S._objectNoun || '',
+                            S.intent.stype || 'Repair'
+                        );
+                        if (targetGroupId) {
+                            const targetGroup = (DB.group || []).find(g => g.id === targetGroupId);
+                            if (targetGroup) {
+                                // Build a synthetic Other tile for this group
+                                const normSt = (S.intent.stype || 'Repair').replace('Install / Mount','Install');
+                                const dynKey = S.intent.category + '+' + normSt.toLowerCase();
+                                const dynDef = DB.dynamic_services?.[dynKey];
+                                const synthTile = {
+                                    _isOtherTile: true,
+                                    id: '_other_' + targetGroupId,
+                                    uncovered_service_types: [normSt],
+                                    service_type: normSt,
+                                    ui_taxonomy: {
+                                        display_name: targetGroup.display_name + ' Other',
+                                        icon: targetGroup.icon || '✏️',
+                                        group_id: targetGroupId,
+                                        description: desc // carry the user's original text
+                                    },
+                                    financial_engine: dynDef?.financial_engine || { pricing_type: 'flat_rate', base_price: 70 }
+                                };
+                                // Pre-seed S partially so the wizard starts knowing
+                                // the description and extracted noun
+                                S._nlpSeedDesc = desc;
+                                S._nlpSeedObject = S._objectNoun;
+                                prefillSmartQuoteFromOtherTile(synthTile, S.intent.category);
+                                return;
+                            }
+                        }
+                    }
+
+                    // ── Final fallback: generic SmartQuote pipeline ─────────────
                     sqPrepareFlow(false);
                 }
 
@@ -5937,7 +6139,9 @@ function enableLiveAdLibPreview() {
                         _fromBuilder: false,
                         _selfQuoteSvc: null,
                         _isOtherTileEntry: false,
-                        _autoSelectedFrom: null
+                        _autoSelectedFrom: null,
+                        _nlpSeedDesc: null,
+                        _nlpSeedObject: null
                     };
                     window._sqCuratedRender = null;
                     const out = document.getElementById('sqQuoteOut');
@@ -6169,17 +6373,33 @@ function enableLiveAdLibPreview() {
                             intakeMin += chosen.effects?.minutes || 0;
                         });
 
-                        // SSOT: base_confidence from svc.confidence_strategy.base_confidence (set by Python script)
-                        // + sum of confidence_gain per answered module. No arbitrary bonuses.
-                        // Gated on visibility too — a module that isn't currently
-                        // reachable (e.g. lath_check before wall_type=Plaster was
-                        // picked) shouldn't contribute confidence even if it has a
-                        // stale leftover answer from a previous branch choice.
-                        const _baseConf = svc.confidence_strategy?.base_confidence ?? 40;
-                        let conf = _baseConf;
+                        // ── CONFIDENCE CALCULATION ───────────────────────────────────
+                        // SSOT: confidence = base + module gains + NLP match + tag complexity.
+                        // This is an INTERNAL metric — drives the estimate button gate only.
+                        // Not shown to the user: the adlib sentence + answered dot indicators
+                        // communicate progress better than a % bar would.
+                        const _baseConf2 = svc.confidence_strategy?.base_confidence ?? 40;
+                        let conf = _baseConf2;
+                        // Module gains (already answered, visible)
                         realMods.forEach(mod => {
-                            if (_isModVisible(mod, answers, allMods) && answers[mod.moduleKey]) conf += (mod.confidence_gain || 15);
+                            if (_isModVisible(mod, answers, allMods) && answers[mod.moduleKey])
+                                conf += (mod.confidence_gain || 15);
                         });
+                        // NLP match contribution — if the user's typed text already
+                        // identified this service with high confidence, that should
+                        // count toward the estimate bar (avoids requiring unnecessary
+                        // questions when NLP is already 85% sure of the intent).
+                        const nlpBonus = Math.min(20, (S.intent?._matchConfidence || 0) * 0.2);
+                        conf += nlpBonus;
+                        // Active tag complexity contribution — a user who has explicitly
+                        // confirmed a complexity tag (#heavy_item, #high_ceiling) has
+                        // provided real, pricing-relevant information that raises confidence.
+                        const activeTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
+                        const tagBonus = Math.min(15, activeTagIds.reduce((sum, tid) => {
+                            const co = tags[tid]?.effects?.complexity_override;
+                            return sum + (co === 'specialized' ? 10 : co === 'skilled' ? 5 : 0);
+                        }, 0));
+                        conf += tagBonus;
                         conf = Math.min(conf, 100);
                         const ready = conf >= minConf;
 
@@ -6372,23 +6592,10 @@ function enableLiveAdLibPreview() {
                         }
                         adlibHtml += `</div>`;
 
-                        // ─── SUMMARY SECTION ─────────────────────────────────────────
-                        // Uses checkout_states.ui_message and meta.estimate_disclaimers
-                        const confColor = conf >= minConf ? '#16a34a' : conf >= 60 ? 'var(--clr-red,#de0000)' : '#f59e0b';
-                        const confPct = Math.round(conf);
-                        const confMsg = conf >= minConf
-                            ? `✓ Ready to estimate <span style="opacity:.65;font-size:.85em">(${confPct}%)</span>`
-                            : remaining > 0
-                                ? `${answered} of ${total} questions — ${confPct}% <span style="opacity:.65;font-size:.85em">(need ${minConf}%)</span>`
-                                : `${confPct}% confidence <span style="opacity:.65;font-size:.85em">(need ${minConf}% — more detail helps)</span>`;
-
                         const sumHtml = `<div class="sq-ic-summary">
         <div class="sq-ic-sum-hdr">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/></svg>
           Summary of request
-        </div>
-        <div class="sq-ic-conf">
-          <span class="sq-ic-conf-txt" style="color:${confColor}">${confMsg}</span>
         </div>
         <div class="sq-ic-qty">
           <button class="sq-ic-qty-btn" id="sqCurQtyDec">−</button>
@@ -6401,7 +6608,9 @@ function enableLiveAdLibPreview() {
           <button class="sq-ic-est ${ready?'ready':'locked'}" id="sqCurEstBtn" ${ready?'':'disabled'}>
             ${ready
               ? `<i class="ti ti-calculator"></i> Review Estimate — $${livePrice * S.qty}`
-              : `<span style="font-size:.82rem">Answer ${remaining} more question${remaining!==1?'s':''} to continue</span>`}
+              : remaining > 0
+                ? `<span style="font-size:.82rem">Answer ${remaining} more question${remaining!==1?'s':''} to continue</span>`
+                : `<span style="font-size:.82rem">Add more detail in the notes to continue</span>`}
           </button>
           <button class="sq-ic-back" id="sqCurBackBtn">← Back</button>
         </div>
@@ -6485,26 +6694,32 @@ function enableLiveAdLibPreview() {
                             });
                         });
 
-                        // Notes — store description only; do NOT silently push
-                        // NLP-detected tags into S.detTagIds. Tags detected from
-                        // free text belong to S._suggestedTagIds (shown as
-                        // hint chips the user must tap explicitly) — not
-                        // directly to the priced set without consent.
+                        // Notes: immediate state update, debounced NLP + re-render.
+                        // The slowness came from calling render() on every keystroke —
+                        // re-rendering the full intake card (questions, confidence,
+                        // adlib, price) is expensive. Now: S._jobNotes updates
+                        // immediately (user sees their text at native speed), NLP
+                        // suggestion detection + card re-render are debounced 400ms
+                        // (fires only after typing pauses, not during every character).
                         const ta = card.querySelector('.sq-ic-notes');
+                        let _notesTid;
                         if (ta) ta.addEventListener('input', () => {
-                            S._jobNotes = ta.value;
-                            if (ta.value.length > 5) {
-                                const nlp = detectTagsNLP(ta.value);
-                                nlp.found.forEach(tid => {
-                                    if (tagValidForCategory(tid, catId, groupId) &&
-                                        !S.detTagIds.includes(tid) &&
-                                        !S.manTagIds.includes(tid) &&
-                                        !S.negatedTagIds.includes(tid) &&
-                                        !(S._suggestedTagIds || []).includes(tid))
-                                        (S._suggestedTagIds = S._suggestedTagIds || []).push(tid);
-                                });
-                            }
-                            render();
+                            S._jobNotes = ta.value; // immediate — no lag on text entry
+                            clearTimeout(_notesTid);
+                            _notesTid = setTimeout(() => {
+                                if (ta.value.length > 5) {
+                                    const nlp = detectTagsNLP(ta.value);
+                                    nlp.found.forEach(tid => {
+                                        if (tagValidForCategory(tid, catId, groupId) &&
+                                            !S.detTagIds.includes(tid) &&
+                                            !S.manTagIds.includes(tid) &&
+                                            !S.negatedTagIds.includes(tid) &&
+                                            !(S._suggestedTagIds || []).includes(tid))
+                                            (S._suggestedTagIds = S._suggestedTagIds || []).push(tid);
+                                    });
+                                }
+                                render(); // full re-render only after 400ms pause
+                            }, 400);
                         });
 
                         // Qty stepper
@@ -6823,8 +7038,11 @@ function enableLiveAdLibPreview() {
 
                     // SSOT: dynamic_services is the pricing source for unnamed jobs —
                     // base price, confidence_strategy, intake_chain all come from there.
+                    // Qty: use group's default_qty if defined (e.g. Windows default 2
+                    // since 'I need my windows serviced' implies plurality), else 1.
+                    const defaultQty = groupObj?.default_qty || 1;
                     S = {
-                        qty: 1,
+                        qty: defaultQty,
                         intent: {
                             category: category_id,
                             label: (catObj?.display_name || category_id) + (singleType ? ' \u2014 ' + singleType : ''),
@@ -6838,14 +7056,21 @@ function enableLiveAdLibPreview() {
                             checkoutState: dynDef?.financial_engine?.checkout_state || null
                         },
                         stype: singleType,
-                        desc: '',                    // the actual job description is NOT known yet — this is what we still need
+                        // Carry NLP-seeded context when entering from sqAnalyze
+                        // (the user typed something — we understood the category/group
+                        // and now the wizard just needs the missing specifics).
+                        desc: S._nlpSeedDesc || '',
+                        _objectNoun: S._nlpSeedObject || null,
                         detTagIds: [],
                         manTagIds: [],
                         negatedTagIds: [],
                         adlibConfirmed: false,
-                        _isOtherTileEntry: true,      // marks: category/group known, type and/or object/specifics not
+                        _isOtherTileEntry: true,
                         _suggestedTagIds: []
                     };
+                    // Clear the NLP seed after consuming it
+                    S._nlpSeedDesc = null;
+                    S._nlpSeedObject = null;
 
                     if (dynDef?.suggested_tags) {
                         dynDef.suggested_tags.forEach(tagObj => {
