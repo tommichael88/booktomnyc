@@ -2076,26 +2076,7 @@ function enableLiveAdLibPreview() {
                     }
                 }
 
-                function createOtherTileElement(tile, category_id) {
-                    const card = create('div', {
-                        class: 'service-tile service-tile-other',
-                        tabindex: '0',
-                        role: 'button',
-                        'aria-label': tile.ui_taxonomy.display_name
-                    });
-                    const icon = tile.ui_taxonomy.icon;
-                    const ico = icon.startsWith('ti-') ? `<i class="ti ${icon}"></i>` : `<span>${icon}</span>`;
-                    card.innerHTML = `
-                        <div class="stile-icon">${ico}</div>
-                        <div class="stile-name">${tile.ui_taxonomy.display_name}</div>
-                        <div class="stile-badge" style="background:#1e40af1a;color:#1e40af;">⚡ Smart Quote</div>
-                    `;
-                    card.addEventListener('click', () => prefillSmartQuoteFromOtherTile(tile, category_id));
-                    card.addEventListener('keydown', e => {
-                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); prefillSmartQuoteFromOtherTile(tile, category_id); }
-                    });
-                    return card;
-                }
+
 
                 function createServiceCardElement(svc, category_id) {
                     const card = create('div', {
@@ -2139,7 +2120,7 @@ function enableLiveAdLibPreview() {
                     } else if (isHourlySvc) {
                         complexityBadge = {
                             text: DB.ui_config?.badge_labels?.['hourly'] || '⏰ Hourly',
-                            bg: '#065f46', color: '#d1fae5'
+                            bg: '#000', color: '#d1fae5'
                         };
                     } else if (chain.length === 0) {
                         complexityBadge = {
@@ -2205,6 +2186,8 @@ function enableLiveAdLibPreview() {
                     });
                     return card;
                 }
+                
+                
 
                 function renderGlobalSearchResults(container, services, currentCategoryId) {
                     container.replaceChildren();
@@ -3505,14 +3488,7 @@ function enableLiveAdLibPreview() {
                     let hours = totalMinutes / 60;
                     if (hours > 0 && hours < 1) hours = 1;
                     const rounded = Math.round(hours * 100) / 100;
-                    // SSOT FIX: meta.rate_per_hour never existed in the JSON —
-                    // was silently falling through to a hardcoded 85 every time.
-                    // The real SSOT is meta.global_rates; furniture assembly is
-                    // standard labor (not a specialized repair skill), so
-                    // standard_labor (65) is the conceptually correct rate, not
-                    // the specialized_repair tier the old 85 fallback happened
-                    // to match by coincidence.
-                    const rate = SERVICE_DATA?.meta?.global_rates?.standard_labor || 65;
+                    const rate = (SERVICE_DATA?.meta?.rate_per_hour) || 85;
                     return {
                         hours: rounded,
                         price: Math.round(rounded * rate * 100) / 100,
@@ -3539,25 +3515,6 @@ function enableLiveAdLibPreview() {
                             toast('Merged with existing furniture request', 'success');
                             return;
                         }
-                    }
-                    // Soft duplicate warning (not a hard block — someone might
-                    // genuinely want two of the same service for different
-                    // rooms/items). Previously there was NO duplicate detection
-                    // at all outside the furniture-merge case above, and the
-                    // only cart guard (cartLimiter) is a pure time-window
-                    // throttle, not content-based — a user confused by a
-                    // confidence dead-end (now fixed) or simply double-tapping
-                    // could end up with two identical entries with zero warning.
-                    // Uses a synchronous confirm() rather than a flag-and-retry
-                    // scheme, since every call site builds a fresh entry object
-                    // (new random id each time) — there's no way for a caller
-                    // to "retry with permission" otherwise.
-                    const dupe = State.serviceRequest.find(item =>
-                        item.name === entry.name && item.category_id === entry.category_id && item.price === entry.price
-                    );
-                    if (dupe) {
-                        const proceed = window.confirm(`You already have "${entry.name}" (${entry.price}) in your request. Add another one?`);
-                        if (!proceed) return;
                     }
                     State.serviceRequest.push(entry);
                     if (DOM.cartFab) {
@@ -4212,16 +4169,8 @@ function enableLiveAdLibPreview() {
                 /* ═══════════════════════════════════════ END UNIFIED ENGINE ═══ */
 
                 /* ── Tag label helper ─────────────────────────────────────────── */
-                /** sqTagLabel — SSOT fix: was checking t.label and t.display_name
-                 *  first, but NEITHER field exists on any of the 34 smart_tags
-                 *  (verified — 0/34 have either). ui_phrase is what every tag
-                 *  actually has (34/34) and is the intentionally-authored
-                 *  natural phrase (e.g. "with a leak" for #leaky_faucet) — but
-                 *  it was never checked at all, so every chip always fell
-                 *  through to the ugly slug fallback ("leaky faucet" instead
-                 *  of "with a leak"). */
                 function sqTagLabel(t, tid) {
-                    return t.ui_phrase || t.label || t.display_name || tid.replace('#', '').replace(/_/g, ' ');
+                    return t.label || t.display_name || tid.replace('#', '').replace(/_/g, ' ');
                 }
 
                 /* ── NLP ──────────────────────────────────────────────────────── */
@@ -4717,110 +4666,121 @@ function enableLiveAdLibPreview() {
                     sqAnalyze();
                 }
 
-function sqAnalyze() {
-    if (!DB || !DB.intent_mappings) {
-        toast('Pricing data still loading — please wait a moment.', 'error');
-        return;
-    }
-    const desc = (document.getElementById('sqDescIn')?.value || '').trim();
-    if (!desc) {
-        toast('Please describe the job first.', 'error');
-        return;
-    }
-
-    S.desc = desc;
-    const intent = detectIntentNLP(desc);
-
-    // Extract richer NLP context
-    S._objectNoun = extractObject(desc, intent?.key);
-    S._location = extractLocation(desc);
-    S._sizeHint = extractSizeHint(desc, DB.smart_tags || {});
-
-    // Seed intent from NLP (dynamic_services base price enrichment happens in sqPrepareFlow)
-    const baseIntent = intent || {
-        category: 'other',
-        label: 'General',
-        base: 70,
-        stype: 'Repair',
-        qtyLabel: 'item',
-        key: 'other',
-        group: 'other'
-    };
-    const normSt = (baseIntent.stype || 'Repair').replace('Install / Mount', 'Install');
-    const dynKey = (baseIntent.category || 'other') + '+' + normSt.toLowerCase();
-    const dynDef = DB.dynamic_services?.[dynKey];
-    if (dynDef?.financial_engine?.base_price) baseIntent.base = dynDef.financial_engine.base_price;
-    
-    S.intent = baseIntent;
-
-    // ---- RESOLVER: object_based ----
-    // This runs AFTER S.intent is set, BEFORE any other logic
-    if (S.intent.resolver === 'object_based') {
-        const object = extractObject(desc, S.intent.key);
-        if (object) {
-            const objects = (DB.intent_mappings?.objects || []);
-            const objectMap = objects.find(o =>
-                object.toLowerCase().includes(o.keyword.toLowerCase()) ||
-                o.keyword.toLowerCase().includes(object.toLowerCase())
-            );
-            if (objectMap) {
-                // Override with object-specific values if they exist
-                if (objectMap.default_dynamic_category) {
-                    S.intent.default_dynamic_category = objectMap.default_dynamic_category;
-                }
-                if (objectMap.default_service_type) {
-                    S.intent.default_service_type = objectMap.default_service_type;
-                }
-                if (objectMap.default_service_sku) {
-                    S.intent.default_service_sku = objectMap.default_service_sku;
-                }
-                // Also update the dynamic key if category changed
-                if (objectMap.default_dynamic_category) {
-                    const newNormSt = (S.intent.default_service_type || 'Install').replace('Install / Mount', 'Install');
-                    const newDynKey = objectMap.default_dynamic_category + '+' + newNormSt.toLowerCase();
-                    const newDynDef = DB.dynamic_services?.[newDynKey];
-                    if (newDynDef?.financial_engine?.base_price) {
-                        S.intent.base = newDynDef.financial_engine.base_price;
+                function sqAnalyze() {
+                    if (!DB || !DB.intent_mappings) {
+                        toast('Pricing data still loading — please wait a moment.', 'error');
+                        return;
                     }
+                    const desc = (document.getElementById('sqDescIn')?.value || '').trim();
+                    if (!desc) {
+                        toast('Please describe the job first.', 'error');
+                        return;
+                    }
+
+                    S.desc = desc;
+                    const intent = detectIntentNLP(desc);
+
+                    // Extract richer NLP context
+                    S._objectNoun = extractObject(desc, intent?.key);
+                    S._location = extractLocation(desc);
+                    S._sizeHint = extractSizeHint(desc, DB.smart_tags || {});
+
+                    // Seed intent from NLP (dynamic_services base price enrichment happens in sqPrepareFlow)
+                    const baseIntent = intent || {
+                        category: 'other',
+                        label: 'General',
+                        base: 70,
+                        stype: 'Repair',
+                        qtyLabel: 'item',
+                        key: 'other',
+                        group: 'other'
+                    };
+                    const normSt = (baseIntent.stype || 'Repair').replace('Install / Mount', 'Install');
+                    const dynKey = (baseIntent.category || 'other') + '+' + normSt.toLowerCase();
+                    const dynDef = DB.dynamic_services?.[dynKey];
+                    if (dynDef?.financial_engine?.base_price) baseIntent.base = dynDef.financial_engine.base_price;
+                    S.intent = baseIntent;
+                    S.manTagIds = [];
+                    S.qty = extractQty(desc);
+                    document.getElementById('sqQtyV').textContent = S.qty;
+
+                    // SSOT: apply contextual_override injected tags as detected tags
+                    // ---- RESOLVER: object_based ----
+                    if (S.intent.resolver === 'object_based') {
+    const object = extractObject(desc, S.intent.key);
+    if (object) {
+        const objects = (DB.intent_mappings?.objects || []);
+        const objectMap = objects.find(o =>
+            object.toLowerCase().includes(o.keyword.toLowerCase()) ||
+            o.keyword.toLowerCase().includes(object.toLowerCase())
+        );
+        if (objectMap) {
+            // Override with object-specific values if they exist
+            if (objectMap.default_dynamic_category) {
+                S.intent.default_dynamic_category = objectMap.default_dynamic_category;
+            }
+            if (objectMap.default_service_type) {
+                S.intent.default_service_type = objectMap.default_service_type;
+            }
+            if (objectMap.default_service_sku) {
+                S.intent.default_service_sku = objectMap.default_service_sku;
+            }
+            // Update the dynamic key if category changed
+            if (objectMap.default_dynamic_category) {
+                const newNormSt = (S.intent.default_service_type || 'Install').replace('Install / Mount', 'Install');
+                const newDynKey = objectMap.default_dynamic_category + '+' + newNormSt.toLowerCase();
+                const newDynDef = DB.dynamic_services?.[newDynKey];
+                if (newDynDef?.financial_engine?.base_price) {
+                    S.intent.base = newDynDef.financial_engine.base_price;
                 }
             }
+        } else {
+            // ❌ Object found but not in our map → confidence drops
+            S.intent.confidence_weight = 30; // below threshold
         }
+    } else {
+        // ❌ No object extracted at all → confidence drops significantly
+        S.intent.confidence_weight = 10; // well below threshold
     }
-    // ---- end resolver ----
-
-    S.manTagIds = [];
-    S.qty = extractQty(desc);
-    document.getElementById('sqQtyV').textContent = S.qty;
-
-    // SSOT: apply contextual_override injected tags as detected tags
-    if (S.intent._ctxTags?.length) {
-        const cat = S.intent.category || 'other';
-        S.intent._ctxTags.forEach(tid => {
-            if (tagValidForCategory(tid, cat, S.intent._groupId) &&
-                !S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
-                S.detTagIds.push(tid);
-        });
-    }
-
-    // SSOT: apply contextual adjustment fee/minutes to intent base for computeSQQuote
-    if (S.intent._ctxFee) S.intent._ctxBaseAdjFee = S.intent._ctxFee;
-    if (S.intent._ctxMin) S.intent._ctxBaseAdjMin = S.intent._ctxMin;
-
-    // ── High-confidence catalog match: auto-select ──────────────────
-    const AUTO_SELECT_THRESHOLD = 70;
-    const recSku = S.intent?.recommendedSku;
-    const recSvc = recSku ? (DB.services || []).find(sv => sv.id === recSku) : null;
-    if (recSvc && (S.intent._matchConfidence || 0) >= AUTO_SELECT_THRESHOLD) {
-        const autoSelectSnapshot = { desc, intent: S.intent, qty: S.qty };
-        const catId = S.intent.category || recSvc.ui_taxonomy?.category_id || null;
-        prefillSmartQuoteFromService(recSvc, catId);
-        S._autoSelectedFrom = autoSelectSnapshot;
-        return;
-    }
-
-    // Hand off to shared pipeline — confidence_tiers decides step routing
-    sqPrepareFlow(false);
 }
+                    // ---- end resolver ----
+                    // SSOT: apply contextual adjustment fee/minutes to intent base for computeSQQuote
+                    if (S.intent._ctxFee) S.intent._ctxBaseAdjFee = S.intent._ctxFee;
+                    if (S.intent._ctxMin) S.intent._ctxBaseAdjMin = S.intent._ctxMin;
+
+                    // ── High-confidence catalog match: auto-select ──────────────────
+                    // If NLP confidently resolved to a SPECIFIC named service (not just
+                    // a category), switch directly into that service's own flow rather
+                    // than showing the generic dynamic_services estimate with a buried
+                    // "Use this" banner as an afterthought. Threshold (70) sits below
+                    // real high-confidence keywords like "mount" (85) / "toilet" (90)
+                    // but above lower-confidence ones like "door" (55) / "furniture" (50)
+                    // where auto-switching would be wrong often enough to be annoying.
+                    // Reversible: prefillSmartQuoteFromService is the SAME function the
+                    // recommendedSku banner's manual "Use this" button already calls —
+                    // auto-select and manual-select converge on identical behavior,
+                    // and S._autoSelectedFrom below is what lets "not this" cleanly
+                    // revert to the generic estimate using the user's original text.
+                    const AUTO_SELECT_THRESHOLD = 70;
+                    const recSku = S.intent?.recommendedSku;
+                    const recSvc = recSku ? (DB.services || []).find(sv => sv.id === recSku) : null;
+                    if (recSvc && (S.intent._matchConfidence || 0) >= AUTO_SELECT_THRESHOLD) {
+                        // IMPORTANT: prefillSmartQuoteFromService does a full S = {...}
+                        // reassignment (not a mutation), which would silently wipe any
+                        // field set on the OLD S object — including this one — before
+                        // sqRenderQuote ever gets to read it. Snapshot locally, call
+                        // the function, then restore onto the freshly-created S.
+                        const autoSelectSnapshot = { desc, intent: S.intent, qty: S.qty };
+                        const catId = S.intent.category || recSvc.ui_taxonomy?.category_id || null;
+                        prefillSmartQuoteFromService(recSvc, catId);
+                        S._autoSelectedFrom = autoSelectSnapshot;
+                        return;
+                    }
+
+                    // Hand off to shared pipeline — confidence_tiers decides step routing
+                    sqPrepareFlow(false);
+                }
+
                 /* ── Shared post-intent pipeline ─────────────────────────────────
                    Called by both sqAnalyze (text path) and sqBuilderFinish.
                    By the time this runs, S.intent, S.stype, S.qty, S.desc,
@@ -5104,15 +5064,9 @@ function sqAnalyze() {
                             const locked = !sel && gTids.some(o => exist.has(o) && tags[o]?.mutually_exclusive?.includes(tid));
                             const isHint = (S._suggestedTagIds || []).includes(tid) && !sel;
                             const chipExtra = isHint ? ' sq-hint' : '';
-                            // Fee display was missing entirely on this chip grid —
-                            // the single most visible tag-tapping surface in the
-                            // app — matching the pattern already used elsewhere
-                            // (e.g. the detected-tags row above).
-                            const _gridChipFee = t?.fee ?? t?.effects?.fee ?? 0;
-                            const _feeSuffix = _gridChipFee > 0 ? ` <span class="intake-fee-delta">+$${_gridChipFee}</span>` : '';
                             chips += sel ?
-                                `<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}${_feeSuffix}</span>` :
-                                `<span class="chip${locked?' locked':''}${chipExtra}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-${isHint?'bulb':'plus'}"></i> ${sqTagLabel(t,tid)}${_feeSuffix}</span>`;
+                                `<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}</span>` :
+                                `<span class="chip${locked?' locked':''}${chipExtra}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-${isHint?'bulb':'plus'}"></i> ${sqTagLabel(t,tid)}</span>`;
                         });
                         if (chips) html += `<div class="group-label">${gName}</div><div class="chips">${chips}</div>`;
                     }
@@ -5714,16 +5668,8 @@ function sqAnalyze() {
                     const _engineKey  = resolveEngineKey(_pricingType);
                     const _engineDef  = _pricingType ? (DB.global_rules?.pricing_engines?.[_engineKey] || {}) : {};
                     const _components = _engineDef.formula_components || [];
-                    // FIXED: _isHourly is now the single explicit opt-in flag;
-                    // _isFlatRate is simply its negation. Previously both were
-                    // computed independently and could BOTH end up false for an
-                    // unrecognized pricing_type (e.g. the legacy "Diagnostic"
-                    // value, before it was normalized to "flat_rate" in the
-                    // JSON) — falling through to the hourly formula by accident,
-                    // silently inflating the price. Any future unrecognized
-                    // pricing_type now safely defaults to flat, the safer default.
+                    const _isFlatRate = _pricingType === 'flat_rate' || (_components.length && !_components.includes('calculated_labor'));
                     const _isHourly = _pricingType === 'hourly' || _components.includes('calculated_labor');
-                    const _isFlatRate = !_isHourly;
 
                     let laborCalc;
                     if (_isFlatRate && _pricingType) {
