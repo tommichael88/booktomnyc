@@ -2326,22 +2326,93 @@ function enableLiveAdLibPreview() {
                     return parts;
                 }
 
+                /** _resolveIntakeChain — maps a service's flat intake_chain into
+                 *  full module definitions, AND injects every branch-target
+                 *  module named in any step's `then` map (e.g. wall_type's
+                 *  Plaster branch names lath_check, Brick branch names
+                 *  masonry_anchor). This is the actual fix for a real bug: the
+                 *  literal intake_chain array on a service only ever lists
+                 *  "always present" modules (wall_type, weight, quantity) —
+                 *  it never listed lath_check/masonry_anchor as their own
+                 *  entries, since they only apply for SOME answers. Without
+                 *  injecting them here, _isModVisible had nothing to even
+                 *  gate — the branch-target modules didn't exist in the
+                 *  resolved list at all, regardless of which answer was given.
+                 *  Injection happens unconditionally (every POSSIBLE branch
+                 *  target, not just the currently-selected one) — actual
+                 *  visibility filtering is _isModVisible's job, kept as a
+                 *  separate concern. */
                 function _resolveIntakeChain(svc) {
                     if (!SERVICE_DATA.intake_modules) return [];
-                    return (svc.intake_chain || []).map(step => {
-                        const mod = SERVICE_DATA.intake_modules[step.module];
-                        return mod ? {
-                            moduleKey: step.module,
-                            then: step.then || {},
+                    const resolved = [];
+                    const seen = new Set();
+                    const resolveOne = (moduleKey, thenMap) => {
+                        if (seen.has(moduleKey)) return; // avoid duplicates/cycles
+                        seen.add(moduleKey);
+                        const mod = SERVICE_DATA.intake_modules[moduleKey];
+                        if (!mod) return;
+                        resolved.push({
+                            moduleKey,
+                            then: thenMap || {},
                             ...mod
-                        } : null;
-                    }).filter(Boolean);
+                        });
+                    };
+                    (svc.intake_chain || []).forEach(step => {
+                        resolveOne(step.module, step.then);
+                        // Inject every branch-target module named by ANY answer
+                        // in this step's `then` map, so they exist in the
+                        // resolved list for _isModVisible to gate on. They get
+                        // their own `then` (usually {}) from intake_modules
+                        // itself unless they branch further.
+                        const then = step.then || {};
+                        Object.values(then).forEach(targets => {
+                            (targets || []).forEach(targetKey => {
+                                if (targetKey === step.module) return; // safety: no self-reference
+                                resolveOne(targetKey, undefined);
+                            });
+                        });
+                    });
+                    return resolved;
                 }
 
-                function _isModVisible(mod, answers) {
-                    if (!mod.depends_on) return true;
-                    for (const [k, v] of Object.entries(mod.depends_on)) {
-                        if (answers[k] !== v) return false;
+                /** _isModVisible — determines whether a module should currently
+                 *  be shown, given the answers so far. Two independent gating
+                 *  mechanisms, both consulted:
+                 *   1. depends_on (module-level, currently unused by any real
+                 *      module in the JSON, but kept for forward compatibility)
+                 *   2. then (chain-level branching) — THE actual mechanism real
+                 *      services use (see wall_type's divergent branches). A
+                 *      module that only appears as a branch TARGET in some
+                 *      other module's `then` map is hidden until the specific
+                 *      answer that names it has actually been given, and
+                 *      hidden again if a DIFFERENT answer was chosen instead.
+                 *      This was the missing piece behind the original audit
+                 *      finding: the JSON had real branching data (then), but
+                 *      no JS code ever read it — every module rendered
+                 *      unconditionally regardless of which answer triggered it. */
+                function _isModVisible(mod, answers, allMods) {
+                    if (mod.depends_on) {
+                        for (const [k, v] of Object.entries(mod.depends_on)) {
+                            if (answers[k] !== v) return false;
+                        }
+                    }
+                    if (allMods && allMods.length) {
+                        // Is this module named as a branch target by any OTHER
+                        // module's `then` map in this same chain?
+                        const branchParents = allMods.filter(m =>
+                            m.moduleKey !== mod.moduleKey &&
+                            m.then && Object.values(m.then).some(targets => targets.includes(mod.moduleKey))
+                        );
+                        if (branchParents.length) {
+                            // It's a branch target — visible only if the parent's
+                            // ANSWERED choice is one that names this module.
+                            return branchParents.some(parent => {
+                                const parentAnswer = answers[parent.moduleKey];
+                                if (!parentAnswer) return false; // parent not answered yet
+                                const targets = parent.then[parentAnswer] || [];
+                                return targets.includes(mod.moduleKey);
+                            });
+                        }
                     }
                     return true;
                 }
@@ -2377,7 +2448,7 @@ function enableLiveAdLibPreview() {
                         SERVICE_DATA.service_types?.[svc.service_type]?.default_complexity || 'skilled';
                     const mods = _resolveIntakeChain(svc);
                     mods.forEach(mod => {
-                        if (!_isModVisible(mod, answers)) return;
+                        if (!_isModVisible(mod, answers, mods)) return;
                         const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
                         if (!chosen) return;
                         const eff = chosen.effects || {};
@@ -2913,7 +2984,7 @@ function enableLiveAdLibPreview() {
                             qWrap.appendChild(qs);
                         }
                         chipMods.forEach(mod => {
-                            if (!_isModVisible(mod, answers)) return;
+                            if (!_isModVisible(mod, answers, chipMods)) return;
                             const qs = create('div', {
                                 class: 'intake-module-step'
                             });
@@ -2959,7 +3030,7 @@ function enableLiveAdLibPreview() {
                     }
 
                     function refreshPrice() {
-                        const visible = chipMods.filter(m => _isModVisible(m, answers));
+                        const visible = chipMods.filter(m => _isModVisible(m, answers, chipMods));
                         const allDone = visible.every(m => !!answers[m.moduleKey]);
                         if (allDone) {
                             const r = _computePrice(svc, answers, qty);
@@ -2970,7 +3041,7 @@ function enableLiveAdLibPreview() {
                     }
 
                     function refreshBtn() {
-                        const visible = chipMods.filter(m => _isModVisible(m, answers));
+                        const visible = chipMods.filter(m => _isModVisible(m, answers, chipMods));
                         const remaining = visible.filter(m => !answers[m.moduleKey]).length;
                         if (remaining > 0) {
                             addBtn.disabled = true;
@@ -2994,7 +3065,7 @@ function enableLiveAdLibPreview() {
                         const r = _computePrice(svc, answers, qty);
                         const nav = navCrumbs.concat([displayName]).join(' > ');
                         let notes = nav;
-                        chipMods.filter(m => _isModVisible(m, answers)).forEach(mod => {
+                        chipMods.filter(m => _isModVisible(m, answers, chipMods)).forEach(mod => {
                             if (answers[mod.moduleKey]) notes += '\n' + mod.question + ': ' + answers[mod.moduleKey];
                         });
                         if (qty > 1) notes += '\nQty: ' + qty;
@@ -5266,8 +5337,9 @@ function enableLiveAdLibPreview() {
                     // show answered intake questions inline — matches curated card adlib output.
                     if (S._svc && S.answers && Object.keys(S.answers).length > 0) {
                         const _QM = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
-                        const _answeredMods = _resolveIntakeChain(S._svc).filter(m =>
-                            !_QM.has(m.moduleKey) && _isModVisible(m, S.answers) && S.answers[m.moduleKey]
+                        const _allResolvedMods = _resolveIntakeChain(S._svc);
+                        const _answeredMods = _allResolvedMods.filter(m =>
+                            !_QM.has(m.moduleKey) && _isModVisible(m, S.answers, _allResolvedMods) && S.answers[m.moduleKey]
                         );
                         if (_answeredMods.length > 0) {
                             w('·', 'color:#bbb;margin:0 2px;font-weight:300;');
@@ -5532,8 +5604,9 @@ function enableLiveAdLibPreview() {
                     // ── Curated intake: fold in answered intake_chain effects ──
                     if (S._svc && S.answers && Object.keys(S.answers).length > 0) {
                         const _QM = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
-                        _resolveIntakeChain(S._svc).filter(m => !_QM.has(m.moduleKey)).forEach(mod => {
-                            if (!_isModVisible(mod, S.answers)) return;
+                        const _allResolvedMods2 = _resolveIntakeChain(S._svc);
+                        _allResolvedMods2.filter(m => !_QM.has(m.moduleKey)).forEach(mod => {
+                            if (!_isModVisible(mod, S.answers, _allResolvedMods2)) return;
                             const chosen = (mod.client_response || []).find(r => r.label === S.answers[mod.moduleKey]);
                             if (!chosen) return;
                             extraFee += chosen.effects?.fee || 0;
@@ -6019,7 +6092,7 @@ function enableLiveAdLibPreview() {
                         let intakeFee = 0,
                             intakeMin = 0;
                         realMods.forEach(mod => {
-                            if (!_isModVisible(mod, answers)) return;
+                            if (!_isModVisible(mod, answers, allMods)) return;
                             const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
                             if (!chosen) return;
                             intakeFee += chosen.effects?.fee || 0;
@@ -6028,16 +6101,20 @@ function enableLiveAdLibPreview() {
 
                         // SSOT: base_confidence from svc.confidence_strategy.base_confidence (set by Python script)
                         // + sum of confidence_gain per answered module. No arbitrary bonuses.
+                        // Gated on visibility too — a module that isn't currently
+                        // reachable (e.g. lath_check before wall_type=Plaster was
+                        // picked) shouldn't contribute confidence even if it has a
+                        // stale leftover answer from a previous branch choice.
                         const _baseConf = svc.confidence_strategy?.base_confidence ?? 40;
                         let conf = _baseConf;
                         realMods.forEach(mod => {
-                            if (answers[mod.moduleKey]) conf += (mod.confidence_gain || 15);
+                            if (_isModVisible(mod, answers, allMods) && answers[mod.moduleKey]) conf += (mod.confidence_gain || 15);
                         });
                         conf = Math.min(conf, 100);
                         const ready = conf >= minConf;
 
                         const livePrice = basePrice + intakeFee;
-                        const visibleMods = realMods.filter(m => _isModVisible(m, answers));
+                        const visibleMods = realMods.filter(m => _isModVisible(m, answers, allMods));
                         const answered = visibleMods.filter(m => answers[m.moduleKey]).length;
                         const total = visibleMods.length;
                         const remaining = total - answered;
@@ -6524,17 +6601,23 @@ function enableLiveAdLibPreview() {
                         // Show focused adlib confirmation with just qty — no tag chips
                         sqRenderSelfQuoteAdlib(svc);
                     } else {
-                        // ── Services without real intake questions → minimal curated chip view ──
-                        // Same sqBuildStep3 chip grid, but wrapped in the curated card visual
-                        // so there is only one "step 3" UX, not two parallel implementations.
-                        const hasRealIntake = chain.some(m => !QTY_MODS.has(m.module));
-                        if (hasRealIntake) {
+                        // ── VIEW TEMPLATE choice only — NOT a confidence/pricing decision ──
+                        // Both branches below feed the SAME confidence engine
+                        // (base_confidence + sum of confidence_gain per answered
+                        // module, gating the estimate button — see sqBuildCuratedIntake).
+                        // This only decides which UI template renders: the curated
+                        // card (real questions to ask) or the bare chip grid
+                        // (nothing to ask beyond quantity/tags). Renamed from the
+                        // confusing "hasRealIntake" after an audit correctly flagged
+                        // that name as reading like a confidence bypass.
+                        const needsCuratedCardTemplate = chain.some(m => !QTY_MODS.has(m.module));
+                        if (needsCuratedCardTemplate) {
                             S._svc = svc;
                             S.answers = {};
                             S._jobNotes = '';
                             S._curatedMode = true;
                             S.userTagIds = S.userTagIds || [];
-                            sqBuildCuratedIntake(svc);
+                            sqBuildCuratedIntake(svc); // <- confidence accumulation lives here
                         } else {
                             // Simple service (no questions): seed _svc so curated adlib has service context,
                             // then run chip grid — this is the only step-3 chip path.

@@ -89,6 +89,11 @@
       },
       "max_minimum_quote_confidence": 95,
       "max_followup_questions_absolute": 6
+    },
+    "diagnostic_governance": {
+      "_rule": "checkout_state == 'diagnostic' IF AND ONLY IF confidence_strategy._variability_tier == 'diagnostic'. variability_tier is the single source of truth for this — checkout_state should be treated as DERIVED from it, not independently authored. This was previously an unenforced coincidence (verified true for all services at time of writing, but nothing prevented a future edit from breaking it).",
+      "_verified_zero_exceptions_across_n_services": 69,
+      "_consuming_code_should": "derive checkout_state from variability_tier when both are absent/ambiguous, and treat a stored checkout_state that contradicts variability_tier as a data error to flag, not silently trust."
     }
   },
   "pricing_formulas": {
@@ -4013,9 +4018,11 @@
               "weight"
             ],
             "Plaster (older homes)": [
+              "lath_check",
               "weight"
             ],
             "Brick or concrete": [
+              "masonry_anchor",
               "weight"
             ]
           }
@@ -4097,9 +4104,11 @@
               "weight"
             ],
             "Plaster (older homes)": [
+              "lath_check",
               "weight"
             ],
             "Brick or concrete": [
+              "masonry_anchor",
               "weight"
             ]
           }
@@ -4536,7 +4545,7 @@
         "checkout_state": "standard_flat_rate"
       },
       "aliases": [],
-      "service_type": "Diagnostic",
+      "service_type": "Repair",
       "intake_chain": [
         {
           "module": "component",
@@ -6515,6 +6524,7 @@
               "dmg_size"
             ],
             "Plaster (older homes)": [
+              "lath_check",
               "dmg_size"
             ],
             "Brick or concrete": [
@@ -10635,6 +10645,86 @@
       "purpose": "pricing",
       "confidence_gain": 5,
       "affects_price": true
+    },
+    "lath_check": {
+      "question": "Does the wall have solid backing (wood lath) where you're mounting, or just plaster?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "Yes, hits solid lath/stud",
+          "effects": {
+            "fee": 0,
+            "minutes": 10,
+            "complexity_override": "routine"
+          },
+          "tags": []
+        },
+        {
+          "label": "Not sure",
+          "effects": {
+            "fee": 15,
+            "minutes": 15,
+            "complexity_override": "skilled"
+          },
+          "tags": [
+            "#plaster_unknown_backing"
+          ]
+        },
+        {
+          "label": "No, just plaster (no solid backing)",
+          "effects": {
+            "fee": 35,
+            "minutes": 25,
+            "complexity_override": "specialized"
+          },
+          "tags": [
+            "#plaster_no_backing"
+          ]
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "Added to deepen wall_type branching (was flat — every wall type led to the same next question). Plaster without solid lath backing needs specialized anchors and carries real crack risk — handyman-judgment default, flagged for review."
+    },
+    "masonry_anchor": {
+      "question": "Do you already have masonry anchors/screws, or will they need to be supplied?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "I have anchors already",
+          "effects": {
+            "fee": 0,
+            "minutes": 0,
+            "complexity_override": "skilled"
+          },
+          "tags": []
+        },
+        {
+          "label": "Please supply anchors",
+          "effects": {
+            "fee": 20,
+            "minutes": 10,
+            "complexity_override": "skilled"
+          },
+          "tags": [
+            "#materials_supplied_anchors"
+          ]
+        },
+        {
+          "label": "Not sure what's needed",
+          "effects": {
+            "fee": 10,
+            "minutes": 10,
+            "complexity_override": "skilled"
+          },
+          "tags": []
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "Added to deepen wall_type branching. Masonry mounting always needs the skilled-tier masonry bit/drilling step (handled by wall_type's own brick/concrete answer already); this module specifically prices the anchor-supply question — a real, common handyman question. Handyman-judgment default, flagged for review."
     }
   },
   "furniture_catalog": [
