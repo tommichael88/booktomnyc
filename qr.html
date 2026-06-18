@@ -3516,6 +3516,20 @@ function enableLiveAdLibPreview() {
                             return;
                         }
                     }
+                    // Soft duplicate warning — not a hard block since someone
+                    // may genuinely want two of the same service for different
+                    // rooms. Without this, identical entries could silently
+                    // accumulate (the only existing guard, cartLimiter, is a
+                    // pure time-window throttle, not content-based detection).
+                    const dupe = State.serviceRequest.find(item =>
+                        item.name === entry.name &&
+                        item.category_id === entry.category_id &&
+                        item.price === entry.price
+                    );
+                    if (dupe) {
+                        const ok = window.confirm(`"${entry.name}" (${entry.price}) is already in your request. Add another?`);
+                        if (!ok) return;
+                    }
                     State.serviceRequest.push(entry);
                     if (DOM.cartFab) {
                         DOM.cartFab.style.animation = 'none';
@@ -4286,6 +4300,14 @@ function enableLiveAdLibPreview() {
                                 return kwParts.length > 1 && kwParts.every(w => ctxWords.has(w));
                             });
                             if (!ctxMatched) continue;
+                            // Override to a more specific named service — e.g.
+                            // 'door' + 'lock' → door_lock_or_handle_install instead
+                            // of the generic door default. This is the field that
+                            // makes the recommendedSku banner point at the right,
+                            // specific service for contextual sub-cases.
+                            // Was defined in the JSON schema and authored in data,
+                            // but never consumed by any JS — wired here now.
+                            if (ctx.override_sku) best.recommendedSku = ctx.override_sku;
                             // Override base price
                             if (ctx.override_base_price) best.base = ctx.override_base_price;
                             // Accumulate fee/time adjustments
@@ -5071,9 +5093,11 @@ function enableLiveAdLibPreview() {
                             const locked = !sel && gTids.some(o => exist.has(o) && tags[o]?.mutually_exclusive?.includes(tid));
                             const isHint = (S._suggestedTagIds || []).includes(tid) && !sel;
                             const chipExtra = isHint ? ' sq-hint' : '';
+                            const _chipTagFee = t?.fee ?? t?.effects?.fee ?? 0;
+                            const _feeSfx = _chipTagFee > 0 ? ` <span class="intake-fee-delta">+$${_chipTagFee}</span>` : '';
                             chips += sel ?
-                                `<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}</span>` :
-                                `<span class="chip${locked?' locked':''}${chipExtra}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-${isHint?'bulb':'plus'}"></i> ${sqTagLabel(t,tid)}</span>`;
+                                `<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}${_feeSfx}</span>` :
+                                `<span class="chip${locked?' locked':''}${chipExtra}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-${isHint?'bulb':'plus'}"></i> ${sqTagLabel(t,tid)}${_feeSfx}</span>`;
                         });
                         if (chips) html += `<div class="group-label">${gName}</div><div class="chips">${chips}</div>`;
                     }
@@ -5552,8 +5576,12 @@ function enableLiveAdLibPreview() {
                     let btnText = cs[btnKey] || cs.button_text || 'Add to Request';
                     btnText = btnText.replace('${labor_total}', '$' + laborTotal);
 
-                    // Disclaimer: pull from meta.estimate_disclaimers, fall back to checkout_states.ui_message
-                    const discKey = isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee';
+                    // Disclaimer: SSOT is svc.default_estimates.disclaimer (same field
+                    // the curated card path reads). Fall through to inferred key only
+                    // when absent, so curated card and final quote always show the
+                    // same legal text for the same service.
+                    const svcDiscKey = S._svc?.default_estimates?.disclaimer || S._svc?.estimate_disclaimer || null;
+                    const discKey = svcDiscKey || (isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee');
                     const disclaimerText = discs[discKey] || cs.ui_message || 'Labor estimate. Materials extra.';
 
                     return {
@@ -6010,6 +6038,28 @@ function enableLiveAdLibPreview() {
                     // ── JSON-sourced constants ────────────────────────────────────
                     const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
                     const allMods = _resolveIntakeChain(svc);
+
+                    // SSOT: S._forceModules (set in sqPrepareFlow from
+                    // global_rules.force_modules_by_variability) lists modules
+                    // that MUST be present for this variability tier — was set
+                    // but never consumed here until now. Inject any forced
+                    // module not already in the resolved chain (skip if the
+                    // module doesn't exist in DB.intake_modules, since a bad
+                    // ref shouldn't break the whole intake card).
+                    const forceMods = S._forceModules || [];
+                    const existingKeys = new Set(allMods.map(m => m.moduleKey));
+                    for (const fKey of forceMods) {
+                        if (!existingKeys.has(fKey) && DB.intake_modules?.[fKey]) {
+                            allMods.push({
+                                moduleKey: fKey,
+                                then: {},
+                                ...DB.intake_modules[fKey],
+                                _forced: true  // flag: injected by variability tier, not service chain
+                            });
+                            existingKeys.add(fKey);
+                        }
+                    }
+
                     const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
 
                     // confidence_strategy from service JSON (or defaults)
@@ -6133,7 +6183,19 @@ function enableLiveAdLibPreview() {
                         conf = Math.min(conf, 100);
                         const ready = conf >= minConf;
 
-                        const livePrice = basePrice + intakeFee;
+                        // Total tag fee from currently-active tags (detTagIds + manTagIds)
+                        // Tags are already in S at this point — include them in the
+                        // preview so "from $X" doesn't understate once surcharges apply.
+                        const detAndManEarly = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
+                        const tagFeeTotal = detAndManEarly.reduce((sum, tid) => {
+                            const t = tags[tid];
+                            return sum + (t?.fee ?? t?.effects?.fee ?? 0);
+                        }, 0);
+                        const livePrice = basePrice + intakeFee + tagFeeTotal;
+                        // "from" is only accurate when the price can still go up due
+                        // to unanswered modules. Once all questions are answered (or
+                        // there are none), show the exact current total instead.
+                        const pricePrefix = (remaining > 0 && tagFeeTotal === 0) ? 'from ' : '';
                         const visibleMods = realMods.filter(m => _isModVisible(m, answers, allMods));
                         const answered = visibleMods.filter(m => answers[m.moduleKey]).length;
                         const total = visibleMods.length;
@@ -6165,7 +6227,7 @@ function enableLiveAdLibPreview() {
             <p class="sq-ic-hdr-desc">${svc.ui_taxonomy?.description || ''}</p>
             ${builderDesc ? `<div class="sq-ic-builder-note"><i class="ti ti-sparkles" style="font-size:.85em;margin-right:4px;opacity:.6"></i><em>"${builderDesc}"</em></div>` : ''}
             <div class="sq-ic-hdr-foot">
-              <span class="sq-ic-price"><i style="font-style:italic;font-size:.72em">from</i> $${livePrice}${intakeFee>0?`<span style="font-size:.72em;opacity:.75;margin-left:2px">(+$${intakeFee})</span>`:''}</span>
+              <span class="sq-ic-price"><i style="font-style:italic;font-size:.72em">${pricePrefix}</i>$${livePrice}${(intakeFee+tagFeeTotal)>0?`<span style="font-size:.72em;opacity:.75;margin-left:2px">(+$${intakeFee+tagFeeTotal})</span>`:''}</span>
               <span class="sq-ic-prog">${dots}<span>${answered} of ${total} answered</span></span>
             </div>
           </div>
@@ -6217,9 +6279,16 @@ function enableLiveAdLibPreview() {
           </div>`;
                             let shown = 0;
                             visibleMods.forEach(mod => {
-                                if (shown >= maxQs) return; // respect maximum_followup_questions
-                                shown++;
                                 const isDone = !!answers[mod.moduleKey];
+                                // FIXED: cap counts only UNANSWERED questions, not total
+                                // visible modules. An answered module doesn't consume a cap
+                                // slot — this was hiding branching follow-up modules when
+                                // the parent question (already answered) had already used
+                                // up a slot (e.g. wall_type answered → masonry_anchor
+                                // appeared but maxQs=2 was already reached by counting
+                                // the answered wall_type itself as slot 1).
+                                if (!isDone && shown >= maxQs) return;
+                                if (!isDone) shown++;
                                 qHtml += `
           <div class="sq-ic-q">
             <div class="sq-ic-q-lbl">
@@ -6306,7 +6375,12 @@ function enableLiveAdLibPreview() {
                         // ─── SUMMARY SECTION ─────────────────────────────────────────
                         // Uses checkout_states.ui_message and meta.estimate_disclaimers
                         const confColor = conf >= minConf ? '#16a34a' : conf >= 60 ? 'var(--clr-red,#de0000)' : '#f59e0b';
-                        const confMsg = conf >= minConf ? '✓ Ready to estimate' : `${answered} of ${total} questions needed`;
+                        const confPct = Math.round(conf);
+                        const confMsg = conf >= minConf
+                            ? `✓ Ready to estimate <span style="opacity:.65;font-size:.85em">(${confPct}%)</span>`
+                            : remaining > 0
+                                ? `${answered} of ${total} questions — ${confPct}% <span style="opacity:.65;font-size:.85em">(need ${minConf}%)</span>`
+                                : `${confPct}% confidence <span style="opacity:.65;font-size:.85em">(need ${minConf}% — more detail helps)</span>`;
 
                         const sumHtml = `<div class="sq-ic-summary">
         <div class="sq-ic-sum-hdr">
@@ -6411,15 +6485,23 @@ function enableLiveAdLibPreview() {
                             });
                         });
 
-                        // Notes — NLP detection feeds into detTagIds
+                        // Notes — store description only; do NOT silently push
+                        // NLP-detected tags into S.detTagIds. Tags detected from
+                        // free text belong to S._suggestedTagIds (shown as
+                        // hint chips the user must tap explicitly) — not
+                        // directly to the priced set without consent.
                         const ta = card.querySelector('.sq-ic-notes');
                         if (ta) ta.addEventListener('input', () => {
                             S._jobNotes = ta.value;
                             if (ta.value.length > 5) {
                                 const nlp = detectTagsNLP(ta.value);
                                 nlp.found.forEach(tid => {
-                                    if (tagValidForCategory(tid, catId, groupId) && !S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
-                                        S.detTagIds.push(tid);
+                                    if (tagValidForCategory(tid, catId, groupId) &&
+                                        !S.detTagIds.includes(tid) &&
+                                        !S.manTagIds.includes(tid) &&
+                                        !S.negatedTagIds.includes(tid) &&
+                                        !(S._suggestedTagIds || []).includes(tid))
+                                        (S._suggestedTagIds = S._suggestedTagIds || []).push(tid);
                                 });
                             }
                             render();
@@ -7439,8 +7521,11 @@ function enableLiveAdLibPreview() {
                     let parts = [w('I need to ')];
 
                     if (BLD.action) {
-                        const _actObj = BLD_ACTION_MAP.find(a => a.value === BLD.action);
-                        parts.push(s(_actObj?.verbLabel || BLD.action));
+                        // BLD.action is already the correct infinitive (matches
+                        // negation_library.action_conjugations[*].infinitive_for_adlib).
+                        // Was using _actObj.verbLabel (past participle) which produced
+                        // "I need to fixed my window" — now uses BLD.action directly.
+                        parts.push(s(BLD.action));
                     } else parts.push(placeholder(1));
 
                     if (BLD.action) {
@@ -7475,7 +7560,8 @@ function enableLiveAdLibPreview() {
                     // Store metadata — now includes groupId from JSON
                     if (stepId === 'action') {
                         BLD._stype = choice.stype;
-                        BLD._verbLabel = choice.verbLabel || choice.value;
+                        // _verbLabel removed — was only used by the now-fixed sentence
+                        // construction; BLD.action itself is the correct infinitive.
                     }
                     if (stepId === 'object' || stepId === 'specific') {
                         if (choice.cat) BLD._cat = choice.cat;
