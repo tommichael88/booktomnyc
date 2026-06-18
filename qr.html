@@ -4705,7 +4705,14 @@ function enableLiveAdLibPreview() {
                     document.getElementById('sqQtyV').textContent = S.qty;
 
                     // SSOT: apply contextual_override injected tags as detected tags
-                    // ---- RESOLVER: object_based ----
+                    if (S.intent._ctxTags?.length) {
+                        const cat = S.intent.category || 'other';
+                        S.intent._ctxTags.forEach(tid => {
+                            if (tagValidForCategory(tid, cat, S.intent._groupId) &&
+                                !S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
+                                S.detTagIds.push(tid);
+                        });
+                    }
                     if (S.intent.resolver === 'object_based') {
     const object = extractObject(desc, S.intent.key);
     if (object) {
@@ -4743,7 +4750,7 @@ function enableLiveAdLibPreview() {
         S.intent.confidence_weight = 10; // well below threshold
     }
 }
-                    // ---- end resolver ----
+
                     // SSOT: apply contextual adjustment fee/minutes to intent base for computeSQQuote
                     if (S.intent._ctxFee) S.intent._ctxBaseAdjFee = S.intent._ctxFee;
                     if (S.intent._ctxMin) S.intent._ctxBaseAdjMin = S.intent._ctxMin;
