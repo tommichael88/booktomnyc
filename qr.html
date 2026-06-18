@@ -3532,7 +3532,11 @@ function enableLiveAdLibPreview() {
                     let hours = totalMinutes / 60;
                     if (hours > 0 && hours < 1) hours = 1;
                     const rounded = Math.round(hours * 100) / 100;
-                    const rate = (SERVICE_DATA?.meta?.rate_per_hour) || 85;
+                    // SSOT: meta.global_rates.standard_labor — furniture assembly
+                    // is standard labor, not the specialized_repair tier (85).
+                    // meta.rate_per_hour does not exist in the JSON (was always
+                    // falling through to the hardcoded 85 fallback, bypassing SSOT).
+                    const rate = SERVICE_DATA?.meta?.global_rates?.standard_labor || 65;
                     return {
                         hours: rounded,
                         price: Math.round(rounded * rate * 100) / 100,
@@ -4235,7 +4239,12 @@ function enableLiveAdLibPreview() {
 
                 /* ── Tag label helper ─────────────────────────────────────────── */
                 function sqTagLabel(t, tid) {
-                    return t.label || t.display_name || tid.replace('#', '').replace(/_/g, ' ');
+                    // SSOT: ui_phrase is the intended human-readable chip label —
+                    // all 44 smart_tags have it (e.g. 'on a drywall wall', 'that is
+                    // clogged') while label/display_name are never populated (0/44).
+                    // Without this check every chip showed the raw slug fallback.
+                    if (!t) return tid ? tid.replace('#', '').replace(/_/g, ' ') : '';
+                    return t.ui_phrase || t.label || t.display_name || tid.replace('#', '').replace(/_/g, ' ');
                 }
 
                 /* ── NLP ──────────────────────────────────────────────────────── */
@@ -8158,7 +8167,18 @@ function enableLiveAdLibPreview() {
                         const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         SERVICE_DATA = await res.json();
-                        SERVICE_DATA = resolveRefs(SERVICE_DATA);
+                        // resolveRefs DISABLED: it was expanding $ref objects
+                        // (e.g. {"$ref":"#plumbing"}) to the full tag object, but
+                        // every consumer in the JS (prefillSmartQuoteFromService,
+                        // prefillSmartQuoteFromOtherTile, detectIntentNLP, etc.)
+                        // extracts the tag ID by reading tagRef.$ref as a string.
+                        // After expansion, tagRef.$ref is undefined → tag is
+                        // silently dropped → default_tags and suggested_tags never
+                        // populate S.detTagIds. All other $ref contexts (synonyms,
+                        // derived_from, requires) are also never read in expanded
+                        // form by any JS code, so resolveRefs provided no benefit
+                        // while actively breaking the most critical data paths.
+                        // SERVICE_DATA = resolveRefs(SERVICE_DATA); // ← broken, do not re-enable
                         DB = SERVICE_DATA; // for SmartQuote engine
                         window.DB = DB;    // expose globally for SSOT helpers
                         initNlpSets();     // build NLP sets from DB.negation_library
