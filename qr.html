@@ -220,17 +220,6 @@ body.modal-active{overflow:hidden}
 .sq-live-preview i.ti-sparkles { font-size:.9rem; color:var(--clr-red-dark,#8a0615); opacity:.7; flex-shrink:0; }
 .sq-live-preview .preview-empty { color:#9ca3af; font-style:italic; font-size:.82rem; }
 .sq-live-preview .preview-tag { background:rgba(222,0,0,.1); border-radius:30px; padding:2px 8px; font-size:.68rem; font-weight:600; color:#8a0615; white-space:nowrap; margin-left:2px; }
-/* "Got it" confirmation strip — merged Analyze+Builder flow */
-.sq-gotit-strip { margin-bottom:8px; padding:10px 14px; background:rgba(34,139,34,.06); border:1px solid rgba(34,139,34,.2); border-radius:10px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; animation:sqGotItIn .18s ease; }
-.sq-gotit-text { font-size:.85rem; color:#2d5a2d; display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
-.sq-gotit-text i.ti-check { color:#2d8a2d; font-size:1rem; flex-shrink:0; }
-.sq-gotit-text strong { color:#1a3d1a; font-weight:700; }
-.sq-gotit-actions { display:flex; gap:8px; flex-shrink:0; }
-.sq-gotit-confirm { background:var(--clr-red-dark,#8a0615); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; transition:var(--transition); }
-.sq-gotit-confirm:hover { background:var(--clr-red,#de0000); }
-.sq-gotit-edit { background:none; border:1.5px solid rgba(0,0,0,.15); color:#555; border-radius:8px; padding:7px 12px; font-size:.78rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:var(--transition); }
-.sq-gotit-edit:hover { border-color:rgba(0,0,0,.3); }
-@keyframes sqGotItIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 /* interactive adlib word */
 .lp-word { color:#555; font-size:.83rem; font-weight:400; }
 /* interactive adlib pill (dropdown trigger) */
@@ -610,9 +599,12 @@ body.modal-active{overflow:hidden}
 .sq-b-dot { width:6px; height:6px; border-radius:50%; background:rgba(0,0,0,.15); transition:var(--transition); }
 .sq-b-dot.active { background:var(--clr-red,#de0000); transform:scale(1.4); }
 .sq-b-dot.done { background:var(--clr-red-dark,#8a0615); }
-#sqWriteForMeBtn { background:none; border:1.5px solid rgba(222,222,222,.3); color:var(--clr-red-dark,#8a0615); border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; transition:var(--transition); touch-action:manipulation; letter-spacing:.02em; margin-top:8px; align-self:flex-start; }
-#sqWriteForMeBtn:hover { background:rgba(222,0,0,.07); border-color:var(--clr-red,#de0000); }
-#sqWriteForMeBtn.active { background:var(--clr-red-dark,#8a0615); color:#fff; border-color:var(--clr-red-dark,#8a0615); }
+#sqUnifiedActionBtn { background:var(--clr-red-dark,#8a0615); color:#fff; border:none; border-radius:9px; padding:11px 16px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; transition:var(--transition); touch-action:manipulation; letter-spacing:.01em; margin-top:10px; width:100%; }
+#sqUnifiedActionBtn:hover { background:var(--clr-red,#de0000); }
+#sqUnifiedActionBtn.sq-unified-confident { background:#2d8a2d; }
+#sqUnifiedActionBtn.sq-unified-confident:hover { background:#256e25; }
+#sqManualOverrideLink { background:none; border:none; color:#888; font-size:11.5px; font-weight:600; cursor:pointer; padding:6px 4px; margin-top:2px; text-decoration:underline; text-decoration-color:rgba(136,136,136,.3); align-self:center; }
+#sqManualOverrideLink:hover { color:#555; }
 #smartQuoteEngine .chip.sq-hint { border-style:dashed; border-color:rgba(222,0,0,.3); color:var(--clr-red-dark,#8a0615); background:rgba(222,0,0,.04); }
 @keyframes blink { 0%,100%{opacity:.4} 50%{opacity:1} }
 @keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
@@ -1160,29 +1152,34 @@ function enableLiveAdLibPreview() {
      *  details; re-asking via chips would be the nagging this is designed
      *  to avoid). Unconfident input opens the guided builder pre-seeded with
      *  whatever WAS understood, so the user corrects rather than restarts. */
-    function renderGotItStrip(confidence, previewText) {
-        const bar = document.getElementById('sqTextBar');
-        if (!bar) return;
-        let strip = document.getElementById('sqGotItStrip');
+    /** renderUnifiedSqButton — the single button that replaces what used to
+     *  be three separate, competing affordances (Analyze, Write it for me,
+     *  Got It strip's confirm/edit pair). Confidence alone decides what the
+     *  one button does: below threshold, it opens the guided builder (the
+     *  builder is the right tool when NLP isn't sure); at or above
+     *  threshold, it proceeds with the understood request (no need to make
+     *  the user re-confirm via a second control once confidence is high).
+     *  A small secondary link covers manually overriding a high-confidence
+     *  read that's actually wrong. */
+    function renderUnifiedSqButton(confidence, previewText) {
+        const btn = document.getElementById('sqUnifiedActionBtn');
+        const label = document.getElementById('sqUnifiedActionLabel');
+        const overrideLink = document.getElementById('sqManualOverrideLink');
+        if (!btn || !label) return;
         const CONFIDENT_THRESHOLD = 55; // roughly matches medium_confidence_standard
+        const hasText = !!(previewText && previewText.trim());
+        const isConfident = hasText && confidence >= CONFIDENT_THRESHOLD;
 
-        if (confidence < CONFIDENT_THRESHOLD || !previewText) {
-            if (strip) strip.remove();
-            return;
+        window._sqUnifiedMode = isConfident ? 'confirm' : 'build';
+        if (isConfident) {
+            label.textContent = 'Looks right — continue';
+            btn.classList.add('sq-unified-confident');
+            if (overrideLink) overrideLink.style.display = 'block';
+        } else {
+            label.textContent = hasText ? 'Not quite what we meant? Build it step by step' : 'Build it step by step';
+            btn.classList.remove('sq-unified-confident');
+            if (overrideLink) overrideLink.style.display = 'none';
         }
-        if (!strip) {
-            strip = document.createElement('div');
-            strip.id = 'sqGotItStrip';
-            strip.className = 'sq-gotit-strip';
-            const inlineRow = bar.querySelector('.sq-inline-row');
-            if (inlineRow) bar.insertBefore(strip, inlineRow);
-        }
-        strip.innerHTML = `
-            <div class="sq-gotit-text"><i class="ti ti-check"></i> Got it: <strong>${previewText}</strong></div>
-            <div class="sq-gotit-actions">
-                <button type="button" class="sq-gotit-confirm" onclick="window.sqAnalyze()">Looks right <i class="ti ti-arrow-right"></i></button>
-                <button type="button" class="sq-gotit-edit" onclick="window.sqToggleBuilder()">Not quite</button>
-            </div>`;
     }
 
     let _tid;
@@ -1191,11 +1188,9 @@ function enableLiveAdLibPreview() {
         _tid = setTimeout(() => {
             const text = textarea.value;
             previewDiv.innerHTML = buildPreview(text);
-            // Merged Analyze+Builder: confident typed input gets a "Got it"
-            // confirmation strip instead of requiring a separate Analyze tap.
             const conf = estimateLiveConfidence(text);
             const phraseMatch = previewDiv.innerHTML.match(/preview-phrase">([^<]+)</);
-            renderGotItStrip(conf, phraseMatch ? phraseMatch[1] : null);
+            renderUnifiedSqButton(conf, phraseMatch ? phraseMatch[1] : null);
         }, 80);
     }
     update();
@@ -1972,15 +1967,19 @@ function enableLiveAdLibPreview() {
                     else addBackButton(container, () => window.showGroupsForCategory(categoryId, true));
                 };
 
-                /** buildOtherTilesForGroup — synthesizes a tappable "Other [Type]"
-                 *  card for every dynamic_service_types entry NOT already covered
-                 *  by a named service in this group. Without this, groups with
-                 *  few or zero explicit_services (very common — Diagnostic in
-                 *  particular almost never has a named service) render an empty,
-                 *  dead-end grid. Returns lightweight placeholder objects, never
-                 *  written into DB — they exist only to give the catalog grid a
-                 *  tappable card; prefillSmartQuoteFromOtherTile() reads category_id
-                 *  + group_id + service_type straight from the tile, no svc lookup needed.
+                /** buildOtherTilesForGroup — synthesizes ONE tappable "[Group] Other"
+                 *  card per group, covering every dynamic_service_types entry NOT
+                 *  already covered by a named service in that group. Without this,
+                 *  groups with few or zero explicit_services (very common —
+                 *  Diagnostic in particular almost never has a named service) render
+                 *  an empty, dead-end grid. Deliberately ONE tile per group, not one
+                 *  per uncovered type — a group can have 2-3 uncovered types
+                 *  (Diagnostic + Repair + Install all missing is common), and three
+                 *  tiles all labeled identically "[Group] Other" would be
+                 *  indistinguishable until tapped. The single tile carries every
+                 *  uncovered type so the builder's action step can still offer the
+                 *  right choices once tapped, rather than guessing one type upfront.
+                 *  Returns lightweight placeholder objects, never written into DB.
                  */
                 function buildOtherTilesForGroup(realServices, groupId) {
                     if (!groupId) return [];
@@ -1991,25 +1990,37 @@ function enableLiveAdLibPreview() {
 
                     const normalize = t => (t || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
                     const coveredTypes = new Set(realServices.map(s => normalize(s.service_type)));
+                    const uncoveredTypes = dynTypes.filter(t => !coveredTypes.has(normalize(t)));
+                    if (!uncoveredTypes.length) return [];
 
-                    return dynTypes
-                        .filter(t => !coveredTypes.has(normalize(t)))
-                        .map(t => {
-                            const stKey = normalize(t);
-                            const stDef = DB.service_types?.[stKey] || {};
-                            return {
-                                _isOtherTile: true,
-                                id: '_other_' + groupId + '_' + stKey.toLowerCase().replace(/[^a-z]/g, ''),
-                                service_type: stKey,
-                                ui_taxonomy: {
-                                    display_name: 'Other ' + t,
-                                    icon: stDef.icon || 'ti-help-circle',
-                                    group_id: groupId,
-                                    description: 'Describe your ' + (group.display_name || 'job') + ' ' + t.toLowerCase() + ' need — we\u2019ll ask only what\u2019s necessary.'
-                                },
-                                financial_engine: { pricing_type: 'flat_rate', base_price: stDef.base_price || 0 }
-                            };
-                        });
+                    // icon preference order: Repair > Install > Diagnostic > Assembly > Setup
+                    // (whichever uncovered type is most likely to be tapped first)
+                    const iconPriority = ['Repair', 'Install', 'Install / Mount', 'Diagnostic', 'Assembly', 'Setup'];
+                    const primaryType = uncoveredTypes.slice().sort((a, b) =>
+                        iconPriority.indexOf(normalize(a)) - iconPriority.indexOf(normalize(b)))[0];
+                    const primaryStDef = DB.service_types?.[normalize(primaryType)] || {};
+
+                    return [{
+                        _isOtherTile: true,
+                        id: '_other_' + groupId,
+                        // Carries EVERY uncovered type (normalized), not just one —
+                        // prefillSmartQuoteFromOtherTile uses this to decide whether
+                        // the action step can be pre-seeded (exactly one type) or must
+                        // still be asked (multiple types possible for this group).
+                        uncovered_service_types: uncoveredTypes.map(normalize),
+                        service_type: normalize(primaryType), // fallback/default if only one
+                        ui_taxonomy: {
+                            // "[Group] Other" (e.g. "Doors Other") — the user already
+                            // knows what group they're in; which specific action
+                            // applies is asked inside the builder, not pre-guessed
+                            // from a tile label.
+                            display_name: (group.display_name || 'Other') + ' Other',
+                            icon: primaryStDef.icon || 'ti-help-circle',
+                            group_id: groupId,
+                            description: 'Describe your ' + (group.display_name || 'job') + ' need — we\u2019ll ask only what\u2019s necessary.'
+                        },
+                        financial_engine: { pricing_type: 'flat_rate', base_price: primaryStDef.base_price || 0 }
+                    }];
                 }
 
                 function renderServices(container, services, category_id, group_id) {
@@ -2026,14 +2037,18 @@ function enableLiveAdLibPreview() {
                     const unique = new Map();
                     allTiles.forEach(s => unique.set(s.id, s));
                     services = Array.from(unique.values());
-                    services.sort((a, b) => {
-                        const aIsOther = a._isOtherTile || (a.id && a.id.toLowerCase().includes('other')) || (a.ui_taxonomy?.display_name && a.ui_taxonomy.display_name.toLowerCase().includes('other'));
-                        const bIsOther = b._isOtherTile || (b.id && b.id.toLowerCase().includes('other')) || (b.ui_taxonomy?.display_name && b.ui_taxonomy.display_name.toLowerCase().includes('other'));
-                        if (aIsOther === bIsOther) return 0;
-                        return aIsOther ? 1 : -1;
-                    });
+
+                    // Other tiles get their OWN section, always rendered last —
+                    // they must NOT be bucketed into the alphabetically-sorted
+                    // Installation/Repair/Replacement/Weatherize groups below,
+                    // since "Other" can sort alphabetically BEFORE "Repair" or
+                    // "Weatherize" and end up appearing in the middle of the
+                    // page instead of at the bottom.
+                    const otherSvcs = services.filter(s => s._isOtherTile);
+                    const namedSvcs = services.filter(s => !s._isOtherTile);
+
                     const grouped = {};
-                    services.forEach(svc => {
+                    namedSvcs.forEach(svc => {
                         let key = 'Other';
                         const name = svc.ui_taxonomy?.display_name.toLowerCase();
                         if (name.includes('installation') || name.includes('mount')) key = 'Installation';
@@ -2048,12 +2063,17 @@ function enableLiveAdLibPreview() {
                             class: 'service-group-header',
                             text: `${key} (${grouped[key].length})`
                         }));
-                        grouped[key].forEach(svc => container.appendChild(
-                            svc._isOtherTile
-                                ? createOtherTileElement(svc, category_id)
-                                : createServiceCardElement(svc, category_id)
-                        ));
+                        grouped[key].forEach(svc => container.appendChild(createServiceCardElement(svc, category_id)));
                     });
+                    // Synthetic Other tiles — always last, own section, no header
+                    // count noise (the tiles themselves already say "[Group] Other").
+                    if (otherSvcs.length) {
+                        container.appendChild(create('div', {
+                            class: 'service-group-header',
+                            text: 'Other'
+                        }));
+                        otherSvcs.forEach(svc => container.appendChild(createOtherTileElement(svc, category_id)));
+                    }
                 }
 
                 function createOtherTileElement(tile, category_id) {
@@ -4182,6 +4202,12 @@ function enableLiveAdLibPreview() {
                                 label: m.keyword,
                                 qtyLabel: 'item',
                                 recommendedSku: m.default_service_sku || null,
+                                // The actual confidence score used to pick this match —
+                                // was computed and then discarded before; now attached
+                                // so downstream code (the recommendedSku banner's
+                                // auto-select) can gate on the REAL number instead of
+                                // re-estimating or assuming a SKU implies confidence.
+                                _matchConfidence: score,
                                 dynamic_rule: m.dynamic_rule || null,
                                 _ctxFee: 0,
                                 _ctxMin: 0,
@@ -4448,13 +4474,21 @@ function enableLiveAdLibPreview() {
       <i class="ti ti-sparkles"></i>
       <span class="preview-empty">✨ Describe your job — we’ll build a clear request for you</span>
     </div>
-    <!-- "Got it" strip is injected here by renderGotItStrip() once confidence is high enough -->
     <div class="sq-inline-row">
       <textarea id="sqDescIn" rows="2" placeholder="e.g. mount a large neon sign on a drywall wall in the bedroom…"></textarea>
-      <button id="sqAnalyzeBtn">Analyze <i class="ti ti-arrow-right"></i></button>
     </div>
-    <button id="sqWriteForMeBtn" onclick="sqToggleBuilder()">
-      <i class="ti ti-sparkles"></i> Not sure how to phrase it? Build it step by step
+    <!-- ONE unified action button — label/behavior driven entirely by live
+         confidence (see renderUnifiedSqButton). Low confidence: "Build it
+         step by step" (opens the guided builder). High confidence: "Looks
+         right, continue" (proceeds straight to scope/conditions). This
+         replaces what used to be three separate, competing affordances
+         (Analyze button, Write it for me link, Got It strip's two buttons)
+         with one decision point that just changes as confidence changes. -->
+    <button id="sqUnifiedActionBtn" type="button" onclick="window.sqUnifiedAction()">
+      <i class="ti ti-sparkles"></i> <span id="sqUnifiedActionLabel">Build it step by step</span>
+    </button>
+    <button id="sqManualOverrideLink" type="button" onclick="window.sqToggleBuilder()" style="display:none;">
+      Not quite — let me build it instead
     </button>
   </div>
       <!-- Guided builder: shown when user taps "Write it for me" -->
@@ -4537,11 +4571,13 @@ function enableLiveAdLibPreview() {
       <div id="sqQuoteOut"></div>
       
     `;
-                    document.getElementById('sqAnalyzeBtn').addEventListener('click', sqAnalyze);
+                    // sqUnifiedActionBtn's click is wired via inline onclick to
+                    // window.sqUnifiedAction (defined below) — no separate
+                    // addEventListener needed here, unlike the old sqAnalyzeBtn.
                     document.getElementById('sqDescIn').addEventListener('keydown', e => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            sqAnalyze();
+                            sqUnifiedAction();
                         }
                     });
                     enableLiveAdLibPreview(); // bind once at init, not per-keystroke
@@ -4558,6 +4594,24 @@ function enableLiveAdLibPreview() {
                 }
 
                 /* ── ANALYZE (text path) ──────────────────────────────────────── */
+                /** sqUnifiedAction — the one click handler behind the single
+                 *  unified button (replaces separate Analyze / Write it for me /
+                 *  Got It confirm+edit). Mode is set by renderUnifiedSqButton
+                 *  based on live confidence: low confidence opens the guided
+                 *  builder pre-seeded with whatever WAS understood from typed
+                 *  text (so the user corrects rather than restarts); high
+                 *  confidence runs the real analysis and proceeds. Empty input
+                 *  always opens the builder — there's nothing to be confident
+                 *  about yet. */
+                function sqUnifiedAction() {
+                    const desc = (document.getElementById('sqDescIn')?.value || '').trim();
+                    if (!desc || window._sqUnifiedMode !== 'confirm') {
+                        sqToggleBuilder();
+                        return;
+                    }
+                    sqAnalyze();
+                }
+
                 function sqAnalyze() {
                     if (!DB || !DB.intent_mappings) {
                         toast('Pricing data still loading — please wait a moment.', 'error');
@@ -4609,6 +4663,35 @@ function enableLiveAdLibPreview() {
                     // SSOT: apply contextual adjustment fee/minutes to intent base for computeSQQuote
                     if (S.intent._ctxFee) S.intent._ctxBaseAdjFee = S.intent._ctxFee;
                     if (S.intent._ctxMin) S.intent._ctxBaseAdjMin = S.intent._ctxMin;
+
+                    // ── High-confidence catalog match: auto-select ──────────────────
+                    // If NLP confidently resolved to a SPECIFIC named service (not just
+                    // a category), switch directly into that service's own flow rather
+                    // than showing the generic dynamic_services estimate with a buried
+                    // "Use this" banner as an afterthought. Threshold (70) sits below
+                    // real high-confidence keywords like "mount" (85) / "toilet" (90)
+                    // but above lower-confidence ones like "door" (55) / "furniture" (50)
+                    // where auto-switching would be wrong often enough to be annoying.
+                    // Reversible: prefillSmartQuoteFromService is the SAME function the
+                    // recommendedSku banner's manual "Use this" button already calls —
+                    // auto-select and manual-select converge on identical behavior,
+                    // and S._autoSelectedFrom below is what lets "not this" cleanly
+                    // revert to the generic estimate using the user's original text.
+                    const AUTO_SELECT_THRESHOLD = 70;
+                    const recSku = S.intent?.recommendedSku;
+                    const recSvc = recSku ? (DB.services || []).find(sv => sv.id === recSku) : null;
+                    if (recSvc && (S.intent._matchConfidence || 0) >= AUTO_SELECT_THRESHOLD) {
+                        // IMPORTANT: prefillSmartQuoteFromService does a full S = {...}
+                        // reassignment (not a mutation), which would silently wipe any
+                        // field set on the OLD S object — including this one — before
+                        // sqRenderQuote ever gets to read it. Snapshot locally, call
+                        // the function, then restore onto the freshly-created S.
+                        const autoSelectSnapshot = { desc, intent: S.intent, qty: S.qty };
+                        const catId = S.intent.category || recSvc.ui_taxonomy?.category_id || null;
+                        prefillSmartQuoteFromService(recSvc, catId);
+                        S._autoSelectedFrom = autoSelectSnapshot;
+                        return;
+                    }
 
                     // Hand off to shared pipeline — confidence_tiers decides step routing
                     sqPrepareFlow(false);
@@ -5587,23 +5670,42 @@ function enableLiveAdLibPreview() {
 
                     const btnLabel = q.btnText || 'Add to Request';
 
-                    // SSOT: if NLP matched a specific service SKU, offer to actually
-                    // switch into that service's own flow — not just inform the user
-                    // it exists and ask them to go find it manually. Per spec: "wizard
-                    // retains the user's input, displays the matched service, and
-                    // allows the user to confirm and finalize the selection from there."
-                    const _recSku = S.intent?.recommendedSku;
-                    const _recSvc = _recSku ? (DB.services || []).find(sv => sv.id === _recSku) : null;
-                    const _recCatId = S.intent?.category || _recSvc?.ui_taxonomy?.category_id || null;
-                    const _recBanner = _recSvc ?
-                        '<div style="margin-bottom:12px;padding:10px 14px;background:rgba(222,0,0,.06);border-radius:10px;border:1px solid rgba(222,0,0,.2);font-size:13px;display:flex;align-items:center;gap:10px;">' +
-                        '<i class="ti ti-star" style="color:var(--clr-red,#de0000);font-size:15px;flex-shrink:0"></i>' +
-                        '<div style="flex:1;min-width:0;"><strong>Exact match found:</strong> ' + (_recSvc.ui_taxonomy?.display_name || _recSku) +
-                        ' <span style="color:#888;font-size:12px;">— usually a more precise quote than the general estimate below</span></div>' +
-                        '<button type="button" onclick="window._sqSwitchToRecommended(\'' + _recSku.replace(/'/g, "\\'") + '\',\'' + (_recCatId || '').replace(/'/g, "\\'") + '\')" ' +
-                        'style="flex-shrink:0;background:var(--clr-red-dark,#8a0615);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Use this</button>' +
-                        '</div>' :
-                        '';
+                    // Two distinct banner states:
+                    //  1. Auto-selected (S._autoSelectedFrom set by sqAnalyze when
+                    //     confidence crossed the auto-select threshold) — this IS
+                    //     the matched service already; show a prominent, front-and-
+                    //     center confirmation with a clear way to revert, since
+                    //     "auto-select" without an undo isn't really optional.
+                    //  2. Suggestable but not auto-selected (a recommendedSku exists
+                    //     but confidence was below threshold) — softer "you could
+                    //     also try X" prompt, since the generic estimate currently
+                    //     showing is what should remain visually primary.
+                    let _recBanner = '';
+                    if (S._autoSelectedFrom) {
+                        _recBanner =
+                            '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(45,138,45,.08);border-radius:10px;border:1.5px solid rgba(45,138,45,.3);font-size:13.5px;display:flex;align-items:center;gap:10px;">' +
+                            '<i class="ti ti-circle-check-filled" style="color:#2d8a2d;font-size:19px;flex-shrink:0"></i>' +
+                            '<div style="flex:1;min-width:0;"><strong style="color:#1a3d1a;">Matched to an exact service</strong> — this gives a more precise quote than a general estimate.' +
+                            '<button type="button" onclick="window._sqRevertAutoSelect()" style="background:none;border:none;color:#888;font-size:12px;text-decoration:underline;cursor:pointer;padding:0;margin-left:8px;">Not this? Use general estimate</button></div>' +
+                            '</div>';
+                    } else {
+                        // SSOT: if NLP matched a specific service SKU but confidence
+                        // didn't clear the auto-select bar, still offer to switch —
+                        // same underlying action (_sqSwitchToRecommended), just framed
+                        // as a suggestion rather than something already done for them.
+                        const _recSku = S.intent?.recommendedSku;
+                        const _recSvc = _recSku ? (DB.services || []).find(sv => sv.id === _recSku) : null;
+                        const _recCatId = S.intent?.category || _recSvc?.ui_taxonomy?.category_id || null;
+                        _recBanner = _recSvc ?
+                            '<div style="margin-bottom:12px;padding:10px 14px;background:rgba(222,0,0,.06);border-radius:10px;border:1px solid rgba(222,0,0,.2);font-size:13px;display:flex;align-items:center;gap:10px;">' +
+                            '<i class="ti ti-star" style="color:var(--clr-red,#de0000);font-size:15px;flex-shrink:0"></i>' +
+                            '<div style="flex:1;min-width:0;"><strong>Possible match:</strong> ' + (_recSvc.ui_taxonomy?.display_name || _recSku) +
+                            ' <span style="color:#888;font-size:12px;">— may give a more precise quote</span></div>' +
+                            '<button type="button" onclick="window._sqSwitchToRecommended(\'' + _recSku.replace(/'/g, "\\'") + '\',\'' + (_recCatId || '').replace(/'/g, "\\'") + '\')" ' +
+                            'style="flex-shrink:0;background:var(--clr-red-dark,#8a0615);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Use this</button>' +
+                            '</div>' :
+                            '';
+                    }
 
                     const extraFeeRow = q.extraFee ?
                         '<div class="ql"><span class="qll"><i class="ti ti-adjustments-alt"></i> Condition adjustments</span>' +
@@ -5681,6 +5783,14 @@ function enableLiveAdLibPreview() {
                 }
 
                 function sqRestart() {
+                    // Full reset — EVERY field either S or BLD can ever carry must be
+                    // listed here explicitly. This is the root fix for the cart-collision
+                    // bug: several fields (_confidenceStrategy, _escalatedBy, _forceModules,
+                    // _fromBuilder, _selfQuoteSvc on S; _groupId, _keyword, _fromOtherTile,
+                    // _contextLabel, _objectLabel on BLD) were being SET by various entry
+                    // points (Other-tile prefill, builder, free text) but never CLEARED
+                    // here, so they silently carried over into the next SmartQuote session
+                    // and could leak into a new cart entry's notes/pricing/routing.
                     S = {
                         qty: 1,
                         intent: null,
@@ -5695,17 +5805,34 @@ function enableLiveAdLibPreview() {
                         _svc: null,
                         answers: {},
                         _curatedMode: false,
-                        _jobNotes: ''
+                        _jobNotes: '',
+                        _objectNoun: null,
+                        _location: null,
+                        _sizeHint: null,
+                        _notes: null,
+                        _confidenceStrategy: null,
+                        _escalatedBy: null,
+                        _forceModules: null,
+                        _fromBuilder: false,
+                        _selfQuoteSvc: null,
+                        _isOtherTileEntry: false,
+                        _autoSelectedFrom: null
                     };
                     window._sqCuratedRender = null;
                     const out = document.getElementById('sqQuoteOut');
                     if (out) out.innerHTML = '';
                     const desc = document.getElementById('sqDescIn');
                     if (desc) desc.value = '';
-                    // Clear stale "Got it" strip — sqRestart clears the textarea
-                    // but the strip is a separately-injected element that won't
-                    // otherwise be cleaned up, and would show outdated text.
-                    document.getElementById('sqGotItStrip')?.remove();
+                    // Reset the unified action button back to its default
+                    // (low-confidence) label/state, since the textarea is
+                    // also being cleared right above.
+                    const unifiedBtn = document.getElementById('sqUnifiedActionBtn');
+                    const unifiedLabel = document.getElementById('sqUnifiedActionLabel');
+                    if (unifiedBtn) unifiedBtn.classList.remove('sq-unified-confident');
+                    if (unifiedLabel) unifiedLabel.textContent = 'Build it step by step';
+                    const overrideLink = document.getElementById('sqManualOverrideLink');
+                    if (overrideLink) overrideLink.style.display = 'none';
+                    window._sqUnifiedMode = 'build';
                     const preview = document.getElementById('sqLivePreview');
                     if (preview) preview.innerHTML = '<i class="ti ti-sparkles"></i><span class="preview-empty">✨ Describe your job — we\u2019ll build a clear request for you</span>';
                     // Clear stale containers to prevent duplicate question listeners
@@ -5740,11 +5867,6 @@ function enableLiveAdLibPreview() {
                     const grid = document.getElementById('category-card');
                     if (grid) grid.style.display = 'grid';
                     if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
-                    // Clear NLP enrichment
-                    S._objectNoun = null;
-                    S._location = null;
-                    S._sizeHint = null;
-                    S._notes = null;
                     BLD = {
                         step: 0,
                         action: null,
@@ -5752,11 +5874,19 @@ function enableLiveAdLibPreview() {
                         specific: null,
                         condition: null,
                         location: null,
-                        qty: 1
+                        qty: 1,
+                        _stype: null,
+                        _cat: null,
+                        _groupId: null,
+                        _keyword: null,
+                        _fromOtherTile: false,
+                        _contextLabel: null,
+                        _objectLabel: null,
+                        _allowedTypes: null
                     };
                     const bldr = document.getElementById('sqBuilder');
                     if (bldr) bldr.style.display = 'none';
-                    const bBtn = document.getElementById('sqWriteForMeBtn');
+                    const bBtn = document.getElementById('sqUnifiedActionBtn');
                     if (bBtn) bBtn.classList.remove('active');
                     const inRow = document.querySelector('#sqTextBar .sq-inline-row');
                     if (inRow) inRow.style.display = 'flex';
@@ -6419,6 +6549,40 @@ function enableLiveAdLibPreview() {
                     });
                 }
 
+                /** _sqRevertAutoSelect — the action behind the auto-selected
+                 *  banner's "Not this? Use general estimate" link (see
+                 *  sqRenderQuote). Auto-select (sqAnalyze) switches the user
+                 *  into a matched service's flow automatically when confidence
+                 *  is high — this is the deselect path back to the generic
+                 *  dynamic_services estimate, using the ORIGINAL description/
+                 *  qty saved in S._autoSelectedFrom before the switch happened,
+                 *  so the user's typed input isn't lost by reverting. */
+                function _sqRevertAutoSelect() {
+                    const saved = S._autoSelectedFrom;
+                    if (!saved) { sqRestart(); return; }
+
+                    const bar = document.getElementById('sqTextBar');
+                    if (bar) bar.style.display = 'none';
+                    const grid = document.getElementById('category-card');
+                    if (grid) grid.style.display = 'none';
+                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
+                    if (!document.getElementById('sqTextBar')) initSmartQuote();
+
+                    S.desc = saved.desc;
+                    S.intent = saved.intent;
+                    S.stype = saved.intent?.stype || null;
+                    S.qty = saved.qty || 1;
+                    S._autoSelectedFrom = null; // clear — this is no longer an auto-selected state
+                    S._svc = null;
+
+                    const flow = document.getElementById('sqStepFlow');
+                    if (flow) flow.style.display = 'flex';
+                    const qout = document.getElementById('sqQuoteOut');
+                    if (qout) qout.innerHTML = '';
+
+                    sqPrepareFlow(true); // type/object already known from the saved intent
+                }
+
                 /** _sqSwitchToRecommended — the action behind the recommendedSku
                  *  banner's "Use this" button (see sqRenderQuote). When NLP/the
                  *  intent_mappings keyword resolved a specific named service
@@ -6461,7 +6625,14 @@ function enableLiveAdLibPreview() {
                     const groupId = tile.ui_taxonomy.group_id;
                     const groupObj = groupMap.get(groupId);
                     const catObj = categoryMap.get(category_id);
-                    const stype = tile.service_type; // already normalized by buildOtherTilesForGroup
+                    // A collapsed "[Group] Other" tile can carry multiple possible
+                    // types (Diagnostic + Repair + Install all uncovered is common).
+                    // Only pre-seed the action step when exactly one type is possible —
+                    // otherwise leave it genuinely open, since guessing would be wrong
+                    // as often as it's right.
+                    const uncoveredTypes = tile.uncovered_service_types || [tile.service_type];
+                    const singleType = uncoveredTypes.length === 1 ? uncoveredTypes[0] : null;
+                    const stype = singleType || tile.service_type; // best-guess label/pricing default
                     const dynKey = category_id + '+' + stype.toLowerCase();
                     const dynDef = DB.dynamic_services?.[dynKey];
 
@@ -6471,23 +6642,23 @@ function enableLiveAdLibPreview() {
                         qty: 1,
                         intent: {
                             category: category_id,
-                            label: (catObj?.display_name || category_id) + ' \u2014 ' + stype,
+                            label: (catObj?.display_name || category_id) + (singleType ? ' \u2014 ' + singleType : ''),
                             group: groupObj?.display_name || groupId,
                             base: dynDef?.financial_engine?.base_price || 70,
-                            stype,
+                            stype: singleType, // null when ambiguous — set for real once the builder's action step is answered
                             qtyLabel: 'item',
                             key: tile.id,
                             _groupId: groupId,
                             _pricingType: dynDef?.financial_engine?.pricing_type || 'flat_rate',
                             checkoutState: dynDef?.financial_engine?.checkout_state || null
                         },
-                        stype,
+                        stype: singleType,
                         desc: '',                    // the actual job description is NOT known yet — this is what we still need
                         detTagIds: [],
                         manTagIds: [],
                         negatedTagIds: [],
                         adlibConfirmed: false,
-                        _isOtherTileEntry: true,      // marks: category/group/type known, object/specifics not
+                        _isOtherTileEntry: true,      // marks: category/group known, type and/or object/specifics not
                         _suggestedTagIds: []
                     };
 
@@ -6501,26 +6672,33 @@ function enableLiveAdLibPreview() {
                         });
                     }
 
-                    // Mark step 2 (service type) done — it's known from which tile was tapped.
-                    const sn2 = document.getElementById('sqSn2'), sc2 = document.getElementById('sqSc2'),
-                        sb2 = document.getElementById('sqSb2'), sv2 = document.getElementById('sqSv2');
-                    if (sn2) { sn2.className = 'snum d'; sn2.innerHTML = '<i class="ti ti-check" style="font-size:14px"></i>'; }
-                    if (sc2) sc2.className = 'scard done';
-                    if (sb2) sb2.style.display = 'none';
-                    if (sv2) sv2.textContent = stype;
+                    // Only mark step 2 (service type) done when it's actually known
+                    // (exactly one uncovered type). With multiple possible types,
+                    // step 2 stays open — the builder's action step is where it
+                    // actually gets answered.
+                    if (singleType) {
+                        const sn2 = document.getElementById('sqSn2'), sc2 = document.getElementById('sqSc2'),
+                            sb2 = document.getElementById('sqSb2'), sv2 = document.getElementById('sqSv2');
+                        if (sn2) { sn2.className = 'snum d'; sn2.innerHTML = '<i class="ti ti-check" style="font-size:14px"></i>'; }
+                        if (sc2) sc2.className = 'scard done';
+                        if (sb2) sb2.style.display = 'none';
+                        if (sv2) sv2.textContent = singleType;
+                    }
 
                     const qout = document.getElementById('sqQuoteOut');
                     if (qout) qout.innerHTML = '';
                     const flow = document.getElementById('sqStepFlow');
                     if (flow) flow.style.display = 'flex';
 
-                    // Launch the guided builder pre-seeded with what's already known
-                    // (action + category context), asking only for the object/specifics —
-                    // exactly the "ad-lib sentence with already-known details" behavior.
+                    // Launch the guided builder. Action is pre-seeded only when
+                    // unambiguous (single uncovered type); otherwise null, so the
+                    // builder's own action step asks it normally — group context
+                    // (which IS always known) is still pre-seeded either way.
                     sqOpenBuilderPreseeded({
-                        action: stDefaultAction(stype),
+                        action: singleType ? stDefaultAction(singleType) : null,
                         groupId,
-                        categoryLabel: groupObj?.display_name || catObj?.display_name || category_id
+                        categoryLabel: groupObj?.display_name || catObj?.display_name || category_id,
+                        allowedTypes: singleType ? null : uncoveredTypes
                     });
 
                     document.getElementById('smartQuoteEngine')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -6851,7 +7029,17 @@ function enableLiveAdLibPreview() {
                         id: 'action',
                         prompt: 'What do you need done?',
                         icon: 'ti-tool',
-                        choices: () => BLD_ACTION_MAP
+                        // When entering from a multi-type "[Group] Other" tile,
+                        // BLD._allowedTypes narrows the chips to only the types
+                        // actually uncovered for that group (e.g. a group missing
+                        // only Diagnostic+Repair shouldn't show Assemble/Set up
+                        // chips that don't even apply there). Falls back to the
+                        // full list for fresh/free-text-seeded builder sessions.
+                        choices: (bld) => {
+                            if (!bld._allowedTypes || !bld._allowedTypes.length) return BLD_ACTION_MAP;
+                            const filtered = BLD_ACTION_MAP.filter(a => bld._allowedTypes.includes(a.stype));
+                            return filtered.length ? filtered : BLD_ACTION_MAP;
+                        }
                     },
                     {
                         id: 'object',
@@ -6883,7 +7071,10 @@ function enableLiveAdLibPreview() {
                 function sqToggleBuilder() {
                     const builder = document.getElementById('sqBuilder');
                     const inlineRow = document.querySelector('#sqTextBar .sq-inline-row');
-                    const btn = document.getElementById('sqWriteForMeBtn');
+                    // sqWriteForMeBtn was removed when Analyze/Write-it-for-me/Got-it
+                    // were unified into one button (sqUnifiedActionBtn) — point the
+                    // "active" visual state at the real surviving button instead.
+                    const btn = document.getElementById('sqUnifiedActionBtn');
                     if (!builder) return;
                     const isOpen = builder.style.display !== 'none';
 
@@ -6903,6 +7094,11 @@ function enableLiveAdLibPreview() {
                             if (synth && cond) synth += ` because it is ${cond}`;
                             if (synth && loc) synth += ` in my ${loc}`;
                             if (synth) textarea.value = synth;
+                            // Re-run the live confidence/preview pass on the
+                            // synthesized text so the unified button reflects
+                            // the builder's own answers immediately, not stale
+                            // empty-input state.
+                            textarea.dispatchEvent(new Event('input'));
                         }
                     } else {
                         // ── Open builder ──────────────────────────────────────────
@@ -6941,7 +7137,12 @@ function enableLiveAdLibPreview() {
                                 qty: extractQty(existingText),
                                 _stype: intent?.stype ? (intent.stype.replace('Install / Mount', 'Install')) : null,
                                 _cat: intent?.category || null,
-                                _keyword: intent?.key || null
+                                _groupId: null,
+                                _keyword: intent?.key || null,
+                                _fromOtherTile: false,
+                                _contextLabel: null,
+                                _objectLabel: null,
+                                _allowedTypes: null
                             };
 
                             // Advance BLD.step past already-known fields to the first gap
@@ -6966,7 +7167,15 @@ function enableLiveAdLibPreview() {
                                 specific: null,
                                 condition: null,
                                 location: null,
-                                qty: 1
+                                qty: 1,
+                                _stype: null,
+                                _cat: null,
+                                _groupId: null,
+                                _keyword: null,
+                                _fromOtherTile: false,
+                                _contextLabel: null,
+                                _objectLabel: null,
+                                _allowedTypes: null
                             };
                         }
 
@@ -6982,7 +7191,7 @@ function enableLiveAdLibPreview() {
                  *  group's own sub-structure actually calls for. Reuses the
                  *  same "advance past known fields" logic sqToggleBuilder
                  *  already uses when seeding from typed text. */
-                function sqOpenBuilderPreseeded({ action, groupId, categoryLabel }) {
+                function sqOpenBuilderPreseeded({ action, groupId, categoryLabel, allowedTypes }) {
                     const builder = document.getElementById('sqBuilder');
                     const inlineRow = document.querySelector('#sqTextBar .sq-inline-row');
                     if (builder) builder.style.display = 'block';
@@ -7013,7 +7222,12 @@ function enableLiveAdLibPreview() {
                         _keyword: groupId ? bldGroupToKeyword(groupId, S.intent?.category) : null,
                         _fromOtherTile: true,
                         _contextLabel: categoryLabel || null,
-                        _objectLabel: groupObj?.display_name || null
+                        _objectLabel: groupObj?.display_name || null,
+                        // Narrows the action step's chips when the tile carried
+                        // multiple possible types (see buildOtherTilesForGroup) —
+                        // null/empty means "no narrowing, show everything" (fresh
+                        // or free-text-seeded sessions).
+                        _allowedTypes: allowedTypes || null
                     };
 
                     const allSteps = sqBuilderGetSteps();
@@ -7198,7 +7412,7 @@ function enableLiveAdLibPreview() {
                     // ── Hide builder ──────────────────────────────────────────────
                     const builder = document.getElementById('sqBuilder');
                     if (builder) builder.style.display = 'none';
-                    document.getElementById('sqWriteForMeBtn')?.classList.remove('active');
+                    document.getElementById('sqUnifiedActionBtn')?.classList.remove('active');
 
                     // ── Seed S entirely from builder choices (no NLP re-detection) ─
                     const normStype = (BLD._stype || 'Repair').replace('Install / Mount', 'Install');
@@ -7557,6 +7771,7 @@ function enableLiveAdLibPreview() {
 
                 // Expose SmartQuote functions to global scope (needed for inline onclick handlers)
                 window.sqAnalyze = sqAnalyze;
+                window.sqUnifiedAction = sqUnifiedAction;
                 window.sqToggleBuilder = sqToggleBuilder;
                 window.sqBuilderBack = sqBuilderBack;
                 window.sqPickType = sqPickType;
@@ -7570,6 +7785,7 @@ function enableLiveAdLibPreview() {
                 window.sqAddToCart = sqAddToCart;
                 window.sqRestart = sqRestart;
                 window._sqSwitchToRecommended = _sqSwitchToRecommended;
+                window._sqRevertAutoSelect = _sqRevertAutoSelect;
                 window.prefillSmartQuoteFromService = prefillSmartQuoteFromService;
 
                 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
