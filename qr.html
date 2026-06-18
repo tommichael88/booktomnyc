@@ -3505,7 +3505,14 @@ function enableLiveAdLibPreview() {
                     let hours = totalMinutes / 60;
                     if (hours > 0 && hours < 1) hours = 1;
                     const rounded = Math.round(hours * 100) / 100;
-                    const rate = (SERVICE_DATA?.meta?.rate_per_hour) || 85;
+                    // SSOT FIX: meta.rate_per_hour never existed in the JSON —
+                    // was silently falling through to a hardcoded 85 every time.
+                    // The real SSOT is meta.global_rates; furniture assembly is
+                    // standard labor (not a specialized repair skill), so
+                    // standard_labor (65) is the conceptually correct rate, not
+                    // the specialized_repair tier the old 85 fallback happened
+                    // to match by coincidence.
+                    const rate = SERVICE_DATA?.meta?.global_rates?.standard_labor || 65;
                     return {
                         hours: rounded,
                         price: Math.round(rounded * rate * 100) / 100,
@@ -3532,6 +3539,25 @@ function enableLiveAdLibPreview() {
                             toast('Merged with existing furniture request', 'success');
                             return;
                         }
+                    }
+                    // Soft duplicate warning (not a hard block — someone might
+                    // genuinely want two of the same service for different
+                    // rooms/items). Previously there was NO duplicate detection
+                    // at all outside the furniture-merge case above, and the
+                    // only cart guard (cartLimiter) is a pure time-window
+                    // throttle, not content-based — a user confused by a
+                    // confidence dead-end (now fixed) or simply double-tapping
+                    // could end up with two identical entries with zero warning.
+                    // Uses a synchronous confirm() rather than a flag-and-retry
+                    // scheme, since every call site builds a fresh entry object
+                    // (new random id each time) — there's no way for a caller
+                    // to "retry with permission" otherwise.
+                    const dupe = State.serviceRequest.find(item =>
+                        item.name === entry.name && item.category_id === entry.category_id && item.price === entry.price
+                    );
+                    if (dupe) {
+                        const proceed = window.confirm(`You already have "${entry.name}" (${entry.price}) in your request. Add another one?`);
+                        if (!proceed) return;
                     }
                     State.serviceRequest.push(entry);
                     if (DOM.cartFab) {
@@ -4186,8 +4212,16 @@ function enableLiveAdLibPreview() {
                 /* ═══════════════════════════════════════ END UNIFIED ENGINE ═══ */
 
                 /* ── Tag label helper ─────────────────────────────────────────── */
+                /** sqTagLabel — SSOT fix: was checking t.label and t.display_name
+                 *  first, but NEITHER field exists on any of the 34 smart_tags
+                 *  (verified — 0/34 have either). ui_phrase is what every tag
+                 *  actually has (34/34) and is the intentionally-authored
+                 *  natural phrase (e.g. "with a leak" for #leaky_faucet) — but
+                 *  it was never checked at all, so every chip always fell
+                 *  through to the ugly slug fallback ("leaky faucet" instead
+                 *  of "with a leak"). */
                 function sqTagLabel(t, tid) {
-                    return t.label || t.display_name || tid.replace('#', '').replace(/_/g, ' ');
+                    return t.ui_phrase || t.label || t.display_name || tid.replace('#', '').replace(/_/g, ' ');
                 }
 
                 /* ── NLP ──────────────────────────────────────────────────────── */
@@ -5051,9 +5085,15 @@ function enableLiveAdLibPreview() {
                             const locked = !sel && gTids.some(o => exist.has(o) && tags[o]?.mutually_exclusive?.includes(tid));
                             const isHint = (S._suggestedTagIds || []).includes(tid) && !sel;
                             const chipExtra = isHint ? ' sq-hint' : '';
+                            // Fee display was missing entirely on this chip grid —
+                            // the single most visible tag-tapping surface in the
+                            // app — matching the pattern already used elsewhere
+                            // (e.g. the detected-tags row above).
+                            const _gridChipFee = t?.fee ?? t?.effects?.fee ?? 0;
+                            const _feeSuffix = _gridChipFee > 0 ? ` <span class="intake-fee-delta">+$${_gridChipFee}</span>` : '';
                             chips += sel ?
-                                `<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}</span>` :
-                                `<span class="chip${locked?' locked':''}${chipExtra}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-${isHint?'bulb':'plus'}"></i> ${sqTagLabel(t,tid)}</span>`;
+                                `<span class="chip sel gtag" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}${_feeSuffix}</span>` :
+                                `<span class="chip${locked?' locked':''}${chipExtra}" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-${isHint?'bulb':'plus'}"></i> ${sqTagLabel(t,tid)}${_feeSuffix}</span>`;
                         });
                         if (chips) html += `<div class="group-label">${gName}</div><div class="chips">${chips}</div>`;
                     }
@@ -5655,8 +5695,16 @@ function enableLiveAdLibPreview() {
                     const _engineKey  = resolveEngineKey(_pricingType);
                     const _engineDef  = _pricingType ? (DB.global_rules?.pricing_engines?.[_engineKey] || {}) : {};
                     const _components = _engineDef.formula_components || [];
-                    const _isFlatRate = _pricingType === 'flat_rate' || (_components.length && !_components.includes('calculated_labor'));
+                    // FIXED: _isHourly is now the single explicit opt-in flag;
+                    // _isFlatRate is simply its negation. Previously both were
+                    // computed independently and could BOTH end up false for an
+                    // unrecognized pricing_type (e.g. the legacy "Diagnostic"
+                    // value, before it was normalized to "flat_rate" in the
+                    // JSON) — falling through to the hourly formula by accident,
+                    // silently inflating the price. Any future unrecognized
+                    // pricing_type now safely defaults to flat, the safer default.
                     const _isHourly = _pricingType === 'hourly' || _components.includes('calculated_labor');
+                    const _isFlatRate = !_isHourly;
 
                     let laborCalc;
                     if (_isFlatRate && _pricingType) {
