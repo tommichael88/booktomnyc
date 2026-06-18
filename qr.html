@@ -217,8 +217,8 @@ body.modal-active{overflow:hidden}
 .sq-btn{background:var(--clr-red);color:#fff;border:none;padding:10px 20px;border-radius:var(--radius-sm);font-weight:700;cursor:pointer;transition:var(--transition);width:100%}
 .sq-btn:hover{background:var(--clr-red-dark)}
 .sq-live-preview { margin-bottom:6px; font-size:.85rem; background:rgba(222,0,0,.04); padding:8px 12px; border-radius:8px; color:#333; transition:all .15s ease; display:flex; align-items:center; gap:4px; flex-wrap:wrap; backdrop-filter:blur(2px); border-left:3px solid rgba(222,0,0,.5); min-height:36px; }
-.sq-live-preview i.ti-sparkles { font-size:.9rem; color:var(--clr-red-dark,#8a0615); opacity:.85; flex-shrink:0; }
-.sq-live-preview .preview-empty { color:#FFF; font-style:italic; font-size:.82rem; }
+.sq-live-preview i.ti-sparkles { font-size:.9rem; color:var(--clr-red-dark,#8a0615); opacity:.7; flex-shrink:0; }
+.sq-live-preview .preview-empty { color:#9ca3af; font-style:italic; font-size:.82rem; }
 .sq-live-preview .preview-tag { background:rgba(222,0,0,.1); border-radius:30px; padding:2px 8px; font-size:.68rem; font-weight:600; color:#8a0615; white-space:nowrap; margin-left:2px; }
 /* interactive adlib word */
 .lp-word { color:#555; font-size:.83rem; font-weight:400; }
@@ -582,7 +582,7 @@ body.modal-active{overflow:hidden}
 #sqBuilder .sq-builder-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 #sqBuilder .sq-builder-title { font-size:.7rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--clr-red-dark,#8a0615); display:flex; align-items:center; gap:6px; }
 #sqBuilderSentence { font-size:15px; font-weight:600; color:#1a1a1a; line-height:1.8; padding:10px 14px; background:rgba(222,0,0,.05); border-left:3px solid var(--clr-red,#de0000); border-radius:0 8px 8px 0; margin-bottom:14px; min-height:44px; }
-#sqBuilderSentence .bw { color:#FFF; font-weight:400; }
+#sqBuilderSentence .bw { color:#888; font-weight:400; }
 #sqBuilderSentence .bs { color:var(--clr-red-dark,#8a0615); font-weight:700; border-bottom:1.5px solid var(--clr-red,#de0000); padding-bottom:1px; }
 #sqBuilderSentence .bp { display:inline-block; width:80px; height:16px; background:rgba(222,0,0,.12); border-radius:4px; vertical-align:middle; margin:0 3px; animation:blink .9s ease-in-out infinite; }
 .sq-step-prompt { font-size:13px; font-weight:600; color:#333; margin:0 0 10px; display:flex; align-items:center; gap:6px; }
@@ -601,8 +601,8 @@ body.modal-active{overflow:hidden}
 .sq-b-dot.done { background:var(--clr-red-dark,#8a0615); }
 #sqUnifiedActionBtn { background:var(--clr-red-dark,#8a0615); color:#fff; border:none; border-radius:9px; padding:11px 16px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; transition:var(--transition); touch-action:manipulation; letter-spacing:.01em; margin-top:10px; width:100%; }
 #sqUnifiedActionBtn:hover { background:var(--clr-red,#de0000); }
-#sqUnifiedActionBtn.sq-unified-confident { background:#000; }
-#sqUnifiedActionBtn.sq-unified-confident:hover { background:#454545; }
+#sqUnifiedActionBtn.sq-unified-confident { background:#2d8a2d; }
+#sqUnifiedActionBtn.sq-unified-confident:hover { background:#256e25; }
 #sqManualOverrideLink { background:none; border:none; color:#888; font-size:11.5px; font-weight:600; cursor:pointer; padding:6px 4px; margin-top:2px; text-decoration:underline; text-decoration-color:rgba(136,136,136,.3); align-self:center; }
 #sqManualOverrideLink:hover { color:#555; }
 #smartQuoteEngine .chip.sq-hint { border-style:dashed; border-color:rgba(222,0,0,.3); color:var(--clr-red-dark,#8a0615); background:rgba(222,0,0,.04); }
@@ -4717,91 +4717,110 @@ function enableLiveAdLibPreview() {
                     sqAnalyze();
                 }
 
-                function sqAnalyze() {
-                    if (!DB || !DB.intent_mappings) {
-                        toast('Pricing data still loading — please wait a moment.', 'error');
-                        return;
-                    }
-                    const desc = (document.getElementById('sqDescIn')?.value || '').trim();
-                    if (!desc) {
-                        toast('Please describe the job first.', 'error');
-                        return;
-                    }
+function sqAnalyze() {
+    if (!DB || !DB.intent_mappings) {
+        toast('Pricing data still loading — please wait a moment.', 'error');
+        return;
+    }
+    const desc = (document.getElementById('sqDescIn')?.value || '').trim();
+    if (!desc) {
+        toast('Please describe the job first.', 'error');
+        return;
+    }
 
-                    S.desc = desc;
-                    const intent = detectIntentNLP(desc);
+    S.desc = desc;
+    const intent = detectIntentNLP(desc);
 
-                    // Extract richer NLP context
-                    S._objectNoun = extractObject(desc, intent?.key);
-                    S._location = extractLocation(desc);
-                    S._sizeHint = extractSizeHint(desc, DB.smart_tags || {});
+    // Extract richer NLP context
+    S._objectNoun = extractObject(desc, intent?.key);
+    S._location = extractLocation(desc);
+    S._sizeHint = extractSizeHint(desc, DB.smart_tags || {});
 
-                    // Seed intent from NLP (dynamic_services base price enrichment happens in sqPrepareFlow)
-                    const baseIntent = intent || {
-                        category: 'other',
-                        label: 'General',
-                        base: 70,
-                        stype: 'Repair',
-                        qtyLabel: 'item',
-                        key: 'other',
-                        group: 'other'
-                    };
-                    const normSt = (baseIntent.stype || 'Repair').replace('Install / Mount', 'Install');
-                    const dynKey = (baseIntent.category || 'other') + '+' + normSt.toLowerCase();
-                    const dynDef = DB.dynamic_services?.[dynKey];
-                    if (dynDef?.financial_engine?.base_price) baseIntent.base = dynDef.financial_engine.base_price;
-                    S.intent = baseIntent;
-                    S.manTagIds = [];
-                    S.qty = extractQty(desc);
-                    document.getElementById('sqQtyV').textContent = S.qty;
+    // Seed intent from NLP (dynamic_services base price enrichment happens in sqPrepareFlow)
+    const baseIntent = intent || {
+        category: 'other',
+        label: 'General',
+        base: 70,
+        stype: 'Repair',
+        qtyLabel: 'item',
+        key: 'other',
+        group: 'other'
+    };
+    const normSt = (baseIntent.stype || 'Repair').replace('Install / Mount', 'Install');
+    const dynKey = (baseIntent.category || 'other') + '+' + normSt.toLowerCase();
+    const dynDef = DB.dynamic_services?.[dynKey];
+    if (dynDef?.financial_engine?.base_price) baseIntent.base = dynDef.financial_engine.base_price;
+    
+    S.intent = baseIntent;
 
-                    // SSOT: apply contextual_override injected tags as detected tags
-                    if (S.intent._ctxTags?.length) {
-                        const cat = S.intent.category || 'other';
-                        S.intent._ctxTags.forEach(tid => {
-                            if (tagValidForCategory(tid, cat, S.intent._groupId) &&
-                                !S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
-                                S.detTagIds.push(tid);
-                        });
-                    }
-
-                    // SSOT: apply contextual adjustment fee/minutes to intent base for computeSQQuote
-                    if (S.intent._ctxFee) S.intent._ctxBaseAdjFee = S.intent._ctxFee;
-                    if (S.intent._ctxMin) S.intent._ctxBaseAdjMin = S.intent._ctxMin;
-
-                    // ── High-confidence catalog match: auto-select ──────────────────
-                    // If NLP confidently resolved to a SPECIFIC named service (not just
-                    // a category), switch directly into that service's own flow rather
-                    // than showing the generic dynamic_services estimate with a buried
-                    // "Use this" banner as an afterthought. Threshold (70) sits below
-                    // real high-confidence keywords like "mount" (85) / "toilet" (90)
-                    // but above lower-confidence ones like "door" (55) / "furniture" (50)
-                    // where auto-switching would be wrong often enough to be annoying.
-                    // Reversible: prefillSmartQuoteFromService is the SAME function the
-                    // recommendedSku banner's manual "Use this" button already calls —
-                    // auto-select and manual-select converge on identical behavior,
-                    // and S._autoSelectedFrom below is what lets "not this" cleanly
-                    // revert to the generic estimate using the user's original text.
-                    const AUTO_SELECT_THRESHOLD = 70;
-                    const recSku = S.intent?.recommendedSku;
-                    const recSvc = recSku ? (DB.services || []).find(sv => sv.id === recSku) : null;
-                    if (recSvc && (S.intent._matchConfidence || 0) >= AUTO_SELECT_THRESHOLD) {
-                        // IMPORTANT: prefillSmartQuoteFromService does a full S = {...}
-                        // reassignment (not a mutation), which would silently wipe any
-                        // field set on the OLD S object — including this one — before
-                        // sqRenderQuote ever gets to read it. Snapshot locally, call
-                        // the function, then restore onto the freshly-created S.
-                        const autoSelectSnapshot = { desc, intent: S.intent, qty: S.qty };
-                        const catId = S.intent.category || recSvc.ui_taxonomy?.category_id || null;
-                        prefillSmartQuoteFromService(recSvc, catId);
-                        S._autoSelectedFrom = autoSelectSnapshot;
-                        return;
-                    }
-
-                    // Hand off to shared pipeline — confidence_tiers decides step routing
-                    sqPrepareFlow(false);
+    // ---- RESOLVER: object_based ----
+    // This runs AFTER S.intent is set, BEFORE any other logic
+    if (S.intent.resolver === 'object_based') {
+        const object = extractObject(desc, S.intent.key);
+        if (object) {
+            const objects = (DB.intent_mappings?.objects || []);
+            const objectMap = objects.find(o =>
+                object.toLowerCase().includes(o.keyword.toLowerCase()) ||
+                o.keyword.toLowerCase().includes(object.toLowerCase())
+            );
+            if (objectMap) {
+                // Override with object-specific values if they exist
+                if (objectMap.default_dynamic_category) {
+                    S.intent.default_dynamic_category = objectMap.default_dynamic_category;
                 }
+                if (objectMap.default_service_type) {
+                    S.intent.default_service_type = objectMap.default_service_type;
+                }
+                if (objectMap.default_service_sku) {
+                    S.intent.default_service_sku = objectMap.default_service_sku;
+                }
+                // Also update the dynamic key if category changed
+                if (objectMap.default_dynamic_category) {
+                    const newNormSt = (S.intent.default_service_type || 'Install').replace('Install / Mount', 'Install');
+                    const newDynKey = objectMap.default_dynamic_category + '+' + newNormSt.toLowerCase();
+                    const newDynDef = DB.dynamic_services?.[newDynKey];
+                    if (newDynDef?.financial_engine?.base_price) {
+                        S.intent.base = newDynDef.financial_engine.base_price;
+                    }
+                }
+            }
+        }
+    }
+    // ---- end resolver ----
 
+    S.manTagIds = [];
+    S.qty = extractQty(desc);
+    document.getElementById('sqQtyV').textContent = S.qty;
+
+    // SSOT: apply contextual_override injected tags as detected tags
+    if (S.intent._ctxTags?.length) {
+        const cat = S.intent.category || 'other';
+        S.intent._ctxTags.forEach(tid => {
+            if (tagValidForCategory(tid, cat, S.intent._groupId) &&
+                !S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
+                S.detTagIds.push(tid);
+        });
+    }
+
+    // SSOT: apply contextual adjustment fee/minutes to intent base for computeSQQuote
+    if (S.intent._ctxFee) S.intent._ctxBaseAdjFee = S.intent._ctxFee;
+    if (S.intent._ctxMin) S.intent._ctxBaseAdjMin = S.intent._ctxMin;
+
+    // ── High-confidence catalog match: auto-select ──────────────────
+    const AUTO_SELECT_THRESHOLD = 70;
+    const recSku = S.intent?.recommendedSku;
+    const recSvc = recSku ? (DB.services || []).find(sv => sv.id === recSku) : null;
+    if (recSvc && (S.intent._matchConfidence || 0) >= AUTO_SELECT_THRESHOLD) {
+        const autoSelectSnapshot = { desc, intent: S.intent, qty: S.qty };
+        const catId = S.intent.category || recSvc.ui_taxonomy?.category_id || null;
+        prefillSmartQuoteFromService(recSvc, catId);
+        S._autoSelectedFrom = autoSelectSnapshot;
+        return;
+    }
+
+    // Hand off to shared pipeline — confidence_tiers decides step routing
+    sqPrepareFlow(false);
+}
                 /* ── Shared post-intent pipeline ─────────────────────────────────
                    Called by both sqAnalyze (text path) and sqBuilderFinish.
                    By the time this runs, S.intent, S.stype, S.qty, S.desc,
