@@ -1280,14 +1280,38 @@ function enableLiveAdLibPreview() {
                 }
 
                 function formatServicePrice(svc) {
-                    if (svc.pricing_engine === 'hourly_estimate' || svc.pricing?.type === 'hourly') {
-                        const base = svc.financial_engine?.base_price || svc.base_price || 0;
-                        return `<span class="price-prefix">from</span> $${base}/hr`;
-                    }
-                    const base = svc.financial_engine?.base_price || svc.base_price || 0;
-                    if (base) return `$${base}`;
-                    return svc.price || 'Call';
-                }
+    // 1. Defers to JSON for display rules
+    const strategy = svc.presentation_strategy || { display_enabled: true, buffer_label: "Average", calculation_basis: "base_plus_tags" };
+    
+    if (strategy.display_enabled === false) return 'Call for Quote';
+
+    // 2. CARRIED OVER: Safely extract the base price
+    let displayTotal = svc.financial_engine?.base_price || svc.base_price || 0;
+
+    // 3. Apply Tag Math (ONLY if JSON allows it)
+    if (strategy.calculation_basis === "base_plus_tags") {
+        const currentTags = typeof activeSmartTags !== 'undefined' ? activeSmartTags : (State.activeSmartTags || []);
+        currentTags.forEach(tagId => {
+            const tagData = ssot.smart_tags[tagId]; 
+            if (tagData && tagData.effects && tagData.effects.fee) {
+                displayTotal += tagData.effects.fee;
+            }
+        });
+    }
+
+    // 4. Render exactly what the JSON dictates
+    if (displayTotal > 0) {
+        // CARRIED OVER: The hourly suffix check
+        let suffix = (svc.pricing_engine === 'hourly_estimate' || svc.pricing?.type === 'hourly') ? '/hr' : '';
+        
+        let prefixHtml = strategy.buffer_label ? `<span class="price-prefix">${strategy.buffer_label}</span> ` : '';
+        
+        return `${prefixHtml}$${displayTotal}${suffix}`;
+    }
+    
+    // 5. CARRIED OVER: The ultimate fallback
+    return svc.price || 'Call';
+}
 
                 /* ================================================================
                    RATE LIMITER, CONTACT HANDLERS (unchanged)
