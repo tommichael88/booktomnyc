@@ -1,0 +1,584 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tommichael88.github.io/booktomnyc/schema/btnyc-v10.schema.json",
+  "title": "BTNYC SSOT Configuration Schema",
+  "description": "Validates the entire btnyc.json Single Source of Truth for the handyman pricing engine.",
+  "type": "object",
+  "additionalProperties": false,
+
+  "$defs": {
+    "tag_ref": {
+      "description": "A reference to a smart_tag (short form: #tag_id).",
+      "type": "object",
+      "properties": {
+        "$ref": { "type": "string", "pattern": "^#/[a-zA-Z_/]+$" }
+      },
+      "required": ["$ref"],
+      "additionalProperties": false
+    },
+    "effects": {
+      "type": "object",
+      "properties": {
+        "fee": { "type": "number", "default": 0 },
+        "minutes": { "type": "number", "default": 0 },
+        "complexity_override": { "type": "string", "enum": ["routine", "skilled", "specialized"] },
+        "mat_min": { "type": "number", "default": 0 },
+        "mat_max": { "type": "number", "default": 0 }
+      },
+      "additionalProperties": false
+    },
+    "financial_engine": {
+      "type": "object",
+      "properties": {
+        "pricing_type": { "type": "string", "enum": ["flat_rate", "hourly", "diagnostic", "assembly_formula"] },
+        "base_price": { "type": "number", "minimum": 0 },
+        "base_materials": { "type": "number", "minimum": 0, "default": 0 },
+        "checkout_state": { "type": "string" }
+      },
+      "required": ["pricing_type"],
+      "additionalProperties": false
+    },
+    "operational_metrics": {
+      "type": "object",
+      "properties": {
+        "expected_minutes": { "type": "number", "minimum": 0 },
+        "high_case_minutes": { "type": "number", "minimum": 0 },
+        "complexity_tier": { "type": "string", "enum": ["routine", "skilled", "specialized"] }
+      },
+      "additionalProperties": false
+    },
+    "intake_step": {
+      "type": "object",
+      "properties": {
+        "module": { "type": "string" },
+        "then": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "required": ["module"],
+      "additionalProperties": false
+    },
+    "confidence_strategy": {
+      "type": "object",
+      "properties": {
+        "minimum_quote_confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+        "maximum_followup_questions": { "type": "number", "minimum": 0 },
+        "diagnostic_threshold": { "type": "number", "minimum": 0, "maximum": 100 },
+        "base_confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+        "_variability_tier": { "type": "string", "enum": ["low", "medium", "high", "diagnostic"] },
+        "_variability_score": { "type": ["number", "null"] },
+        "_confidence_cap_applied": { "type": "boolean" },
+        "_confidence_cap_reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ui_taxonomy": {
+      "type": "object",
+      "properties": {
+        "display_name": { "type": "string" },
+        "icon": { "type": "string" },
+        "description": { "type": "string" },
+        "category_id": { "type": "string" },
+        "group_id": { "type": "string" },
+        "sort_order": { "type": "number" }
+      },
+      "required": ["display_name"],
+      "additionalProperties": false
+    }
+  },
+
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "string" },
+        "last_updated": { "type": "string", "format": "date-time" },
+        "note": { "type": "string" },
+        "schema_url": { "type": "string", "format": "uri" },
+        "global_rates": {
+          "type": "object",
+          "properties": {
+            "standard_labor": { "type": "number" },
+            "specialized_repair": { "type": "number" }
+          }
+        },
+        "estimate_disclaimers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "changelog": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "version": { "type": "string" },
+              "date": { "type": "string", "format": "date-time" },
+              "changes": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["version", "date", "changes"]
+          }
+        },
+        "deprecations": {
+          "type": "object",
+          "properties": {
+            "tag_deprecation_map": { "type": "object", "additionalProperties": { "type": "string" } },
+            "service_deprecation_map": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        }
+      },
+      "required": ["version", "last_updated"]
+    },
+    "global_rules": {
+      "type": "object",
+      "properties": {
+        "complexity_tiers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "min_minutes": { "type": ["number", "null"] },
+              "max_minutes": { "type": ["number", "null"] },
+              "hourly_rate": { "type": "number" },
+              "description": { "type": "string" }
+            },
+            "required": ["hourly_rate"]
+          }
+        },
+        "confidence_escalation": {
+          "type": "object",
+          "properties": {
+            "skilled": {
+              "type": "object",
+              "properties": {
+                "minimum_quote_confidence_delta": { "type": "number" },
+                "maximum_followup_questions_delta": { "type": "number" }
+              }
+            },
+            "specialized": {
+              "type": "object",
+              "properties": {
+                "minimum_quote_confidence_delta": { "type": "number" },
+                "maximum_followup_questions_delta": { "type": "number" }
+              }
+            },
+            "max_minimum_quote_confidence": { "type": "number" },
+            "max_followup_questions_absolute": { "type": "number" }
+          }
+        },
+        "diagnostic_governance": { "type": "object" },
+        "force_modules_by_variability": {
+          "type": "object",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+        },
+        "pricing_engines": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "formula_components": { "type": "array", "items": { "type": "string" } },
+              "minimum_billable_hours": { "type": "number" }
+            }
+          }
+        },
+        "surcharges": {
+          "type": "object",
+          "properties": {
+            "dispatch_fee": { "type": "number" },
+            "materials_markup_percent": { "type": "number" },
+            "dispatch_note_template": { "type": "string" },
+            "dispatch_label": { "type": "string" },
+            "dispatch_scope_note": { "type": "string" }
+          }
+        },
+        "regional_pricing": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "multiplier": { "type": "number" },
+              "dispatch_fee": { "type": "number" },
+              "note": { "type": "string" }
+            },
+            "required": ["multiplier"]
+          }
+        },
+        "time_rates": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "multiplier": { "type": "number" },
+              "hours": { "type": "string" }
+            },
+            "required": ["multiplier"]
+          }
+        }
+      }
+    },
+    "confidence_tiers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "action": { "type": "string" },
+          "force_modules": { "type": "array", "items": { "type": "string" } },
+          "examples_for_tagging": { "type": "array", "items": { "type": "string" } },
+          "base_confidence": { "type": "number" }
+        }
+      }
+    },
+    "checkout_states": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "ui_message": { "type": "string" },
+          "button_text": { "type": "string" },
+          "button_text_no_mat": { "type": "string" },
+          "button_text_with_mat": { "type": "string" },
+          "button_class": { "type": "string" },
+          "hide_materials": { "type": "boolean" },
+          "hide_time": { "type": "boolean" },
+          "ui_badge_label": { "type": "string" },
+          "ui_badge_icon": { "type": "string" },
+          "quote_badge_key": { "type": "string" }
+        }
+      }
+    },
+    "ui_config": {
+      "type": "object",
+      "properties": {
+        "affects_price_icon": { "type": "string" },
+        "affects_price_label": { "type": "string" },
+        "pricing_type_badges": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "icon": { "type": "string" }
+            }
+          }
+        },
+        "step2_types": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "adlib_phrase_overrides": {
+      "type": "object",
+      "properties": {
+        "adlib": {
+          "type": "object",
+          "properties": {
+            "sentence_start": { "type": "string" },
+            "scope_separator": { "type": "string" },
+            "answer_joiner": { "type": "string" },
+            "location_prefix": { "type": "string" },
+            "logistic_strip_label": { "type": "string" }
+          }
+        },
+        "group_templates": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "default_template": { "type": "string" }
+      }
+    },
+    "negation_library": {
+      "type": "object",
+      "properties": {
+        "action_conjugations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "infinitive_for_adlib": { "type": "string" },
+              "all_forms": { "type": "array", "items": { "type": "string" } },
+              "synonym_clusters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "infinitive": { "type": "string" },
+                    "forms": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "large_size_words": { "type": "array", "items": { "type": "string" } },
+        "negation_confirmations": { "type": "object", "additionalProperties": { "type": "string" } },
+        "negative_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_condition_phrases": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } },
+        "nlp_location_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_service_verbs": { "type": "array", "items": { "type": "string" } },
+        "nlp_stop_preps": { "type": "array", "items": { "type": "string" } },
+        "nlp_stop_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_verb_past_map": { "type": "object", "additionalProperties": { "type": "string" } },
+        "standard_size_words": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "intent_mappings": {
+      "type": "object",
+      "properties": {
+        "default_fallback": {
+          "type": "object",
+          "properties": {
+            "category": { "type": "string" },
+            "service_type": { "type": "string" },
+            "base_price": { "type": "number" },
+            "note": { "type": "string" }
+          }
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "keyword": { "type": "string" },
+              "synonyms": { "type": "array", "items": { "type": "string" } },
+              "default_dynamic_category": { "type": "string" },
+              "default_service_type": { "type": "string" },
+              "dynamic_rule": { "type": "string" },
+              "default_service_sku": { "type": "string" },
+              "confidence_weight": { "type": "number" },
+              "resolver": { "type": "string" },
+              "contextual_overrides": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "keywords": { "type": "array", "items": { "type": "string" } },
+                    "override_sku": { "type": "string" },
+                    "override_base_price": { "type": "number" },
+                    "adjustment_fee": { "type": "number" },
+                    "adjustment_minutes": { "type": "number" },
+                    "smart_tag": { "$ref": "#/$defs/tag_ref" },
+                    "note": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "required": ["keyword"]
+          }
+        }
+      }
+    },
+    "smart_tags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "synonyms": { "type": "array", "items": { "type": "string" } },
+          "effects": { "$ref": "#/$defs/effects" },
+          "answers": { "type": "object" },
+          "requires": {
+            "type": "array",
+            "items": { "anyOf": [{ "type": "string" }, { "$ref": "#/$defs/tag_ref" }] }
+          },
+          "display_group": { "type": "string" },
+          "applicable_categories": { "type": "array", "items": { "type": "string" } },
+          "mutually_exclusive": { "type": "array", "items": { "type": "string" } },
+          "is_logistic": { "type": "boolean" },
+          "ui_phrase": { "type": "string" },
+          "negation_phrase": { "type": "string" },
+          "is_default_for_group": { "type": "boolean" },
+          "escalate_complexity": { "type": "string", "enum": ["skilled", "specialized"] }
+        }
+      }
+    },
+    "service_types": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "base_price": { "type": "number" },
+          "default_complexity": { "type": "string", "enum": ["routine", "skilled", "specialized"] },
+          "required_intake_modules": { "type": "array", "items": { "type": "string" } },
+          "icon": { "type": "string" },
+          "verb_natural": { "type": "string" },
+          "ui_badge_label": { "type": "string" }
+        },
+        "required": ["base_price", "verb_natural"]
+      }
+    },
+    "category": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "display_name": { "type": "string" },
+          "icon": { "type": "string" },
+          "group_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "display_name"]
+      }
+    },
+    "group": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "category_id": { "type": "string" },
+          "parent_group": { "type": "string" },
+          "display_name": { "type": "string" },
+          "icon": { "type": "string" },
+          "explicit_services": { "type": "array", "items": { "type": "string" } },
+          "dynamic_service_types": { "type": "array", "items": { "type": "string" } },
+          "default_qty": { "type": "number" }
+        },
+        "required": ["id", "category_id", "display_name"]
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "service_type": { "type": "string" },
+          "pricing_engine": { "type": "string" },
+          "pricing_formula_id": { "type": "string" },
+          "base_price": { "type": "number" },
+          "materials_included": { "type": "boolean" },
+          "requires_furniture_selection": { "type": "boolean" },
+          "override_root": { "type": "boolean" },
+          "default_estimates": {
+            "type": "object",
+            "properties": {
+              "materials": { "type": "object" },
+              "total_minutes": { "type": "object" },
+              "disclaimer": { "type": "string" }
+            }
+          },
+          "financial_engine": { "$ref": "#/$defs/financial_engine" },
+          "operational_metrics": { "$ref": "#/$defs/operational_metrics" },
+          "ui_taxonomy": { "$ref": "#/$defs/ui_taxonomy" },
+          "intake_chain": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/intake_step" }
+          },
+          "default_tags": {
+            "type": "array",
+            "items": { "anyOf": [{ "type": "string" }, { "$ref": "#/$defs/tag_ref" }] }
+          },
+          "confidence_strategy": { "$ref": "#/$defs/confidence_strategy" },
+          "verb_natural": { "type": "string" },
+          "required_materials": { "type": "array", "items": { "type": "string" } },
+          "optional_materials": { "type": "array", "items": { "type": "string" } },
+          "prerequisites": { "type": "array", "items": { "type": "string" } },
+          "behavior": {
+            "type": "object",
+            "properties": {
+              "bypass_intake": { "type": "boolean" },
+              "force_confidence": { "type": "number" }
+            }
+          }
+        },
+        "required": ["id", "service_type", "ui_taxonomy"]
+      }
+    },
+    "dynamic_services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "financial_engine": { "$ref": "#/$defs/financial_engine" },
+          "operational_metrics": { "$ref": "#/$defs/operational_metrics" },
+          "default_estimate": { "type": "object" },
+          "intake_chain": { "type": "array", "items": { "$ref": "#/$defs/intake_step" } },
+          "suggested_tags": { "type": "array", "items": { "anyOf": [{ "type": "string" }, { "$ref": "#/$defs/tag_ref" }] } },
+          "confidence_strategy": { "$ref": "#/$defs/confidence_strategy" },
+          "smart_tags": { "type": "array", "items": { "type": "string" } },
+          "merge_strategy": { "type": "string", "enum": ["extend", "replace", "patch"] }
+        }
+      }
+    },
+    "intake_modules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "question": { "type": "string" },
+          "type": { "type": "string", "enum": ["single", "multi", "numeric", "text", "numeric_multiplier"] },
+          "ui_render_type": { "type": "string" },
+          "config": { "type": "object" },
+          "client_response": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string" },
+                "effects": { "$ref": "#/$defs/effects" },
+                "tags": { "type": "array", "items": { "anyOf": [{ "type": "string" }, { "$ref": "#/$defs/tag_ref" }] } }
+              },
+              "required": ["label"]
+            }
+          },
+          "purpose": { "type": "string" },
+          "confidence_gain": { "type": "number" },
+          "affects_price": { "type": "boolean" }
+        },
+        "required": ["question"]
+      }
+    },
+    "furniture_catalog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "display_name": { "type": "string" },
+          "brand": { "type": "string" },
+          "type": { "type": "string" },
+          "minutes": { "type": "number" },
+          "article": { "type": ["string", "null"] },
+          "upcharge_percent": { "type": "number" },
+          "sku": { "type": "string" }
+        },
+        "required": ["display_name", "minutes", "sku"]
+      }
+    },
+    "pricing_formulas": {
+      "type": "object",
+      "properties": {
+        "defaults": {
+          "type": "object",
+          "additionalProperties": { "type": ["number", "string"] }
+        },
+        "drywall_repair_formula": { "type": "object" },
+        "furniture_repair_formula": { "type": "object" },
+        "pax_wardrobe_formula": { "type": "object" },
+        "tile_repair_formula": { "type": "object" }
+      }
+    },
+    "materials_catalog": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sku": { "type": "string" },
+          "name": { "type": "string" },
+          "price": { "type": "number" },
+          "markup_percent": { "type": "number" },
+          "unit": { "type": "string" },
+          "category": { "type": "string" },
+          "sub_category": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "required": ["sku", "name", "price", "unit"]
+      }
+    }
+  }
+}
