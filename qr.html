@@ -1280,15 +1280,15 @@ function enableLiveAdLibPreview() {
                 }
 
                 function formatServicePrice(svc) {
-    // 1. Defers to JSON for display rules
-    const strategy = svc.presentation_strategy || { display_enabled: true, buffer_label: "Average", calculation_basis: "base_plus_tags" };
+    // 1. Look inside ui_taxonomy for the presentation rules
+    const strategy = svc.ui_taxonomy?.presentation_strategy || { display_enabled: true, buffer_label: "Average", calculation_basis: "base_plus_tags" };
     
     if (strategy.display_enabled === false) return 'Call for Quote';
 
-    // 2. CARRIED OVER: Safely extract the base price
+    // 2. Extract base price safely
     let displayTotal = svc.financial_engine?.base_price || svc.base_price || 0;
 
-    // 3. Apply Tag Math (ONLY if JSON allows it)
+    // 3. Apply Tag Math (if JSON allows)
     if (strategy.calculation_basis === "base_plus_tags") {
         const currentTags = typeof activeSmartTags !== 'undefined' ? activeSmartTags : (State.activeSmartTags || []);
         currentTags.forEach(tagId => {
@@ -1299,20 +1299,15 @@ function enableLiveAdLibPreview() {
         });
     }
 
-    // 4. Render exactly what the JSON dictates
+    // 4. Render exact string
     if (displayTotal > 0) {
-        // CARRIED OVER: The hourly suffix check
         let suffix = (svc.pricing_engine === 'hourly_estimate' || svc.pricing?.type === 'hourly') ? '/hr' : '';
-        
         let prefixHtml = strategy.buffer_label ? `<span class="price-prefix">${strategy.buffer_label}</span> ` : '';
-        
         return `${prefixHtml}$${displayTotal}${suffix}`;
     }
     
-    // 5. CARRIED OVER: The ultimate fallback
     return svc.price || 'Call';
 }
-
                 /* ================================================================
                    RATE LIMITER, CONTACT HANDLERS (unchanged)
                    ================================================================ */
@@ -8263,3 +8258,4 @@ function enableLiveAdLibPreview() {
 </body>
 
 </html>
+
