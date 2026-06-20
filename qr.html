@@ -822,13 +822,14 @@ function initNlpSets() {
     }
 
     window._NLP = {
-        STOP:  new Set(nl.nlp_stop_words    || []),
-        PREPS: new Set(nl.nlp_stop_preps    || []),
-        VERBS: new Set(nl.nlp_service_verbs || []),
-        ROOMS: nl.nlp_location_words        || [],
-        CONDS: nl.nlp_condition_phrases     || [],
-        VMAP:  nl.nlp_verb_past_map         || {},
-        NEG:   new Set(nl.negative_words    || []),
+        STOP:   new Set(nl.nlp_stop_words        || []),
+        PREPS:  new Set(nl.nlp_stop_preps        || []),
+        CLAUSE: new Set(nl.nlp_clause_boundaries || []),
+        VERBS:  new Set(nl.nlp_service_verbs     || []),
+        ROOMS:  nl.nlp_location_words            || [],
+        CONDS:  nl.nlp_condition_phrases         || [],
+        VMAP:   nl.nlp_verb_past_map             || {},
+        NEG:    new Set(nl.negative_words        || []),
         ACTIONS                                            // NEW: SSOT action matcher
     };
 }
@@ -839,6 +840,39 @@ function initNlpSets() {
 function resolveEngineKey(pricingType) {
     if (pricingType === 'hourly') return 'hourly_estimate';
     return pricingType || 'flat_rate';
+}
+
+/** resolveDynamicService — SSOT lookup for dynamic_services{}, now group-aware.
+ *  Previously every "Other [group]" tile fell back to one generic bucket keyed
+ *  only by category+type (e.g. "minor_home_repairs+Repair"), so unrelated
+ *  groups sharing a category (Cabinets, Doors, Floors & Trim, Windows...) all
+ *  inherited the SAME intake_chain/suggested_tags — typically authored for
+ *  whichever group came first (walls/floors), which made no sense for e.g. a
+ *  cabinet drawer repair.
+ *
+ *  Key format is additive, not a breaking change: a more specific
+ *  "category+group+type" key is tried first; if no entry exists at that key,
+ *  this falls through to the original "category+type" key unchanged.
+ *
+ *  Casing note: every real dynamic_services key in btnyc.json uses the exact
+ *  capitalized service_types casing (Install/Repair/Diagnostic/Assembly/Setup
+ *  — verified against DB.service_types keys). The five call sites this
+ *  replaces all lowercased the suffix before lookup, which meant NONE of them
+ *  ever actually matched a real entry — dynDef was silently undefined every
+ *  time, category-wide, for every path through the app. Preserving that
+ *  lowercase behavior here would make this resolver just as dead as what it
+ *  replaced, so the suffix is intentionally left in its original casing. */
+function resolveDynamicService(category, stype, groupId) {
+    if (!window.DB?.dynamic_services) return null;
+    const normSt = (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
+    const cat = category || 'other';
+    if (groupId) {
+        const groupKey = cat + '+' + groupId + '+' + normSt;
+        const groupDef = window.DB.dynamic_services[groupKey];
+        if (groupDef) return groupDef;
+    }
+    const catKey = cat + '+' + normSt;
+    return window.DB.dynamic_services[catKey] || null;
 }
 
 /** isDiagnosticService — v9 JSON: badge/presentation driven by checkout_state,
@@ -886,13 +920,34 @@ function enableLiveAdLibPreview() {
     const { STOP: STOP_WORDS, PREPS: STOP_PREPS, VERBS: SERVICE_VERBS,
             ROOMS, CONDS: CONDITIONS, VMAP: VERB_PAST_MAP, ACTIONS } = window._NLP || {};
 
+    // Shared spelled-out-number word list — used by extractQty (to detect the
+    // count) AND extractObject (to make sure that same word doesn't ALSO get
+    // collected into the object-noun text). Without sharing this, "Replace
+    // four glass panes" extracted qty=4 correctly but the object noun still
+    // included the literal word "four", producing a duplicated, confusing
+    // preview: "I need to replace my 4 four glass panes".
+    const QTY_WORDS = new Set(['one','two','three','four','five','six','seven','eight','nine','ten']);
+
     function extractQty(text) {
         const UNITS = 'items?|pieces?|tvs?|signs?|lights?|doors?|shelves?|outlets?|switches?|fixtures?|tiles?|panels?|fans?';
         let m = text.match(new RegExp('\\b(\\d+)\\s*(?:' + UNITS + ')', 'i'));
         if (m) return Math.min(parseInt(m[1]), 99);
+        // SSOT: same dimension/measurement guard as the canonical extractQty —
+        // a hyphenated word-number followed by a hyphen is part of a compound
+        // adjective ("four-poster", "six-foot-tall"), not a standalone count.
+        // (?!-) rejects exactly that case while still matching a genuine
+        // standalone count word ("I need four doors fixed").
         const wmap = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
-        for (const [w,n] of Object.entries(wmap)) { if (new RegExp('\\b'+w+'\\b','i').test(text)) return n; }
-        m = text.match(/\b(\d+)\b/);
+        for (const [w,n] of Object.entries(wmap)) {
+            if (new RegExp('\\b' + w + '\\b(?!-)', 'i').test(text)) return n;
+        }
+        // Bare-digit fallback: strip dimension/measurement phrases first, so a
+        // leftover number ("4-foot", "7-foot-long") isn't misread as a count —
+        // a real, live pricing bug (qty multiplies the final price) found by
+        // stress-testing real job descriptions containing measurements.
+        const DIMENSION_PATTERN = /\b\d+\s*-?\s*(?:foot|feet|ft|inch|inches|in|cm|centimeters?|meters?|yards?|lbs?|pounds?|kg)\b/gi;
+        const stripped = text.replace(DIMENSION_PATTERN, ' ');
+        m = stripped.match(/\b(\d+)\b/);
         return m ? Math.min(parseInt(m[1]),99) : 1;
     }
 
@@ -965,7 +1020,7 @@ function enableLiveAdLibPreview() {
             for (let i = start; i < n && i < start+4; i++) {
                 const w = words[i];
                 if (STOP_PREPS.has(w)) break;
-                if (STOP_WORDS.has(w) || /^\d/.test(w)) continue;
+                if (STOP_WORDS.has(w) || QTY_WORDS.has(w) || /^\d/.test(w)) continue;
                 obj.push(w);
             }
             return obj;
@@ -1000,11 +1055,20 @@ function enableLiveAdLibPreview() {
             }
         }
         // Pattern 1: <verb> [art] [qty] <noun>
-        const vi = words.findIndex(w => SERVICE_VERBS.has(w));
+        // SSOT: isServiceVerb (defined in the main script block) also matches
+        // hyphenated "re-" forms (re-glue -> reglue) that a raw .has() lookup
+        // misses entirely, since tokenization never strips hyphens. Falls back
+        // to a plain .has() if isServiceVerb isn't yet defined (defensive only
+        // — in practice this module is invoked well after the main script
+        // block has run, so the real helper is always available by then).
+        const _isVerb = (typeof isServiceVerb === 'function')
+            ? (w) => isServiceVerb(w, SERVICE_VERBS)
+            : (w) => SERVICE_VERBS.has(w);
+        const vi = words.findIndex(w => _isVerb(w));
         if (vi !== -1) {
             let s = vi + 1;
             if (s < n && /^(my|the|a|an|one|your)$/.test(words[s])) s++;
-            if (s < n && /^\d/.test(words[s])) s++;
+            if (s < n && (QTY_WORDS.has(words[s]) || /^\d/.test(words[s]))) s++;
             const o = collect(s); if (o.length) return o.join(' ');
         }
         // Pattern 2: need [art] [qty] <noun> [done/fixed…]
@@ -1012,7 +1076,7 @@ function enableLiveAdLibPreview() {
         if (ni !== -1) {
             let s = ni + 1;
             if (s < n && /^(my|the|a|an|your|this)$/.test(words[s])) s++;
-            if (s < n && /^\d/.test(words[s])) s++;
+            if (s < n && (QTY_WORDS.has(words[s]) || /^\d/.test(words[s]))) s++;
             // END boundary markers derived from the SAME SSOT action_conjugations
             // table detectAction() uses — was a separately hand-maintained list
             // that could (and did) drift out of sync with the action matcher.
@@ -1027,7 +1091,7 @@ function enableLiveAdLibPreview() {
             for (let i = s; i < n && i < s+4; i++) {
                 const w = words[i];
                 if (STOP_PREPS.has(w) || END.has(w)) break;
-                if (STOP_WORDS.has(w) || /^\d/.test(w)) continue;
+                if (STOP_WORDS.has(w) || QTY_WORDS.has(w) || /^\d/.test(w)) continue;
                 obj.push(w);
             }
             if (obj.length) return obj.join(' ');
@@ -1058,7 +1122,7 @@ function enableLiveAdLibPreview() {
         // general threshold, which would let real noise back in.
         const SHORT_OBJECT_ALLOWLIST = new Set(['tv', 'ac']);
         for (const w of words) {
-            if (STOP_WORDS.has(w) || STOP_PREPS.has(w) || SERVICE_VERBS.has(w) || /^\d/.test(w)) continue;
+            if (STOP_WORDS.has(w) || STOP_PREPS.has(w) || QTY_WORDS.has(w) || _isVerb(w) || /^\d/.test(w)) continue;
             if (w.length > 2 || SHORT_OBJECT_ALLOWLIST.has(w)) return w;
         }
         return '';
@@ -4112,9 +4176,26 @@ function enableLiveAdLibPreview() {
                         extraFee += f.patch_fee || 0;
                         if (answers.texture_match === 'Yes') extraFee += f.texture_fee || 0;
                     } else if (formulaId === 'furniture_repair_formula') {
+                        // SSOT: issue_type_fees keyed by the exact 'issue' intake_module
+                        // label — same lookup pattern as tile_repair_formula's
+                        // grout_repair/water_damage checks, generalized to any answer
+                        // label instead of a hardcoded Yes/No. Previously this branch
+                        // ignored `answers` entirely (base_minutes × multiplier only),
+                        // which silently discarded every chip/question fee the user
+                        // had just confirmed in the adlib sentence.
+                        const issueFees = f.issue_type_fees?.[answers.issue] || null;
+                        if (issueFees) {
+                            extraFee += issueFees.fee || 0;
+                            extraMin += issueFees.minutes || 0;
+                        }
+                        // Per-unit scaling for qty > 1 (e.g. 4 drawers), same role as
+                        // tile_repair_formula's minutes_per_tile × count — replaces the
+                        // generic +30min/unit padding that used to apply uniformly
+                        // regardless of how small the per-unit job actually is.
+                        if (qty > 1) extraMin += (f.per_unit_minutes || 0) * (qty - 1);
                         const mult = f.complexity_multiplier || 1;
                         extraMin = Math.round(extraMin * mult);
-                        overrideHourlyRate = f.hourly_rate || null; // FIX: was computed and discarded before
+                        overrideHourlyRate = f.hourly_rate || null;
                     } else if (formulaId === 'pax_wardrobe_formula') {
                         const c = f.coefficients || {};
                         const cabinet = parseInt(answers.pax_cabinet_count) || 0;
@@ -4146,7 +4227,7 @@ function enableLiveAdLibPreview() {
                  * @param {string|null} ctx.intentKeyword - the intent_mappings keyword NLP matched, if any
                  */
                 function computeUnifiedQuote(ctx) {
-                    const { svc, dynDef, activeTagIds = [], answers = {}, qty = 1, intentKeyword = null } = ctx;
+                    const { svc, dynDef, activeTagIds = [], answers = {}, qty = 1, intentKeyword = null, formulaId = null } = ctx;
                     const smartTags = DB.smart_tags || {};
                     const surcharges = DB.global_rules?.surcharges || {};
                     const dispatchFee = surcharges.dispatch_fee || 45;
@@ -4165,8 +4246,14 @@ function enableLiveAdLibPreview() {
                     let base = fe.base_price || 0;
                     const pricingType = (fe.pricing_type || '').toLowerCase();
 
-                    const formulaId = svc?.pricing_formula_id || svc?.intent?.dynamic_rule || null;
+                    // SSOT: formulaId is now passed in explicitly via ctx (caller resolves
+                    // it from S.intent.dynamic_rule — the only place a pricing_formula_id
+                    // actually lives in real data; no services[] entry has ever carried a
+                    // pricing_formula_id or an .intent sub-object, so the previous
+                    // svc?.pricing_formula_id || svc?.intent?.dynamic_rule lookup could
+                    // never resolve to anything and this branch was silently dead).
                     const formulaResult = formulaId ? applyPricingFormula(formulaId, answers, qty) : null;
+
 
                     let extraFee = 0, extraMin = 0;
                     const activeLabels = [];
@@ -4184,18 +4271,50 @@ function enableLiveAdLibPreview() {
                         }
                     }
 
-                    for (const [moduleKey, answerLabel] of Object.entries(answers)) {
-                        const mod = DB.intake_modules?.[moduleKey];
-                        if (!mod) continue;
-                        const chosen = (mod.client_response || []).find(r => r.label === answerLabel);
-                        if (!chosen) continue;
-                        extraFee += chosen.effects?.fee || 0;
-                        extraMin += chosen.effects?.minutes || 0;
+                    // SSOT: skip when a formula is active — the formula already
+                    // consumed `answers` itself (e.g. furniture_repair_formula reads
+                    // answers.issue via issue_type_fees). Without this guard, an
+                    // answer that ALSO happens to match an intake_modules entry by
+                    // the same key gets its effects.fee added a second time here,
+                    // on top of what the formula already added. computeSQQuote
+                    // avoided this by gating its equivalent loop on S._svc (named
+                    // services only, which never carry a dynamic_rule formula) —
+                    // this generalizes that same intent to the dynamic_services path.
+                    if (!formulaResult) {
+                        for (const [moduleKey, answerLabel] of Object.entries(answers)) {
+                            const mod = DB.intake_modules?.[moduleKey];
+                            if (!mod) continue;
+                            const chosen = (mod.client_response || []).find(r => r.label === answerLabel);
+                            if (!chosen) continue;
+                            extraFee += chosen.effects?.fee || 0;
+                            extraMin += chosen.effects?.minutes || 0;
+                        }
                     }
 
-                    const baseMinutes = (svc?.operational_metrics?.expected_minutes) ?? 45;
+                    // SSOT: default_estimates.total_minutes.{min,max} is the real,
+                    // per-service-curated time data — operational_metrics.expected_minutes
+                    // is set to the literal value 60 on all 69 services with zero
+                    // variation, confirming it's a stale uniform placeholder rather than
+                    // a real per-service figure (most have a total_minutes range that
+                    // doesn't even contain 60). Use the midpoint of the genuine range.
+                    const tm = svc?.default_estimates?.total_minutes;
+                    const baseMinutes = tm && tm.min != null && tm.max != null
+                        ? Math.round((tm.min + tm.max) / 2)
+                        : (svc?.operational_metrics?.expected_minutes ?? 45);
                     let totalMin = Math.max(baseMinutes + extraMin, 30);
-                    if (qty > 1) totalMin += (qty - 1) * 30;
+                    // SSOT: ANY active pricing_formula already determines its own
+                    // "how much work" sizing from its own inputs — tile_repair_formula
+                    // from tile_count/qty, drywall_repair_formula from area_sqft,
+                    // furniture_repair_formula from per_unit_minutes×qty, pax_wardrobe_
+                    // formula from its 4 component counts. None of these are the
+                    // generic qty stepper, and qty has already been folded into the
+                    // ones that do use it (tile, furniture) at the point applyPricingFormula
+                    // ran. Padding totalMin by qty again here, or multiplying the final
+                    // labor estimate by qty below, would double-count for every formula
+                    // uniformly — not just furniture, which is why this is keyed off
+                    // "is a formula active" rather than a single formula's name.
+                    const formulaIsQtyAware = !!formulaResult;
+                    if (qty > 1 && !formulaIsQtyAware) totalMin += (qty - 1) * 30;
 
                     const RANK = { skilled: 1, specialized: 2 };
                     let tagOverrideTier = null, tagOverrideRank = 0;
@@ -4212,11 +4331,21 @@ function enableLiveAdLibPreview() {
                     const effectiveHourlyRate = formulaResult?.overrideHourlyRate || tierRate;
 
                     const isFlatRate = pricingType === 'flat_rate';
+                    // SSOT: qty-aware formulas (currently furniture_repair_formula, via
+                    // per_unit_minutes) already scale totalMin for the requested
+                    // quantity internally — multiplying the resulting labor estimate
+                    // by qty AGAIN here would double-count it (4 drawers' worth of
+                    // minutes, billed as if it were 4 SEPARATE full 4-drawer jobs).
+                    // Same "this path already knows its own qty" principle as the
+                    // totalMin padding suppression above; qty is folded into the
+                    // formula math itself, not applied as an outer multiplier.
+                    const qtyAlreadyAppliedByFormula = formulaIsQtyAware;
+                    const qtyMultiplier = qtyAlreadyAppliedByFormula ? 1 : qty;
                     let laborEstimate;
                     if (isFlatRate) {
-                        laborEstimate = Math.round((base + extraFee) * qty);
+                        laborEstimate = Math.round((base + extraFee) * qtyMultiplier);
                     } else {
-                        laborEstimate = Math.round((base + extraFee + (totalMin / 60) * effectiveHourlyRate) * qty);
+                        laborEstimate = Math.round((base + extraFee + (totalMin / 60) * effectiveHourlyRate) * qtyMultiplier);
                     }
 
                     const checkoutStateKey = fe.checkout_state
@@ -4254,6 +4383,108 @@ function enableLiveAdLibPreview() {
                         forceModules,
                     };
                 }
+
+                /** computeQuoteFromState — adapter between the live UI (sqRenderQuote,
+                 *  sqAddToCart) and computeUnifiedQuote, the engine those two
+                 *  functions were always meant to call (per the block comment above)
+                 *  but never actually did — they called the older computeSQQuote
+                 *  instead, leaving computeUnifiedQuote fully built and unused.
+                 *
+                 *  Two things this adapter does that computeUnifiedQuote doesn't:
+                 *   1. Builds ctx from the global S state (svc, dynDef, tags, answers,
+                 *      qty, intentKeyword, formulaId) — computeUnifiedQuote takes an
+                 *      explicit ctx by design (no implicit global reads inside the
+                 *      core math), so resolving S -> ctx is the caller's job.
+                 *   2. Extends computeUnifiedQuote's return with the display-string
+                 *      fields (priceDisplay/priceSub/disclaimerText/tierKey/dispatch/
+                 *      laborCalc/isDiag) that computeSQQuote's resolveCheckoutState +
+                 *      isDiag/isProject/isAssembly branching used to produce, so
+                 *      sqRenderQuote/sqAddToCart don't need to change at all — they
+                 *      keep reading the exact field names they always have. */
+                function computeQuoteFromState() {
+                    const dynDef = resolveDynamicService(S.intent?.category, S.stype, S.intent?._groupId);
+                    const activeTagIds = [...new Set([...(S.detTagIds||[]), ...(S.manTagIds||[])])]
+                        .filter(tid => !(S.negatedTagIds||[]).includes(tid));
+                    const formulaId = S.intent?.dynamic_rule || null;
+
+                    const u = computeUnifiedQuote({
+                        svc: S._svc || null,
+                        dynDef,
+                        activeTagIds,
+                        answers: S.answers || {},
+                        qty: S.qty || 1,
+                        intentKeyword: S.intent?.key || null,
+                        formulaId
+                    });
+
+                    // SSOT: same resolveCheckoutState() the old engine used — reused
+                    // as-is rather than re-implemented, so button text/disclaimer
+                    // resolution logic has exactly one source regardless of which
+                    // pricing engine computed the underlying numbers.
+                    const cs = resolveCheckoutState(u.checkoutStateKey, u.laborEstimate);
+                    if (u.hideTime) cs.hideTime = true;
+                    // Flat-rate jobs: always hide the time line, same rule
+                    // computeSQQuote applied — base_price already bakes in the
+                    // expected time, so showing hours × rate next to it implies
+                    // time-billing that isn't actually happening.
+                    const feForRate = (S._svc?.financial_engine) || dynDef?.financial_engine || {};
+                    if ((feForRate.pricing_type || '').toLowerCase() === 'flat_rate') cs.hideTime = true;
+
+                    const dispatch = u.dispatchFee;
+                    const laborCalc = u.laborEstimate;
+                    const isDiag = u.isDiagnostic;
+                    const isProject = u.isProject;
+                    const isAssembly = u.isAssembly;
+
+                    // SSOT: identical price-display branching to computeSQQuote's
+                    // (diagnostic / project-range / assembly / standard) — ports that
+                    // logic rather than duplicating divergent copies, since the two
+                    // engines must agree on what the user sees for the same job.
+                    let priceDisplay, priceSub, badgeTpl;
+                    if (isDiag) {
+                        priceDisplay = '$' + laborCalc;
+                        priceSub = cs.uiMessage || 'Diagnostic visit · Tech quotes on site';
+                        badgeTpl = 'diag';
+                    } else if (isProject) {
+                        const lo = Math.round(laborCalc * .85),
+                              hi = Math.round(laborCalc * 1.35 + dispatch);
+                        priceDisplay = '$' + lo + ' – $' + hi;
+                        priceSub = 'Preliminary range · Finalized on site';
+                        badgeTpl = 'proj';
+                    } else if (isAssembly) {
+                        priceDisplay = '$' + laborCalc;
+                        priceSub = cs.uiMessage || 'Assembly estimate · Final items confirmed on site';
+                        badgeTpl = 'asm';
+                    } else {
+                        priceDisplay = '$' + laborCalc;
+                        priceSub = 'Locked-in labor · No surprise charges';
+                        badgeTpl = 'ok';
+                    }
+
+                    return {
+                        // Renamed/added fields so sqRenderQuote/sqAddToCart's existing
+                        // field reads work unchanged:
+                        priceDisplay, priceSub, badgeTpl,
+                        disclaimerText: cs.disclaimerText,
+                        btnText: cs.btnText || u.btnText,
+                        hideTime: cs.hideTime,
+                        hideMaterials: cs.hideMaterials,
+                        laborCalc,
+                        base: u.base,
+                        extraFee: u.extraFee,
+                        totalMin: u.totalMin,
+                        tierKey: u.complexityTier,
+                        tierRate: u.tierRate,
+                        activeLabels: u.activeLabels,
+                        isDiag, isProject, isAssembly,
+                        dispatch,
+                        checkoutStateKey: u.checkoutStateKey,
+                        // Pass through the rest of computeUnifiedQuote's output too,
+                        // in case any future caller wants the confidence/escalation
+                        // fields that computeSQQuote never had.
+                        _unified: u
+                    };
+                }
                 /* ═══════════════════════════════════════ END UNIFIED ENGINE ═══ */
 
                 /* ── Tag label helper ─────────────────────────────────────────── */
@@ -4267,16 +4498,42 @@ function enableLiveAdLibPreview() {
                 }
 
                 /* ── NLP ──────────────────────────────────────────────────────── */
+                /** _DIMENSION_PATTERN — matches a number immediately followed by a
+                 *  measurement unit (4-foot, 7 ft, 65 inch, 12 lbs...), with an
+                 *  optional hyphen/space between them. Used to strip dimensions out
+                 *  before the bare-digit qty fallback runs, so "mount a 4-foot by
+                 *  3-foot grille" doesn't get read as qty=4 (a real, live pricing
+                 *  bug: that phrase would have billed for 4 grilles instead of 1,
+                 *  found by stress-testing real job descriptions). The specific
+                 *  unit-fallback patterns above this (tiles/items/doors/etc.) and
+                 *  the verb-adjacent ones (replace/install/fix + N) are unaffected
+                 *  and still checked first — this only guards the LAST, most
+                 *  permissive pattern (any bare number anywhere in the sentence). */
+                const _DIMENSION_PATTERN = /\b\d+\s*-?\s*(?:foot|feet|ft|inch|inches|in|cm|centimeters?|meters?|yards?|lbs?|pounds?|kg)\b/gi;
+                const _QTY_WORD_MAP = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+
                 function extractQty(text) {
                     const patterns = [
                         /\b(\d+)\s*(tiles?|items?|pieces?|units?|doors?|fixtures?|signs?|shelves?|outlets?|switches?)/i,
-                        /replace\s+(\d+)/i, /install\s+(\d+)/i, /fix\s+(\d+)/i, /\b(\d+)\b/
+                        /replace\s+(\d+)/i, /install\s+(\d+)/i, /fix\s+(\d+)/i
                     ];
                     for (const p of patterns) {
                         const m = text.match(p);
                         if (m) return Math.min(parseInt(m[1]), 99);
                     }
-                    return 1;
+                    // SSOT: spelled-out number words ("Replace four panes") were never
+                    // recognized here at all — only \d+ digit patterns — so a real
+                    // multi-unit job silently defaulted to qty=1 and underbilled.
+                    // (?!-) excludes a compound-adjective use ("four-poster bed"),
+                    // same guard as the dimension check below.
+                    for (const [w, n] of Object.entries(_QTY_WORD_MAP)) {
+                        if (new RegExp('\\b' + w + '\\b(?!-)', 'i').test(text)) return n;
+                    }
+                    // Bare-digit fallback: strip dimension/measurement phrases first,
+                    // so a leftover number is more likely to be a genuine count.
+                    const stripped = text.replace(_DIMENSION_PATTERN, ' ');
+                    const m = stripped.match(/\b(\d+)\b/);
+                    return m ? Math.min(parseInt(m[1]), 99) : 1;
                 }
 
                 function detectTagsNLP(text) {
@@ -4425,43 +4682,113 @@ function enableLiveAdLibPreview() {
 
                 function tagValidForCategory(tid, cat, groupId) {
                     // SSOT: reads applicable_categories + applicable_group_ids from btnyc.json
+                    //
+                    // Two-tier scoping, both read from the tag's own data:
+                    //   1. applicable_categories — the coarse boundary ("could this
+                    //      ever apply in this category at all"). Empty/missing or
+                    //      ['all'] means universal (parking, pets, disposal, urgency —
+                    //      genuine cross-category logistics).
+                    //   2. applicable_group_ids — an optional FURTHER narrowing within
+                    //      an already-matching category. When present, it is the
+                    //      deciding factor for that category, not an alternate path:
+                    //      a tag like #brick_wall (category: minor_home_repairs) only
+                    //      makes sense for the Walls group, not Cabinets or Appliances
+                    //      that happen to share the same broad category. Most tags
+                    //      don't set this and behave exactly as before (category-only).
+                    //
+                    // This replaces an earlier version where applicable_group_ids only
+                    // acted as an OR-fallback when the category check failed — which
+                    // meant a category match always short-circuited to valid and the
+                    // group list could never actually exclude anything. A category as
+                    // broad as minor_home_repairs (appliances, cabinets, doors, floors,
+                    // furniture, walls, windows) needs real per-group exclusion, not
+                    // just a coarse category gate, or every group inherits every other
+                    // group's chips by default.
                     const tag = (DB.smart_tags || {})[tid];
                     if (!tag) return false;
                     const cats = tag.applicable_categories;
-                    if (!cats || cats.length === 0) return true;  // no restriction = universal
-                    if (cats.includes('all') || cats.includes(cat)) return true;
-                    // Optional future narrowing: applicable_group_ids
+                    const universal = !cats || cats.length === 0 || cats.includes('all');
+                    const categoryMatches = universal || cats.includes(cat);
+                    if (!categoryMatches) return false;
                     const gids = tag.applicable_group_ids;
-                    if (gids && gids.length > 0 && groupId && gids.includes(groupId)) return true;
-                    return false;
+                    if (gids && gids.length > 0) {
+                        // Group list present: it is now the deciding factor for this
+                        // category match, not an optional bonus path.
+                        return !!groupId && gids.includes(groupId);
+                    }
+                    // No group narrowing declared: category match alone is sufficient,
+                    // same as every tag's existing behavior before this change.
+                    return categoryMatches;
                 }
 
 
                 /* ── NLP helpers for smart adlib construction ──────────────────── */
                 // NLP helpers — thin accessors into window._NLP (built by initNlpSets from DB)
-                const _SKIP_WORDS  = () => window._NLP?.STOP  || new Set();
-                const _SVC_VERBS   = () => window._NLP?.VERBS || new Set();
-                const _STOP_PREPS  = () => window._NLP?.PREPS || new Set();
-                const _ROOMS_LIST  = () => window._NLP?.ROOMS || [];
+                const _SKIP_WORDS  = () => window._NLP?.STOP   || new Set();
+                const _SVC_VERBS   = () => window._NLP?.VERBS  || new Set();
+                const _STOP_PREPS  = () => window._NLP?.PREPS  || new Set();
+                const _CLAUSE_BOUNDARY = () => window._NLP?.CLAUSE || new Set();
+                const _ROOMS_LIST  = () => window._NLP?.ROOMS  || [];
                 const _BRICK_HINTS = new Set(['fireplace', 'brick', 'concrete', 'stone', 'mantel', 'mantle',
                     'chimney', 'masonry', 'cinder block', 'cinderblock', 'tile wall', 'cement'
                 ]);
 
+                /** isServiceVerb — checks a token against the verb set, also trying
+                 *  the un-hyphenated "re-" form (re-glue -> reglue, re-hang -> rehang,
+                 *  re-attach -> reattach). Tokenization only splits on whitespace and
+                 *  strips sentence punctuation (.,!?;:) — it never strips hyphens —
+                 *  so "re-glue" survives as one token and would never match a "reglue"
+                 *  entry in nlp_service_verbs no matter how many verb-list entries get
+                 *  added. The "re-" prefix is extremely common in real repair phrasing
+                 *  (re-hang, re-glue, re-attach, re-fasten, re-secure...), so fixing
+                 *  the matching logic once here is more durable than enumerating every
+                 *  hyphenated variant in btnyc.json by hand. Does NOT blanket-strip all
+                 *  hyphens (would mangle unrelated compound nouns like "wrought-iron"
+                 *  or "hollow-core") — only the specific re-<word> -> re<word> case. */
+                function isServiceVerb(word, verbSet) {
+                    if (!word) return false;
+                    if (verbSet.has(word)) return true;
+                    if (word.startsWith('re-') && word.length > 3) {
+                        return verbSet.has('re' + word.slice(3));
+                    }
+                    return false;
+                }
+
                 function extractObject(text, intentKeyword) {
                     const SKIP = _SKIP_WORDS(), VERBS = _SVC_VERBS(), PREPS = _STOP_PREPS();
+                    const CLAUSE = _CLAUSE_BOUNDARY();
                     const lower = text.toLowerCase().replace(/[.,!?;:]/g, ' ');
                     const kw = (intentKeyword || '').toLowerCase();
                     const words = lower.split(/\s+/).filter(Boolean);
                     let objWords = [], inObj = false;
                     for (let i = 0; i < words.length; i++) {
                         const w = words[i];
-                        if (PREPS.has(w) && objWords.length > 0) break;
+                        // SSOT: stop at the next preposition OR relative-clause word
+                        // (that/which/who/where...) once the noun phrase has started.
+                        // Without the clause check, "the medallion THAT has separated
+                        // from the ceiling" kept walking straight into the relative
+                        // clause describing the object's condition, collecting words
+                        // like "separated"/"now"/"wedged" instead of stopping at the
+                        // actual noun ("medallion") — nlp_stop_words lists these same
+                        // relative pronouns too, but only to SKIP them while continuing,
+                        // never to end the phrase. This is a second, independent
+                        // boundary set for that purpose (see nlp_clause_boundaries).
+                        if ((PREPS.has(w) || CLAUSE.has(w)) && objWords.length > 0) break;
                         if (!w || w.length > 20) continue;
-                        if (VERBS.has(w) || w === kw) { inObj = true; continue; }
+                        if (isServiceVerb(w, VERBS) || w === kw) { inObj = true; continue; }
                         if (!inObj || SKIP.has(w) || /^\d/.test(w) || /^\d+x\d+$/.test(w)) continue;
                         objWords.push(w);
-                        if (objWords.length >= 3) break;
+                        // SSOT design note: collect the full pre-boundary run, then
+                        // take the trailing slice below — not capped here. An English
+                        // noun phrase's head noun sits at the end ("vintage brass coat
+                        // RACK"), with descriptive adjectives piled up front; capping
+                        // at the first 3 words reliably kept the adjectives and
+                        // discarded the actual object.
+                        if (objWords.length >= 8) break; // sane upper bound only
                     }
+                    // Take the trailing 3 words of the collected run — closest to
+                    // the boundary, i.e. the head noun's natural position.
+                    objWords = objWords.slice(-3);
                     const obj = objWords.join(' ').trim();
                     return obj.length >= 2 ? obj : null;
                 }
@@ -4542,7 +4869,7 @@ function enableLiveAdLibPreview() {
                         if (!hasSel) {
                             // Skip auto-default in curated mode (e.g. don't auto-select #drywall for door installs)
                             if (S._curatedMode) return;
-                            const def = gTids.find(tid => tags[tid].is_default_for_group && tagValidForCategory(tid, cat));
+                            const def = gTids.find(tid => tags[tid].is_default_for_group && tagValidForCategory(tid, cat, S.intent?._groupId));
                             if (def && !S.negatedTagIds.includes(def) && !S.manTagIds.includes(def))
                                 S.manTagIds.push(def);
                         }
@@ -4764,8 +5091,15 @@ function enableLiveAdLibPreview() {
                  *  route to the correct group's Other tile rather than a generic
                  *  dynamic_service estimate. Rules are object-noun–keyword matching,
                  *  with a sane catch-all for each category. Returns null if no
-                 *  clear group can be determined (caller falls back to plain wizard).*/
-                function resolveGroupFromIntent(category, objectNoun, stype) {
+                 *  clear group can be determined (caller falls back to plain wizard).
+                 *  @param {string} [fullText] - optional, the user's full original
+                 *    sentence. Used only as a fallback when the narrow object-noun
+                 *    window doesn't match any rule — the disambiguating keyword
+                 *    sometimes sits in a different clause (e.g. "...inside my
+                 *    living room WINDOW" where the extracted object is "acrylic
+                 *    sheet", not "window"). A real object-noun match always takes
+                 *    priority; this only runs after that pass has failed. */
+                function resolveGroupFromIntent(category, objectNoun, stype, fullText) {
                     if (!category || !DB?.group) return null;
                     const obj = (objectNoun || '').toLowerCase();
                     const groups = DB.group.filter(g => g.category_id === category);
@@ -4812,13 +5146,19 @@ function enableLiveAdLibPreview() {
                             { keywords: ['dishwasher'], group: 'minor_home_repairs_appliances_dishwasher' },
                             { keywords: ['microwave'], group: 'minor_home_repairs_appliances_microwave' },
                             { keywords: ['window ac','air conditioner','ac unit','window unit'], group: 'minor_home_repairs_appliances_window_ac' },
-                            { keywords: ['cabinet','drawer','cupboard','pantry','wardrobe'], group: 'minor_home_repairs_cabinets_drawers' },
+                            { keywords: ['cabinet','drawer','cupboard','pantry','wardrobe','kitchen island','breakfast bar'], group: 'minor_home_repairs_cabinets_drawers' },
                             { keywords: ['door','hinge','knob','deadbolt','entry'], group: 'minor_home_repairs_doors' },
                             { keywords: ['floor','tile','baseboard','trim','molding','moulding','grout','hardwood'], group: 'minor_home_repairs_floors_trim' },
-                            { keywords: ['chair','sofa','couch','desk','table','furniture','bed frame','dresser'], group: 'minor_home_repairs_furniture' },
+                            { keywords: ['chair','sofa','couch','desk','table','furniture','bed frame','dresser','headboard','footboard','four-poster'], group: 'minor_home_repairs_furniture' },
                             { keywords: ['wall','drywall','plaster','crack','hole','stucco','patch'], group: 'minor_home_repairs_walls' },
                             { keywords: ['window','sash','pane','screen','sill'], group: 'minor_home_repairs_windows' },
-                            // appliance catch-all
+                            // Literal "appliance" mention only — NOT a real catch-all
+                            // (no catchAll:true flag), unlike wall_mounting's genuine
+                            // frames_shelves catch-all below. minor_home_repairs has
+                            // no single group that's a sensible default for every
+                            // unmatched object, so unmatched objects correctly fall
+                            // through to resolveGroupFromIntent's `return null` —
+                            // see that function's docstring/contract.
                             { keywords: ['appliance'], group: 'minor_home_repairs_appliances' }
                         ],
                         plumbing_help: [
@@ -4867,13 +5207,50 @@ function enableLiveAdLibPreview() {
                         }
                     }
 
+                    // ── Full-sentence fallback pass ─────────────────────────────
+                    // The object noun is a deliberately narrow ~3-word window
+                    // (see extractObject) and sometimes the disambiguating word
+                    // sits outside it — e.g. "install an acrylic sheet ... in my
+                    // living room WINDOW" extracts object noun "acrylic sheet"
+                    // correctly (sheet IS the object), but "window" — the thing
+                    // that actually tells us which group this belongs in — is in
+                    // a different clause describing where the object goes, not
+                    // what it is. Before giving up, check the full original
+                    // sentence (not just the narrow noun) against the same
+                    // keyword rules. This only fires after the noun-only pass
+                    // above has already failed, so a real noun match always
+                    // wins outright over a coincidental whole-sentence mention.
+                    if (fullText) {
+                        const lowerFull = fullText.toLowerCase();
+                        for (const rule of catRules) {
+                            if (rule.catchAll || (rule.stypes && !rule.keywords.length)) continue;
+                            if (rule.keywords.some(kw => lowerFull.includes(kw))) {
+                                if (groups.find(g => g.id === rule.group)) return rule.group;
+                            }
+                        }
+                    }
+
                     // Second pass: catch-alls
                     for (const rule of catRules) {
                         if (rule.catchAll && groups.find(g => g.id === rule.group)) return rule.group;
                     }
 
-                    // Final fallback: first group in category
-                    return groups[0]?.id || null;
+                    // SSOT: honor the documented contract above — "Returns null if
+                    // no clear group can be determined" — rather than silently
+                    // guessing groups[0] (whichever group happens to be listed
+                    // first in btnyc.json's group[] array for this category, an
+                    // accident of insertion order with zero semantic meaning).
+                    // This was the actual root cause behind free-text jobs with
+                    // a weak or failed object-noun extraction (no keyword in any
+                    // rule matched) silently landing in "Appliances" every time,
+                    // regardless of what the job actually was — Appliances simply
+                    // happens to be minor_home_repairs' first-defined group. The
+                    // caller already has a correct, designed-for-this fallback:
+                    // when this returns null, it drops into the generic SmartQuote
+                    // pipeline (sqPrepareFlow) instead of misrouting into a
+                    // specific group's Other tile with confidently-wrong intake
+                    // questions.
+                    return null;
                 }
 
                 function sqUnifiedAction() {
@@ -5004,15 +5381,15 @@ function enableLiveAdLibPreview() {
                         const targetGroupId = resolveGroupFromIntent(
                             S.intent.category,
                             S._objectNoun || '',
-                            S.intent.stype || 'Repair'
+                            S.intent.stype || 'Repair',
+                            desc
                         );
                         if (targetGroupId) {
                             const targetGroup = (DB.group || []).find(g => g.id === targetGroupId);
                             if (targetGroup) {
                                 // Build a synthetic Other tile for this group
                                 const normSt = (S.intent.stype || 'Repair').replace('Install / Mount','Install');
-                                const dynKey = S.intent.category + '+' + normSt.toLowerCase();
-                                const dynDef = DB.dynamic_services?.[dynKey];
+                                const dynDef = resolveDynamicService(S.intent.category, normSt, targetGroupId);
                                 const synthTile = {
                                     _isOtherTile: true,
                                     id: '_other_' + targetGroupId,
@@ -5079,8 +5456,7 @@ function enableLiveAdLibPreview() {
 
                     // ── SSOT: dynamic_services base price + suggested tags ────────
                     const normSt = (S.intent?.stype || 'Repair').replace('Install / Mount', 'Install');
-                    const dynKey = detCat + '+' + normSt.toLowerCase();
-                    const dynDef = DB.dynamic_services?.[dynKey];
+                    const dynDef = resolveDynamicService(detCat, normSt, S.intent?._groupId);
                     if (dynDef) {
                         if (!S.intent.base && dynDef.financial_engine?.base_price)
                             S.intent.base = dynDef.financial_engine.base_price;
@@ -5113,9 +5489,8 @@ function enableLiveAdLibPreview() {
                     const negatedTagSet = new Set(S.negatedTagIds);
                     // SSOT: scope confidence to THIS service's own intake_chain modules
                     const _svcChain   = (S._svc?.intake_chain || []);
-                    const _normStype2 = (S.stype||'Repair').replace('Install / Mount','Install').toLowerCase();
-                    const _dynKey2    = (S.intent?.category||'') + '+' + _normStype2;
-                    const _dynChain2  = (DB.dynamic_services?.[_dynKey2]?.intake_chain || []);
+                    const _normStype2 = (S.stype||'Repair').replace('Install / Mount','Install');
+                    const _dynChain2  = (resolveDynamicService(S.intent?.category, _normStype2, S.intent?._groupId)?.intake_chain || []);
                     const _chainSteps = (_svcChain.length ? _svcChain : _dynChain2.length ? _dynChain2 : []);
                     const _chainMods  = _chainSteps
                       .map(s2 => { const m2=(DB.intake_modules||{})[s2.module]; return m2?{moduleKey:s2.module,...m2}:null; })
@@ -5177,10 +5552,7 @@ function enableLiveAdLibPreview() {
                     // is applied on top, so an unnamed job that turns out to involve
                     // e.g. #brick_wall tightens up for THIS session specifically.
                     const svcForStrategy = S._svc || null;
-                    const dynDefForStrategy = (() => {
-                        const normSt3 = (S.stype || 'Repair').replace('Install / Mount', 'Install').toLowerCase();
-                        return DB.dynamic_services?.[(S.intent?.category || '') + '+' + normSt3] || null;
-                    })();
+                    const dynDefForStrategy = resolveDynamicService(S.intent?.category, S.stype, S.intent?._groupId);
                     const baseStrategy = svcForStrategy?.confidence_strategy
                         || dynDefForStrategy?.confidence_strategy
                         || { minimum_quote_confidence: 70, maximum_followup_questions: 3, base_confidence: 40, _variability_tier: 'medium' };
@@ -5755,6 +6127,7 @@ function enableLiveAdLibPreview() {
                     if (!f) return null;
                     let extraFee = 0,
                         extraMin = f.base_minutes || 0;
+                    let overrideHourlyRate = null;
                     // tile_repair_formula
                     if (formulaId === 'tile_repair_formula') {
                         const count = parseInt(answers.tile_count) || qty || 1;
@@ -5785,12 +6158,28 @@ function enableLiveAdLibPreview() {
                     }
                     // furniture_repair_formula
                     else if (formulaId === 'furniture_repair_formula') {
+                        // SSOT: issue_type_fees keyed by the exact 'issue' intake_module
+                        // label — mirrors tile_repair_formula's grout_repair/water_damage
+                        // lookups. Kept identical to applyPricingFormula's furniture
+                        // branch (the two copies must agree on price for the same answers).
+                        const issueFees = f.issue_type_fees?.[answers.issue] || null;
+                        if (issueFees) {
+                            extraFee += issueFees.fee || 0;
+                            extraMin += issueFees.minutes || 0;
+                        }
+                        if (qty > 1) extraMin += (f.per_unit_minutes || 0) * (qty - 1);
                         const mult = f.complexity_multiplier || 1;
                         extraMin = Math.round(extraMin * mult);
+                        // SSOT: furniture_repair_formula.hourly_rate (e.g. $70 standard
+                        // labor) rather than the generic skilled-tier default ($85) —
+                        // this formula's own minutes already account for complexity,
+                        // so it shouldn't also inherit a higher generic tier rate.
+                        overrideHourlyRate = f.hourly_rate || null;
                     }
                     return {
                         extraFee,
-                        extraMin
+                        extraMin,
+                        overrideHourlyRate
                     };
                 }
 
@@ -5910,7 +6299,13 @@ function enableLiveAdLibPreview() {
                         }
                     }
 
-                    if (S.qty > 1) baseMin += (S.qty - 1) * 30;
+                    // SSOT: ANY active formula already sizes its own work from its
+                    // own inputs (tile_count, area_sqft, per_unit_minutes, PAX counts)
+                    // — none of these are the generic qty stepper. Generalized from a
+                    // furniture-only check, since this applies uniformly to all 4
+                    // formulas in pricing_formulas, not just furniture_repair_formula.
+                    const formulaIsQtyAware = !!formulaResult;
+                    if (S.qty > 1 && !formulaIsQtyAware) baseMin += (S.qty - 1) * 30;
                     // SSOT: use global_rates as fallback if tier missing
                     // Self-quoting services: use exact minutes/tier from operational_metrics
                     const exactMin = S.intent?._exactMinutes;
@@ -5923,7 +6318,11 @@ function enableLiveAdLibPreview() {
                         tierKey = exactTier;
                     }
 
-                    const tierRate = tiers[tierKey]?.hourly_rate || globalRates.specialized_repair || 85;
+                    // SSOT: a formula's own hourly_rate (e.g. furniture_repair_formula's
+                    // $70 standard-labor rate) takes precedence over the generic
+                    // complexity-tier rate, same precedence computeUnifiedQuote already
+                    // gives formulaResult.overrideHourlyRate.
+                    const tierRate = formulaResult?.overrideHourlyRate || tiers[tierKey]?.hourly_rate || globalRates.specialized_repair || 85;
                     const totalMin = Math.max(baseMin + extraMin, 30);
 
                     // SSOT: if the service is flat_rate, base IS the labor — no hourly on top
@@ -6003,7 +6402,7 @@ function enableLiveAdLibPreview() {
 
                 /* ── Render quote — fully driven by SSOT checkout_states ────── */
                 function sqRenderQuote() {
-                    const q = computeSQQuote();
+                    const q = computeQuoteFromState();
                     const out = document.getElementById('sqQuoteOut');
                     if (!out) return;
 
@@ -6109,7 +6508,7 @@ function enableLiveAdLibPreview() {
                         toast('Adding too fast.', 'error');
                         return;
                     }
-                    const q = computeSQQuote();
+                    const q = computeQuoteFromState();
                     addToCart({
                         id: 'sq-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
                         serviceId: S.intent?.key || 'smartquote',
@@ -6341,9 +6740,7 @@ function enableLiveAdLibPreview() {
                     // ── Seed suggested_tags from dynamic_services ─────────────────
                     if (!S._suggestedTagIds?.length) {
                         S._suggestedTagIds = [];
-                        const normSt = stNorm.toLowerCase();
-                        const dynKey = catId + '+' + normSt;
-                        const dynDef = DB.dynamic_services?.[dynKey];
+                        const dynDef = resolveDynamicService(catId, stNorm, groupId);
                         (dynDef?.suggested_tags || []).forEach(tagObj => {
                             if (!tagObj?.$ref) return;
                             const tagId = '#' + tagObj.$ref.split('/').pop().replace(/^#/, '');
@@ -6830,7 +7227,7 @@ function enableLiveAdLibPreview() {
                             category: category_id,
                             label: svc.ui_taxonomy?.display_name || svc.display_name || catName,
                             group: svc.ui_taxonomy?.display_name || svc.id,
-                            base: svc.financial_engine?.base_price || 70,
+                            base: svc.financial_engine?.base_price ?? 70,
                             stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
                             qtyLabel: 'item',
                             key: svc.id,
@@ -6853,9 +7250,8 @@ function enableLiveAdLibPreview() {
                     });
 
                     // SSOT: dynamic_services — enrich base price and suggested_tags if service lacks them
-                    const normStPrefill = (svc.service_type || 'Repair').replace('Install / Mount', 'Install').toLowerCase();
-                    const dynKeyPrefill = category_id + '+' + normStPrefill;
-                    const dynDefPrefill = DB.dynamic_services?.[dynKeyPrefill];
+                    const normStPrefill = (svc.service_type || 'Repair').replace('Install / Mount', 'Install');
+                    const dynDefPrefill = resolveDynamicService(category_id, normStPrefill, svc.ui_taxonomy?.group_id);
                     if (dynDefPrefill) {
                         // Use dynamic base price if service base price is 0 or missing
                         if (!S.intent.base && dynDefPrefill.financial_engine?.base_price) {
@@ -7061,8 +7457,7 @@ function enableLiveAdLibPreview() {
                     const uncoveredTypes = tile.uncovered_service_types || [tile.service_type];
                     const singleType = uncoveredTypes.length === 1 ? uncoveredTypes[0] : null;
                     const stype = singleType || tile.service_type; // best-guess label/pricing default
-                    const dynKey = category_id + '+' + stype.toLowerCase();
-                    const dynDef = DB.dynamic_services?.[dynKey];
+                    const dynDef = resolveDynamicService(category_id, stype, groupId);
 
                     // SSOT: dynamic_services is the pricing source for unnamed jobs —
                     // base price, confidence_strategy, intake_chain all come from there.
@@ -7075,7 +7470,7 @@ function enableLiveAdLibPreview() {
                             category: category_id,
                             label: (catObj?.display_name || category_id) + (singleType ? ' \u2014 ' + singleType : ''),
                             group: groupObj?.display_name || groupId,
-                            base: dynDef?.financial_engine?.base_price || 70,
+                            base: dynDef?.financial_engine?.base_price ?? 70,
                             stype: singleType, // null when ambiguous — set for real once the builder's action step is answered
                             qtyLabel: 'item',
                             key: tile.id,
