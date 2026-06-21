@@ -7005,7 +7005,15 @@ function enableLiveAdLibPreview() {
                             extHtml += `</div>
           <textarea class="sq-ic-notes" placeholder="Add details (e.g. rough opening is 30×80, door swings left)…">${S._jobNotes||''}</textarea>
         </div>`;
-                            card.innerHTML += extHtml;
+                            const escapeHtml = (v) => String(v)
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/'/g, '&#39;');
+                            card.innerHTML += escapeHtml(extHtml)
+                                .replace(/&lt;(\/?)([a-zA-Z0-9-]+)([^&]*)&gt;/g, '<$1$2$3>')
+                                .replace(/&quot;/g, '"');
                         }
 
                         // ─── ADLIB SUMMARY SENTENCE ──────────────────────────────────
