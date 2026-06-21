@@ -1153,7 +1153,19 @@ function enableLiveAdLibPreview() {
         const obj  = extractObject(t);
         const loc  = extractLocation(t);
         const cond = extractCondition(t);
-        const esc  = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+        // v9.4 SECURITY FIX (CodeQL: "Incomplete string escaping or encoding"):
+        // previously only escaped &, <, > — missing the quote characters needed
+        // to safely escape content that might ever land inside an HTML attribute
+        // value. Not exploitable today (every esc() call site below lands in
+        // plain text content between tags, never inside an attribute), but
+        // incomplete escaping is exactly the kind of latent gap that becomes
+        // exploitable the moment a future edit moves one of these into an
+        // attribute context (e.g. a title="${s}" tooltip). Widened to the same
+        // complete 5-character escape set as the shared escapeHtml() utility
+        // in block 1 (this is block 0, a separate script-block scope, so it
+        // can't reference that one directly — kept self-contained here,
+        // consistent with how this block already manages its own utilities).
+        const esc  = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
         // SSOT: sentence_start moved to adlib_phrase_overrides.adlib in the
         // JSON consolidation (was ui_config.adlib) — read from new location.
@@ -1323,6 +1335,32 @@ function enableLiveAdLibPreview() {
 
                 const setText = (el, text) => {
                     if (el) el.textContent = text;
+                };
+                // v9.4 SECURITY FIX: shared HTML-escaping utility, added after two
+                // confirmed XSS vulnerabilities were found (CodeQL: "DOM text
+                // reinterpreted as HTML") — user-typed free text (the SmartQuote
+                // textarea's raw value, and the S.desc/S._location/S._sizeHint
+                // fields NLP-extracts from it) was being interpolated directly into
+                // innerHTML assignments with no escaping at all:
+                //   1. sqBuildCuratedIntake's builderDesc note (renders S.desc
+                //      verbatim inside a template literal assigned via card.innerHTML += ).
+                //   2. ctxBadge's `text` parameter (renders S._location/S._sizeHint
+                //      verbatim inside pp.innerHTML = ).
+                // A user typing e.g. <img src=x onerror=alert(1)> into the "describe
+                // your job" box would have that string parsed and executed as real
+                // HTML/JS the moment either of those rendered. Both fixed below to
+                // call escapeHtml() before interpolation. This mirrors the escaping
+                // logic ALREADY correctly used inside buildPreview's own local esc()
+                // helper (block 0) — promoted here to a shared, reusable, block-1
+                // utility so a future call site can't omit it by simply not knowing
+                // the pattern exists. Escapes &, <, >, ", and ' — the five characters
+                // that matter for breaking out of both HTML text content and
+                // quoted attribute values.
+                const escapeHtml = (str) => {
+                    if (str == null) return '';
+                    return String(str).replace(/[&<>"']/g, c => ({
+                        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                    }[c]));
                 };
                 const parsePriceToInt = (str) => {
                     if (!str || typeof str !== 'string') return 0;
@@ -6188,7 +6226,14 @@ function enableLiveAdLibPreview() {
                             'background:rgba(0,0,0,.04)', 'color:#666', 'border:1px solid rgba(0,0,0,.1)',
                             'font-size:12px', 'font-weight:500', 'margin:2px'
                         ].join(';');
-                        pp.innerHTML = (icon ? '<i class="ti ' + icon + '" style="font-size:11px;opacity:.5"></i> ' : '') + text;
+                        // v9.4 SECURITY FIX: `text` here is frequently S._location or
+                        // S._sizeHint — both NLP-extracted from the raw SmartQuote
+                        // textarea value — interpolated unescaped into innerHTML
+                        // before this fix (CodeQL: "DOM text reinterpreted as HTML").
+                        // The icon class itself is always an internal literal (never
+                        // user-derived) so it's left unescaped, same as buildPreview's
+                        // equivalent pattern.
+                        pp.innerHTML = (icon ? '<i class="ti ' + icon + '" style="font-size:11px;opacity:.5"></i> ' : '') + escapeHtml(text);
                         sent.appendChild(pp);
                     };
 
@@ -6421,21 +6466,15 @@ function enableLiveAdLibPreview() {
 
                     // SSOT: badge from checkout_states (single source — see resolveServiceBadge)
                     const badge = resolveServiceBadge({ checkout_state: q.checkoutStateKey, pricing_type: S.intent?._pricingType });
-                    const escHtml = (v) => String(v == null ? '' : v)
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;')
-                        .replace(/'/g, '&#39;');
 
                     const svcLabel = S.intent?.label || 'Service';
                     const qtyLabel = S.intent?.qtyLabel || 'item';
 
                     const timeLine = q.hideTime ? '' :
                         '<div class="ql"><span class="qll"><i class="ti ti-clock"></i> Est. labor time</span>' +
-                        '<span class="qlv m">~' + escHtml(q.totalMin) + ' min · ' +
-                        '<span class="' + (q.tierKey === 'specialized' ? 'c' : '') + '">' + escHtml(q.tierKey) + '</span>' +
-                        ' ($' + escHtml(q.tierRate) + '/hr)</span></div>';
+                        '<span class="qlv m">~' + q.totalMin + ' min · ' +
+                        '<span class="' + (q.tierKey === 'specialized' ? 'c' : '') + '">' + q.tierKey + '</span>' +
+                        ' ($' + q.tierRate + '/hr)</span></div>';
 
                     const btnLabel = q.btnText || 'Add to Request';
 
@@ -6470,7 +6509,7 @@ function enableLiveAdLibPreview() {
                             '<i class="ti ti-star" style="color:var(--clr-red,#de0000);font-size:15px;flex-shrink:0"></i>' +
                             '<div style="flex:1;min-width:0;"><strong>Possible match:</strong> ' + (_recSvc.ui_taxonomy?.display_name || _recSku) +
                             ' <span style="color:#888;font-size:12px;">— may give a more precise quote</span></div>' +
-                            '<button type="button" onclick="window._sqSwitchToRecommended(\'' + _recSku.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + '\',\'' + (_recCatId || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'") + '\')" ' +
+                            '<button type="button" onclick="window._sqSwitchToRecommended(\'' + _recSku.replace(/'/g, "\\'") + '\',\'' + (_recCatId || '').replace(/'/g, "\\'") + '\')" ' +
                             'style="flex-shrink:0;background:var(--clr-red-dark,#8a0615);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Use this</button>' +
                             '</div>' :
                             '';
@@ -6491,13 +6530,13 @@ function enableLiveAdLibPreview() {
                         '<div class="qpanel">' +
                         '<div class="qhero">' +
                         '<div class="qitag">' + badge + '</div>' +
-                        '<div class="' + (q.isProject ? 'qpranger' : 'qprice') + '">' + escHtml(q.priceDisplay) + '</div>' +
-                        '<div class="qpsub">' + escHtml(q.priceSub) + '</div>' +
-                        '<div class="qmeta"><i class="ti ti-tool"></i> ' + escHtml(svcLabel) + ' &middot; ' + escHtml(S.stype) + '</div>' +
+                        '<div class="' + (q.isProject ? 'qpranger' : 'qprice') + '">' + q.priceDisplay + '</div>' +
+                        '<div class="qpsub">' + q.priceSub + '</div>' +
+                        '<div class="qmeta"><i class="ti ti-tool"></i> ' + svcLabel + ' &middot; ' + S.stype + '</div>' +
                         '</div>' +
                         '<div class="qbody">' +
                         '<div class="qlines">' +
-                        '<div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ' + escHtml((S.stype || 'service').toLowerCase()) + '</span><span class="qlv">$' + escHtml(q.base) + '</span></div>' +
+                        '<div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ' + (S.stype || 'service').toLowerCase() + '</span><span class="qlv">$' + q.base + '</span></div>' +
                         extraFeeRow +
                         timeLine +
                         '<div class="ql"><span class="qll"><i class="ti ti-stack-2"></i> Quantity</span><span class="qlv">' + S.qty + ' ' + qtyLabel + '</span></div>' +
@@ -6890,8 +6929,13 @@ function enableLiveAdLibPreview() {
 
                         // ─── SERVICE HEADER ─────────────────────────────────────────
                         // From: ui_taxonomy, financial_engine, operational_metrics, checkout_states
-                        // If the guided builder generated S.desc, show it as a "you described it as:" note.
-                        const builderDesc = (S._fromBuilder && S.desc && S.desc !== svcName) ? S.desc : null;
+                        // v9.4 SECURITY FIX: builderDesc is sourced from S.desc, which
+                        // is set directly from the raw SmartQuote textarea value
+                        // elsewhere (sqAnalyze) — escaped here before interpolation
+                        // into the innerHTML template literal below. See the
+                        // escapeHtml() definition's comment for the full vulnerability
+                        // this closes (CodeQL: "DOM text reinterpreted as HTML").
+                        const builderDesc = (S._fromBuilder && S.desc && S.desc !== svcName) ? escapeHtml(S.desc) : null;
                         const dots = realMods.map(m =>
                             `<span class="sq-ic-dot ${answers[m.moduleKey]?'done':''}"></span>`).join('');
                         card.innerHTML += `
@@ -7011,15 +7055,7 @@ function enableLiveAdLibPreview() {
                             extHtml += `</div>
           <textarea class="sq-ic-notes" placeholder="Add details (e.g. rough opening is 30×80, door swings left)…">${S._jobNotes||''}</textarea>
         </div>`;
-                            const escapeHtml = (v) => String(v)
-                                .replace(/&/g, '&amp;')
-                                .replace(/</g, '&lt;')
-                                .replace(/>/g, '&gt;')
-                                .replace(/"/g, '&quot;')
-                                .replace(/'/g, '&#39;');
-                            card.innerHTML += escapeHtml(extHtml)
-                                .replace(/&lt;(\/?)([a-zA-Z0-9-]+)([^&]*)&gt;/g, '<$1$2$3>')
-                                .replace(/&quot;/g, '"');
+                            card.innerHTML += extHtml;
                         }
 
                         // ─── ADLIB SUMMARY SENTENCE ──────────────────────────────────
