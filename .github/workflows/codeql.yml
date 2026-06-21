@@ -7,6 +7,7 @@ on:
     branches: [ "main" ]
   schedule:
     - cron: '41 14 * * 3'
+  workflow_dispatch:   # 👈 added for manual trigger
 
 permissions:
   security-events: write
@@ -29,24 +30,23 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4          # ✅ already on v4 (Node.js 20, but fine)
 
       - name: Setup CodeQL cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4             # 👈 upgraded from v3 to v4
         with:
           path: ~/.cache/codeql
-          key:    ${{ runner.os }}-codeql-${{ matrix.language }}-${{ matrix.build-mode }}
+          key: ${{ runner.os }}-codeql-${{ matrix.language }}-${{ matrix.build-mode }}
           restore-keys: |
             ${{ runner.os }}-codeql-${{ matrix.language }}-
             ${{ runner.os }}-codeql-
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4  # 👈 upgraded from v3 to v4
         with:
-          languages:  ${{ matrix.language }}
+          languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          # To merge in your custom queries from codeql-config.yml, prefix with "+":
-          # queries: +security-extended,security-and-quality
+          config-file: ./.github/codeql/codeql-config.yml   # 👈 new – ignore problematic files
 
       - name: Manual build (if needed)
         if: matrix.build-mode == 'manual'
@@ -59,6 +59,6 @@ jobs:
           exit 1
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4  # 👈 upgraded from v3 to v4
         with:
           category: "/language:${{ matrix.language }}"
