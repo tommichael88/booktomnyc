@@ -6421,15 +6421,21 @@ function enableLiveAdLibPreview() {
 
                     // SSOT: badge from checkout_states (single source — see resolveServiceBadge)
                     const badge = resolveServiceBadge({ checkout_state: q.checkoutStateKey, pricing_type: S.intent?._pricingType });
+                    const escHtml = (v) => String(v == null ? '' : v)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
 
                     const svcLabel = S.intent?.label || 'Service';
                     const qtyLabel = S.intent?.qtyLabel || 'item';
 
                     const timeLine = q.hideTime ? '' :
                         '<div class="ql"><span class="qll"><i class="ti ti-clock"></i> Est. labor time</span>' +
-                        '<span class="qlv m">~' + q.totalMin + ' min · ' +
-                        '<span class="' + (q.tierKey === 'specialized' ? 'c' : '') + '">' + q.tierKey + '</span>' +
-                        ' ($' + q.tierRate + '/hr)</span></div>';
+                        '<span class="qlv m">~' + escHtml(q.totalMin) + ' min · ' +
+                        '<span class="' + (q.tierKey === 'specialized' ? 'c' : '') + '">' + escHtml(q.tierKey) + '</span>' +
+                        ' ($' + escHtml(q.tierRate) + '/hr)</span></div>';
 
                     const btnLabel = q.btnText || 'Add to Request';
 
@@ -6485,13 +6491,13 @@ function enableLiveAdLibPreview() {
                         '<div class="qpanel">' +
                         '<div class="qhero">' +
                         '<div class="qitag">' + badge + '</div>' +
-                        '<div class="' + (q.isProject ? 'qpranger' : 'qprice') + '">' + q.priceDisplay + '</div>' +
-                        '<div class="qpsub">' + q.priceSub + '</div>' +
-                        '<div class="qmeta"><i class="ti ti-tool"></i> ' + svcLabel + ' &middot; ' + S.stype + '</div>' +
+                        '<div class="' + (q.isProject ? 'qpranger' : 'qprice') + '">' + escHtml(q.priceDisplay) + '</div>' +
+                        '<div class="qpsub">' + escHtml(q.priceSub) + '</div>' +
+                        '<div class="qmeta"><i class="ti ti-tool"></i> ' + escHtml(svcLabel) + ' &middot; ' + escHtml(S.stype) + '</div>' +
                         '</div>' +
                         '<div class="qbody">' +
                         '<div class="qlines">' +
-                        '<div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ' + (S.stype || 'service').toLowerCase() + '</span><span class="qlv">$' + q.base + '</span></div>' +
+                        '<div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ' + escHtml((S.stype || 'service').toLowerCase()) + '</span><span class="qlv">$' + escHtml(q.base) + '</span></div>' +
                         extraFeeRow +
                         timeLine +
                         '<div class="ql"><span class="qll"><i class="ti ti-stack-2"></i> Quantity</span><span class="qlv">' + S.qty + ' ' + qtyLabel + '</span></div>' +
