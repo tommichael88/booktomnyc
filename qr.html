@@ -270,6 +270,7 @@ body.modal-active{overflow:hidden}
 .furniture-result-name{font-size:1rem;font-weight:600;color:#fff}
 .furniture-result-meta{font-size:.72rem;color:#ffffff8c}
 .f-item{display:inline-flex;align-items:center;gap:4px;background:#ffffff1f;backdrop-filter:blur(4px);border:var(--glass-border);border-radius:var(--radius-md);padding:3px 10px;font-size:.72rem;color:#ffffffd9}
+.cart-instance-badge{display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:#fff;background:#de0000b3;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:middle;letter-spacing:.2px}
 .f-item button{background:0 0;border:none;color:#ff6464e6;cursor:pointer;font-size:.7rem;padding:0 2px;min-width:20px;min-height:20px}
 .furniture-add-btn{background:#de000033;border:1px solid #de000066;border-radius:8px;color:#ffffffe6;font-size:.8rem;font-weight:700;padding:6px 12px;cursor:pointer;flex-shrink:0;min-height:36px;transition:var(--transition)}
 .furniture-add-btn:hover{background:#de000080;color:#fff}
@@ -1354,9 +1355,17 @@ function enableLiveAdLibPreview() {
 
     // 3. Apply Tag Math (if JSON allows)
     if (strategy.calculation_basis === "base_plus_tags") {
+        // v9.4 FIX: this branch is currently unreachable — activeSmartTags /
+        // State.activeSmartTags are never set anywhere in the codebase,
+        // confirmed via exhaustive search — but it referenced an undefined
+        // global `ssot` that would have thrown a ReferenceError the instant
+        // this branch ever became reachable (e.g. a future card-hover tag
+        // preview feature). Fixed to use the real global DB, the actual SSOT
+        // accessor used everywhere else in this file, so the dormant path is
+        // correct rather than merely inert.
         const currentTags = typeof activeSmartTags !== 'undefined' ? activeSmartTags : (State.activeSmartTags || []);
         currentTags.forEach(tagId => {
-            const tagData = ssot.smart_tags[tagId]; 
+            const tagData = DB.smart_tags?.[tagId];
             if (tagData && tagData.effects && tagData.effects.fee) {
                 displayTotal += tagData.effects.fee;
             }
@@ -1751,6 +1760,23 @@ function enableLiveAdLibPreview() {
                     exitFocusedMode();
                     Breadcrumbs.clear();
                     setStep(1);
+                    // v9.1 fix: SmartQuote and the Catalog browser used to be able
+                    // to run concurrently — navigating into the Catalog while a
+                    // SmartQuote session was mid-flow (S/BLD state populated,
+                    // #sqStepFlow visible) never reset that session, so its state
+                    // could leak into whatever the user did next (the reported
+                    // "collide" bug: starting a SmartQuote text entry, changing
+                    // your mind, and going to the Catalog instead left the old
+                    // SmartQuote answers/tags live in the background). Detect an
+                    // active session the same way the cart overlay's own open/closed
+                    // check works (live style.display, not the unused __sqActive
+                    // flag) and call sqRestart() — defined later in this file but
+                    // safe to call here since function declarations hoist — before
+                    // showing the Catalog grid.
+                    const sqFlow = document.getElementById('sqStepFlow');
+                    if (sqFlow && sqFlow.style.display !== 'none' && typeof sqRestart === 'function') {
+                        sqRestart();
+                    }
                     if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = 'grid';
                     if (DOM.summaryMainContainer) DOM.summaryMainContainer.style.display = 'none';
                     if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
@@ -2456,29 +2482,59 @@ function enableLiveAdLibPreview() {
                     if (!SERVICE_DATA.intake_modules) return [];
                     const resolved = [];
                     const seen = new Set();
-                    const resolveOne = (moduleKey, thenMap) => {
+                    // v9.1: params support. A step can carry params:{item_noun,
+                    // client_response, question_override} to specialize a shared
+                    // template module (item_count_template) per-service without
+                    // duplicating the module definition in intake_modules.
+                    //
+                    // Every consumer of a resolved module (_isModVisible, answer
+                    // storage, rendering) treats `.moduleKey` as an opaque string
+                    // key — none of them look it up back into intake_modules
+                    // directly (only this function does, using the ORIGINAL
+                    // lookupKey below). So when params are present we mint a
+                    // unique moduleKey (e.g. "item_count_template::windows")
+                    // for the resolved object's .moduleKey field, which keeps
+                    // answers for two different parameterized instances of the
+                    // same template from colliding in the same chain, while
+                    // still resolving the underlying module definition from
+                    // intake_modules under its real, unparameterized name.
+                    const resolveOne = (lookupKey, thenMap, params) => {
+                        const moduleKey = params?.item_noun ? `${lookupKey}::${params.item_noun}` : lookupKey;
                         if (seen.has(moduleKey)) return; // avoid duplicates/cycles
                         seen.add(moduleKey);
-                        const mod = SERVICE_DATA.intake_modules[moduleKey];
+                        const mod = SERVICE_DATA.intake_modules[lookupKey];
                         if (!mod) return;
-                        resolved.push({
-                            moduleKey,
-                            then: thenMap || {},
-                            ...mod
-                        });
+                        let merged = { moduleKey, then: thenMap || {}, ...mod };
+                        if (params) {
+                            if (params.question_override) {
+                                // Preferred: the exact original authored question
+                                // text, preserved verbatim during the v9.1
+                                // template consolidation (see CHANGELOG_v9.1.md).
+                                merged.question = params.question_override;
+                            } else if (params.item_noun && typeof merged.question === 'string') {
+                                merged.question = merged.question.replace('{item_noun}', params.item_noun);
+                            }
+                            if (Array.isArray(params.client_response) && params.client_response.length) {
+                                merged.client_response = params.client_response;
+                            }
+                            merged._params = params;
+                        }
+                        resolved.push(merged);
                     };
                     (svc.intake_chain || []).forEach(step => {
-                        resolveOne(step.module, step.then);
+                        resolveOne(step.module, step.then, step.params);
                         // Inject every branch-target module named by ANY answer
                         // in this step's `then` map, so they exist in the
                         // resolved list for _isModVisible to gate on. They get
                         // their own `then` (usually {}) from intake_modules
-                        // itself unless they branch further.
+                        // itself unless they branch further. Branch targets
+                        // never carry params (schema: array of strings), so
+                        // they always resolve under their own plain key.
                         const then = step.then || {};
                         Object.values(then).forEach(targets => {
                             (targets || []).forEach(targetKey => {
                                 if (targetKey === step.module) return; // safety: no self-reference
-                                resolveOne(targetKey, undefined);
+                                resolveOne(targetKey, undefined, undefined);
                             });
                         });
                     });
@@ -2556,6 +2612,23 @@ function enableLiveAdLibPreview() {
                         matMax = 0;
                     let co = svc.operational_metrics?.complexity_tier ||
                         SERVICE_DATA.service_types?.[svc.service_type]?.default_complexity || 'skilled';
+                    // v9.3 architecture (backlog — see CHANGELOG_v9.3.md): tracks a
+                    // per-ANSWER checkout_state escalation, independent of the
+                    // service's static financial_engine.checkout_state. Today no
+                    // client_response anywhere actually sets checkout_state_override,
+                    // so checkoutStateOverride always stays null and this is a no-op —
+                    // it's schema/engine plumbing only, ready for the deferred work of
+                    // authoring real per-answer overrides on the 16 services that are
+                    // currently unconditionally 'diagnostic' regardless of which
+                    // symptom/answer was actually chosen (e.g. an appliance that's
+                    // "dead, won't power on" is deterministic enough to quote directly;
+                    // "turns on, spins briefly, then shuts off" genuinely isn't and
+                    // should be the thing that triggers diagnostic, not the service as
+                    // a whole). "Most restrictive wins" — once any answered question
+                    // requests diagnostic, later answers can't downgrade it back to a
+                    // confident flat quote.
+                    let checkoutStateOverride = null;
+                    const RESTRICTIVENESS = { standard_flat_rate: 0, project_based: 1, database_summation: 1, diagnostic: 2 };
                     const mods = _resolveIntakeChain(svc);
                     mods.forEach(mod => {
                         if (!_isModVisible(mod, answers, mods)) return;
@@ -2567,16 +2640,49 @@ function enableLiveAdLibPreview() {
                         if (eff.mat_min) matMin += eff.mat_min;
                         if (eff.mat_max) matMax += eff.mat_max;
                         if (eff.complexity_override && (TIER_ORDER[eff.complexity_override] || 0) > (TIER_ORDER[co] || 0)) co = eff.complexity_override;
+                        if (eff.checkout_state_override &&
+                            (RESTRICTIVENESS[eff.checkout_state_override] || 0) > (RESTRICTIVENESS[checkoutStateOverride] || -1)) {
+                            checkoutStateOverride = eff.checkout_state_override;
+                        }
                     });
                     // SSOT: meta.global_rates as fallback when tier missing
                     const globalRatesFb = SERVICE_DATA.meta?.global_rates || {};
                     const tierRate = TIERS[co]?.hourly_rate || globalRatesFb.specialized_repair || globalRatesFb.standard_labor || 85;
 
-                    // Calculate total minutes (same for both hourly and flat rate)
-                    let totalMin = Math.max(45 + extraMin, 30);
+                    // v9.2 FIX: every named service's default_estimates.total_minutes
+                    // {min,max} is real, hand-curated per-service timing data (verified:
+                    // all 69 named services have one) — the SAME field
+                    // computeUnifiedQuote (the SmartQuote/dynamic_services engine) reads
+                    // for its own baseMinutes. This function was instead using a flat
+                    // "45 + extraMin" placeholder for every service regardless of its
+                    // curated range, which silently diverged from computeUnifiedQuote's
+                    // number for the exact same service (e.g. toilet_install: 45min here
+                    // vs. its curated 362.5min midpoint there — a $449 labor-estimate
+                    // difference on identical inputs, depending only on whether the
+                    // customer reached the service via the Catalog browser [this
+                    // function] or SmartQuote [computeUnifiedQuote]). Named services
+                    // intentionally do NOT get computeUnifiedQuote's confidence/
+                    // escalation/pricing-formula machinery — that machinery exists to
+                    // earn confidence for dynamic_services' uncurated "Other" bucket,
+                    // and forcing it onto curated, low-variability named services like a
+                    // door knob repair would add friction where none is needed. But the
+                    // underlying TIME baseline both engines build on top of must agree,
+                    // since it's the same curated SSOT field — this was an oversight,
+                    // not an intentional simplicity tradeoff.
+                    const tm = svc?.default_estimates?.total_minutes;
+                    const baseMinutes = (tm && tm.min != null && tm.max != null)
+                        ? Math.round((tm.min + tm.max) / 2)
+                        : 45; // fallback only for the (currently nonexistent) case of a named service with no curated range
+                    let totalMin = Math.max(baseMinutes + extraMin, 30);
                     let laborEstimate;
                     if (prof.isHourly) {
-                        laborEstimate = Math.round((base || tierRate) + extraFee + (totalMin / 60) * tierRate) * qty;
+                        // v9.2 FIX: round AFTER multiplying by qty (matches
+                        // computeUnifiedQuote's order of operations) — previously this
+                        // rounded the per-unit estimate first and multiplied the
+                        // already-rounded value by qty, which can drift a few cents/
+                        // dollars off from the SmartQuote path on the same inputs for
+                        // qty > 1.
+                        laborEstimate = Math.round(((base || tierRate) + extraFee + (totalMin / 60) * tierRate) * qty);
                     } else {
                         laborEstimate = Math.round((base + extraFee) * qty);
                     }
@@ -2589,7 +2695,16 @@ function enableLiveAdLibPreview() {
                         complexityOverride: co,
                         tierRate,
                         laborEstimate,
-                        totalMin // <-- now included
+                        totalMin, // <-- now included
+                        // v9.3 architecture (backlog): checkoutStateOverride is the
+                        // most-restrictive answer-level override found, if any.
+                        // effectiveCheckoutState is what callers should actually use
+                        // for badge/button display — the override when present,
+                        // otherwise the service's own static checkout_state. Always
+                        // falls through to the static value today since no
+                        // client_response anywhere sets checkout_state_override yet.
+                        checkoutStateOverride,
+                        effectiveCheckoutState: checkoutStateOverride || svc.financial_engine?.checkout_state || 'standard_flat_rate'
                     };
                 }
 
@@ -3630,6 +3745,27 @@ function enableLiveAdLibPreview() {
                 /* ================================================================
                    CART MANAGEMENT (unchanged)
                    ================================================================ */
+                // v9.1: shared helper — recomputes _instanceLabel ('#1','#2'...) for
+                // every group of cart entries sharing name+category_id (excluding
+                // furniture, which has its own merge UI). A lone item in its group
+                // gets no badge (nothing to disambiguate from). Called after both
+                // additions and removals so labels stay sequential and correct.
+                function _recomputeInstanceLabels() {
+                    const groups = {};
+                    State.serviceRequest.forEach(s => {
+                        if (s.furnitureItems) return;
+                        const key = s.name + '::' + s.category_id;
+                        (groups[key] = groups[key] || []).push(s);
+                    });
+                    Object.values(groups).forEach(group => {
+                        if (group.length <= 1) {
+                            group.forEach(s => delete s._instanceLabel);
+                        } else {
+                            group.forEach((s, i) => { s._instanceLabel = `#${i + 1}`; });
+                        }
+                    });
+                }
+
                 function addToCart(entry) {
                     if (!entry?.id) return;
                     if (entry.furnitureItems?.length) {
@@ -3648,27 +3784,40 @@ function enableLiveAdLibPreview() {
                         }
                     }
                     // Duplicate detection: merge qty rather than showing a confirm()
-                    // dialog. A TV mount in two rooms, two drawer adjustments, etc.
-                    // are genuinely common multi-qty requests — interrupting with a
-                    // dialog is hostile UX. Instead, find an existing matching entry
-                    // and increment its qty (same pattern as furniture assembly merge),
-                    // show a toast, and return. The cart overlay shows qty with ±
-                    // controls so the user can adjust or remove if it was accidental.
+                    // dialog — but ONLY when the requests are genuine repeats (same
+                    // name/category/price AND same notes/context). Two requests that
+                    // share a name+price but differ in notes (e.g. "Mount TV" in the
+                    // living room vs. "Mount TV" in the bedroom) are NOT the same
+                    // request — merging them silently into qty:2 loses the first
+                    // location entirely (dupe.notes was being overwritten by the
+                    // second entry's notes) and gives the user no visual way to tell
+                    // two distinct, valid bookings apart in the cart. v9.1 fix:
+                    // require notes to match (treating empty/undefined notes on
+                    // both sides as a match) before merging into qty; otherwise
+                    // fall through and add as its own distinct line item.
+                    const notesMatch = (a, b) => (a || '') === (b || '');
                     const dupe = State.serviceRequest.find(item =>
                         item.name === entry.name &&
                         item.category_id === entry.category_id &&
                         item.price === entry.price &&
+                        notesMatch(item.notes, entry.notes) &&
                         !item.furnitureItems // furniture has its own merge path above
                     );
                     if (dupe) {
                         dupe.qty = (dupe.qty || 1) + 1;
-                        dupe.notes = entry.notes || dupe.notes; // update with latest notes
                         renderCart();
                         toast(`${entry.name} — qty updated to ${dupe.qty}`, 'success');
                         return;
                     }
+                    // Same service+price but DIFFERENT notes/context: add as a
+                    // distinct line item. _recomputeInstanceLabels (called via
+                    // renderCart below) tags this and any sibling with a visible
+                    // '#1'/'#2' badge so the cart UI shows they're different,
+                    // instead of letting them look identical with no way to tell
+                    // them apart.
                     entry.qty = entry.qty || 1;
                     State.serviceRequest.push(entry);
+                    _recomputeInstanceLabels();
                     if (DOM.cartFab) {
                         DOM.cartFab.style.animation = 'none';
                         requestAnimationFrame(() => DOM.cartFab.style.animation = 'cartBounce .4s ease');
@@ -3678,6 +3827,7 @@ function enableLiveAdLibPreview() {
 
                 function removeServiceFromCart(id) {
                     State.serviceRequest = State.serviceRequest.filter(s => s.id !== id);
+                    _recomputeInstanceLabels();
                     renderCart();
                 }
 
@@ -3721,7 +3871,22 @@ function enableLiveAdLibPreview() {
                         const tw = create('div', {
                             class: 'summary-service-text'
                         });
-                        tw.appendChild(create('h4', {}, [document.createTextNode(svc.name), svc.price && svc.price.includes('/hr') ? create('span', {
+                        // v9.1: when two cart entries share name+category+price but
+                        // have different notes/context (e.g. "Mount TV" in the
+                        // living room vs. the bedroom), addToCart() tags each with
+                        // an _instanceLabel ('#1', '#2'...) instead of silently
+                        // merging them into one qty count and losing the first
+                        // entry's location. Render that label as a small badge so
+                        // the distinction is actually visible, not just tracked
+                        // internally — this is the fix for the reported bug where
+                        // two genuinely different requests looked identical in cart.
+                        const nameNode = svc._instanceLabel
+                            ? create('span', {}, [
+                                document.createTextNode(svc.name + ' '),
+                                create('span', { class: 'cart-instance-badge', text: svc._instanceLabel })
+                            ])
+                            : document.createTextNode(svc.name);
+                        tw.appendChild(create('h4', {}, [nameNode, svc.price && svc.price.includes('/hr') ? create('span', {
                             class: 'price-type-emojii',
                             text: '🕐'
                         }) : null].filter(Boolean)));
@@ -3866,9 +4031,15 @@ function enableLiveAdLibPreview() {
                         const tw = create('div', {
                             class: 'cart-service-text'
                         });
-                        tw.appendChild(create('h4', {
-                            text: svc.name
-                        }));
+                        // v9.1: same instance-label badge as updateCartSummary —
+                        // see addToCart() for why this exists.
+                        const ovNameNode = svc._instanceLabel
+                            ? create('span', {}, [
+                                document.createTextNode(svc.name + ' '),
+                                create('span', { class: 'cart-instance-badge', text: svc._instanceLabel })
+                            ])
+                            : document.createTextNode(svc.name);
+                        tw.appendChild(create('h4', {}, [ovNameNode]));
                         tw.appendChild(create('div', {
                             class: 'summary-service-detail',
                             text: svc.detail || ''
@@ -4280,6 +4451,39 @@ function enableLiveAdLibPreview() {
                     // avoided this by gating its equivalent loop on S._svc (named
                     // services only, which never carry a dynamic_rule formula) —
                     // this generalizes that same intent to the dynamic_services path.
+                    //
+                    // v9.2 FIX: this loop previously folded in each answer's fee/
+                    // minutes but silently dropped its complexity_override — the
+                    // dynamic, per-answer escalation signal authored on 169
+                    // client_response options across intake_modules (e.g.
+                    // wall_type: "Brick or concrete" -> skilled, weight: "Over 50
+                    // lbs" -> specialized, symptom: "Won't drain" -> specialized).
+                    // The Catalog-browser engine (_computePrice) already correctly
+                    // ratchets its complexity tier upward from these same answers;
+                    // this was the one place computeUnifiedQuote fell back to a
+                    // cheaper, less accurate tier than the customer's own answers
+                    // actually warranted — confidence/pricing escalation is supposed
+                    // to work together with intake (see CHANGELOG_v9.2.md), and a
+                    // job that "starts routine but escalates based on responses"
+                    // could not actually escalate through this path before this fix.
+                    const RANK = { skilled: 1, specialized: 2 };
+                    let answerOverrideTier = null;
+                    // v9.3 architecture (backlog — see CHANGELOG_v9.3.md): same
+                    // ratchet pattern as answerOverrideTier above, for
+                    // checkout_state_override instead of complexity_override. Lets a
+                    // SPECIFIC answer (e.g. an appliance symptom that's genuinely
+                    // ambiguous, like "turns on, spins briefly, then shuts off") force
+                    // checkoutStateKey to 'diagnostic' independently of the service's
+                    // static financial_engine.checkout_state — instead of today's
+                    // all-or-nothing service-level flag that applies regardless of
+                    // which answer was actually chosen (16 of 69 named services are
+                    // currently unconditionally 'diagnostic' this way). No
+                    // client_response anywhere sets this field yet — authoring real
+                    // per-answer overrides for those 16 services, and giving them
+                    // appliance-specific (not generically shared) symptom options in
+                    // the first place, is the deferred detailed work.
+                    let answerCheckoutOverride = null;
+                    const CS_RESTRICTIVENESS = { standard_flat_rate: 0, project_based: 1, database_summation: 1, diagnostic: 2 };
                     if (!formulaResult) {
                         for (const [moduleKey, answerLabel] of Object.entries(answers)) {
                             const mod = DB.intake_modules?.[moduleKey];
@@ -4288,6 +4492,14 @@ function enableLiveAdLibPreview() {
                             if (!chosen) continue;
                             extraFee += chosen.effects?.fee || 0;
                             extraMin += chosen.effects?.minutes || 0;
+                            const ov = chosen.effects?.complexity_override;
+                            if (ov && (RANK[ov] || 0) > (RANK[answerOverrideTier] || 0)) {
+                                answerOverrideTier = ov;
+                            }
+                            const cso = chosen.effects?.checkout_state_override;
+                            if (cso && (CS_RESTRICTIVENESS[cso] || 0) > (CS_RESTRICTIVENESS[answerCheckoutOverride] || -1)) {
+                                answerCheckoutOverride = cso;
+                            }
                         }
                     }
 
@@ -4316,8 +4528,12 @@ function enableLiveAdLibPreview() {
                     const formulaIsQtyAware = !!formulaResult;
                     if (qty > 1 && !formulaIsQtyAware) totalMin += (qty - 1) * 30;
 
-                    const RANK = { skilled: 1, specialized: 2 };
-                    let tagOverrideTier = null, tagOverrideRank = 0;
+                    // v9.2: tag-level AND answer-level overrides both feed the same
+                    // ratchet — take whichever of the two is higher-ranked, never
+                    // downgrade. A heavy item detected via NLP tag should escalate
+                    // exactly as much as the same fact confirmed via an intake
+                    // question answer.
+                    let tagOverrideTier = answerOverrideTier, tagOverrideRank = RANK[answerOverrideTier] || 0;
                     for (const tid of activeTagIds) {
                         const override = smartTags[tid]?.effects?.complexity_override;
                         if (override && (RANK[override] || 0) > tagOverrideRank) {
@@ -4348,8 +4564,16 @@ function enableLiveAdLibPreview() {
                         laborEstimate = Math.round((base + extraFee + (totalMin / 60) * effectiveHourlyRate) * qtyMultiplier);
                     }
 
-                    const checkoutStateKey = fe.checkout_state
+                    // v9.3 architecture (backlog): answerCheckoutOverride wins if it's
+                    // MORE restrictive than the service's own static default — never
+                    // less. Always falls through to the existing static resolution
+                    // today since no data sets checkout_state_override yet.
+                    const staticCheckoutStateKey = fe.checkout_state
                         || (pricingType === 'diagnostic' ? 'diagnostic' : 'standard_flat_rate');
+                    const checkoutStateKey = (answerCheckoutOverride &&
+                        (CS_RESTRICTIVENESS[answerCheckoutOverride] || 0) > (CS_RESTRICTIVENESS[staticCheckoutStateKey] || 0))
+                        ? answerCheckoutOverride
+                        : staticCheckoutStateKey;
                     const cs = DB.checkout_states?.[checkoutStateKey] || {};
                     const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
                     let btnText = (cs[btnKey] || cs.button_text || 'Add to Request').replace('${labor_total}', '$' + laborEstimate);
@@ -5298,8 +5522,16 @@ function enableLiveAdLibPreview() {
                         group: 'other'
                     };
                     const normSt = (baseIntent.stype || 'Repair').replace('Install / Mount', 'Install');
-                    const dynKey = (baseIntent.category || 'other') + '+' + normSt.toLowerCase();
-                    const dynDef = DB.dynamic_services?.[dynKey];
+                    // v9.3 FIX: was building the lookup key with normSt.toLowerCase()
+                    // ('minor_home_repairs+repair'), which never matches a real
+                    // dynamic_services key (always capitalized service-type casing,
+                    // e.g. 'minor_home_repairs+Repair' — see the casing note on
+                    // resolveDynamicService above). dynDef was therefore always
+                    // undefined here, silently skipping the base-price enrichment
+                    // for every free-text SmartQuote query — the most common entry
+                    // point in the app. Routes through the shared, already-fixed
+                    // resolver instead of duplicating the broken inline lookup.
+                    const dynDef = resolveDynamicService(baseIntent.category, normSt, baseIntent._groupId);
                     if (dynDef?.financial_engine?.base_price) baseIntent.base = dynDef.financial_engine.base_price;
                     S.intent = baseIntent;
                     S.manTagIds = [];
@@ -5337,8 +5569,12 @@ function enableLiveAdLibPreview() {
             // Update the dynamic key if category changed
             if (objectMap.default_dynamic_category) {
                 const newNormSt = (S.intent.default_service_type || 'Install').replace('Install / Mount', 'Install');
-                const newDynKey = objectMap.default_dynamic_category + '+' + newNormSt.toLowerCase();
-                const newDynDef = DB.dynamic_services?.[newDynKey];
+                // v9.3 FIX: same lowercase-key bug as the one fixed above in this
+                // function — newDynDef was always undefined, so an object-specific
+                // category override (e.g. recognizing "TV" -> wall_mounting) never
+                // actually re-priced the job from the more specific dynamic_service,
+                // even when the NLP correctly identified it.
+                const newDynDef = resolveDynamicService(objectMap.default_dynamic_category, newNormSt, S.intent?._groupId);
                 if (newDynDef?.financial_engine?.base_price) {
                     S.intent.base = newDynDef.financial_engine.base_price;
                 }
@@ -6121,67 +6357,16 @@ function enableLiveAdLibPreview() {
                 /* ── Price compute — integrates checkout_states, meta.global_rates,
                        pricing_formulas, and confidence_tiers from btnyc.json SSOT ── */
 
-                // SSOT: apply a named pricing formula if the service declares one
-                function applyFormula(formulaId, answers, qty) {
-                    const f = DB.pricing_formulas?.[formulaId];
-                    if (!f) return null;
-                    let extraFee = 0,
-                        extraMin = f.base_minutes || 0;
-                    let overrideHourlyRate = null;
-                    // tile_repair_formula
-                    if (formulaId === 'tile_repair_formula') {
-                        const count = parseInt(answers.tile_count) || qty || 1;
-                        extraMin += (f.minutes_per_tile || 5) * count;
-                        if (answers.grout_repair === 'Yes') {
-                            extraMin += f.grout_penalty_minutes || 0;
-                            extraFee += f.grout_fee || 0;
-                        }
-                        if (answers.water_damage === 'Yes') {
-                            extraMin += f.water_damage_penalty_minutes || 0;
-                            extraFee += f.water_damage_fee || 0;
-                        }
-                        if (answers.ceiling_height === 'High ceiling') {
-                            extraMin += f.high_ceiling_penalty_minutes || 0;
-                            extraFee += f.high_ceiling_fee || 0;
-                        }
-                        if (answers.disposal === 'Yes') {
-                            extraMin += f.disposal_minutes || 0;
-                            extraFee += f.disposal_fee || 0;
-                        }
-                    }
-                    // drywall_repair_formula
-                    else if (formulaId === 'drywall_repair_formula') {
-                        const sqft = parseInt(answers.area_sqft) || 2;
-                        extraMin += (f.minutes_per_sqft || 5) * sqft;
-                        extraFee += f.patch_fee || 0;
-                        if (answers.texture_match === 'Yes') extraFee += f.texture_fee || 0;
-                    }
-                    // furniture_repair_formula
-                    else if (formulaId === 'furniture_repair_formula') {
-                        // SSOT: issue_type_fees keyed by the exact 'issue' intake_module
-                        // label — mirrors tile_repair_formula's grout_repair/water_damage
-                        // lookups. Kept identical to applyPricingFormula's furniture
-                        // branch (the two copies must agree on price for the same answers).
-                        const issueFees = f.issue_type_fees?.[answers.issue] || null;
-                        if (issueFees) {
-                            extraFee += issueFees.fee || 0;
-                            extraMin += issueFees.minutes || 0;
-                        }
-                        if (qty > 1) extraMin += (f.per_unit_minutes || 0) * (qty - 1);
-                        const mult = f.complexity_multiplier || 1;
-                        extraMin = Math.round(extraMin * mult);
-                        // SSOT: furniture_repair_formula.hourly_rate (e.g. $70 standard
-                        // labor) rather than the generic skilled-tier default ($85) —
-                        // this formula's own minutes already account for complexity,
-                        // so it shouldn't also inherit a higher generic tier rate.
-                        overrideHourlyRate = f.hourly_rate || null;
-                    }
-                    return {
-                        extraFee,
-                        extraMin,
-                        overrideHourlyRate
-                    };
-                }
+                // v9.2: applyFormula (and its sole caller, computeSQQuote) removed —
+                // confirmed dead code via exhaustive call-site search. It was an
+                // unmaintained duplicate of applyPricingFormula (used by the live
+                // computeUnifiedQuote engine), missing the pax_wardrobe_formula branch
+                // that applyPricingFormula has — already drifted out of sync despite a
+                // comment here insisting "the two copies must agree." Removing it
+                // closes off a re-wiring trap: a future edit could have accidentally
+                // reconnected this stale, formula-incomplete duplicate. See
+                // CHANGELOG_v9.2.md for the full trace that established it was
+                // unreachable before deletion.
 
                 // SSOT: resolve checkout state → copy, button text, disclaimers
                 function resolveCheckoutState(checkoutStateKey, laborTotal) {
@@ -6214,191 +6399,19 @@ function enableLiveAdLibPreview() {
                     };
                 }
 
-                // SSOT: derive checkout state for text/SmartQuote path
-                function deriveCheckoutState(stype) {
-                    const map = {
-                        Diagnostic: 'diagnostic',
-                        Repair: 'standard_flat_rate',
-                        Install: 'standard_flat_rate',
-                        Assembly: 'database_summation',
-                        Setup: 'standard_flat_rate'
-                    };
-                    return map[stype] || 'standard_flat_rate';
-                }
+                // v9.2: deriveCheckoutState and computeSQQuote removed — confirmed
+                // dead code. computeSQQuote was explicitly superseded by
+                // computeUnifiedQuote (see the block comment above
+                // resolveBaseConfidenceStrategy: "Replaces: _computePrice() [legacy],
+                // computeSQQuote() [SmartQuote]...") but was never actually deleted
+                // after the migration, leaving a fully-formed, never-called duplicate
+                // pricing/checkout-state engine sitting in the file as a re-wiring
+                // trap. Exhaustive call-site search confirmed neither function is
+                // referenced anywhere outside this dead pair (resolveCheckoutState,
+                // which computeSQQuote also called, is NOT dead — it is genuinely
+                // shared with computeQuoteFromState/computeUnifiedQuote's adapter and
+                // was left in place). See CHANGELOG_v9.2.md.
 
-                function computeSQQuote() {
-                    const tags = DB.smart_tags || {};
-                    const dispatch = DB.global_rules?.surcharges?.dispatch_fee || 45;
-                    const tiers = DB.global_rules?.complexity_tiers || {
-                        routine: {
-                            hourly_rate: 65
-                        },
-                        skilled: {
-                            hourly_rate: 85
-                        },
-                        specialized: {
-                            hourly_rate: 110
-                        }
-                    };
-                    // SSOT: meta.global_rates as fallback
-                    const globalRates = DB.meta?.global_rates || {
-                        standard_labor: 65,
-                        specialized_repair: 85
-                    };
-
-                    const st = S.stype || 'Repair';
-                    let base = S.intent?.base || (DB.service_types?.[st]?.base_price) || globalRates.standard_labor || 70;
-                    let baseMin = 45,
-                        extraFee = 0,
-                        extraMin = 0;
-                    const activeLabels = [];
-                    let tierKey = 'skilled';
-
-                    const active = [...new Set([...S.detTagIds, ...S.manTagIds])];
-
-                    // SSOT: dynamic_rule from intent_mapping object (tile, drywall, furniture formulas)
-                    const formulaId = S.intent?.dynamic_rule;
-                    const formulaResult = formulaId ? applyFormula(formulaId, S.answers || {}, S.qty) : null;
-
-                    // SSOT: contextual_overrides base adjustments (e.g. flushometer +$75 +45min)
-                    const ctxFee = S.intent?._ctxBaseAdjFee || 0;
-                    const ctxMin = S.intent?._ctxBaseAdjMin || 0;
-
-                    // Apply contextual_overrides adjustments (before tags)
-                    extraFee += ctxFee;
-                    extraMin += ctxMin;
-
-                    // ── Curated intake: fold in answered intake_chain effects ──
-                    if (S._svc && S.answers && Object.keys(S.answers).length > 0) {
-                        const _QM = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
-                        const _allResolvedMods2 = _resolveIntakeChain(S._svc);
-                        _allResolvedMods2.filter(m => !_QM.has(m.moduleKey)).forEach(mod => {
-                            if (!_isModVisible(mod, S.answers, _allResolvedMods2)) return;
-                            const chosen = (mod.client_response || []).find(r => r.label === S.answers[mod.moduleKey]);
-                            if (!chosen) return;
-                            extraFee += chosen.effects?.fee || 0;
-                            extraMin += chosen.effects?.minutes || 0;
-                        });
-                    }
-
-                    if (formulaResult) {
-                        extraFee += formulaResult.extraFee;
-                        extraMin += formulaResult.extraMin;
-                    } else {
-                        // Standard tag-based pricing (simple model preserved)
-                        for (const tid of active) {
-                            const t = tags[tid];
-                            if (!t) continue;
-                            const fee = t.fee ?? t.effects?.fee ?? 0;
-                            const min = t.minutes ?? t.effects?.minutes ?? 0;
-                            const esc = t.escalate_complexity || t.effects?.complexity_override;
-                            extraFee += fee;
-                            extraMin += min;
-                            activeLabels.push(sqTagLabel(t, tid));
-                            if (esc === 'specialized') tierKey = 'specialized';
-                        }
-                    }
-
-                    // SSOT: ANY active formula already sizes its own work from its
-                    // own inputs (tile_count, area_sqft, per_unit_minutes, PAX counts)
-                    // — none of these are the generic qty stepper. Generalized from a
-                    // furniture-only check, since this applies uniformly to all 4
-                    // formulas in pricing_formulas, not just furniture_repair_formula.
-                    const formulaIsQtyAware = !!formulaResult;
-                    if (S.qty > 1 && !formulaIsQtyAware) baseMin += (S.qty - 1) * 30;
-                    // SSOT: use global_rates as fallback if tier missing
-                    // Self-quoting services: use exact minutes/tier from operational_metrics
-                    const exactMin = S.intent?._exactMinutes;
-                    const exactTier = S.intent?._exactTier;
-                    if (exactMin) {
-                        baseMin = exactMin;
-                        extraMin = 0;
-                    }
-                    if (exactTier) {
-                        tierKey = exactTier;
-                    }
-
-                    // SSOT: a formula's own hourly_rate (e.g. furniture_repair_formula's
-                    // $70 standard-labor rate) takes precedence over the generic
-                    // complexity-tier rate, same precedence computeUnifiedQuote already
-                    // gives formulaResult.overrideHourlyRate.
-                    const tierRate = formulaResult?.overrideHourlyRate || tiers[tierKey]?.hourly_rate || globalRates.specialized_repair || 85;
-                    const totalMin = Math.max(baseMin + extraMin, 30);
-
-                    // SSOT: if the service is flat_rate, base IS the labor — no hourly on top
-                    // Check S.intent._pricingType (set by prefillSmartQuoteFromService for card-taps)
-                    const _pricingType = S.intent?._pricingType;
-                    // SSOT: services use 'hourly' but pricing_engines key is 'hourly_estimate'
-                    const _engineKey  = resolveEngineKey(_pricingType);
-                    const _engineDef  = _pricingType ? (DB.global_rules?.pricing_engines?.[_engineKey] || {}) : {};
-                    const _components = _engineDef.formula_components || [];
-                    const _isFlatRate = _pricingType === 'flat_rate' || (_components.length && !_components.includes('calculated_labor'));
-                    const _isHourly = _pricingType === 'hourly' || _components.includes('calculated_labor');
-
-                    let laborCalc;
-                    if (_isFlatRate && _pricingType) {
-                        // flat_rate: base + intake_fees only — no time multiplication
-                        laborCalc = Math.round(base + extraFee);
-                    } else {
-                        laborCalc = Math.round(base + extraFee + (totalMin / 60) * tierRate);
-                    }
-
-                    // SSOT: resolve all copy/messaging from checkout_states
-                    const checkoutStateKey = S.intent?.checkoutState || deriveCheckoutState(st);
-                    // For flat_rate services, hide the time estimate line (it's misleading)
-                    // base_price already accounts for expected time — showing hrs × rate implies time-billing
-                    const cs = resolveCheckoutState(checkoutStateKey, laborCalc);
-
-                    // SSOT: diagnostic determination by checkout_state (not service_type)
-                    const isDiag = checkoutStateKey === 'diagnostic' || S.intent?._pricingType === 'Diagnostic';
-                    // Flat_rate: hide time line — base_price already bakes in expected time
-                    if (_isFlatRate && _pricingType) cs.hideTime = true;
-                    const isProject = base >= 150 || checkoutStateKey === 'project_based';
-                    const isAssembly = checkoutStateKey === 'database_summation';
-
-                    let priceDisplay, priceSub, badgeTpl;
-                    if (isDiag) {
-                        priceDisplay = '$' + laborCalc;
-                        priceSub = cs.uiMessage || 'Diagnostic visit · Tech quotes on site';
-                        badgeTpl = 'diag';
-                    } else if (isProject) {
-                        const lo = Math.round(laborCalc * .85),
-                            hi = Math.round(laborCalc * 1.35 + dispatch);
-                        priceDisplay = '$' + lo + ' – $' + hi;
-                        priceSub = 'Preliminary range · Finalized on site';
-                        badgeTpl = 'proj';
-                    } else if (isAssembly) {
-                        priceDisplay = '$' + laborCalc;
-                        priceSub = cs.uiMessage || 'Assembly estimate · Final items confirmed on site';
-                        badgeTpl = 'asm';
-                    } else {
-                        priceDisplay = '$' + laborCalc;
-                        priceSub = 'Locked-in labor · No surprise charges';
-                        badgeTpl = 'ok';
-                    }
-
-                    return {
-                        priceDisplay,
-                        priceSub,
-                        badgeTpl,
-                        disclaimerText: cs.disclaimerText,
-                        btnText: cs.btnText,
-                        hideTime: cs.hideTime,
-                        hideMaterials: cs.hideMaterials,
-                        laborCalc,
-                        base,
-                        extraFee,
-                        totalMin,
-                        tierKey,
-                        tierRate,
-                        activeLabels,
-                        isDiag,
-                        isProject,
-                        isAssembly,
-                        dispatch,
-                        checkoutStateKey
-                    };
-                }
 
                 /* ── Render quote — fully driven by SSOT checkout_states ────── */
                 function sqRenderQuote() {
@@ -6645,11 +6658,20 @@ function enableLiveAdLibPreview() {
                     exitFocusedMode?.();
                 }
 
-                /* enableLiveAdLibPreview — delegates to global function (defined above).
-                   All NLP word-lists come from window._NLP (DB.negation_library). */
-                function enableLiveAdLibPreview() {
-                    window.enableLiveAdLibPreview?.();
-                }
+                // v9.4 FIX: removed a broken enableLiveAdLibPreview() redeclaration
+                // that used to live here. It shadowed block 0's real 364-line
+                // implementation with a one-line shim whose body called
+                // window.enableLiveAdLibPreview?.() — but by the time that shim's
+                // own declaration had executed, THAT NAME (in this same global
+                // scope) already pointed at the shim itself, not block 0's real
+                // function, so the call recursed into itself infinitely the
+                // moment initSmartQuote() invoked it (stack-overflow crash).
+                // Confirmed via direct simulation of qr.html's actual two-
+                // <script>-block load order before removing — see
+                // CHANGELOG_v9.4.md. The call site a few hundred lines below
+                // (inside initSmartQuote) now correctly resolves to block 0's
+                // genuine implementation, with nothing in this file depending
+                // on the broken indirection that used to sit here.
 
                 /* ── Card tap → skip straight to step 3 ──────────────────────── */
 
@@ -6711,11 +6733,13 @@ function enableLiveAdLibPreview() {
                     const stDef = DB.service_types?.[stNorm] || {};
                     const basePrice = svc.financial_engine?.base_price || stDef.base_price || 0;
 
-                    // complexity_tier for display
+                    // v9.2: removed a dead tierKey/hourlyRate calculation here —
+                    // confirmed via exhaustive search that neither variable was ever
+                    // read anywhere in this file. om (operational_metrics) is still
+                    // used below for the live complexity-escalation tracking that
+                    // DOES feed the real price (see _exactTier wiring further down).
+
                     const om = svc.operational_metrics || {};
-                    const tierKey = om.complexity_tier || stDef.default_complexity || 'skilled';
-                    const tierObj = DB.global_rules?.complexity_tiers?.[tierKey] || {};
-                    const hourlyRate = tierObj.hourly_rate || 85;
 
                     const tags = DB.smart_tags || {};
                     const catId = S.intent?.category || svc.ui_taxonomy?.category_id || '';
@@ -8355,8 +8379,24 @@ function enableLiveAdLibPreview() {
                         const mins = om.expected_minutes || 60;
                         perItemLabor = Math.round(basePrice + (mins / 60) * tierRate);
                     } else if (isFormula) {
-                        // Assembly formula: delegate to applyFormula when available
-                        perItemLabor = basePrice; // fallback
+                        // v9.2 FIX: this previously fell back to a flat `basePrice`
+                        // (the dead-code comment referenced the now-removed
+                        // applyFormula — see CHANGELOG_v9.2.md). basePrice is 0 for
+                        // furniture_assembly_flat_pack, the only assembly_formula
+                        // service today, which would have quoted $0 labor for any
+                        // assembly_formula service that reached this branch. It
+                        // doesn't currently — requires_furniture_selection:true on
+                        // that service correctly routes it to showIntakeQuestions/
+                        // _computePrice before this function ever runs — but a
+                        // future assembly_formula service WITHOUT that flag would
+                        // hit this exact $0 landmine. Use mathFurnitureAssembly with
+                        // this service's own curated expected_minutes as a single
+                        // "item" (the correct degenerate case of the real assembly
+                        // formula — sum-of-items-then-1hr-minimum — when there's
+                        // only one item and no furniture-item list available in
+                        // this scope) rather than silently zeroing the price.
+                        const mins = om.expected_minutes || 60;
+                        perItemLabor = mathFurnitureAssembly([mins]).price || basePrice;
                     } else {
                         // flat_rate: base_price IS the labor total — no hourly on top
                         perItemLabor = basePrice;
