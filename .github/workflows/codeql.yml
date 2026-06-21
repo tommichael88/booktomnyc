@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
   schedule:
     - cron: '41 14 * * 3'
-  workflow_dispatch:   # 👈 added for manual trigger
+  workflow_dispatch:
 
 permissions:
   security-events: write
@@ -30,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4          # ✅ already on v4 (Node.js 20, but fine)
+        uses: actions/checkout@v4
 
       - name: Setup CodeQL cache
-        uses: actions/cache@v4             # 👈 upgraded from v3 to v4
+        uses: actions/cache@v4
         with:
           path: ~/.cache/codeql
           key: ${{ runner.os }}-codeql-${{ matrix.language }}-${{ matrix.build-mode }}
@@ -42,11 +42,11 @@ jobs:
             ${{ runner.os }}-codeql-
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4  # 👈 upgraded from v3 to v4
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          # config-file: ./.github/codeql/codeql-config.yml   # 👈 new – ignore problematic files
+          # config-file: ./.github/codeql/codeql-config.yml
 
       - name: Manual build (if needed)
         if: matrix.build-mode == 'manual'
@@ -59,6 +59,6 @@ jobs:
           exit 1
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4  # 👈 upgraded from v3 to v4
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
