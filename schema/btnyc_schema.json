@@ -26,6 +26,14 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "v9.1: SSOT linkage back to btnyc_schema.json so validators/editors can resolve the schema without being told the path out-of-band."
+    },
+    "$id": {
+      "type": "string",
+      "description": "v9.1: canonical published URL of this data file (GitHub Pages)."
+    },
     "meta": {
       "type": "object",
       "required": [
@@ -37,7 +45,12 @@
       ],
       "properties": {
         "version": {
-          "type": "string"
+          "type": "string",
+          "description": "Content/release counter. Bumps on any meaningful edit (new services, retagged smart_tags, new modules). Distinct from schema_version — see that field's description."
+        },
+        "schema_version": {
+          "type": "string",
+          "description": "v9.3: structural compatibility counter. Only bumps when the JSON's SHAPE changes in a way old code would misread (renamed/removed keys, new required fields, changed nesting) — not on ordinary content edits. btnyc.py's MIGRATIONS dict keys off this field to decide whether a migration preview is needed on load. Optional for backward compatibility with files saved before this field existed; treated as the last-known-compatible version when absent."
         },
         "last_updated": {
           "type": "string",
@@ -1264,24 +1277,7 @@
           "intake_chain": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "module": {
-                  "type": "string"
-                },
-                "then": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                }
-              },
-              "required": [
-                "module"
-              ]
+              "$ref": "#/$defs/intake_chain_step"
             }
           },
           "default_tags": {
@@ -1448,24 +1444,7 @@
             "intake_chain": {
               "type": "array",
               "items": {
-                "type": "object",
-                "properties": {
-                  "module": {
-                    "type": "string"
-                  },
-                  "then": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "required": [
-                  "module"
-                ]
+                "$ref": "#/$defs/intake_chain_step"
               }
             },
             "suggested_tags": {
@@ -1749,6 +1728,10 @@
         "complexity_override": {
           "type": "string"
         },
+        "checkout_state_override": {
+          "type": "string",
+          "description": "v9.3 architecture (backlog — see CHANGELOG): lets a SPECIFIC answer escalate checkout_state (e.g. to 'diagnostic') independently of the service's default, instead of the service-wide flag applying to every answer uniformly regardless of which one was actually chosen. Must be a key in checkout_states. Most-restrictive-wins across all answered questions, same ratchet pattern as complexity_override. Not yet authored on any client_response — this field is schema-ready but the actual per-answer authoring work for the 16 currently-always-diagnostic services is deferred."
+        },
         "mat_min": {
           "type": "number"
         },
@@ -1756,6 +1739,60 @@
           "type": "number"
         }
       }
+    },
+    "intake_chain_step": {
+      "type": "object",
+      "description": "v9.1: shared by services.intake_chain and dynamic_services.intake_chain so the two never drift. 'params' lets a step override a parameterized intake_module (e.g. item_count_template) with per-service values (item_noun, client_response bands) without duplicating the module definition in intake_modules.",
+      "properties": {
+        "module": {
+          "type": "string"
+        },
+        "then": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "params": {
+          "type": "object",
+          "description": "Per-step override values for a parameterized intake_module (e.g. item_count_template). Common keys: item_noun (string substituted into the module's {item_noun} placeholder), client_response (array, same shape as intake_modules[*].client_response, overrides the template's generic bands with this service's exact fee/minute values), question_override (string, exact original question text as a fallback if noun substitution reads awkwardly).",
+          "properties": {
+            "item_noun": {
+              "type": "string"
+            },
+            "question_override": {
+              "type": "string"
+            },
+            "client_response": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects"
+                  },
+                  "tags": {
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "label",
+                  "effects"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "module"
+      ]
     }
   }
 }
