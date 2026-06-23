@@ -4004,7 +4004,18 @@ function enableLiveAdLibPreview() {
                         });
                         item.appendChild(create('div', {
                             class: 'summary-service-icon',
-                            html: renderIcon(svc.ui_taxonomy?.icon) || '🔧'
+                            // v9.5 FIX: svc here is a CART ENTRY (from
+                            // State.serviceRequest), not the full service
+                            // definition — it never has a nested ui_taxonomy
+                            // object at all. Every real addToCart() call site
+                            // already correctly computes and stores the icon
+                            // as a flat svc.icon string (pre-rendered HTML via
+                            // renderIcon) at add-time; reading
+                            // svc.ui_taxonomy?.icon here was checking a field
+                            // that never exists on a cart entry, so this
+                            // always fell through to the wrench fallback
+                            // regardless of the actual service.
+                            html: svc.icon || '🔧'
                         }));
                         const tw = create('div', {
                             class: 'summary-service-text'
@@ -4164,7 +4175,10 @@ function enableLiveAdLibPreview() {
                         });
                         item.appendChild(create('div', {
                             class: 'cart-service-icon',
-                            html: renderIcon(svc.ui_taxonomy?.icon) || '🔧'
+                            // v9.5 FIX: same root cause as the summary panel fix —
+                            // svc is a cart entry, never has ui_taxonomy. Reads the
+                            // already-correct, already-stored svc.icon directly.
+                            html: svc.icon || '🔧'
                         }));
                         const tw = create('div', {
                             class: 'cart-service-text'
@@ -4793,7 +4807,14 @@ function enableLiveAdLibPreview() {
                  *      keep reading the exact field names they always have. */
                 function computeQuoteFromState() {
                     const dynDef = resolveDynamicService(S.intent?.category, S.stype, S.intent?._groupId);
-                    const activeTagIds = [...new Set([...(S.detTagIds||[]), ...(S.manTagIds||[])])]
+                    // v9.5 FIX: this is the REAL, FINAL pricing computation
+                    // (feeds computeUnifiedQuote directly) — missed by an earlier
+                    // batch fix for the inherentTagIds rename (this site's exact
+                    // text used defensive ||[] guards that didn't match the other
+                    // 9 sites' pattern). Without this, a directly-tapped named
+                    // service's default_tags (#heavy_item, #wall_mount, etc.) would
+                    // never actually affect the final quoted price at all.
+                    const activeTagIds = [...new Set([...(S.detTagIds||[]), ...(S.manTagIds||[]), ...(S.inherentTagIds||[])])]
                         .filter(tid => !(S.negatedTagIds||[]).includes(tid));
                     const formulaId = S.intent?.dynamic_rule || null;
 
@@ -4986,8 +5007,19 @@ function enableLiveAdLibPreview() {
                         if (kw && lower.includes(kw)) score += w;
                         if (Array.isArray(m.synonyms))
                             m.synonyms.forEach(s => {
-                                if (typeof s === 'string' && lower.includes(s.toLowerCase())) score += w * .5;
+                                // v9.5 FIX: confirmed genuine, pre-existing, systemic bug —
+                                // every original keyword entry (toilet, door, faucet/sink,
+                                // etc.) lists the keyword itself as its own first synonym,
+                                // so the keyword match (+w) and the synonym match (+w*.5)
+                                // both fire for the same literal text, silently exceeding
+                                // the intended 0-100 confidence scale ("I need my toilet
+                                // fixed" produced _matchConfidence=135 before this fix).
+                                // Skip a synonym identical to the keyword to avoid the
+                                // double-count; also cap the final score below as a
+                                // defensive ceiling regardless of future data shape.
+                                if (typeof s === 'string' && s.toLowerCase() !== kw && lower.includes(s.toLowerCase())) score += w * .5;
                             });
+                        score = Math.min(score, 100);
                         if (score > top) {
                             top = score;
                             bestMapping = m;
@@ -5259,7 +5291,7 @@ function enableLiveAdLibPreview() {
                     const groups = new Set(valid.map(tid => tags[tid].display_group || 'Additional Adjustments'));
                     groups.forEach(g => {
                         const gTids = valid.filter(tid => (tags[tid].display_group || 'Additional Adjustments') === g);
-                        const hasSel = gTids.some(tid => S.detTagIds.includes(tid) || S.manTagIds.includes(tid));
+                        const hasSel = gTids.some(tid => S.detTagIds.includes(tid) || S.manTagIds.includes(tid) || (S.inherentTagIds||[]).includes(tid));
                         if (!hasSel) {
                             // Skip auto-default in curated mode (e.g. don't auto-select #drywall for door installs)
                             if (S._curatedMode) return;
@@ -5289,7 +5321,7 @@ function enableLiveAdLibPreview() {
 
                     // Clean negatedTagIds: if an exclusive sibling IS selected, the negation is no longer valid
                     // e.g. #heavy_item is selected → remove any negation of its sibling #very_heavy
-                    const activeSet = new Set([...S.manTagIds, ...S.detTagIds]);
+                    const activeSet = new Set([...S.manTagIds, ...S.detTagIds, ...(S.inherentTagIds||[])]);
                     S.negatedTagIds = S.negatedTagIds.filter(tid => {
                         const t = tags[tid];
                         if (!t) return false;
@@ -5671,6 +5703,419 @@ function enableLiveAdLibPreview() {
                     sqAnalyze();
                 }
 
+                /* ════════════════════════════════════════════════════════════════
+                   ORCHESTRATOR OVERHAUL — PHASE 1: BookingContext
+                   ════════════════════════════════════════════════════════════════
+                   Single, strict shape every real entry path must produce before
+                   calling executeWorkflow (Phase 2, not yet built). No UI element
+                   may make a routing or pricing decision here — these functions
+                   only populate fields from what the user directly did or what a
+                   real NLP/lookup function directly returned. See
+                   btnyc_schema.json's $defs.booking_context for the documented,
+                   authoritative shape this must match exactly.
+
+                   NOT YET WIRED IN: prefillSmartQuoteFromService,
+                   prefillSmartQuoteFromOtherTile, and sqAnalyze still run their
+                   own legacy logic unchanged. These collectors exist
+                   independently so they can be unit-tested against real data
+                   before Phase 2's executeWorkflow exists to consume them, and
+                   before Phase 6 rewires the real entry points to call them.
+                */
+
+                function makeBookingContext(entry, overrides) {
+                    return Object.assign({
+                        entry,
+                        selectedServiceId: null,
+                        selectedCategoryId: null,
+                        selectedGroupId: null,
+                        rawText: null,
+                        nlpIntent: null,
+                        extractedQty: null,
+                        extractedObject: null,
+                        extractedLocation: null,
+                        manuallyToggledTagIds: [],
+                        negatedTagIds: [],
+                        uncoveredServiceTypes: null,
+                    }, overrides || {});
+                }
+
+                // Collector for entry='catalog' — a named service tapped directly
+                // from the Catalog browser (Category -> Group -> Service).
+                function collectBookingContext_catalog(svc, category_id) {
+                    return makeBookingContext('catalog', {
+                        selectedServiceId: svc.id,
+                        selectedCategoryId: category_id || svc.ui_taxonomy?.category_id || null,
+                        selectedGroupId: svc.ui_taxonomy?.group_id || null,
+                        // No rawText, no nlpIntent — a directly-tapped service has no
+                        // typed text behind it. See booking_context's documented
+                        // contract: never synthesize rawText for this entry type.
+                    });
+                }
+
+                // Collector for entry='other_tile' — a synthetic "Other" tile tapped
+                // for a known category+group with no single matching named service.
+                function collectBookingContext_otherTile(tile, category_id) {
+                    // v9.5 FIX (caught during this function's own verification):
+                    // guessed at tile.groupId/tile._groupId — the real, confirmed
+                    // field (from buildOtherTilesForGroup's actual return shape) is
+                    // tile.ui_taxonomy.group_id.
+                    return makeBookingContext('other_tile', {
+                        selectedCategoryId: category_id || null,
+                        selectedGroupId: tile?.ui_taxonomy?.group_id || null,
+                        // Phase 3: carried forward so workflow.intake_bypass_rules
+                        // can determine whether the type-selection step is
+                        // unambiguous (exactly one uncovered type) and skippable —
+                        // matches the real, already-correct legacy logic in
+                        // prefillSmartQuoteFromOtherTile/sqOpenBuilderPreseeded.
+                        uncoveredServiceTypes: tile?.uncovered_service_types || (tile?.service_type ? [tile.service_type] : []),
+                    });
+                }
+
+                // Collector for entry='free_text' — the SmartQuote text bar. Calls
+                // the REAL, currently-active extraction functions directly (this
+                // file has confirmed-dead, shadowed duplicate definitions of
+                // extractQty/extractObject/extractLocation earlier in the file —
+                // see the v9.5 archaeology note on those — this collector
+                // deliberately calls the real, active ones defined in this same
+                // script block, never the dead duplicates).
+                function collectBookingContext_freeText(rawText) {
+                    const nlpIntent = detectIntentNLP(rawText);
+                    const extractedObject = extractObject(rawText, nlpIntent?.key || null);
+                    // v9.5 FIX (caught during this function's own verification):
+                    // selectedGroupId previously referenced nlpIntent._groupId, a
+                    // field detectIntentNLP never actually returns — that field
+                    // belongs to resolveGroupFromIntent, a separate function the
+                    // real sqAnalyze pipeline calls under specific conditions (a
+                    // real, non-'other' category AND _matchConfidence >= 50).
+                    // Replicated those exact conditions here rather than silently
+                    // always producing null.
+                    let selectedGroupId = null;
+                    const hasCategory = nlpIntent?.category && nlpIntent.category !== 'other';
+                    const hasMatchConf = (nlpIntent?._matchConfidence || 0) >= 50;
+                    if (hasCategory && hasMatchConf) {
+                        selectedGroupId = resolveGroupFromIntent(
+                            nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText
+                        );
+                    }
+                    return makeBookingContext('free_text', {
+                        rawText,
+                        nlpIntent,
+                        extractedQty: extractQty(rawText),
+                        extractedObject,
+                        extractedLocation: extractLocation(rawText),
+                        selectedServiceId: (nlpIntent?._matchConfidence >= 70) ? (nlpIntent?.recommendedSku || null) : null,
+                        selectedCategoryId: nlpIntent?.category || null,
+                        selectedGroupId,
+                    });
+                }
+
+                /* ════════════════════════════════════════════════════════════════
+                   ORCHESTRATOR OVERHAUL — PHASE 2: executeWorkflow
+                   ════════════════════════════════════════════════════════════════
+                   Single engine that walks db.workflow.steps in order, dispatching
+                   each step's `operation` to a real handler below. Every handler
+                   delegates to an already-existing, already-verified engine
+                   function (resolveDynamicService, resolveGroupFromIntent,
+                   _resolveIntakeChain, _isModVisible, applyLiveConfidenceEscalation,
+                   computeUnifiedQuote) — this layer does sequencing and state
+                   management, it does not reimplement pricing or routing math.
+
+                   PURE FUNCTION CONTRACT: executeWorkflow(context, db) must always
+                   return the same ResolvedRoute for the same (context, db) pair.
+                   No handler may read or mutate any global (S, window.DB, etc.) —
+                   every handler receives state explicitly and returns a new state.
+
+                   NOT YET WIRED IN: the 3 real entry points still run their own
+                   legacy logic. Phase 6 rewires them to call only
+                   collectBookingContext_* (Phase 1) -> executeWorkflow (this) ->
+                   renderRoute (Phase 4, not yet built).
+                */
+
+                // Canonical quantity-module set. v9.5 archaeology note: two
+                // slightly different QTY_MODS sets existed in the legacy code —
+                // sqBuildCuratedIntake's included 'Install / Mount'/'Install'
+                // (real service_type STRINGS, not intake module keys — a
+                // category error, conflating two different concepts in one
+                // filter) while the self-quoting check's narrower set
+                // ({item_count, count, hybrid_qty, global_quantity}) was the
+                // semantically correct one. This is the single, consolidated,
+                // correct set going forward.
+                const ORCH_QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
+
+                function orch_resolve_entity(context, db) {
+                    if (context.selectedServiceId) {
+                        const svc = (db.services || []).find(s => s.id === context.selectedServiceId);
+                        if (svc) return { entityType: 'service', entity: svc };
+                    }
+                    if (context.selectedGroupId) {
+                        const group = (db.group || []).find(g => g.id === context.selectedGroupId);
+                        const dynDef = resolveDynamicService(context.selectedCategoryId, context.nlpIntent?.stype || 'Repair', context.selectedGroupId);
+                        if (group || dynDef) return { entityType: 'dynamic', entity: dynDef, group };
+                    }
+                    if (context.selectedCategoryId) {
+                        const dynDef = resolveDynamicService(context.selectedCategoryId, context.nlpIntent?.stype || 'Repair', null);
+                        if (dynDef) return { entityType: 'dynamic', entity: dynDef, group: null };
+                    }
+                    // Fallback per workflow.steps[0].fallback — route to
+                    // intent_mappings.default_fallback. v9.5 archaeology note:
+                    // default_fallback.service_id (generic_handyman_service) is
+                    // real, designed data but references a service that doesn't
+                    // exist in the catalog and was never actually read by any
+                    // legacy code — confirmed during the architecture audit.
+                    // Until that's resolved (a real content/data decision, not an
+                    // orchestrator-code decision), this correctly falls through to
+                    // the category+price fallback fields only, exactly matching
+                    // the legacy sqAnalyze behavior this replaces.
+                    const fb = db.intent_mappings?.default_fallback;
+                    return { entityType: 'fallback', entity: null, fallback: fb || null };
+                }
+
+                function orch_compute_variability_flags(context, resolution, db) {
+                    const entity = resolution.entity;
+                    const chain = (entity && entity.intake_chain) || [];
+                    const bypassIntake = !!entity?.behavior?.bypass_intake;
+                    const chain_is_pure_quantity = chain.length === 0 || chain.every(m => ORCH_QTY_MODS.has(m.module));
+                    const chain_is_single_simple_question = bypassIntake && chain.length === 1 && chain[0].module === 'item_count_template';
+                    // A module is "real, non-quantity" if it's neither a
+                    // recognized quantity module NOR item_count_template —
+                    // item_count_template is always treated as simple regardless
+                    // of bypassIntake; bypassIntake's effect on self-quote
+                    // eligibility is already captured separately above by
+                    // chain_is_single_simple_question.
+                    const chain_has_real_non_quantity_question = chain.some(m => !ORCH_QTY_MODS.has(m.module) && m.module !== 'item_count_template');
+                    return {
+                        chain_is_pure_quantity,
+                        chain_is_single_simple_question,
+                        chain_has_real_non_quantity_question,
+                        all_visible_real_questions_answered: false, // computed live once answers exist; see compute_confidence
+                    };
+                }
+
+                function orch_compose_intake_chain(context, resolution, db) {
+                    const entity = resolution.entity;
+                    if (!entity) return [];
+                    const allMods = typeof _resolveIntakeChain === 'function' ? _resolveIntakeChain(entity) : (entity.intake_chain || []);
+                    const tier = entity.confidence_strategy?._variability_tier || 'medium';
+                    const forceMods = db.global_rules?.force_modules_by_variability?.[tier] || [];
+                    const existingKeys = new Set(allMods.map(m => m.moduleKey || m.module));
+                    const composed = allMods.slice();
+                    forceMods.forEach(fKey => {
+                        if (!existingKeys.has(fKey) && db.intake_modules?.[fKey]) {
+                            composed.push({ moduleKey: fKey, module: fKey, then: {}, ...db.intake_modules[fKey], _forced: true });
+                            existingKeys.add(fKey);
+                        }
+                    });
+                    return composed;
+                }
+
+                function orch_apply_location_hints(context, composedChain, answers) {
+                    const loc = (context.extractedLocation || '').toLowerCase().trim();
+                    const newAnswers = Object.assign({}, answers);
+                    if (!loc) return newAnswers;
+                    composedChain.forEach(mod => {
+                        const key = mod.moduleKey || mod.module;
+                        if (newAnswers[key]) return; // never override a real answer
+                        const responses = mod.client_response || [];
+                        const matches = responses.filter(r => (r.location_hints || []).some(h => h.toLowerCase() === loc));
+                        if (matches.length === 1) newAnswers[key] = matches[0].label;
+                    });
+                    return newAnswers;
+                }
+
+                function orch_compute_confidence(resolution, activeTagIds, matchConfidence, db) {
+                    const entity = resolution.entity;
+                    const baseStrategy = entity?.confidence_strategy || {};
+                    const smartTags = db.smart_tags || {};
+                    const escalation = (typeof applyLiveConfidenceEscalation === 'function')
+                        ? applyLiveConfidenceEscalation(baseStrategy, activeTagIds || [], smartTags, db.global_rules?.confidence_escalation)
+                        : { strategy: baseStrategy, escalatedBy: null };
+                    const minConf = escalation.strategy?.minimum_quote_confidence || baseStrategy.minimum_quote_confidence || 80;
+                    const score = Math.min(100, (baseStrategy.base_confidence || 40) + Math.min(20, (matchConfidence || 0) * 0.2));
+                    return { score, minConf, escalatedBy: escalation.escalatedBy };
+                }
+
+                function orch_apply_intake_bypass_rules(context, db) {
+                    const rules = db.workflow?.intake_bypass_rules?.rules || [];
+                    const count = (context.uncoveredServiceTypes || []).length;
+                    for (const rule of rules) {
+                        const cond = rule.if || {};
+                        if ('uncovered_service_types_count' in cond && cond.uncovered_service_types_count === count) {
+                            return Object.assign({}, rule.then, {
+                                preseededAction: count === 1 ? context.uncoveredServiceTypes[0] : null,
+                            });
+                        }
+                    }
+                    return Object.assign({}, db.workflow?.intake_bypass_rules?.fallback || { skip_type_selection: false });
+                }
+
+                function orch_select_ui_template(flags, resolution, confidenceState, db) {
+                    const entity = resolution?.entity;
+                    const behavior = entity?.behavior;
+                    // Archaeology Audit finding: requires_furniture_selection and the
+                    // isOther condition (default_tags includes #adhoc or
+                    // #manual_review) BOTH completely bypass the curated-card/
+                    // self-quote matrix in the legacy code, diverting to
+                    // showIntakeQuestions — a categorically different UI. Computed
+                    // here as real, checkable booleans the matrix rules below can
+                    // reference by name, matching ui_template_matrix's first two
+                    // rules exactly.
+                    const requiresFurnitureSelection = !!entity?.requires_furniture_selection;
+                    const defaultTagIds = (entity?.default_tags || []).map(t =>
+                        (typeof t === 'object' && t.$ref) ? t.$ref : t);
+                    const isOtherAdhocService = defaultTagIds.includes('#adhoc') || defaultTagIds.includes('#manual_review');
+
+                    const rules = db.workflow?.ui_template_matrix?.rules || [];
+                    for (const rule of rules) {
+                        const cond = rule.if || {};
+                        let matches = true;
+                        if ('requires_furniture_selection' in cond && cond.requires_furniture_selection !== requiresFurnitureSelection) matches = false;
+                        if ('is_other_adhoc_service' in cond && cond.is_other_adhoc_service !== isOtherAdhocService) matches = false;
+                        if ('chain_is_pure_quantity' in cond && cond.chain_is_pure_quantity !== flags.chain_is_pure_quantity) matches = false;
+                        if ('chain_is_single_simple_question' in cond && cond.chain_is_single_simple_question !== flags.chain_is_single_simple_question) matches = false;
+                        if ('behavior.bypass_intake' in cond && cond['behavior.bypass_intake'] !== !!behavior?.bypass_intake) matches = false;
+                        if ('chain_has_real_non_quantity_question' in cond && cond.chain_has_real_non_quantity_question !== flags.chain_has_real_non_quantity_question) matches = false;
+                        if ('confidence_score' in cond) {
+                            const m = String(cond.confidence_score).match(/^<\s*(\d+)$/);
+                            if (m && !(confidenceState.score < parseInt(m[1]))) matches = false;
+                        }
+                        if (matches) return Object.assign({}, rule.then, { _matchedRule: rule });
+                    }
+                    return Object.assign({}, db.workflow?.ui_template_matrix?.fallback || { ui_template: 'curated_card' });
+                }
+
+                function orch_merge_materials_estimate(resolution, db) {
+                    const entity = resolution.entity;
+                    if (!entity) return { min: 0, max: 0, note: '' };
+                    const markupPct = (db.global_rules?.surcharges?.materials_markup_percent || 0) / 100;
+                    const catalog = db.materials_catalog || {};
+                    const sumSkus = (skus) => (skus || []).reduce((sum, sku) => {
+                        const item = catalog[sku];
+                        return sum + (item ? item.price * (1 + markupPct) : 0);
+                    }, 0);
+                    const reqTotal = sumSkus(entity.required_materials);
+                    const optTotal = sumSkus(entity.optional_materials);
+                    const hasCatalogLink = (entity.required_materials || []).length > 0 || (entity.optional_materials || []).length > 0;
+                    const legacy = entity.default_estimates?.materials || { min: 0, max: 0, note: '' };
+                    return {
+                        min: hasCatalogLink ? Math.round(reqTotal * 100) / 100 : legacy.min || 0,
+                        max: hasCatalogLink ? Math.round((reqTotal + optTotal) * 100) / 100 : legacy.max || 0,
+                        // Per workflow.steps.merge_materials_estimate's _note: ALWAYS
+                        // carry forward the legacy note text verbatim, regardless of
+                        // which range won — it frequently carries real,
+                        // business-meaningful customer-facing explanation the
+                        // catalog data has no equivalent for.
+                        note: legacy.note || '',
+                    };
+                }
+
+                function orch_compute_quote(resolution, context, answers, activeTagIds, materialsEstimate, db) {
+                    const entity = resolution.entity;
+                    if (!entity) return null;
+                    if (typeof computeUnifiedQuote !== 'function') return null;
+                    return computeUnifiedQuote({
+                        svc: resolution.entityType === 'service' ? entity : null,
+                        dynDef: resolution.entityType === 'dynamic' ? entity : null,
+                        activeTagIds: activeTagIds || [],
+                        answers: answers || {},
+                        qty: context.extractedQty || 1,
+                        intentKeyword: context.nlpIntent?.key || null,
+                        formulaId: context.nlpIntent?.dynamic_rule || entity?.pricing_engine?.dynamic_rule || null,
+                        ctxAdjFee: context.nlpIntent?._ctxFee || 0,
+                        ctxAdjMin: context.nlpIntent?._ctxMin || 0,
+                    });
+                }
+
+                /**
+                 * executeWorkflow — the single Orchestrator entry point. Walks
+                 * db.workflow.steps in order; each step's `operation` dispatches to
+                 * the corresponding orch_* handler above. Returns a ResolvedRoute:
+                 * { entityType, entity, intakeChain, answers, flags, confidence,
+                 *   uiTemplate, materialsEstimate, quote, trace }.
+                 *
+                 * `trace` is Phase 7's execution-trace log, built here so it exists
+                 * from day one rather than retrofitted later — every step records
+                 * { step_id, operation, output_summary }.
+                 */
+                function executeWorkflow(context, db) {
+                    const workflow = db.workflow;
+                    if (!workflow || !Array.isArray(workflow.steps)) {
+                        throw new Error('OrchestratorError: db.workflow.steps is missing or not an array.');
+                    }
+                    const trace = [];
+                    let resolution = null, flags = null, intakeChain = [], answers = {},
+                        confidenceState = null, uiTemplate = null, materialsEstimate = null, quote = null;
+                    const activeTagIds = [...new Set([...(context.manuallyToggledTagIds || [])])]
+                        .filter(tid => !(context.negatedTagIds || []).includes(tid));
+
+                    for (const step of workflow.steps) {
+                        let outputSummary;
+                        switch (step.operation) {
+                            case 'lookup':
+                                resolution = orch_resolve_entity(context, db);
+                                outputSummary = { entityType: resolution.entityType, entityId: resolution.entity?.id || null };
+                                break;
+                            case 'modify':
+                                if (step.id === 'compute_variability_flags') {
+                                    flags = orch_compute_variability_flags(context, resolution, db);
+                                    outputSummary = flags;
+                                } else if (step.id === 'apply_location_hints') {
+                                    answers = orch_apply_location_hints(context, intakeChain, answers);
+                                    outputSummary = { answersKeyCount: Object.keys(answers).length };
+                                }
+                                break;
+                            case 'compose':
+                                intakeChain = orch_compose_intake_chain(context, resolution, db);
+                                outputSummary = { moduleCount: intakeChain.length };
+                                break;
+                            case 'merge':
+                                if (step.id === 'compute_confidence') {
+                                    confidenceState = orch_compute_confidence(resolution, activeTagIds, context.nlpIntent?._matchConfidence, db);
+                                    outputSummary = confidenceState;
+                                } else if (step.id === 'merge_materials_estimate') {
+                                    materialsEstimate = orch_merge_materials_estimate(resolution, db);
+                                    outputSummary = materialsEstimate;
+                                }
+                                break;
+                            case 'condition_map':
+                                uiTemplate = orch_select_ui_template(flags, resolution, confidenceState, db);
+                                outputSummary = uiTemplate;
+                                break;
+                            case 'calculate':
+                                quote = orch_compute_quote(resolution, context, answers, activeTagIds, materialsEstimate, db);
+                                outputSummary = quote ? { laborEstimate: quote.laborEstimate, dispatchFee: quote.dispatchFee } : null;
+                                break;
+                            default:
+                                throw new Error(`OrchestratorError: Step [${step.id}] — unknown operation [${step.operation}].`);
+                        }
+                        trace.push({ step_id: step.id, operation: step.operation, output_summary: outputSummary });
+                    }
+
+                    // intake_bypass_rules is a separate, standalone rule set (not
+                    // one of workflow.steps' 8 sequential entries) — only
+                    // meaningful for entry='other_tile', where
+                    // context.uncoveredServiceTypes carries the real data this
+                    // rule set needs. Called directly here, after the main step
+                    // loop, with its own trace entry for Phase 7 consistency.
+                    const intakeBypass = orch_apply_intake_bypass_rules(context, db);
+                    trace.push({ step_id: 'intake_bypass_rules', operation: 'condition_map', output_summary: intakeBypass });
+
+                    return {
+                        entityType: resolution?.entityType || 'fallback',
+                        entity: resolution?.entity || null,
+                        intakeChain,
+                        answers,
+                        flags,
+                        confidence: confidenceState,
+                        uiTemplate: uiTemplate?.ui_template || 'curated_card',
+                        bypassIntake: !!uiTemplate?.bypass_intake,
+                        skipTypeSelection: !!intakeBypass.skip_type_selection,
+                        preseededAction: intakeBypass.preseededAction || null,
+                        materialsEstimate,
+                        quote,
+                        trace,
+                    };
+                }
+
                 function sqAnalyze() {
                     if (!DB || !DB.intent_mappings) {
                         toast('Pricing data still loading — please wait a moment.', 'error');
@@ -5900,7 +6345,7 @@ function enableLiveAdLibPreview() {
                     // Positive tags (detected/manual) = we know something → +gain
                     // Negated tags = we also know something (it's NOT that thing) → +gain * 0.75
                     let accumulatedConf = 0;
-                    const detectedTagSet = new Set([...S.detTagIds, ...S.manTagIds]);
+                    const detectedTagSet = new Set([...S.detTagIds, ...S.manTagIds, ...(S.inherentTagIds||[])]);
                     const negatedTagSet = new Set(S.negatedTagIds);
                     // SSOT: scope confidence to THIS service's own intake_chain modules
                     const _svcChain   = (S._svc?.intake_chain || []);
@@ -5972,7 +6417,7 @@ function enableLiveAdLibPreview() {
                         || dynDefForStrategy?.confidence_strategy
                         || { minimum_quote_confidence: 70, maximum_followup_questions: 3, base_confidence: 40, _variability_tier: 'medium' };
 
-                    const allActiveTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])];
+                    const allActiveTagIds = [...new Set([...S.detTagIds, ...S.manTagIds, ...(S.inherentTagIds||[])])];
                     const escDef = DB.global_rules?.confidence_escalation;
                     let liveStrategy = baseStrategy;
                     let escalatedBy = null;
@@ -6094,7 +6539,7 @@ function enableLiveAdLibPreview() {
                     // Grouped chips from SSOT smart_tags
                     const cat = S.intent?.category || 'other';
                     const valid = Object.keys(tags).filter(tid => tagValidForCategory(tid, cat, S.intent?._groupId));
-                    const exist = new Set([...S.detTagIds, ...S.negatedTagIds, ...S.manTagIds]);
+                    const exist = new Set([...S.detTagIds, ...S.negatedTagIds, ...S.manTagIds, ...(S.inherentTagIds||[])]);
                     const grouped = {};
                     valid.forEach(tid => {
                         const g = tags[tid].display_group || 'Additional Adjustments';
@@ -6221,7 +6666,7 @@ function enableLiveAdLibPreview() {
                         'item';
 
                     // ── Classify scope tags by display_group ──────────────────────
-                    const active = [...new Set([...S.detTagIds, ...S.manTagIds])];
+                    const active = [...new Set([...S.detTagIds, ...S.manTagIds, ...(S.inherentTagIds||[])])];
                     const scope = active.filter(t => !isLogisticTag(t));
                     const logistic = active.filter(t => isLogisticTag(t));
 
@@ -6519,7 +6964,7 @@ function enableLiveAdLibPreview() {
                     if (objEl) S._objectNoun = objEl.textContent.trim() || S._objectNoun;
 
                     // Build the summary label for the step 3 header
-                    const active = [...new Set([...S.detTagIds, ...S.manTagIds])];
+                    const active = [...new Set([...S.detTagIds, ...S.manTagIds, ...(S.inherentTagIds||[])])];
                     const labels = active.map(tid => DB.smart_tags?.[tid] ? sqTagLabel(DB.smart_tags[tid], tid) : null).filter(Boolean);
                     const objLabel = S._objectNoun || S.intent?.label || 'item';
                     const locNote = S._location ? ' · ' + S._location : '';
@@ -6748,6 +7193,17 @@ function enableLiveAdLibPreview() {
                         manTagIds: [],
                         negatedTagIds: [],
                         userTagIds: [],
+                        // v9.5: genuinely distinct from detTagIds (NLP-detected from
+                        // typed text) and manTagIds (manually toggled chips) — holds
+                        // a service's default_tags, which are simply inherent to that
+                        // service, not something the customer told us. Confirmed real
+                        // bug: default_tags were previously pushed directly into
+                        // detTagIds, so the "We understood: ..." banner (which checks
+                        // detTagIds.length > 0 generically) fired for a directly-
+                        // tapped service with no typed text at all — falsely
+                        // attributing an inherent fact to the customer as something
+                        // they said.
+                        inherentTagIds: [],
                         desc: '',
                         adlibConfirmed: false,
                         _suggestedTagIds: [],
@@ -6899,6 +7355,38 @@ function enableLiveAdLibPreview() {
                         }
                     }
 
+                    // v9.5: location-aware answer pre-selection. Generalizes beyond
+                    // doors (the case that prompted this) — per direct feedback, ANY
+                    // intake question whose correct answer correlates strongly with
+                    // WHERE the job is should use this, since S._location is real,
+                    // NLP-derived intent that otherwise sits unused as filler/notes.
+                    // Genuinely ambiguous locations (e.g. "guest bedroom" plausibly
+                    // means either the bedroom itself or its attached bathroom) are
+                    // simply absent from every answer's location_hints for a given
+                    // module, so nothing pre-fills — exactly the "don't guess when
+                    // it's genuinely unclear" behavior this needs. Never overrides
+                    // an answer the user already gave (only fires when the key is
+                    // still unset). Runs AFTER allMods is fully finalized (including
+                    // force-module injection) so a forced module can also benefit.
+                    (function applyLocationHints() {
+                        const loc = (S._location || '').toLowerCase().trim();
+                        if (!loc) return;
+                        allMods.forEach(mod => {
+                            if (S.answers[mod.moduleKey]) return; // never override a real answer
+                            const responses = mod.client_response || [];
+                            const matches = responses.filter(r =>
+                                (r.location_hints || []).some(h => h.toLowerCase() === loc)
+                            );
+                            // Only pre-fill when EXACTLY ONE answer claims this
+                            // location — if two answers both hint at the same
+                            // location (a data error) or none do, stay silent
+                            // rather than guess.
+                            if (matches.length === 1) {
+                                S.answers[mod.moduleKey] = matches[0].label;
+                            }
+                        });
+                    })();
+
                     const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
 
                     // confidence_strategy from service JSON (or defaults)
@@ -6977,7 +7465,7 @@ function enableLiveAdLibPreview() {
                     const enforceRequires = (tid) => {
                         (tags[tid]?.requires || []).forEach(r => {
                             const req = typeof r === 'string' ? r : (r?.$ref ? '#' + r.$ref.split('/').pop().replace(/^#/, '') : null);
-                            if (req && tags[req] && !S.manTagIds.includes(req) && !S.detTagIds.includes(req)) {
+                            if (req && tags[req] && !S.manTagIds.includes(req) && !S.detTagIds.includes(req) && !(S.inherentTagIds||[]).includes(req)) {
                                 S.manTagIds.push(req);
                                 if (!S.userTagIds.includes(req)) S.userTagIds.push(req);
                             }
@@ -6987,13 +7475,18 @@ function enableLiveAdLibPreview() {
                     // Open step 3
                     sqUnlock(3);
                     sqOpen(3);
+                    // v9.5 FIX: hide the guided builder (sibling DOM region) when the
+                    // curated intake card opens — fixes the same dual-render bug
+                    // symmetrically (see sqOpenBuilderPreseeded's matching fix).
+                    const builderEl = document.getElementById('sqBuilder');
+                    if (builderEl) builderEl.style.display = 'none';
                     const sb3 = document.getElementById('sqSb3');
                     if (!sb3) return;
 
                     // ── RENDER ────────────────────────────────────────────────────
                     const render = () => {
                         const answers = S.answers;
-                        const exist = new Set([...S.manTagIds, ...S.detTagIds]);
+                        const exist = new Set([...S.manTagIds, ...S.detTagIds, ...(S.inherentTagIds||[])]);
                         const suggested = new Set(S._suggestedTagIds || []);
                         const curTids = getCuratedTids();
 
@@ -7041,15 +7534,37 @@ function enableLiveAdLibPreview() {
                         // flatscreen_mounting_standard + #brick_wall specifically: real
                         // bar should be 50+15=65; old code left it at 50 while also
                         // adding +5 to the score — effectively ~20 points too lenient.
-                        const activeTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
+                        const activeTagIds = [...new Set([...S.detTagIds, ...S.manTagIds, ...(S.inherentTagIds||[])])].filter(tid => !S.negatedTagIds.includes(tid));
                         const escalation = applyLiveConfidenceEscalation(confStrat, activeTagIds, tags, DB.global_rules?.confidence_escalation);
                         const liveMinConf = escalation.strategy.minimum_quote_confidence || minConf;
+                        // v9.5 FIX: implements services.*.behavior.force_confidence —
+                        // confirmed real, authored data (90-95) on the same 6
+                        // bypass_intake services, completely unread by any code.
+                        // These values are HIGHER than the services' own real
+                        // minimum_quote_confidence (40-50, confirmed via direct
+                        // check) — capping the BAR downward would never actually
+                        // change anything for this real data. The coherent reading,
+                        // matching confidence_tiers.high_confidence_simple's
+                        // action:"bypass_standard_intake" framing and the
+                        // bypass_intake flag's own name: force_confidence sets the
+                        // SCORE directly for these explicitly-flagged simple,
+                        // predictable jobs — but ONLY once every visible real
+                        // question (when one exists) is answered, so a genuine,
+                        // price-affecting question (existing_type, mounting_height)
+                        // is never silently skipped while still letting an
+                        // answered-and-simple job reach a confident quote
+                        // immediately, without needing extra NLP/tag confirmation
+                        // on top of the one real answer it already has.
+                        const allRealAnswered = realMods.filter(m => _isModVisible(m, answers, allMods)).every(m => !!answers[m.moduleKey]);
+                        if (svc.behavior?.force_confidence != null && allRealAnswered) {
+                            conf = Math.max(conf, svc.behavior.force_confidence);
+                        }
                         const ready = conf >= liveMinConf;
 
                         // Total tag fee from currently-active tags (detTagIds + manTagIds)
                         // Tags are already in S at this point — include them in the
                         // preview so "from $X" doesn't understate once surcharges apply.
-                        const detAndManEarly = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
+                        const detAndManEarly = [...new Set([...S.detTagIds, ...S.manTagIds, ...(S.inherentTagIds||[])])].filter(tid => !S.negatedTagIds.includes(tid));
                         const tagFeeTotal = detAndManEarly.reduce((sum, tid) => {
                             const t = tags[tid];
                             return sum + (t?.fee ?? t?.effects?.fee ?? 0);
@@ -7213,12 +7728,25 @@ function enableLiveAdLibPreview() {
                         const answeredMods = visibleMods.filter(m => answers[m.moduleKey]);
                         const activeCons = [...exist].filter(tid => tags[tid] && getCuratedTids().includes(tid));
 
+                        // v9.5 FIX: per direct feedback — a service flagged
+                        // per_unit_answers_vary (e.g. prehung_interior_door_install)
+                        // has intake answers that genuinely describe ONE specific
+                        // unit (a particular door's size/style/removal status), not
+                        // a generalizable fact that scales safely with quantity. A
+                        // front door and a bathroom door have different answers to
+                        // every one of this service's real questions — qty=2 can only
+                        // carry one shared answer set, silently misattributing one
+                        // door's specifics to both. Suppress the qty dropdown entirely
+                        // for these services and force qty to 1.
+                        const perUnitVaries = !!svc.per_unit_answers_vary;
+                        if (perUnitVaries) S.qty = 1;
+
                         let adlibHtml = `<div class="sq-ic-adlib" id="sqCuratedAdlib">`;
                         if (catName) adlibHtml += `<span class="aw">In</span><span class="ab">${catName}</span>`;
                         if (grpName) adlibHtml += `<span class="aw">›</span><span class="ab">${grpName}</span>`;
                         adlibHtml += `<span class="aw"> I need </span>
-        <span class="ap"><span>${S.qty}</span><i class="ti ti-chevron-down"></i>
-          <select id="sqCurQtySel">${['1','2','3','4','5','6','8','10'].map(v=>`<option${v==S.qty?' selected':''}>${v}</option>`).join('')}</select>
+        <span class="ap">${perUnitVaries ? '<span>1</span>' : `<span>${S.qty}</span><i class="ti ti-chevron-down"></i>
+          <select id="sqCurQtySel">${['1','2','3','4','5','6','8','10'].map(v=>`<option${v==S.qty?' selected':''}>${v}</option>`).join('')}</select>`}
         </span>
         <span style="font-weight:800;color:var(--clr-red-dark,#8a0615)">${svcName}</span>
         <span class="ap"><span>${svcVerb}</span><i class="ti ti-chevron-down"></i>
@@ -7245,12 +7773,17 @@ function enableLiveAdLibPreview() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/></svg>
           Summary of request
         </div>
-        <div class="sq-ic-qty">
+        ${perUnitVaries
+            ? `<p style="font-size:.78rem;color:#6b7280;margin:6px 0 2px;line-height:1.4">
+                 Need this for more than one ${qtyNoun}? Each one can have different specifics (size, material, condition) —
+                 add this as its own request for each ${qtyNoun} so we get the right details for all of them.
+               </p>`
+            : `<div class="sq-ic-qty">
           <button class="sq-ic-qty-btn" id="sqCurQtyDec">−</button>
           <span class="sq-ic-qty-val" id="sqCurQtyVal">${S.qty}</span>
           <button class="sq-ic-qty-btn" id="sqCurQtyInc">+</button>
           <span class="sq-ic-qty-lbl">${qtyNoun}${S.qty!==1?'s':''}</span>
-        </div>
+        </div>`}
         ${adlibHtml}
         <div class="sq-ic-cta">
           <button class="sq-ic-est ${ready?'ready':'locked'}" id="sqCurEstBtn" ${ready?'':'disabled'}>
@@ -7290,7 +7823,7 @@ function enableLiveAdLibPreview() {
                                 (resp?.tags || []).forEach(tagRef => {
                                     const tid = typeof tagRef === 'string' ? tagRef :
                                         (tagRef?.$ref ? '#' + tagRef.$ref.split('/').pop().replace(/^#/, '') : null);
-                                    if (tid && tags[tid] && !S.detTagIds.includes(tid) && !S.manTagIds.includes(tid))
+                                    if (tid && tags[tid] && !S.detTagIds.includes(tid) && !S.manTagIds.includes(tid) && !(S.inherentTagIds||[]).includes(tid))
                                         S.detTagIds.push(tid);
                                 });
                                 render();
@@ -7465,11 +7998,16 @@ function enableLiveAdLibPreview() {
                         adlibConfirmed: false
                     };
 
-                    // Seed default_tags from the service record
+                    // v9.5 FIX: default_tags are inherent to this service, not
+                    // something the customer told us — seed into inherentTagIds,
+                    // not detTagIds, so the "We understood: ..." banner (which
+                    // means "from your typed text") doesn't falsely fire for a
+                    // directly-tapped named service with zero typed text.
+                    S.inherentTagIds = [];
                     (svc.default_tags || []).forEach(tagRef => {
                         const tid = (typeof tagRef === 'object' && tagRef.$ref) ? tagRef.$ref : tagRef;
                         if (typeof tid === 'string' && tid.startsWith('#') && !S.negatedTagIds.includes(tid))
-                            S.detTagIds.push(tid);
+                            S.inherentTagIds.push(tid);
                     });
 
                     // SSOT: dynamic_services — enrich base price and suggested_tags if service lacks them
@@ -7534,7 +8072,38 @@ function enableLiveAdLibPreview() {
                     const de = svc.default_estimates || {};
                     const chain = svc.intake_chain || [];
                     const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
-                    const chainIsQtyOnly = chain.length === 0 || chain.every(m => QTY_MODS.has(m.module));
+                    // v9.5 FIX: implements services.*.behavior.bypass_intake — confirmed
+                    // real, authored data on 6 services (cabinet_knob_or_pull_install,
+                    // door_lock_or_handle_install, high_ceiling_bulb_replacement,
+                    // led_bulb_upgrade, shower_head_replacement, tub_spout_replacement),
+                    // confirmed via exhaustive search to be completely unread by any
+                    // code anywhere. These services' one real question
+                    // (item_count_template, a banded quantity question — "how many
+                    // bulbs/knobs") isn't in the legacy QTY_MODS set, so
+                    // chainIsQtyOnly was false and they never qualified for this
+                    // self-quote fast-path despite being explicitly authored to skip
+                    // extensive intake friction. The question itself doesn't
+                    // disappear (the customer still answers "how many"); only the
+                    // curated-card overhead (notes field, special-conditions chips,
+                    // NLP banner) is skipped for these genuinely simple, predictable
+                    // jobs the data already identified as such.
+                    const bypassIntake = !!svc.behavior?.bypass_intake;
+                    // v9.5 FIX (refined): bypassIntake only widens chainIsQtyOnly when
+                    // item_count_template is the service's ONLY module — confirmed via
+                    // direct check that 2 of the 6 bypass_intake services
+                    // (high_ceiling_bulb_replacement: qty + a real height question;
+                    // shower_head_replacement/tub_spout_replacement: one real,
+                    // non-quantity connection-type question) have a genuine,
+                    // price-affecting question the bare self-quote "qty pill only"
+                    // design has no room for. Forcing those through self-quote would
+                    // silently drop that question's real price impact — a regression,
+                    // not a fix. Only cabinet_knob_or_pull_install/
+                    // door_lock_or_handle_install/led_bulb_upgrade (genuinely
+                    // qty-only) widen correctly under this narrower check; the other
+                    // 3 correctly continue through the curated-card path, where
+                    // their real question still gets asked.
+                    const chainIsQtyOnly = chain.length === 0 || chain.every(m => QTY_MODS.has(m.module)) ||
+                        (bypassIntake && chain.length === 1 && chain[0].module === 'item_count_template');
                     const hasPricingData = (om.expected_minutes > 0) && om.complexity_tier && (svc.financial_engine?.base_price > 0);
                     const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(svc.financial_engine?.checkout_state);
                     const isSelfQuoting = hasPricingData && isFlatCheckout && chainIsQtyOnly;
@@ -8258,6 +8827,22 @@ function enableLiveAdLibPreview() {
                     const inlineRow = document.querySelector('#sqTextBar .sq-inline-row');
                     if (builder) builder.style.display = 'block';
                     if (inlineRow) inlineRow.style.display = 'none';
+                    // v9.5 FIX: confirmed real bug — a previously-rendered curated
+                    // intake card (sqSb3, built by sqBuildCuratedIntake for an
+                    // earlier service in the same session) was never hidden when
+                    // the guided builder opens for a DIFFERENT, builder-routed
+                    // service. The two are sibling DOM regions; nothing in this
+                    // function (or sqOpenBuilderPreseeded's only caller,
+                    // prefillSmartQuoteFromOtherTile) ever hid one when the other
+                    // opened, so both stayed simultaneously visible — exactly the
+                    // reported "Software intake re-populates after already being
+                    // added" screenshot (a leftover, still-interactive curated
+                    // card from a prior service, not an actual re-trigger of its
+                    // intake logic).
+                    const sb3 = document.getElementById('sqSb3');
+                    if (sb3) sb3.style.display = 'none';
+                    const sc3 = document.getElementById('sqSc3');
+                    if (sc3) sc3.className = 'scard locked sq-stepflow';
 
                     const groupObj = groupId ? groupMap.get(groupId) : null;
 

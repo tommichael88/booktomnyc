@@ -1347,6 +1347,96 @@
         "default_service_type": "Repair",
         "dynamic_rule": "furniture_repair_formula",
         "confidence_weight": 58
+      },
+      {
+        "keyword": "fridge",
+        "synonyms": [
+          "fridge",
+          "refrigerator",
+          "freezer",
+          "frig"
+        ],
+        "default_service_sku": "repair_appliances",
+        "confidence_weight": 90,
+        "default_dynamic_category": "minor_home_repairs"
+      },
+      {
+        "keyword": "washer",
+        "synonyms": [
+          "washer",
+          "washing machine",
+          "clothes washer"
+        ],
+        "default_service_sku": "washer_repair",
+        "contextual_overrides": [
+          {
+            "keywords": [
+              "install",
+              "new washer",
+              "delivery",
+              "hookup"
+            ],
+            "override_sku": "washer_install",
+            "note": "Installing a new washer, not repairing an existing one"
+          }
+        ],
+        "confidence_weight": 90,
+        "default_dynamic_category": "minor_home_repairs"
+      },
+      {
+        "keyword": "dryer",
+        "synonyms": [
+          "dryer",
+          "clothes dryer",
+          "tumble dryer"
+        ],
+        "confidence_weight": 85,
+        "default_dynamic_category": "minor_home_repairs"
+      },
+      {
+        "keyword": "dishwasher",
+        "synonyms": [
+          "dishwasher",
+          "dish washer"
+        ],
+        "default_service_sku": "dishwasher_repair",
+        "confidence_weight": 90,
+        "default_dynamic_category": "minor_home_repairs"
+      },
+      {
+        "keyword": "microwave",
+        "synonyms": [
+          "microwave",
+          "microwave oven"
+        ],
+        "default_service_sku": "microwave_repair",
+        "contextual_overrides": [
+          {
+            "keywords": [
+              "install",
+              "setup",
+              "set up",
+              "new microwave",
+              "unbox"
+            ],
+            "override_sku": "microwave_setup",
+            "note": "Setting up a new microwave, not repairing an existing one"
+          }
+        ],
+        "confidence_weight": 90,
+        "default_dynamic_category": "minor_home_repairs"
+      },
+      {
+        "keyword": "stove",
+        "synonyms": [
+          "stove",
+          "range",
+          "oven",
+          "cooktop",
+          "burner"
+        ],
+        "confidence_weight": 85,
+        "default_dynamic_category": "minor_home_repairs"
       }
     ]
   },
@@ -1915,7 +2005,16 @@
       "is_logistic": false,
       "ui_phrase": "high ceiling",
       "negation_phrase": "standard ceiling height",
-      "note": "v9.5: fee/minutes retired — now applied via the new mounting_height module's answer effects, force-injected into electric_lighting/furniture_fixes_assembly/minor_home_repairs/wall_mounting categories. See CHANGELOG_v9.5.md."
+      "note": "v9.5: fee/minutes retired — now applied via the new mounting_height module's answer effects, force-injected into electric_lighting/furniture_fixes_assembly/minor_home_repairs/wall_mounting categories. See CHANGELOG_v9.5.md. v9.5: scoped to applicable_group_ids matching the exact same height-variable services the mounting_height question was wired into (ceiling fans, light fixtures, bulb replacement, wall mounting, wall-damage repair) -- confirmed real bug: these previously showed as a manual chip option for completely unrelated work like cabinet drawer adjustment, where height is never a real factor.",
+      "applicable_group_ids": [
+        "electric_lighting_bulbs",
+        "electric_lighting_fans",
+        "electric_lighting_light_fixtures",
+        "minor_home_repairs_walls",
+        "wall_mounting_brick_or_concrete",
+        "wall_mounting_frames_shelves",
+        "wall_mounting_tv_flatscreen"
+      ]
     },
     "#high_volume": {
       "synonyms": [
@@ -2361,7 +2460,16 @@
       "is_logistic": false,
       "ui_phrase": "very high ceiling",
       "negation_phrase": "standard height",
-      "note": "v9.5: fee/minutes retired — now applied via the new mounting_height module's answer effects, force-injected into electric_lighting/furniture_fixes_assembly/minor_home_repairs/wall_mounting categories. See CHANGELOG_v9.5.md."
+      "note": "v9.5: fee/minutes retired — now applied via the new mounting_height module's answer effects, force-injected into electric_lighting/furniture_fixes_assembly/minor_home_repairs/wall_mounting categories. See CHANGELOG_v9.5.md. v9.5: scoped to applicable_group_ids matching the exact same height-variable services the mounting_height question was wired into (ceiling fans, light fixtures, bulb replacement, wall mounting, wall-damage repair) -- confirmed real bug: these previously showed as a manual chip option for completely unrelated work like cabinet drawer adjustment, where height is never a real factor.",
+      "applicable_group_ids": [
+        "electric_lighting_bulbs",
+        "electric_lighting_fans",
+        "electric_lighting_light_fixtures",
+        "minor_home_repairs_walls",
+        "wall_mounting_brick_or_concrete",
+        "wall_mounting_frames_shelves",
+        "wall_mounting_tv_flatscreen"
+      ]
     },
     "#virus": {
       "synonyms": [
@@ -4678,7 +4786,8 @@
       "required_materials": [
         "MAT-MHR-DOR-Weatherstrip"
       ],
-      "optional_materials": []
+      "optional_materials": [],
+      "per_unit_answers_vary": true
     },
     {
       "id": "window_ac_setup",
@@ -4714,10 +4823,10 @@
       },
       "ui_taxonomy": {
         "category_id": "minor_home_repairs",
-        "group_id": "minor_home_repairs_appliances_dryer",
-        "display_name": "Dryer Setup",
+        "group_id": "minor_home_repairs_appliances_window_ac",
+        "display_name": "Window AC Setup",
         "icon": "📦",
-        "description": "Standard unboxing, setup and basic testing of the unit..",
+        "description": "Standard unboxing, setup, and basic testing of a window air conditioning unit.",
         "sort_order": 1069,
         "presentation_strategy": {
           "display_enabled": true,
@@ -5605,7 +5714,8 @@
         "_variability_tier": "low",
         "_variability_score": 21.3
       },
-      "verb_natural": "replaced"
+      "verb_natural": "replaced",
+      "per_unit_answers_vary": true
     },
     {
       "id": "leak_under_sink_repair",
@@ -6249,16 +6359,13 @@
       "service_type": "Install",
       "intake_chain": [
         {
-          "module": "door_size",
-          "then": {}
-        },
-        {
-          "module": "door_style_pref",
-          "then": {}
-        },
-        {
           "module": "client_supplying_door",
-          "then": {}
+          "then": {
+            "No, I need you to procure it": [
+              "door_size",
+              "door_style_pref"
+            ]
+          }
         },
         {
           "module": "existing_frame",
@@ -6284,7 +6391,8 @@
       "required_materials": [
         "MAT-MHR-DOR-Prehung",
         "MAT-MHR-DOR-Hinge"
-      ]
+      ],
+      "per_unit_answers_vary": true
     },
     {
       "id": "p_trap_cleaning",
@@ -6869,7 +6977,7 @@
       "service_type": "Install",
       "intake_chain": [
         {
-          "module": "washer_type",
+          "module": "existing_type",
           "then": {}
         }
       ],
@@ -7525,7 +7633,8 @@
       "required_materials": [
         "MAT-ELC-THM-Thermostat"
       ],
-      "optional_materials": []
+      "optional_materials": [],
+      "per_unit_answers_vary": true
     },
     {
       "id": "toilet_flapper_or_fill_valve_replacement",
@@ -7675,7 +7784,8 @@
       "optional_materials": [
         "MAT-PLM-TLT-Flapper",
         "MAT-PLM-TLT-FillValve"
-      ]
+      ],
+      "per_unit_answers_vary": true
     },
     {
       "id": "toilet_wax_ring_replacement",
@@ -10138,7 +10248,16 @@
             "minutes": 0,
             "complexity_override": "routine"
           },
-          "tags": []
+          "tags": [],
+          "location_hints": [
+            "bedroom",
+            "master bedroom",
+            "guest room",
+            "closet",
+            "hallway",
+            "home office",
+            "office"
+          ]
         },
         {
           "label": "Solid core – better sound insulation (~$300‑$500)",
@@ -10147,7 +10266,12 @@
             "minutes": 0,
             "complexity_override": "routine"
           },
-          "tags": []
+          "tags": [],
+          "location_hints": [
+            "entryway",
+            "foyer",
+            "bathroom"
+          ]
         },
         {
           "label": "Solid wood – premium (~$400‑$800+)",
@@ -12354,9 +12478,9 @@
         {
           "label": "Not sure — describe in notes",
           "effects": {
-            "fee": 10,
-            "minutes": 10,
-            "complexity_override": "skilled"
+            "fee": 0,
+            "minutes": 0,
+            "complexity_override": "routine"
           },
           "tags": []
         }
@@ -12364,7 +12488,7 @@
       "purpose": "pricing",
       "confidence_gain": 20,
       "affects_price": true,
-      "_note": "v9.1: added to fix a pre-existing data bug found during the v9.1 audit — software_or_driver_install was incorrectly wired to the washing-machine type module (pre-rename key 'type'), a stale copy-paste that predates this migration. This module asks the actually-relevant question for this service."
+      "_note": "v9.1: added to fix a pre-existing data bug found during the v9.1 audit — software_or_driver_install was incorrectly wired to the washing-machine type module (pre-rename key 'type'), a stale copy-paste that predates this migration. This module asks the actually-relevant question for this service. v9.5: fixed 'Not sure' option, which previously cost MORE ($10/+10min/skilled) than a known, specific request ($0/routine) -- charging a premium for the customer's own uncertainty before any technician has assessed the actual job makes no sense and discourages honest communication. Now $0/routine, matching the other not-yet-fully-specified options; the real cost (if any) gets determined on-site once the tech actually sees what's needed."
     },
     "tech_problem_type": {
       "question": "What's the main issue?",
@@ -14395,5 +14519,251 @@
       "sku": "IKE-vittsjo_gl-35",
       "flat_fee": 23
     }
-  ]
+  ],
+  "workflow": {
+    "version": "1.0",
+    "_note": "Phase 0 (Orchestrator Overhaul). This node is the active rulebook for routing, intake-question selection, confidence gating, and pricing -- not passive documentation. Every entry path (Catalog browse, Other-tile tap, free-text SmartQuote) must produce a BookingContext and pass it through executeWorkflow(context, db), which walks these steps in order. See Phase 5.5's _archaeology_notes on individual rules below for the specific real bug each rule exists to prevent -- these were extracted from actual hardcoded logic found and fixed during the architecture-audit sessions, not invented speculatively.",
+    "required_fields": [
+      "services",
+      "dynamic_services",
+      "intake_modules",
+      "smart_tags",
+      "global_rules",
+      "checkout_states",
+      "intent_mappings",
+      "confidence_escalation",
+      "pricing_formulas",
+      "materials_catalog"
+    ],
+    "steps": [
+      {
+        "id": "resolve_entity",
+        "operation": "lookup",
+        "_note": "Resolves BookingContext -> a concrete service or dynamic_service entity. For entry='catalog' or 'other_tile', selectedServiceId/selectedGroupId already pin this down directly. For entry='free_text', this step delegates to intent_mappings.objects keyword/synonym matching (NOT a hardcoded keyword map -- see the architecture-audit finding that resolveGroupFromIntent's hardcoded rules and intent_mappings.objects were two parallel, partially-overlapping systems; this workflow makes intent_mappings.objects the single real source going forward).",
+        "sources": [
+          "context.selectedServiceId",
+          "context.selectedGroupId",
+          "context.nlpIntent.recommendedSku",
+          "intent_mappings.objects"
+        ],
+        "fallback": {
+          "route_to": "intent_mappings.default_fallback",
+          "_warn": "no entity resolved with sufficient confidence"
+        }
+      },
+      {
+        "id": "compute_variability_flags",
+        "operation": "modify",
+        "_note": "Computes a small set of NAMED, independently-auditable booleans -- NOT a single opaque chainIsQtyOnly flag. Archaeology finding: the legacy chainIsQtyOnly check was too coarse to correctly handle behavior.bypass_intake services, 3 of which (high_ceiling_bulb_replacement, shower_head_replacement, tub_spout_replacement) have ONE real, price-affecting, non-quantity question that must still be asked even though the service is otherwise flagged for minimal friction. A single boolean cannot represent that distinction; named, separate flags can.",
+        "produces": {
+          "chain_is_pure_quantity": "true only if every module in the resolved intake_chain is a recognized quantity-style module (item_count, count, hybrid_qty, global_quantity)",
+          "chain_is_single_simple_question": "true if the chain has exactly one module AND that module is item_count_template (a banded quantity question) -- distinct from chain_is_pure_quantity, since item_count_template is NOT in the legacy quantity-module set but is still simple enough to bypass extensive intake when paired with behavior.bypass_intake",
+          "chain_has_real_non_quantity_question": "true if the chain contains any module that is neither a quantity-style module nor item_count_template -- when true, intake bypass rules MUST still surface that question; bypassing it would silently drop a real, price-affecting answer",
+          "all_visible_real_questions_answered": "true once every currently-visible (per _isModVisible) non-quantity module has a real answer in BookingContext.answers"
+        }
+      },
+      {
+        "id": "compose_intake_chain",
+        "operation": "compose",
+        "_note": "Builds the final, real list of intake questions to ask: entity.intake_chain (the named modules) + global_rules.force_modules_by_variability[entity.confidence_strategy._variability_tier] (universal logistics/height questions, injected only when not already present) + then-branch targets unlocked by already-given answers. Archaeology finding: an earlier version of this logic (S._forceModules) was SET but never CONSUMED in the legacy curated-intake renderer -- confirmed and fixed mid-session; this step makes that consumption a mandatory, auditable part of the workflow rather than something that can silently regress again.",
+        "sources": [
+          "entity.intake_chain",
+          "global_rules.force_modules_by_variability",
+          "intake_modules.*.then"
+        ]
+      },
+      {
+        "id": "apply_location_hints",
+        "operation": "modify",
+        "_note": "Archaeology finding (direct feedback during the session): the location chip/NLP-extracted location was being treated as cosmetic filler/notes despite carrying real, derivable intent (a 'front door' implies solid-core, a 'bedroom door' implies hollow-core; a 'toilet' near 'guest bedroom' is genuinely ambiguous and must NOT be guessed). This step pre-fills an intake answer ONLY when context.extractedLocation matches exactly one client_response[*].location_hints entry for a given module -- never when zero or multiple answers claim the same location, and never overriding an answer the user already gave.",
+        "sources": [
+          "context.extractedLocation",
+          "intake_modules.*.client_response.*.location_hints"
+        ]
+      },
+      {
+        "id": "compute_confidence",
+        "operation": "merge",
+        "_note": "Archaeology finding: the legacy curated-intake renderer used a hardcoded tagBonus (+5 skilled / +10 specialized, ADDED TO THE SCORE) instead of global_rules.confidence_escalation's real +15/+30 deltas (which RAISE THE BAR). These are mechanically different operations that were both firing in the same wrong direction -- confirmed via direct trace to make the Estimate button enable roughly 20 points too early for a real service (flatscreen_mounting_standard + #brick_wall: bar should rise 50->65, legacy code left it at 50 while also inflating the score). This step performs ONLY the bar-raising operation (confidence_escalation), and a separate, additive scoring step (base_confidence + module gains + NLP match confidence) computes the score independently -- the two must never be conflated into one number again.",
+        "sources": [
+          "entity.confidence_strategy",
+          "global_rules.confidence_escalation",
+          "context.activeTagIds",
+          "context.nlpIntent._matchConfidence"
+        ]
+      },
+      {
+        "id": "select_ui_template",
+        "operation": "condition_map",
+        "_note": "See ui_template_matrix below -- this is the corrected version of Phase 3's example, using the named flags from compute_variability_flags instead of a single chainIsQtyOnly boolean.",
+        "ref": "ui_template_matrix"
+      },
+      {
+        "id": "merge_materials_estimate",
+        "operation": "merge",
+        "_note": "Archaeology finding (post-session audit): 51 services have real services.*.required_materials and 35 have optional_materials, referencing real materials_catalog SKUs with real prices and a real markup_percent (confirmed uniformly 20% in global_rules.surcharges) -- NONE of which is read at runtime; every materials display reads the separate, often-stale default_estimates.materials.min/max instead (confirmed 3 real services, e.g. dishwasher_repair, where the legacy number and the catalog-derived number would genuinely differ). Resolution, NOT deletion (Chesterton's Fence: default_estimates.materials.note frequently carries real, business-meaningful customer-facing explanation -- e.g. dishwasher_repair's 'Exact part cost cannot be determined before diagnosis' -- that has no equivalent in the catalog data and must be preserved): when required_materials/optional_materials is non-empty, compute min = sum(required SKU prices * (1+markup)), max = min + sum(optional SKU prices * (1+markup)), and use this as the authoritative materials range -- but ALWAYS carry forward default_estimates.materials.note verbatim if present, regardless of which range won.",
+        "sources": [
+          "entity.required_materials",
+          "entity.optional_materials",
+          "materials_catalog",
+          "global_rules.surcharges.materials_markup_percent",
+          "entity.default_estimates.materials.note"
+        ]
+      },
+      {
+        "id": "compute_quote",
+        "operation": "calculate",
+        "_note": "Invokes the SINGLE unified pricing function for every entry path -- no separate _computePrice. Archaeology finding: the legacy Catalog-browse path's _computePrice never included global_rules.surcharges.dispatch_fee at all, while the SmartQuote path's computeUnifiedQuote always did -- the exact same service could quote differently by the full dispatch fee ($45) depending on which UI entry point was tapped. Confirmed and fixed mid-session by adding the fee to _computePrice directly (a stopgap); this workflow's real fix is that _computePrice no longer exists as a separate function at all once Phase 6 lands -- every entry path reaches this exact step.",
+        "sources": [
+          "entity",
+          "context.activeTagIds",
+          "context.answers",
+          "merge_materials_estimate.result",
+          "global_rules.surcharges.dispatch_fee"
+        ]
+      }
+    ],
+    "ui_template_matrix": {
+      "operation": "condition_map",
+      "_note": "Determines UI layout. Evaluates top-down, first match wins. Corrected from the roadmap's original example: uses the NAMED flags from compute_variability_flags instead of a single chainIsQtyOnly boolean, specifically so the 3 real bypass_intake services with one genuine non-quantity question (high_ceiling_bulb_replacement, shower_head_replacement, tub_spout_replacement) are NOT routed into a template with no room to ask that question -- confirmed via direct check this session that those exact 3 services have complexity_tier:'skilled', not 'routine', ruling out a naive tier-based rule too.",
+      "rules": [
+        {
+          "if": {
+            "requires_furniture_selection": true
+          },
+          "then": {
+            "ui_template": "legacy_flow",
+            "_legacy_fn": "showIntakeQuestions"
+          },
+          "_note": "Archaeology Audit finding (confirmed via direct read of prefillSmartQuoteFromService): requires_furniture_selection and the isOther condition (default_tags includes #adhoc or #manual_review) BOTH completely bypass the curated-card/self-quote matrix today, diverting to the legacy showIntakeQuestions flow entirely -- a categorically different UI (a furniture item-picker grid, not a question card). Must be checked FIRST, before any confidence/chain-shape logic, exactly matching the legacy code's own early-return structure. Confirmed via direct data check: only furniture_assembly_flat_pack currently triggers this (requires_furniture_selection); the isOther/#adhoc/#manual_review condition is real, checkable code with zero services currently triggering it -- dormant today, not removed, since a future service could set those tags."
+        },
+        {
+          "if": {
+            "is_other_adhoc_service": true
+          },
+          "then": {
+            "ui_template": "legacy_flow",
+            "_legacy_fn": "showIntakeQuestions"
+          },
+          "_note": "Same legacy_flow bypass as requires_furniture_selection above, triggered instead by default_tags containing #adhoc or #manual_review. Confirmed dormant today (zero real services currently set either tag) but the condition is real, live code in getServiceProfile()/prefillSmartQuoteFromService -- kept as an explicit rule so a future service authored with these tags is correctly routed, not silently mishandled by the matrix's other rules."
+        },
+        {
+          "if": {
+            "chain_is_pure_quantity": true
+          },
+          "then": {
+            "ui_template": "self_quote",
+            "bypass_intake": true
+          },
+          "_note": "Pure quantity-only chain (or empty chain) -- the original, always-correct self-quote case."
+        },
+        {
+          "if": {
+            "chain_is_single_simple_question": true,
+            "behavior.bypass_intake": true
+          },
+          "then": {
+            "ui_template": "self_quote",
+            "bypass_intake": true
+          },
+          "_note": "Archaeology fix: item_count_template-only services explicitly flagged bypass_intake (cabinet_knob_or_pull_install, door_lock_or_handle_install, led_bulb_upgrade) -- genuinely simple, but NOT chain_is_pure_quantity under the legacy module-name check, which is exactly why they never qualified for self-quote before this session's fix."
+        },
+        {
+          "if": {
+            "chain_has_real_non_quantity_question": true,
+            "behavior.bypass_intake": true
+          },
+          "then": {
+            "ui_template": "curated_card",
+            "force_confidence_after_real_answers": "behavior.force_confidence"
+          },
+          "_note": "Archaeology fix: high_ceiling_bulb_replacement / shower_head_replacement / tub_spout_replacement. MUST NOT route to self_quote -- that template has no room to ask the one real question these services have (mounting_height / existing_type), and forcing them through would silently drop a real, price-affecting answer. force_confidence (90-95 in the real data) applies ONLY once every visible real question is answered -- never before, since these values are deliberately HIGHER than the service's own minimum_quote_confidence and would otherwise let the Estimate button enable before the real question is answered."
+        },
+        {
+          "if": {
+            "chain_has_real_non_quantity_question": true
+          },
+          "then": {
+            "ui_template": "curated_card"
+          },
+          "_note": "Archaeology fix (caught by running the orchestrator against real data, not just reading the matrix on paper): a directly-resolved, real entity with real questions and NO bypass_intake flag was falling through to the confidence_score<60 catch-all (chip_grid/force_dynamic_fallback) -- categorically wrong for e.g. toilet_install, a real named service whose intake chain simply hasn't been answered yet. The confidence_score<60 rule is reserved for the genuinely unresolved/low-confidence free-text case; this rule correctly intercepts the much more common 'real entity, real questions, not yet answered' case first."
+        },
+        {
+          "if": {
+            "confidence_score": "< 60"
+          },
+          "then": {
+            "ui_template": "chip_grid",
+            "force_dynamic_fallback": true
+          }
+        }
+      ],
+      "fallback": {
+        "ui_template": "curated_card"
+      }
+    },
+    "intake_bypass_rules": {
+      "operation": "condition_map",
+      "_note": "Phase 3 (separate from ui_template_matrix's UI-layout decision): determines whether the action/type-selection step (legacy 'Step 2') can be skipped because the answer is already unambiguous. Archaeology finding: the legacy builder (prefillSmartQuoteFromOtherTile/sqOpenBuilderPreseeded) already correctly implements this via uncoveredTypes.length === 1 -- this node makes that real, working logic an explicit, auditable rule rather than inline code only discoverable by reading the builder function.",
+      "rules": [
+        {
+          "if": {
+            "uncovered_service_types_count": 1
+          },
+          "then": {
+            "skip_type_selection": true,
+            "preseed_action_from": "uncovered_service_types[0]"
+          },
+          "_note": "Exactly one possible service_type remains uncovered for this group -- the action is unambiguous, asking the customer to confirm it would be exactly the kind of self-evident question this project has repeatedly found and removed (e.g. asking if a front door is solid-core)."
+        }
+      ],
+      "fallback": {
+        "skip_type_selection": false,
+        "_reason": "multiple possible types remain genuinely ambiguous -- must ask"
+      }
+    },
+    "fallback_routing_rules": {
+      "operation": "condition_map",
+      "_note": "Phase 3: determines where to route when resolve_entity (workflow step 1) cannot pin down a specific named service. Archaeology finding: this exact 3-tier fallback chain (group match -> synthesize Other tile via resolve_dynamic_service; category match only -> generic wizard; no match at all -> intent_mappings.default_fallback) already exists correctly in the legacy sqAnalyze/prefillSmartQuoteFromOtherTile code -- this node makes it an explicit, auditable rule set. Does NOT change behavior; documents and formalizes what the verified-correct legacy code already does.",
+      "rules": [
+        {
+          "if": {
+            "has_category": true,
+            "has_group": true,
+            "match_confidence_at_least": 50
+          },
+          "then": {
+            "route_to": "dynamic_services",
+            "via": "resolve_dynamic_service(category, stype, groupId)",
+            "render_as": "synthetic_other_tile"
+          },
+          "_note": "category + group both resolved with reasonable confidence -- the most common real fallback case (e.g. 'mount a projector screen' correctly landing in wall_mounting_tv_flatscreen)."
+        },
+        {
+          "if": {
+            "has_category": true,
+            "has_group": false
+          },
+          "then": {
+            "route_to": "generic_wizard",
+            "_legacy_fn": "sqPrepareFlow(skipStep2=false)"
+          },
+          "_note": "Category known but no specific group match -- ask the customer directly rather than guess a group, exactly the discipline that fixed the original 'groups[0] -> Appliances' misrouting bug found earlier this session."
+        },
+        {
+          "if": {
+            "has_category": false
+          },
+          "then": {
+            "route_to": "intent_mappings.default_fallback"
+          },
+          "_note": "Genuinely unresolved. Archaeology finding (still open, tracked separately): intent_mappings.default_fallback.service_id references 'generic_handyman_service', which does not exist as a real catalog service, and the field is also never read by any legacy code even when it did resolve. This rule formalizes the INTENDED behavior; the underlying data/content gap (authoring that service, or removing the dangling reference) remains separate, real backlog."
+        }
+      ],
+      "fallback": {
+        "route_to": "generic_wizard",
+        "_reason": "absolute final safety net -- never silently fail to resolve to SOME bookable path"
+      }
+    }
+  }
 }
