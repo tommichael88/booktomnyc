@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://tommichael88.github.io/booktomnyc/schema/btnyc_schema.json",
   "title": "BTNYC Configuration Schema",
-  "description": "Schema for the btnyc.json configuration file \u2013 single source of truth for pricing, services, and UI.",
+  "description": "Schema for the btnyc.json configuration file – single source of truth for pricing, services, and UI.",
   "type": "object",
   "required": [
     "meta",
@@ -327,7 +327,7 @@
             },
             "issue_type_fees": {
               "type": "object",
-              "description": "Keyed by the exact client_response label string from the 'issue' intake_module (e.g. 'Broken piece (leg, frame, etc.)'). Each entry adds a flat fee and/or minutes on top of base_minutes \u2014 same lookup pattern as tile_repair_formula's grout_repair/water_damage checks, generalized to any label rather than a hardcoded Yes/No.",
+              "description": "Keyed by the exact client_response label string from the 'issue' intake_module (e.g. 'Broken piece (leg, frame, etc.)'). Each entry adds a flat fee and/or minutes on top of base_minutes — same lookup pattern as tile_repair_formula's grout_repair/water_damage checks, generalized to any label rather than a hardcoded Yes/No.",
               "patternProperties": {
                 ".*": {
                   "type": "object",
@@ -962,7 +962,7 @@
               "items": {
                 "type": "string"
               },
-              "description": "Optional further narrowing WITHIN an already-matching category (see tagValidForCategory in qr.html). When present on a tag whose applicable_categories spans multiple categories, must include the correct group id(s) from EVERY one of those categories \u2014 group ids are not unique across categories, so an incomplete list silently excludes the tag from categories it's still meant to apply to."
+              "description": "Optional further narrowing WITHIN an already-matching category (see tagValidForCategory in qr.html). When present on a tag whose applicable_categories spans multiple categories, must include the correct group id(s) from EVERY one of those categories — group ids are not unique across categories, so an incomplete list silently excludes the tag from categories it's still meant to apply to."
             },
             "mutually_exclusive": {
               "type": "array",
@@ -1123,6 +1123,10 @@
           },
           "default_qty": {
             "type": "integer"
+          },
+          "typical_location": {
+            "type": "string",
+            "description": "v9.5: optional. When a group's items are almost always found in one room (e.g. a stove is always in the kitchen), this lets the SmartQuote guided builder skip its generic 'Where in the home?' step instead of asking a question with an obvious, self-evident answer. Must match one of BLD_LOCATIONS' real `value` strings in qr.html (e.g. 'kitchen', 'bathroom') -- left unset for genuinely ambiguous groups (e.g. furniture, wall-mounted items, which could be in any room)."
           }
         }
       }
@@ -1369,6 +1373,10 @@
                 "type": "integer"
               }
             }
+          },
+          "per_unit_answers_vary": {
+            "type": "boolean",
+            "description": "v9.5: when true, this service's intake answers genuinely describe ONE specific unit (e.g. a particular door's size/style/frame-removal status), not a generalizable per-unit fact that scales safely with quantity. Such a service should NOT show the qty stepper at all -- a customer needing this work done on two structurally different units (e.g. a front door vs. a bathroom door, each with its own size, material, and removal status) should book two SEPARATE service requests, each with its own correct, specific answers, rather than one qty=2 entry that can only carry a single shared set of answers and would silently misattribute one unit's specifics to both. Distinct from a real, generalizable quantity question (e.g. 'how many light bulbs' -- the answer genuinely is the same fact applied N times)."
           }
         }
       }
@@ -1515,6 +1523,13 @@
                   },
                   "tags": {
                     "type": "array"
+                  },
+                  "location_hints": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "v9.5: list of negation_library.nlp_location_words values for which THIS specific answer is the strongly likely/default one (e.g. a 'front door' implies solid-core; a 'bedroom'/'hallway' door implies hollow-core). Genuinely ambiguous locations are simply omitted from every answer's location_hints for this module (e.g. a 'guest bedroom' vs 'bathroom' both plausibly mean a toilet -- neither should claim it confidently). When S._location matches exactly one answer's location_hints, that answer is pre-selected (still changeable by the customer, never silently applied without being shown). This generalizes beyond doors: any intake question whose correct answer correlates strongly with WHERE the job is should use this, since the location chip otherwise sits unused as filler/notes despite carrying real, derivable intent."
                   }
                 },
                 "required": [
