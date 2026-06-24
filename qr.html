@@ -8762,36 +8762,46 @@ function enableLiveAdLibPreview() {
                    INITIALISATION (load JSON)
                    ================================================================ */
                 async function init() {
-    cacheDOM();
-    try {
-        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_v2.json');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const full = await res.json();
-        SERVICE_DATA = full.legacy;   // ← this is the only new line
-        // everything else stays exactly the same
-        DB = SERVICE_DATA;
-        window.DB = DB;
-        initNlpSets();
-    } catch (err) {
-        console.error('Service data load error:', err);
-        toast('Could not load services. Please refresh.', 'error');
-        SERVICE_DATA = {
-            meta: {},
-            category: [],
-            group: [],
-            services: [],
-            intake_modules: {}
-        };
-        DB = SERVICE_DATA;
-    }
-    buildDataMaps(SERVICE_DATA);
-    renderCategoryCards();
-    wireGlobalEvents();
-    renderCart();
-    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
-    setViewportHeight();
-}
-
+                    cacheDOM();
+                    try {
+                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_v2.json');
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const full = await res.json();
+                        SERVICE_DATA = full.legacy;   // extract the original config from the v2 wrapper
+                        // resolveRefs DISABLED: it was expanding $ref objects
+                        // (e.g. {"$ref":"#plumbing"}) to the full tag object, but
+                        // every consumer in the JS (prefillSmartQuoteFromService,
+                        // prefillSmartQuoteFromOtherTile, detectIntentNLP, etc.)
+                        // extracts the tag ID by reading tagRef.$ref as a string.
+                        // After expansion, tagRef.$ref is undefined → tag is
+                        // silently dropped → default_tags and suggested_tags never
+                        // populate S.detTagIds. All other $ref contexts (synonyms,
+                        // derived_from, requires) are also never read in expanded
+                        // form by any JS code, so resolveRefs provided no benefit
+                        // while actively breaking the most critical data paths.
+                        // SERVICE_DATA = resolveRefs(SERVICE_DATA); // ← broken, do not re-enable
+                        DB = SERVICE_DATA; // for SmartQuote engine
+                        window.DB = DB;    // expose globally for SSOT helpers
+                        initNlpSets();     // build NLP sets from DB.negation_library
+                    } catch (err) {
+                        console.error('Service data load error:', err);
+                        toast('Could not load services. Please refresh.', 'error');
+                        SERVICE_DATA = {
+                            meta: {},
+                            category: [],
+                            group: [],
+                            services: [],
+                            intake_modules: {}
+                        };
+                        DB = SERVICE_DATA;
+                    }
+                    buildDataMaps(SERVICE_DATA);
+                    renderCategoryCards();
+                    wireGlobalEvents();
+                    renderCart();
+                    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
+                    setViewportHeight();
+                }
                 // Expose SmartQuote functions to global scope (needed for inline onclick handlers)
                 window.sqAnalyze = sqAnalyze;
                 window.sqUnifiedAction = sqUnifiedAction;
