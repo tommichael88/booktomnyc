@@ -1,0 +1,1075 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tommichael88.github.io/booktomnyc/schema/btnyc_v3_exhaustive_schema.json",
+  "title": "BTNYC v3 Exhaustive Service Configuration Schema",
+  "description": "Validates btnyc_v3.json – permissive of extra fields, strict on core structure.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "meta",
+    "archetype_definitions",
+    "group_archetypes",
+    "global_rules",
+    "pricing_formulas",
+    "confidence_tiers",
+    "checkout_states",
+    "ui_config",
+    "adlib_phrase_overrides",
+    "negation_library",
+    "intent_mappings",
+    "smart_tags",
+    "service_types",
+    "category",
+    "group",
+    "services",
+    "dynamic_services",
+    "intake_modules",
+    "materials_catalog",
+    "furniture_catalog",
+    "workflow",
+    "invariants",
+    "compiled"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$id": { "type": "string" },
+
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "schema_version", "last_updated", "note", "global_rates", "estimate_disclaimers", "compiled_at"],
+      "properties": {
+        "version": { "type": "string" },
+        "schema_version": { "type": "string" },
+        "last_updated": { "type": "string", "format": "date-time" },
+        "note": { "type": "string" },
+        "global_rates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["standard_labor", "specialized_repair"],
+          "properties": {
+            "standard_labor": { "type": "number" },
+            "specialized_repair": { "type": "number" }
+          }
+        },
+        "estimate_disclaimers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["flat_fee", "hourly", "project_based"],
+          "properties": {
+            "flat_fee": { "type": "string" },
+            "hourly": { "type": "string" },
+            "project_based": { "type": "string" }
+          }
+        },
+        "compiled_at": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "archetype_definitions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_first", "action_first", "symptom_first"],
+      "properties": {
+        "component_first": { "$ref": "#/$defs/archetype_definition" },
+        "action_first": { "$ref": "#/$defs/archetype_definition" },
+        "symptom_first": { "$ref": "#/$defs/archetype_definition" }
+      }
+    },
+
+    "group_archetypes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["archetype", "display_name", "category_id"],
+        "properties": {
+          "archetype": { "enum": ["component_first", "action_first", "symptom_first"] },
+          "display_name": { "type": "string" },
+          "category_id": { "type": "string" },
+          "components": { "type": "array", "items": { "type": "string" } },
+          "component_to_actions": { "type": "object" },
+          "actions": { "type": "array", "items": { "type": "string" } },
+          "action_to_components": { "type": "object" },
+          "symptoms": { "type": "array", "items": { "type": "string" } },
+          "symptom_to_resolution": { "type": "object" },
+          "_override_applied": { "type": "boolean" }
+        }
+      }
+    },
+
+    "global_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complexity_tiers", "confidence_escalation", "diagnostic_governance", "force_modules_by_variability", "pricing_engines", "surcharges"],
+      "properties": {
+        "complexity_tiers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["routine", "skilled", "specialized"],
+          "properties": {
+            "routine": { "$ref": "#/$defs/complexity_tier" },
+            "skilled": { "$ref": "#/$defs/complexity_tier" },
+            "specialized": { "$ref": "#/$defs/complexity_tier" }
+          }
+        },
+        "confidence_escalation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["skilled", "specialized", "max_minimum_quote_confidence", "max_followup_questions_absolute"],
+          "properties": {
+            "_note": { "type": "string" },
+            "skilled": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["minimum_quote_confidence_delta", "maximum_followup_questions_delta"],
+              "properties": {
+                "minimum_quote_confidence_delta": { "type": "integer" },
+                "maximum_followup_questions_delta": { "type": "integer" }
+              }
+            },
+            "specialized": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["minimum_quote_confidence_delta", "maximum_followup_questions_delta"],
+              "properties": {
+                "minimum_quote_confidence_delta": { "type": "integer" },
+                "maximum_followup_questions_delta": { "type": "integer" }
+              }
+            },
+            "max_minimum_quote_confidence": { "type": "integer" },
+            "max_followup_questions_absolute": { "type": "integer" }
+          }
+        },
+        "diagnostic_governance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["_rule", "_verified_zero_exceptions_across_n_services", "_consuming_code_should"],
+          "properties": {
+            "_rule": { "type": "string" },
+            "_verified_zero_exceptions_across_n_services": { "type": "integer" },
+            "_consuming_code_should": { "type": "string" }
+          }
+        },
+        "force_modules_by_variability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["low", "medium", "high", "diagnostic"],
+          "properties": {
+            "low": { "type": "array", "items": { "type": "string" } },
+            "medium": { "type": "array", "items": { "type": "string" } },
+            "high": { "type": "array", "items": { "type": "string" } },
+            "diagnostic": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "pricing_engines": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["flat_rate", "hourly_estimate"],
+          "properties": {
+            "flat_rate": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "formula_components"],
+              "properties": {
+                "type": { "enum": ["fixed"] },
+                "formula_components": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "hourly_estimate": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "formula_components", "minimum_billable_hours"],
+              "properties": {
+                "type": { "enum": ["time_and_materials"] },
+                "formula_components": { "type": "array", "items": { "type": "string" } },
+                "minimum_billable_hours": { "type": "integer" }
+              }
+            }
+          }
+        },
+        "surcharges": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dispatch_fee", "materials_markup_percent", "dispatch_note_template", "dispatch_label", "dispatch_scope_note"],
+          "properties": {
+            "dispatch_fee": { "type": "number" },
+            "materials_markup_percent": { "type": "number" },
+            "dispatch_note_template": { "type": "string" },
+            "dispatch_label": { "type": "string" },
+            "dispatch_scope_note": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "pricing_formulas": {
+      "type": "object",
+      "additionalProperties": { "type": "object" }
+    },
+
+    "confidence_tiers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "action", "base_confidence"],
+        "properties": {
+          "description": { "type": "string" },
+          "action": { "type": "string" },
+          "force_modules": { "type": "array", "items": { "type": "string" } },
+          "examples_for_tagging": { "type": "array", "items": { "type": "string" } },
+          "base_confidence": { "type": "integer" }
+        }
+      }
+    },
+
+    "checkout_states": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["database_summation", "diagnostic", "project_based", "standard_flat_rate"],
+      "properties": {
+        "database_summation": { "$ref": "#/$defs/checkout_state" },
+        "diagnostic": { "$ref": "#/$defs/checkout_state" },
+        "project_based": { "$ref": "#/$defs/checkout_state" },
+        "standard_flat_rate": { "$ref": "#/$defs/checkout_state" }
+      }
+    },
+
+    "ui_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["_internal_only", "_note", "affects_price_icon", "affects_price_label", "pricing_type_badges", "step2_types"],
+      "properties": {
+        "_internal_only": { "type": "object" },
+        "_note": { "type": "string" },
+        "affects_price_icon": { "type": "string" },
+        "affects_price_label": { "type": "string" },
+        "pricing_type_badges": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "hourly": { "type": "object", "additionalProperties": false, "properties": { "label": { "type": "string" }, "icon": { "type": "string" } } },
+            "flat_rate": { "type": "object", "additionalProperties": false, "properties": { "label": { "type": "string" }, "icon": { "type": "string" } } },
+            "assembly_formula": { "type": "object", "additionalProperties": false, "properties": { "label": { "type": "string" }, "icon": { "type": "string" } } }
+          }
+        },
+        "step2_types": { "type": "array", "items": { "enum": ["Assembly", "Diagnostic", "Install", "Repair", "Setup"] } }
+      }
+    },
+
+    "adlib_phrase_overrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adlib", "group_templates"],
+      "properties": {
+        "adlib": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sentence_start", "scope_separator", "answer_joiner", "location_prefix", "logistic_strip_label", "_note"],
+          "properties": {
+            "sentence_start": { "type": "string" },
+            "scope_separator": { "type": "string" },
+            "answer_joiner": { "type": "string" },
+            "location_prefix": { "type": "string" },
+            "logistic_strip_label": { "type": "string" },
+            "_note": { "type": "string" }
+          }
+        },
+        "group_templates": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+
+    "negation_library": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["_note", "action_conjugations", "large_size_words", "negation_confirmations", "negative_words", "nlp_condition_phrases", "nlp_location_words", "nlp_service_verbs", "nlp_stop_preps", "nlp_stop_words", "nlp_verb_past_map", "standard_size_words", "nlp_clause_boundaries"],
+      "properties": {
+        "_note": { "type": "string" },
+        "action_conjugations": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[^_].*": { "$ref": "#/$defs/action_conjugation" },
+            "^_.*": { "type": ["string", "object"] }
+          }
+        },
+        "large_size_words": { "type": "array", "items": { "type": "string" } },
+        "negation_confirmations": { "type": "object" },
+        "negative_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_condition_phrases": { "type": "array", "items": { "type": "array", "minItems": 2, "maxItems": 2 } },
+        "nlp_location_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_service_verbs": { "type": "array", "items": { "type": "string" } },
+        "nlp_stop_preps": { "type": "array", "items": { "type": "string" } },
+        "nlp_stop_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_verb_past_map": { "type": "object" },
+        "standard_size_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_clause_boundaries": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "intent_mappings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_fallback", "objects"],
+      "properties": {
+        "default_fallback": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["category", "service_type", "base_price", "note", "service_id"],
+          "properties": {
+            "category": { "type": "string" },
+            "service_type": { "enum": ["Install", "Repair", "Setup", "Assembly", "Diagnostic", "Mount"] },
+            "base_price": { "type": "number" },
+            "note": { "type": "string" },
+            "service_id": { "type": "string" }
+          }
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["keyword", "synonyms", "confidence_weight"],
+            "properties": {
+              "keyword": { "type": "string" },
+              "synonyms": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    { "type": "string" },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["$ref"],
+                      "properties": { "$ref": { "type": "string" } }
+                    }
+                  ]
+                }
+              },
+              "confidence_weight": { "type": "integer" },
+              "default_dynamic_category": { "type": "string" },
+              "default_service_type": { "enum": ["Install", "Repair", "Setup", "Assembly", "Diagnostic", "Mount"] },
+              "default_service_sku": { "type": "string" },
+              "dynamic_rule": { "type": "string" },
+              "resolver": { "type": "string" },
+              "fallback": { "type": "object" },
+              "contextual_overrides": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "keywords": { "type": "array", "items": { "type": "string" } },
+                    "override_sku": { "type": "string" },
+                    "override_base_price": { "type": "number" },
+                    "smart_tag": { "type": "object" },
+                    "adjustment_fee": { "type": "number" },
+                    "adjustment_minutes": { "type": "integer" },
+                    "note": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "smart_tags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["synonyms", "effects", "answers", "requires", "display_group", "applicable_categories", "is_logistic", "ui_phrase"],
+        "properties": {
+          "synonyms": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["$ref"],
+                  "properties": { "$ref": { "type": "string" } }
+                }
+              ]
+            }
+          },
+          "effects": { "type": "object" },
+          "answers": { "type": "object" },
+          "requires": { "type": "array" },
+          "display_group": { "type": "string" },
+          "applicable_categories": { "type": "array", "items": { "type": "string" } },
+          "mutually_exclusive": { "type": "array", "items": { "type": "string" } },
+          "is_logistic": { "type": "boolean" },
+          "ui_phrase": { "type": "string" },
+          "negation_phrase": { "type": "string" },
+          "note": { "type": "string" },
+          "applicable_group_ids": { "type": "array", "items": { "type": "string" } },
+          "escalate_complexity": { "type": "string" },
+          "is_default_for_group": { "type": "boolean" },
+          "derived_from": { "type": "array" }
+        }
+      }
+    },
+
+    "service_types": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["base_price", "default_complexity", "icon", "verb_natural", "ui_badge_label"],
+        "properties": {
+          "base_price": { "type": "number" },
+          "default_complexity": { "enum": ["routine", "skilled", "specialized"] },
+          "required_intake_modules": { "type": "array", "items": { "type": "string" } },
+          "icon": { "type": "string" },
+          "verb_natural": { "type": "string" },
+          "ui_badge_label": { "type": "string" }
+        }
+      }
+    },
+
+    "category": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "display_name", "icon", "group_ids"],
+        "properties": {
+          "id": { "type": "string" },
+          "display_name": { "type": "string" },
+          "icon": { "type": "string" },
+          "group_ids": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+
+    "group": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category_id", "display_name", "dynamic_service_types"],
+        "properties": {
+          "id": { "type": "string" },
+          "category_id": { "type": "string" },
+          "parent_group": { "type": "string" },
+          "display_name": { "type": "string" },
+          "icon": { "type": "string" },
+          "explicit_services": { "type": "array", "items": { "type": "string" } },
+          "dynamic_service_types": { "type": "array", "items": { "type": "string" } },
+          "default_qty": { "type": "integer" },
+          "typical_location": { "type": "string" }
+        }
+      }
+    },
+
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "operational_metrics", "pricing_engine", "default_estimates", "ui_taxonomy", "financial_engine", "service_type", "intake_chain", "verb_natural"],
+        "properties": {
+          "id": { "type": "string" },
+          "operational_metrics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["expected_minutes", "complexity_tier"],
+            "properties": {
+              "expected_minutes": { "type": "integer" },
+              "high_case_minutes": { "type": "integer" },
+              "complexity_tier": { "enum": ["routine", "skilled", "specialized"] }
+            }
+          },
+          "pricing_engine": { "type": "string" },
+          "default_estimates": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["disclaimer"],
+            "properties": {
+              "materials": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["min", "max"],
+                "properties": {
+                  "min": { "type": "number" },
+                  "max": { "type": "number" },
+                  "note": { "type": "string" }
+                }
+              },
+              "total_minutes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["min", "max"],
+                "properties": {
+                  "min": { "type": "number" },
+                  "max": { "type": "number" },
+                  "note": { "type": "string" }
+                }
+              },
+              "disclaimer": { "type": "string" }
+            }
+          },
+          "ui_taxonomy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["category_id", "group_id", "display_name", "icon", "description", "sort_order", "presentation_strategy"],
+            "properties": {
+              "category_id": { "type": "string" },
+              "group_id": { "type": "string" },
+              "display_name": { "type": "string" },
+              "icon": { "type": "string" },
+              "description": { "type": "string" },
+              "sort_order": { "type": "integer" },
+              "presentation_strategy": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["display_enabled", "buffer_label", "calculation_basis"],
+                "properties": {
+                  "display_enabled": { "type": "boolean" },
+                  "buffer_label": { "type": "string" },
+                  "calculation_basis": { "type": "string" }
+                }
+              }
+            }
+          },
+          "financial_engine": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pricing_type", "base_price"],
+            "properties": {
+              "pricing_type": { "enum": ["flat_rate", "hourly", "assembly_formula", "diagnostic"] },
+              "base_price": { "type": "number" },
+              "base_materials": { "type": "number" },
+              "checkout_state": { "type": "string" }
+            }
+          },
+          "intake_chain": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["module"],
+              "properties": {
+                "module": { "type": "string" },
+                "then": { "type": "object" },
+                "params": { "type": "object" }
+              }
+            }
+          },
+          "default_tags": { "type": "array", "items": { "type": "object" } },
+          "confidence_strategy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["minimum_quote_confidence", "maximum_followup_questions", "diagnostic_threshold", "base_confidence"],
+            "properties": {
+              "minimum_quote_confidence": { "type": "integer" },
+              "maximum_followup_questions": { "type": "integer" },
+              "diagnostic_threshold": { "type": "integer" },
+              "base_confidence": { "type": "integer" },
+              "_variability_tier": { "type": "string" },
+              "_variability_score": { "type": ["number", "null"] },
+              "_confidence_cap_applied": { "type": "boolean" },
+              "_confidence_cap_reason": { "type": "string" }
+            }
+          },
+          "verb_natural": { "type": "string" },
+          "required_materials": { "type": "array", "items": { "type": "string" } },
+          "optional_materials": { "type": "array", "items": { "type": "string" } },
+          "aliases": { "type": "array", "items": { "type": "string" } },
+          "service_type": { "enum": ["Install", "Repair", "Setup", "Assembly", "Diagnostic", "Mount"] },
+          "override_root": { "type": "boolean" },
+          "behavior": { "type": "object" },
+          "detail_prompt": { "type": "string" },
+          "details": { "type": "array" },
+          "materials_included": { "type": "boolean" },
+          "requires_furniture_selection": { "type": "boolean" },
+          "per_unit_answers_vary": { "type": "boolean" }
+        }
+      }
+    },
+
+    "dynamic_services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["financial_engine", "operational_metrics", "default_estimate", "intake_chain", "confidence_strategy"],
+        "properties": {
+          "financial_engine": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pricing_type", "base_price"],
+            "properties": {
+              "pricing_type": { "enum": ["flat_rate", "hourly", "assembly_formula", "diagnostic"] },
+              "base_price": { "type": "number" },
+              "base_materials": { "type": "number" },
+              "checkout_state": { "type": "string" }
+            }
+          },
+          "operational_metrics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["complexity_tier", "target_hourly_yield", "minimum_minutes"],
+            "properties": {
+              "complexity_tier": { "enum": ["routine", "skilled", "specialized"] },
+              "target_hourly_yield": { "type": "number" },
+              "minimum_minutes": { "type": "integer" }
+            }
+          },
+          "default_estimate": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["materials", "total_minutes", "disclaimer"],
+            "properties": {
+              "materials": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["min", "max", "note"],
+                "properties": {
+                  "min": { "type": "number" },
+                  "max": { "type": "number" },
+                  "note": { "type": "string" }
+                }
+              },
+              "total_minutes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["min", "max"],
+                "properties": {
+                  "min": { "type": "number" },
+                  "max": { "type": "number" }
+                }
+              },
+              "disclaimer": { "type": "string" }
+            }
+          },
+          "intake_chain": { "type": "array" },
+          "suggested_tags": { "type": "array", "items": { "type": "object" } },
+          "smart_tags": { "type": "array" },
+          "confidence_strategy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["minimum_quote_confidence", "maximum_followup_questions", "diagnostic_threshold", "base_confidence"],
+            "properties": {
+              "minimum_quote_confidence": { "type": "integer" },
+              "maximum_followup_questions": { "type": "integer" },
+              "diagnostic_threshold": { "type": "integer" },
+              "base_confidence": { "type": "integer" },
+              "_variability_tier": { "type": "string" },
+              "_variability_score": { "type": ["number", "null"] }
+            }
+          },
+          "merge_strategy": { "type": "string" }
+        }
+      }
+    },
+
+    "intake_modules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["question", "type"],
+        "properties": {
+          "question": { "type": "string" },
+          "type": { "enum": ["single", "numeric_multiplier"] },
+          "client_response": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label"],
+              "properties": {
+                "label": { "type": "string" },
+                "effects": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "fee": { "type": "number" },
+                    "minutes": { "type": "integer" },
+                    "complexity_override": { "type": "string" },
+                    "mat_min": { "type": "number" },
+                    "mat_max": { "type": "number" }
+                  }
+                },
+                "tags": { "type": "array" },
+                "location_hints": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
+          "purpose": { "type": "string" },
+          "confidence_gain": { "type": "integer" },
+          "affects_price": { "type": "boolean" },
+          "_note": { "type": "string" },
+          "min_val": { "type": "integer" },
+          "max_val": { "type": "integer" },
+          "_orphan_backlog_note": { "type": "string" },
+          "ui_render_type": { "type": "string" },
+          "config": { "type": "object" },
+          "_disambiguation_note": { "type": "string" },
+          "_template_note": { "type": "string" }
+        }
+      }
+    },
+
+    "materials_catalog": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sku", "name", "price", "markup_percent", "unit", "category", "sub_category", "description"],
+        "properties": {
+          "sku": { "type": "string" },
+          "name": { "type": "string" },
+          "price": { "type": "number" },
+          "markup_percent": { "type": "number" },
+          "unit": { "type": "string" },
+          "category": { "type": "string" },
+          "sub_category": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+
+    "furniture_catalog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["display_name", "brand", "type", "minutes", "sku", "flat_fee"],
+        "properties": {
+          "display_name": { "type": "string" },
+          "brand": { "type": "string" },
+          "type": { "type": "string" },
+          "minutes": { "type": "integer" },
+          "article": { "type": ["string", "null"] },
+          "sku": { "type": "string" },
+          "flat_fee": { "type": "number" }
+        }
+      }
+    },
+
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "_note", "required_fields", "steps", "ui_template_matrix", "intake_bypass_rules", "fallback_routing_rules", "resolution_thresholds"],
+      "properties": {
+        "version": { "type": "string" },
+        "_note": { "type": "string" },
+        "required_fields": { "type": "array", "items": { "type": "string" } },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "operation"],
+            "properties": {
+              "id": { "type": "string" },
+              "operation": { "type": "string" },
+              "_note": { "type": "string" },
+              "sources": { "type": "array", "items": { "type": "string" } },
+              "fallback": { "type": "object" },
+              "produces": { "type": "object" },
+              "ref": { "type": "string" }
+            }
+          }
+        },
+        "ui_template_matrix": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operation", "_note", "rules", "fallback"],
+          "properties": {
+            "operation": { "type": "string" },
+            "_note": { "type": "string" },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["if", "then"],
+                "properties": {
+                  "if": { "type": "object" },
+                  "then": { "type": "object" },
+                  "_note": { "type": "string" }
+                }
+              }
+            },
+            "fallback": { "type": "object" }
+          }
+        },
+        "intake_bypass_rules": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["operation", "rules", "fallback"],
+          "properties": {
+            "operation": { "type": "string" },
+            "rules": { "type": "array" },
+            "fallback": { "type": "object" }
+          }
+        },
+        "fallback_routing_rules": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["operation", "rules", "fallback"],
+          "properties": {
+            "operation": { "type": "string" },
+            "rules": { "type": "array" },
+            "fallback": { "type": "object" }
+          }
+        },
+        "resolution_thresholds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["auto_select_named_service", "route_to_group_other_tile"],
+          "properties": {
+            "auto_select_named_service": { "type": "integer" },
+            "route_to_group_other_tile": { "type": "integer" },
+            "_note": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "invariants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "rule", "check"],
+        "properties": {
+          "id": { "type": "string" },
+          "rule": { "type": "string" },
+          "check": { "type": "object" },
+          "_note": { "type": "string" }
+        }
+      }
+    },
+
+    "compiled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_index",
+        "action_index",
+        "symptom_index",
+        "service_index",
+        "archetype_index",
+        "candidate_matrix"
+      ],
+      "properties": {
+        "component_index": { "$ref": "#/$defs/index_with_synonyms" },
+        "action_index": { "$ref": "#/$defs/index_with_synonyms" },
+        "symptom_index": { "$ref": "#/$defs/index_with_synonyms" },
+        "service_index": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "service_type",
+              "category",
+              "group",
+              "aliases",
+              "smart_tags",
+              "intake_chain",
+              "pricing_formula_key",
+              "pricing",
+              "dynamic",
+              "operational_metrics",
+              "financial_engine",
+              "default_estimates",
+              "required_materials",
+              "optional_materials"
+            ],
+            "properties": {
+              "name": { "type": "string" },
+              "service_type": { "enum": ["Install", "Repair", "Setup", "Assembly", "Diagnostic", "Mount"] },
+              "category": { "type": "string" },
+              "group": { "type": ["string", "null"] },
+              "aliases": { "type": "array", "items": { "type": "string" } },
+              "smart_tags": { "type": "array", "items": { "type": "string" } },
+              "intake_chain": { "type": "array" },
+              "pricing_formula_key": { "type": ["string", "null"] },
+              "pricing": { "type": "object" },
+              "dynamic": { "type": "boolean" },
+              "operational_metrics": { "type": "object" },
+              "financial_engine": { "type": "object" },
+              "default_estimates": { "type": "object" },
+              "required_materials": { "type": "array", "items": { "type": "string" } },
+              "optional_materials": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "archetype_index": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["archetype", "topology", "service_type", "category", "group"],
+            "properties": {
+              "archetype": { "type": "string" },
+              "topology": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["type", "modules"],
+                "properties": {
+                  "type": { "enum": ["linear", "branching"] },
+                  "modules": { "type": "array", "items": { "type": "string" } },
+                  "branches": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["condition", "modules", "sub_type"],
+                      "properties": {
+                        "condition": { "type": "string" },
+                        "modules": { "type": "array", "items": { "type": "string" } },
+                        "sub_type": { "enum": ["linear", "branching"] }
+                      }
+                    }
+                  }
+                }
+              },
+              "service_type": { "enum": ["Install", "Repair", "Setup", "Assembly", "Diagnostic", "Mount"] },
+              "category": { "type": "string" },
+              "group": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "candidate_matrix": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["any"],
+              "properties": {
+                "any": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["service_id", "confidence", "source"],
+                    "properties": {
+                      "service_id": { "type": "string" },
+                      "confidence": { "type": "number" },
+                      "source": { "type": "string" },
+                      "keywords": { "type": "array", "items": { "type": "string" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "archetype_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first_question", "next"],
+      "properties": {
+        "first_question": { "type": "string" },
+        "next": { "type": "string" }
+      }
+    },
+
+    "group_archetype": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["archetype", "display_name", "category_id"],
+      "properties": {
+        "archetype": { "enum": ["component_first", "action_first", "symptom_first"] },
+        "display_name": { "type": "string" },
+        "category_id": { "type": "string" },
+        "components": { "type": "array", "items": { "type": "string" } },
+        "component_to_actions": { "type": "object" },
+        "actions": { "type": "array", "items": { "type": "string" } },
+        "action_to_components": { "type": "object" },
+        "symptoms": { "type": "array", "items": { "type": "string" } },
+        "symptom_to_resolution": { "type": "object" },
+        "_override_applied": { "type": "boolean" }
+      }
+    },
+
+    "complexity_tier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_minutes", "hourly_rate", "description"],
+      "properties": {
+        "min_minutes": { "type": "integer" },
+        "max_minutes": { "type": ["integer", "null"] },
+        "hourly_rate": { "type": "integer" },
+        "description": { "type": "string" }
+      }
+    },
+
+    "checkout_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ui_message": { "type": "string" },
+        "button_text": { "type": "string" },
+        "button_class": { "type": "string" },
+        "hide_materials": { "type": "boolean" },
+        "hide_time": { "type": "boolean" },
+        "ui_badge_label": { "type": "string" },
+        "ui_badge_icon": { "type": "string" },
+        "quote_badge_key": { "type": "string" },
+        "button_text_labor_only": { "type": "string" },
+        "button_text_no_mat": { "type": "string" },
+        "button_text_with_mat": { "type": "string" },
+        "button_class_no_mat": { "type": "string" },
+        "button_class_with_mat": { "type": "string" }
+      }
+    },
+
+    "action_conjugation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["infinitive_for_adlib", "all_forms", "synonym_clusters"],
+      "properties": {
+        "infinitive_for_adlib": { "type": "string" },
+        "all_forms": { "type": "array", "items": { "type": "string" } },
+        "synonym_clusters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["infinitive", "forms"],
+            "properties": {
+              "infinitive": { "type": "string" },
+              "forms": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+
+    "index_with_synonyms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["synonyms", "candidate_services"],
+        "properties": {
+          "synonyms": { "type": "array", "items": { "type": "string" } },
+          "candidate_services": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
