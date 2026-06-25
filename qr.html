@@ -4845,6 +4845,40 @@ function enableLiveAdLibPreview() {
                 */
                 window.__BTNYC_SHADOW_DIFFS__ = window.__BTNYC_SHADOW_DIFFS__ || [];
 
+                // Faithful, read-only replication of sqBuildCuratedIntake's
+                // real isSelfQuoting decision (confirmed line-for-line against
+                // the live function) -- extracted as a pure function with NO
+                // mutation of S/global state, specifically so it can be safely
+                // diffed against the orchestrator's uiTemplate selection. Closes
+                // the remaining Phase 5.5 gap: the broad sweep previously only
+                // diffed pricing fields, with no comparison at all for which UI
+                // template each engine would actually select for a given service.
+                function legacyDetermineSelfQuoting(svc) {
+                    const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
+                    const allMods = _resolveIntakeChain(svc);
+                    const chain = allMods; // sqBuildCuratedIntake's `chain` after force-module injection is a superset of allMods, but the qty-only/single-question checks below only ever look at the SERVICE's own intake_chain shape -- confirmed: force-injected modules (parking_difficulty, etc.) are logistics chips, never part of chainIsQtyOnly's evaluation in the real function.
+                    const om = svc.operational_metrics || {};
+                    const bypassIntake = !!svc.behavior?.bypass_intake;
+                    // v9.5 FIX (second real bug found while verifying the first):
+                    // chain[0].moduleKey === 'item_count_template' can never
+                    // match, since EVERY real use of item_count_template is
+                    // parameterized (confirmed: 100% of real usages carry
+                    // params.item_noun, producing moduleKeys like
+                    // "item_count_template::items" or
+                    // "item_count_template::light bulbs", never the bare,
+                    // unparameterized key). This was the only check meant to
+                    // catch cabinet_knob_or_pull_install/led_bulb_upgrade
+                    // specifically — door_lock_or_handle_install uses the
+                    // unparameterized global_quantity module and was already
+                    // correctly caught by the OTHER branch above. Fixed to check
+                    // the real, parameterized prefix.
+                    const chainIsQtyOnly = chain.length === 0 || chain.every(m => QTY_MODS.has(m.moduleKey)) ||
+                        (bypassIntake && chain.length === 1 && chain[0].moduleKey?.startsWith('item_count_template'));
+                    const hasPricingData = (om.expected_minutes > 0) && om.complexity_tier && (svc.financial_engine?.base_price > 0);
+                    const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(svc.financial_engine?.checkout_state);
+                    return hasPricingData && isFlatCheckout && chainIsQtyOnly;
+                }
+
                 function shadowReconstructContext() {
                     // Best-effort reconstruction of a BookingContext equivalent to
                     // whatever real entry path led to the current S state. entry
@@ -8583,8 +8617,35 @@ function enableLiveAdLibPreview() {
                     // qty-only) widen correctly under this narrower check; the other
                     // 3 correctly continue through the curated-card path, where
                     // their real question still gets asked.
-                    const chainIsQtyOnly = chain.length === 0 || chain.every(m => QTY_MODS.has(m.module)) ||
-                        (bypassIntake && chain.length === 1 && chain[0].module === 'item_count_template');
+                    //
+                    // v9.5 FIX (severe, previously-undiscovered production bug,
+                    // found while building a faithful test replication of this
+                    // exact logic): confirmed via direct execution that resolved
+                    // chain objects (from _resolveIntakeChain, the `allMods`/
+                    // `chain` this function actually uses) carry .moduleKey —
+                    // often parameterized, e.g. "item_count_template::items" —
+                    // never a plain .module field. m.module was always undefined
+                    // here, meaning chainIsQtyOnly has likely evaluated false for
+                    // EVERY real service since this code existed, and the
+                    // self-quote fast-path below has never actually activated in
+                    // production for any of the 3 genuinely qty-only
+                    // bypass_intake services. Fixed to check the real, resolved
+                    // field name.
+                    //
+                    // v9.5 FIX (second real bug, found while verifying the
+                    // first): chain[0].moduleKey === 'item_count_template' can
+                    // never match, since EVERY real use of item_count_template
+                    // is parameterized (confirmed: 100% of real usages carry
+                    // params.item_noun, producing moduleKeys like
+                    // "item_count_template::items", never the bare key). This
+                    // was the only check meant to catch
+                    // cabinet_knob_or_pull_install/led_bulb_upgrade specifically
+                    // — door_lock_or_handle_install uses the unparameterized
+                    // global_quantity module and was already correctly caught by
+                    // the other branch. Fixed to check the real, parameterized
+                    // prefix.
+                    const chainIsQtyOnly = chain.length === 0 || chain.every(m => QTY_MODS.has(m.moduleKey)) ||
+                        (bypassIntake && chain.length === 1 && chain[0].moduleKey?.startsWith('item_count_template'));
                     const hasPricingData = (om.expected_minutes > 0) && om.complexity_tier && (svc.financial_engine?.base_price > 0);
                     const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(svc.financial_engine?.checkout_state);
                     const isSelfQuoting = hasPricingData && isFlatCheckout && chainIsQtyOnly;
