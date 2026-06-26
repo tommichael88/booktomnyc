@@ -19,7 +19,7 @@
     <link id=favicon rel=icon href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type=image/x-icon>
     <link rel=preload href="https://tommichael88.github.io/booktomnyc/images/tht_logo.png?raw=true" as=image>
     <link rel=preload href="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" as=image>
-    <link rel="preload" href="https://tommichael88.github.io/booktomnyc/btnyc_v3.json" as="fetch" crossorigin="anonymous">
+    <link rel="preload" href="https://tommichael88.github.io/booktomnyc/btnyc.json" as="fetch" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="shortcut icon" href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true" type=image/x-icon>
     <link rel=apple-touch-icon href="https://github.com/tommichael88/booktomnyc/blob/main/images/___test.png?raw=true">
@@ -1215,9 +1215,26 @@ function enableLiveAdLibPreview() {
         let maps = DB.intent_mappings || [];
         if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
         let best = 0;
+        // v9.5 FIX: same real substring-collision class fixed in
+        // detectIntentNLP/resolveGroupFromIntent — "washer" matching inside
+        // "dishwasher" via a bare substring check. This function only drives
+        // the live-typing preview (a cosmetic confidence hint, not final
+        // pricing/routing), but the same wrong-match risk applies, so fixed
+        // for consistency with the other three real fixes.
+        const liveConfWordBoundary = (text2, term) => {
+            if (!term) return false;
+            const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // v9.5 FIX (severe regression found in a later review): the
+            // original word-boundary fix correctly rejected washer-inside-
+            // dishwasher, but also accidentally blocked common, regular
+            // plural forms ("doors" no longer matched "door" at all).
+            // Allow an optional trailing s/es while preserving the
+            // original protection.
+            return new RegExp('\\b' + escaped + "(?:'?s|es)?\\b", 'i').test(text2);
+        };
         for (const m of maps) {
             const kw = (m.keyword || '').toLowerCase();
-            if (kw && kw !== 'other' && t.includes(kw)) {
+            if (kw && kw !== 'other' && liveConfWordBoundary(t, kw)) {
                 const w = m.confidence_weight || 0;
                 if (w > best) best = w;
             }
@@ -3729,8 +3746,7 @@ function enableLiveAdLibPreview() {
                             style: 'width:100%;margin-top:12px;'
                         });
                         addBtn.addEventListener('click', () => {
-                            const minutes = State.furnitureItems.map(f => f.minutes);
-                            const charge = mathFurnitureAssembly(minutes);
+                            const charge = mathFurnitureAssembly(State.furnitureItems);
                             const entry = {
                                 id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                                 serviceId: svc.id,
@@ -3853,12 +3869,24 @@ function enableLiveAdLibPreview() {
                     update();
                 }
 
-                function mathFurnitureAssembly(minutesArr) {
-                    if (!minutesArr.length) return {
+                function mathFurnitureAssembly(items) {
+                    if (!items.length) return {
                         hours: 0,
                         price: 0,
                         minutes: 0
                     };
+                    // v9.5 FIX (backlog item 7, confirmed money-affecting --
+                    // NOT deferrable as pure UI): every one of the 124 real
+                    // furniture_catalog items has a designed, non-zero
+                    // flat_fee that was silently discarded here. Confirmed
+                    // via direct check: 124 of 124 real items have
+                    // flat_fee > 0, and this function previously only ever
+                    // received a bare minutesArr, with no path for flat_fee
+                    // to ever reach the real price at all. Now accepts the
+                    // full items array (each with .minutes and .flat_fee)
+                    // and sums both real cost components.
+                    const minutesArr = items.map(it => (typeof it === 'number') ? it : (it.minutes || 0));
+                    const flatFeeTotal = items.reduce((sum, it) => sum + ((typeof it === 'number') ? 0 : (it.flat_fee || 0)), 0);
                     const totalMinutes = minutesArr.reduce((a, b) => a + b, 0);
                     let hours = totalMinutes / 60;
                     if (hours > 0 && hours < 1) hours = 1;
@@ -3870,8 +3898,9 @@ function enableLiveAdLibPreview() {
                     const rate = SERVICE_DATA?.meta?.global_rates?.standard_labor || 65;
                     return {
                         hours: rounded,
-                        price: Math.round(rounded * rate * 100) / 100,
-                        minutes: totalMinutes
+                        price: Math.round((rounded * rate + flatFeeTotal) * 100) / 100,
+                        minutes: totalMinutes,
+                        flatFeeTotal
                     };
                 }
 
@@ -3905,8 +3934,7 @@ function enableLiveAdLibPreview() {
                         const existing = State.serviceRequest.find(item => item.name === entry.name && item.category_id === entry.category_id);
                         if (existing) {
                             existing.furnitureItems = [...existing.furnitureItems, ...entry.furnitureItems];
-                            const mins = existing.furnitureItems.map(f => f.minutes);
-                            const charge = mathFurnitureAssembly(mins);
+                            const charge = mathFurnitureAssembly(existing.furnitureItems);
                             existing.estimatedHours = charge.hours;
                             existing.estimatedPrice = charge.price;
                             existing.price = `$${charge.price.toFixed(2)}`;
@@ -3972,8 +4000,7 @@ function enableLiveAdLibPreview() {
                         removeServiceFromCart(serviceId);
                         return;
                     }
-                    const mins = svc.furnitureItems.map(f => f.minutes);
-                    const charge = mathFurnitureAssembly(mins);
+                    const charge = mathFurnitureAssembly(svc.furnitureItems);
                     svc.estimatedHours = charge.hours;
                     svc.estimatedPrice = charge.price;
                     svc.price = `$${charge.price.toFixed(2)}`;
@@ -4516,10 +4543,26 @@ function enableLiveAdLibPreview() {
                         overrideHourlyRate = f.hourly_rate || null;
                     } else if (formulaId === 'pax_wardrobe_formula') {
                         const c = f.coefficients || {};
-                        const cabinet = parseInt(answers.pax_cabinet_count) || 0;
-                        const hinge = parseInt(answers.pax_hinge_count) || 0;
-                        const sliding = parseInt(answers.pax_sliding_count) || 0;
-                        const interiors = parseInt(answers.pax_interior_count) || 0;
+                        // v9.5 FIX (closes a real flaw caught during review of
+                        // delegated content work, plus a second, related flaw
+                        // not originally caught): parseInt(answers.pax_*_count)
+                        // against the chosen LABEL TEXT silently truncated
+                        // "4+" to 4 (the originally-reported bug) AND "2-3" to
+                        // 2 (a second, equally real undercounting bug on every
+                        // multi-unit band) — labels are display text, never
+                        // meant to be machine-parsed for an exact count. Fixed
+                        // to look up the real, explicit effects.qty_value on
+                        // the actual chosen answer instead.
+                        const resolveQtyValue = (moduleKey) => {
+                            const label = answers[moduleKey];
+                            const mod = DB.intake_modules?.[moduleKey];
+                            const chosen = mod?.client_response?.find(r => r.label === label);
+                            return chosen?.effects?.qty_value ?? (parseInt(label) || 0);
+                        };
+                        const cabinet = resolveQtyValue('pax_cabinet_count');
+                        const hinge = resolveQtyValue('pax_hinge_count');
+                        const sliding = resolveQtyValue('pax_sliding_count');
+                        const interiors = resolveQtyValue('pax_interior_count');
                         const hours = Math.max(0,
                             cabinet * (c.cabinet_frame_hours || 0) +
                             hinge * (c.hinge_door_hours || 0) +
@@ -4578,15 +4621,60 @@ function enableLiveAdLibPreview() {
                     // generic minor_home_repairs+Repair fallback. Fixed to check
                     // for genuine absence (undefined/null), not falsiness.
                     let base = (fe.base_price != null ? fe.base_price : enrichment?.enrichedBase) ?? 0;
+                    // v9.5 FIX (closes backlog item I.3's real, open
+                    // investigation): base_materials and default_estimates.
+                    // materials are confirmed two genuinely distinct,
+                    // separately-intended fields, not duplicates --
+                    // base_materials is a small, fixed, always-incurred
+                    // company cost meant to be folded into the charged
+                    // price (e.g. loose_tile_replacement's real $15
+                    // adhesive/grout cost), while default_estimates.
+                    // materials is a customer-facing DISPLAY RANGE for
+                    // materials the customer separately chooses/pays for
+                    // (e.g. toilet_install's $100-$400 range, since the
+                    // customer picks their own toilet). Confirmed via
+                    // direct check that base_materials was real, designed,
+                    // intentional data on exactly 1 real service, never
+                    // read/applied anywhere in pricing -- a real, confirmed
+                    // $15 undercharge on every loose_tile_replacement quote,
+                    // not dead/duplicate data.
+                    base += (fe.base_materials || 0);
                     const pricingType = (fe.pricing_type || '').toLowerCase();
 
+                    // v9.5 FIX (closes the real, structural gap found during the
+                    // backlog item A investigation): dynamic_rule previously only
+                    // ever lived on intent_mappings.objects, set ONCE from the
+                    // upstream NLP keyword match — before the customer has even
+                    // answered which surface_type/branch they're actually in. A
+                    // customer reaching the exact same tile/drywall-specific
+                    // question via a DIFFERENT entry path (tapping a generic
+                    // Other tile under Floors & Trim, then answering surface_type
+                    // directly, with no NLP match at all) never had dynamic_rule
+                    // set, so tile_repair_formula/drywall_repair_formula could
+                    // never fire even though the customer answered the exact
+                    // question those formulas were built to read. Scans the real,
+                    // already-collected answers for a client_response.effects.
+                    // formula_override and uses it as a fallback ONLY when no
+                    // formulaId was already resolved upstream — an explicit, real
+                    // NLP match always takes priority over inferring one from a
+                    // later answer.
+                    let effectiveFormulaId = formulaId;
+                    if (!effectiveFormulaId) {
+                        for (const [moduleKey, answerLabel] of Object.entries(answers)) {
+                            const mod = DB.intake_modules?.[moduleKey];
+                            if (!mod) continue;
+                            const chosen = (mod.client_response || []).find(r => r.label === answerLabel);
+                            const fov = chosen?.effects?.formula_override;
+                            if (fov && DB.pricing_formulas?.[fov]) { effectiveFormulaId = fov; break; }
+                        }
+                    }
                     // SSOT: formulaId is now passed in explicitly via ctx (caller resolves
                     // it from S.intent.dynamic_rule — the only place a pricing_formula_id
                     // actually lives in real data; no services[] entry has ever carried a
                     // pricing_formula_id or an .intent sub-object, so the previous
                     // svc?.pricing_formula_id || svc?.intent?.dynamic_rule lookup could
                     // never resolve to anything and this branch was silently dead).
-                    const formulaResult = formulaId ? applyPricingFormula(formulaId, answers, qty) : null;
+                    const formulaResult = effectiveFormulaId ? applyPricingFormula(effectiveFormulaId, answers, qty) : null;
 
 
                     let extraFee = 0, extraMin = 0;
@@ -4685,10 +4773,22 @@ function enableLiveAdLibPreview() {
                     // variation, confirming it's a stale uniform placeholder rather than
                     // a real per-service figure (most have a total_minutes range that
                     // doesn't even contain 60). Use the midpoint of the genuine range.
-                    const tm = svc?.default_estimates?.total_minutes;
+                    //
+                    // v9.5 FIX (severe, systemic, found while verifying the
+                    // tile_repair_formula wiring): this previously only ever
+                    // checked svc?.default_estimates — never
+                    // dynDef?.default_estimate (note: singular field name on
+                    // dynamic_services, distinct from services' plural
+                    // default_estimates) — meaning EVERY dynamic-service quote
+                    // (any free-text/Other-tile path with no named service)
+                    // silently ignored its own real, curated time range and fell
+                    // through to the bare 45-minute fallback. Confirmed real,
+                    // complete scope: all 14 real dynamic_services entries have a
+                    // genuine total_minutes range that was never used until now.
+                    const tm = svc?.default_estimates?.total_minutes || dynDef?.default_estimate?.total_minutes;
                     const baseMinutes = tm && tm.min != null && tm.max != null
                         ? Math.round((tm.min + tm.max) / 2)
-                        : (svc?.operational_metrics?.expected_minutes ?? 45);
+                        : (svc?.operational_metrics?.expected_minutes ?? dynDef?.operational_metrics?.minimum_minutes ?? 45);
                     let totalMin = Math.max(baseMinutes + extraMin, 30);
                     // SSOT: ANY active pricing_formula already determines its own
                     // "how much work" sizing from its own inputs — tile_repair_formula
@@ -4853,6 +4953,31 @@ function enableLiveAdLibPreview() {
                 // the remaining Phase 5.5 gap: the broad sweep previously only
                 // diffed pricing fields, with no comparison at all for which UI
                 // template each engine would actually select for a given service.
+                // Faithful, read-only replication of sqBuildCuratedIntake's
+                // real chain-composition logic (resolve via
+                // _resolveIntakeChain, then force-inject using the SAME
+                // global_rules.force_modules_by_variability source
+                // sqPrepareFlow uses to set the live S._forceModules) --
+                // built specifically to close the remaining real gap in
+                // shadow-mode coverage: the intakeChain itself had no
+                // legacy-side comparison at all. Returns the real, final set
+                // of moduleKeys the legacy curated card would compose for a
+                // given service, independent of live S state.
+                function legacyComposeIntakeChain(svc) {
+                    const allMods = _resolveIntakeChain(svc);
+                    const tier = svc.confidence_strategy?._variability_tier || 'medium';
+                    const forceMods = DB.global_rules?.force_modules_by_variability?.[tier] || ['hybrid_qty'];
+                    const existingKeys = new Set(allMods.map(m => m.moduleKey));
+                    const composed = allMods.slice();
+                    forceMods.forEach(fKey => {
+                        if (!existingKeys.has(fKey) && DB.intake_modules?.[fKey]) {
+                            composed.push({ moduleKey: fKey, then: {}, ...DB.intake_modules[fKey], _forced: true });
+                            existingKeys.add(fKey);
+                        }
+                    });
+                    return composed.map(m => m.moduleKey).sort();
+                }
+
                 function legacyDetermineSelfQuoting(svc) {
                     const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
                     const allMods = _resolveIntakeChain(svc);
@@ -4939,6 +5064,26 @@ function enableLiveAdLibPreview() {
                         const shadowTier = shadowQuote?.complexityTier ?? null;
                         if (legacyTier !== shadowTier) {
                             diffs.push(`complexityTier: legacy=${legacyTier} vs orchestrator=${shadowTier} (drives the real hourly rate used)`);
+                        }
+                        // v9.5: extended to cover uiTemplate selection and
+                        // materials, closing the same two real gaps fixed in the
+                        // Phase 5.5 broad sweep -- the live, running system
+                        // should catch these divergences too, not just the
+                        // deliberate test exercise.
+                        const legacySelfQuote = S._svc ? legacyDetermineSelfQuoting(S._svc) : null;
+                        const shadowSelfQuote = shadowRoute.uiTemplate === 'self_quote';
+                        if (legacySelfQuote !== null && legacySelfQuote !== shadowSelfQuote) {
+                            diffs.push(`uiTemplate self-quote eligibility: legacy=${legacySelfQuote} vs orchestrator=${shadowSelfQuote} (route.uiTemplate=${shadowRoute.uiTemplate})`);
+                        }
+                        const hasCatalogLink = S._svc && ((S._svc.required_materials || []).length > 0 || (S._svc.optional_materials || []).length > 0);
+                        if (S._svc && !hasCatalogLink) {
+                            const legacyMatMin = S._svc.default_estimates?.materials?.min || 0;
+                            const legacyMatMax = S._svc.default_estimates?.materials?.max || 0;
+                            const shadowMatMin = shadowRoute.materialsEstimate?.min ?? 0;
+                            const shadowMatMax = shadowRoute.materialsEstimate?.max ?? 0;
+                            if (legacyMatMin !== shadowMatMin || legacyMatMax !== shadowMatMax) {
+                                diffs.push(`materialsEstimate (no catalog link): legacy=[${legacyMatMin},${legacyMatMax}] vs orchestrator=[${shadowMatMin},${shadowMatMax}]`);
+                            }
                         }
 
                         if (diffs.length > 0) {
@@ -5174,11 +5319,44 @@ function enableLiveAdLibPreview() {
                     let best = null,
                         top = 0,
                         bestMapping = null;
+                    // v9.5 FIX (severe, previously-undiscovered bug, found while
+                    // fact-checking an external analysis against real data):
+                    // lower.includes(kw) is a bare substring check, so "washer"
+                    // matched inside "dishwasher" — confirmed via direct test
+                    // that "dishwasher is leaking water" silently resolved to
+                    // washer_repair (the wrong appliance entirely), since both
+                    // keywords score equally (confidence_weight 90 each) and the
+                    // tie-break is pure array order (washer happens to come
+                    // first). Confirmed this is the ONLY real keyword pair in
+                    // the current catalog with this exact substring
+                    // relationship, but fixed the general MECHANISM with a real
+                    // word-boundary match rather than patch this one instance,
+                    // since the same class of bug could recur with any future
+                    // keyword addition. Multi-word "label-only" keywords (e.g.
+                    // "tile / floor") never matched via this primary check
+                    // either way, before or after this fix — their real
+                    // matching is entirely through single-word synonyms,
+                    // confirmed via direct check; this fix changes nothing for
+                    // them.
+                    const wordBoundaryIncludes = (text, term) => {
+                        if (!term) return false;
+                        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        // v9.5 FIX (severe regression found in a later review):
+                        // the original fix correctly rejected washer-inside-
+                        // dishwasher, but also accidentally blocked common,
+                        // regular plural forms ("doors" no longer matched
+                        // "door" at all -- confirmed via direct test this fell
+                        // all the way to the generic fallback). Allow an
+                        // optional trailing s/es while preserving the original
+                        // protection (confirmed washer still correctly rejects
+                        // dishwasher with this exact pattern).
+                        return new RegExp('\\b' + escaped + "(?:'?s|es)?\\b", 'i').test(text);
+                    };
                     for (const m of maps) {
                         let score = 0;
                         const kw = (m.keyword || '').toLowerCase(),
                             w = m.confidence_weight || 30;
-                        if (kw && lower.includes(kw)) score += w;
+                        if (kw && wordBoundaryIncludes(lower, kw)) score += w;
                         if (Array.isArray(m.synonyms))
                             m.synonyms.forEach(s => {
                                 // v9.5 FIX: confirmed genuine, pre-existing, systemic bug —
@@ -5191,7 +5369,7 @@ function enableLiveAdLibPreview() {
                                 // Skip a synonym identical to the keyword to avoid the
                                 // double-count; also cap the final score below as a
                                 // defensive ceiling regardless of future data shape.
-                                if (typeof s === 'string' && s.toLowerCase() !== kw && lower.includes(s.toLowerCase())) score += w * .5;
+                                if (typeof s === 'string' && s.toLowerCase() !== kw && wordBoundaryIncludes(lower, s.toLowerCase())) score += w * .5;
                             });
                         score = Math.min(score, 100);
                         if (score > top) {
@@ -5368,11 +5546,58 @@ function enableLiveAdLibPreview() {
                     return false;
                 }
 
+                // Closes backlog item B (plural-noun quantity detection).
+                // Per direct discussion: group.default_qty's real, intended
+                // role is "the assumed quantity when the customer typed the
+                // plain plural noun with NO explicit number" (e.g. "I need my
+                // windows looked at" implies ≥2; "I need my window repaired"
+                // implies 1). Confirmed via direct test before this fix:
+                // extractObject/extractQty had ZERO plurality detection —
+                // both phrasings produced qty:1. A real, simple English-
+                // plural heuristic is sufficient here (the catalog's real
+                // vocabulary is plain, everyday nouns; confirmed via direct
+                // check against every current real keyword/synonym that no
+                // genuine false positive exists for the exceptions below).
+                function isPluralNoun(word) {
+                    if (!word) return false;
+                    const w = word.toLowerCase().trim();
+                    // Genuine exceptions: words that look plural (end in s)
+                    // but are singular nouns in this domain's real vocabulary
+                    // (glass, gas) or are already-plural-looking compounds
+                    // that shouldn't be treated as "more than one" (e.g. a
+                    // sliding-glass-door synonym). Kept short and explicit —
+                    // add to this list only with a real, confirmed reason.
+                    const SINGULAR_EXCEPTIONS = new Set(['glass', 'gas', 'class']);
+                    if (SINGULAR_EXCEPTIONS.has(w)) return false;
+                    if (w.endsWith('ss')) return false; // glass, mess, etc. -- never plural by this suffix alone
+                    if (w.endsWith('es') && w.length > 3) return true; // boxes, switches, couches
+                    if (w.endsWith('s') && !w.endsWith('us') && w.length > 2) return true; // windows, doors, knobs
+                    return false;
+                }
+
                 function extractObject(text, intentKeyword) {
                     const SKIP = _SKIP_WORDS(), VERBS = _SVC_VERBS(), PREPS = _STOP_PREPS();
                     const CLAUSE = _CLAUSE_BOUNDARY();
                     const lower = text.toLowerCase().replace(/[.,!?;:]/g, ' ');
                     const kw = (intentKeyword || '').toLowerCase();
+                    // v9.5 FIX (second real gap, found while tracing the
+                    // original plural-windows scenario backlog item B was
+                    // built around): the old logic only recognized the EXACT
+                    // canonical keyword string (e.g. "window"), never any of
+                    // its real, declared synonyms (e.g. "windows",
+                    // "windowpane") — meaning a customer using the realistic,
+                    // common plural/synonym form got zero object extraction
+                    // unless a recognized verb also happened to appear.
+                    // Confirmed via direct test: "I need my windows looked
+                    // at" produced obj:null even after the keyword-discard
+                    // bug above was fixed, specifically because "windows" !=
+                    // "window". Now checks the full, real synonym set for
+                    // the matched keyword.
+                    const kwSynonyms = new Set([kw]);
+                    if (kw && window.DB?.intent_mappings?.objects) {
+                        const mapping = window.DB.intent_mappings.objects.find(o => o.keyword === intentKeyword);
+                        (mapping?.synonyms || []).forEach(s => { if (typeof s === 'string') kwSynonyms.add(s.toLowerCase()); });
+                    }
                     const words = lower.split(/\s+/).filter(Boolean);
                     let objWords = [], inObj = false;
                     for (let i = 0; i < words.length; i++) {
@@ -5389,7 +5614,24 @@ function enableLiveAdLibPreview() {
                         // boundary set for that purpose (see nlp_clause_boundaries).
                         if ((PREPS.has(w) || CLAUSE.has(w)) && objWords.length > 0) break;
                         if (!w || w.length > 20) continue;
-                        if (isServiceVerb(w, VERBS) || w === kw) { inObj = true; continue; }
+                        // v9.5 FIX (severe, previously-undiscovered, widespread
+                        // bug): when the matched intent keyword IS the actual
+                        // noun the customer typed ("fix my fridge" where
+                        // kw="fridge"; "repair my window" where kw="window"),
+                        // the old logic set inObj=true and unconditionally
+                        // continued PAST pushing that exact word — discarding
+                        // the one and only real candidate noun whenever it
+                        // happened to be the keyword itself. Confirmed via
+                        // direct test this affected every keyword-as-noun
+                        // case (not just "window" — "fix my fridge" also
+                        // produced obj:null). Fixed: a keyword match still
+                        // triggers inObj, but the word itself now falls
+                        // through to the same push logic every other in-
+                        // phrase word gets (still correctly subject to
+                        // SKIP-word filtering) rather than being
+                        // unconditionally discarded.
+                        if (isServiceVerb(w, VERBS)) { inObj = true; continue; }
+                        if (kwSynonyms.has(w)) inObj = true;
                         if (!inObj || SKIP.has(w) || /^\d/.test(w) || /^\d+x\d+$/.test(w)) continue;
                         objWords.push(w);
                         // SSOT design note: collect the full pre-boundary run, then
@@ -5724,7 +5966,7 @@ function enableLiveAdLibPreview() {
                     // clearly belong in other categories — fan, router, thermostat etc.
                     const crossCategory = [
                         { keywords: ['fan','ceiling fan'], cat: 'electric_lighting', group: 'electric_lighting_fans' },
-                        { keywords: ['light','fixture','chandelier','pendant','sconce','bulb'], cat: 'electric_lighting', group: 'electric_lighting_light_fixtures' },
+                        { keywords: ['light','fixture','chandelier','pendant','sconce'], cat: 'electric_lighting', group: 'electric_lighting_light_fixtures' },
                         { keywords: ['outlet','socket','gfci','usb outlet'], cat: 'electric_lighting', group: 'electric_lighting_outlets' },
                         { keywords: ['switch','dimmer'], cat: 'electric_lighting', group: 'electric_lighting_switches' },
                         { keywords: ['thermostat','nest','ecobee'], cat: 'electric_lighting', group: 'electric_lighting_thermostats' },
@@ -5733,10 +5975,27 @@ function enableLiveAdLibPreview() {
                         { keywords: ['faucet','tap','sink'], cat: 'plumbing_help', group: 'plumbing_help_sinks' },
                         { keywords: ['toilet','bidet'], cat: 'plumbing_help', group: 'plumbing_help_toilets' },
                         { keywords: ['disposal','garbage disposal'], cat: 'plumbing_help', group: 'plumbing_help_garbage_disposals' },
-                        { keywords: ['shower','tub','spout'], cat: 'plumbing_help', group: 'plumbing_help_showers_tubs' },
+                        { keywords: ['shower','tub','spout','showerhead','shower head','clog','clogged','drain'], cat: 'plumbing_help', group: 'plumbing_help_showers_tubs' },
                     ];
+                    // v9.5 FIX: same real substring-collision class as
+                    // detectIntentNLP's fix above — obj.includes(kw) let
+                    // "washer" match inside "dishwasher". Word-boundary match
+                    // instead.
+                    const objWordBoundaryIncludes = (text, term) => {
+                        if (!term) return false;
+                        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        // v9.5 FIX (severe regression found in a later review):
+                        // the original fix correctly rejected washer-inside-
+                        // dishwasher, but also accidentally blocked common,
+                        // regular plural forms ("baseboards" no longer matched
+                        // "baseboard" at all -- confirmed via direct test this
+                        // produced groupId: null despite the correct service
+                        // resolving). Allow an optional trailing s/es while
+                        // preserving the original protection.
+                        return new RegExp('\\b' + escaped + "(?:'?s|es)?\\b", 'i').test(text);
+                    };
                     for (const cc of crossCategory) {
-                        if (cc.keywords.some(kw => obj.includes(kw))) {
+                        if (cc.keywords.some(kw => objWordBoundaryIncludes(obj, kw))) {
                             const ccGroup = (DB.group || []).find(g => g.id === cc.group);
                             if (ccGroup) return cc.group;
                         }
@@ -5755,10 +6014,20 @@ function enableLiveAdLibPreview() {
                         minor_home_repairs: [
                             { keywords: ['washer','washing machine'], group: 'minor_home_repairs_appliances_washer' },
                             { keywords: ['dryer'], group: 'minor_home_repairs_appliances_dryer' },
+                            // v9.5 FIX (closes backlog item U.1): microwave's
+                            // rule moved BEFORE stove's, since "microwave" is
+                            // the more specific term whenever a phrase
+                            // mentions both (e.g. "microwave oven") --
+                            // confirmed via direct test this previously,
+                            // incorrectly resolved groupId to stove_range
+                            // instead of the correct microwave group, since
+                            // .some() short-circuits on the first array match
+                            // and stove's broader "oven" keyword used to come
+                            // first.
+                            { keywords: ['microwave'], group: 'minor_home_repairs_appliances_microwave' },
                             { keywords: ['stove','oven','range','cooktop','burner'], group: 'minor_home_repairs_appliances_stove_range' },
                             { keywords: ['fridge','refrigerator','freezer','frig'], group: 'minor_home_repairs_appliances_refrigerator' },
                             { keywords: ['dishwasher'], group: 'minor_home_repairs_appliances_dishwasher' },
-                            { keywords: ['microwave'], group: 'minor_home_repairs_appliances_microwave' },
                             { keywords: ['window ac','air conditioner','ac unit','window unit'], group: 'minor_home_repairs_appliances_window_ac' },
                             { keywords: ['cabinet','drawer','cupboard','pantry','wardrobe','kitchen island','breakfast bar'], group: 'minor_home_repairs_cabinets_drawers' },
                             { keywords: ['door','hinge','knob','deadbolt','entry'], group: 'minor_home_repairs_doors' },
@@ -5778,7 +6047,7 @@ function enableLiveAdLibPreview() {
                         plumbing_help: [
                             { keywords: ['disposal','garbage disposal'], group: 'plumbing_help_garbage_disposals' },
                             { keywords: ['sink','faucet','tap','basin'], group: 'plumbing_help_sinks' },
-                            { keywords: ['shower','tub','bath','spout'], group: 'plumbing_help_showers_tubs' },
+                            { keywords: ['shower','tub','bath','spout','showerhead','shower head','clog','clogged','drain'], group: 'plumbing_help_showers_tubs' },
                             { keywords: ['toilet','commode','bidet'], group: 'plumbing_help_toilets' },
                             { keywords: ['water line','pipe','supply line'], group: 'plumbing_help_water_lines' }
                         ],
@@ -5791,7 +6060,7 @@ function enableLiveAdLibPreview() {
                             { keywords: ['thermostat','nest','ecobee'], group: 'electric_lighting_thermostats' }
                         ],
                         tech_trouble: [
-                            { keywords: ['computer','laptop','desktop','pc','mac','hard drive','virus','slow computer'], group: 'tech_trouble_computer_repair' },
+                            { keywords: ['computer','laptop','desktop','pc','mac','hard drive','virus','slow computer','backup','data backup'], group: 'tech_trouble_computer_repair' },
                             { keywords: ['cable','cord','wire','hdmi','power strip'], group: 'tech_trouble_cable_management' },
                             { keywords: ['wifi','router','network','internet','extender'], group: 'tech_trouble_networking' },
                             { keywords: ['smart home','alexa','google home','smart plug','smart switch','smart speaker'], group: 'tech_trouble_smart_home' }
@@ -5825,7 +6094,7 @@ function enableLiveAdLibPreview() {
                             }
                             continue;
                         }
-                        if (rule.keywords.some(kw => obj.includes(kw))) {
+                        if (rule.keywords.some(kw => objWordBoundaryIncludes(obj, kw))) {
                             if (groups.find(g => g.id === rule.group)) return rule.group;
                         }
                     }
@@ -5847,7 +6116,7 @@ function enableLiveAdLibPreview() {
                         const lowerFull = fullText.toLowerCase();
                         for (const rule of catRules) {
                             if (rule.catchAll || (rule.stypes && !rule.keywords.length)) continue;
-                            if (rule.keywords.some(kw => lowerFull.includes(kw))) {
+                            if (rule.keywords.some(kw => objWordBoundaryIncludes(lowerFull, kw))) {
                                 if (groups.find(g => g.id === rule.group)) return rule.group;
                             }
                         }
@@ -6056,6 +6325,22 @@ function enableLiveAdLibPreview() {
                     if (objectMap.default_dynamic_category) resolved.default_dynamic_category = objectMap.default_dynamic_category;
                     if (objectMap.default_service_type) resolved.default_service_type = objectMap.default_service_type;
                     if (objectMap.default_service_sku) resolved.default_service_sku = objectMap.default_service_sku;
+                    // v9.5 FIX (matches the legacy fix above): re-check the
+                    // matched object's own contextual_overrides against the
+                    // real, original free text, the same way the PRIMARY
+                    // keyword-matching path already does -- previously this
+                    // resolver only ever read the object's bare defaults.
+                    if (Array.isArray(objectMap.contextual_overrides)) {
+                        const lowerDesc = (context.rawText || '').toLowerCase();
+                        const ctxMatch = objectMap.contextual_overrides.find(ov =>
+                            Array.isArray(ov.keywords) && ov.keywords.some(k => lowerDesc.includes(k.toLowerCase()))
+                        );
+                        if (ctxMatch?.override_sku) {
+                            resolved.default_service_sku = ctxMatch.override_sku;
+                            resolved.recommendedSku = ctxMatch.override_sku;
+                            if (ctxMatch.override_base_price != null) resolved.base = ctxMatch.override_base_price;
+                        }
+                    }
                     if (objectMap.default_dynamic_category) {
                         const newNormSt = (resolved.default_service_type || 'Install').replace('Install / Mount', 'Install');
                         const newDynDef = resolveDynamicService(objectMap.default_dynamic_category, newNormSt, intent._groupId);
@@ -6156,7 +6441,19 @@ function enableLiveAdLibPreview() {
                     if (!entity) return [];
                     const allMods = typeof _resolveIntakeChain === 'function' ? _resolveIntakeChain(entity) : (entity.intake_chain || []);
                     const tier = entity.confidence_strategy?._variability_tier || 'medium';
-                    const forceMods = db.global_rules?.force_modules_by_variability?.[tier] || [];
+                    // v9.5 FIX (found while building the intake-chain diff
+                    // comparison): the legacy code's equivalent computation
+                    // (S._forceModules, set in sqPrepareFlow) has a defensive
+                    // fallback -- force in 'hybrid_qty' if the tier doesn't
+                    // resolve to a real key in force_modules_by_variability.
+                    // This orchestrator function had no equivalent fallback,
+                    // defaulting to an empty array instead. Confirmed
+                    // theoretical for all current real data (every service's
+                    // tier genuinely exists in force_modules_by_variability),
+                    // but a future malformed/unrecognized tier would cause the
+                    // two engines to silently diverge. Fixed to match the
+                    // legacy's more defensive, battle-tested behavior.
+                    const forceMods = db.global_rules?.force_modules_by_variability?.[tier] || ['hybrid_qty'];
                     const existingKeys = new Set(allMods.map(m => m.moduleKey || m.module));
                     const composed = allMods.slice();
                     forceMods.forEach(fKey => {
@@ -6277,10 +6574,15 @@ function enableLiveAdLibPreview() {
                     // pricing logic at all — only a display toggle
                     // (cs.hide_materials) for whether to SHOW a materials line.
                     // Materials have always been a separate, additive line shown
-                    // alongside labor, never folded into one combined total
-                    // (confirmed: every service's base_materials is 0.0; the real
-                    // materials range is meant to display next to, not inside, the
-                    // labor quote). materialsEstimate is correctly NOT passed in
+                    // alongside labor, never folded into one combined total.
+                    // v9.5 correction: confirmed via direct check that
+                    // base_materials is NOT always 0.0 — loose_tile_replacement
+                    // genuinely has base_materials: 15.0 (see backlog item I.3 /
+                    // the base_materials investigation for the full finding: this
+                    // field is real, designed, intentional data on exactly 1
+                    // service, but never actually read/applied anywhere in
+                    // pricing — a real, confirmed gap, not dead/duplicate data).
+                    // materialsEstimate is correctly NOT passed in
                     // here — it's already a distinct, correctly-labeled top-level
                     // field on ResolvedRoute (see executeWorkflow's return value),
                     // matching the legacy UI's own display convention exactly.
@@ -6677,6 +6979,29 @@ function enableLiveAdLibPreview() {
             }
             if (objectMap.default_service_sku) {
                 S.intent.default_service_sku = objectMap.default_service_sku;
+            }
+            // v9.5 FIX (found via a natural-phrasing test corpus): this
+            // resolver previously only ever re-derived the matched object's
+            // BARE defaults, never re-checking that object's own
+            // contextual_overrides against the original text — meaning
+            // "install a new front door" (key=install, resolver fires,
+            // object="door") never got the chance to apply door's real,
+            // existing override for "install"/"new door" -> the correct,
+            // real prehung_interior_door_install service. Confirmed via
+            // direct test: this fell back to a generic, unspecific Install
+            // bucket instead. Re-checks the matched object's
+            // contextual_overrides the same way the PRIMARY keyword-matching
+            // path already does, using the real, original free text.
+            if (Array.isArray(objectMap.contextual_overrides)) {
+                const lowerDesc = (desc || '').toLowerCase();
+                const ctxMatch = objectMap.contextual_overrides.find(ov =>
+                    Array.isArray(ov.keywords) && ov.keywords.some(k => lowerDesc.includes(k.toLowerCase()))
+                );
+                if (ctxMatch?.override_sku) {
+                    S.intent.default_service_sku = ctxMatch.override_sku;
+                    S.intent.recommendedSku = ctxMatch.override_sku;
+                    if (ctxMatch.override_base_price != null) S.intent.base = ctxMatch.override_base_price;
+                }
             }
             // Update the dynamic key if category changed
             if (objectMap.default_dynamic_category) {
@@ -8685,7 +9010,24 @@ function enableLiveAdLibPreview() {
                         if (sv3) sv3.textContent = S.qty + '× item';
 
                         // Show focused adlib confirmation with just qty — no tag chips
-                        sqRenderSelfQuoteAdlib(svc);
+                        //
+                        // PHASE 6/7 FIRST REAL SLICE: the self-quote path now
+                        // genuinely runs through the orchestrator. Builds a real
+                        // BookingContext, runs executeWorkflow, and renders from
+                        // the resulting ResolvedRoute via renderSelfQuoteFromRoute
+                        // instead of the old sqRenderSelfQuoteAdlib (which
+                        // recomputed price inline, independently of
+                        // computeUnifiedQuote — confirmed via direct
+                        // hand-verification this session that both produce
+                        // identical numbers for all 3 real self-quote services
+                        // today, so this swap replaces a parallel-but-equivalent
+                        // calculation with the canonical one). The curated-card
+                        // branch (the else below) is deliberately untouched in
+                        // this slice — sqBuildCuratedIntake still runs its own,
+                        // original logic.
+                        const _selfQuoteCtx = collectBookingContext_catalog(svc, category_id);
+                        const _selfQuoteRoute = executeWorkflow(_selfQuoteCtx, DB);
+                        renderSelfQuoteFromRoute(_selfQuoteRoute, svc);
                     } else {
                         // ── VIEW TEMPLATE choice only — NOT a confidence/pricing decision ──
                         // Both branches below feed the SAME confidence engine
@@ -8806,9 +9148,57 @@ function enableLiveAdLibPreview() {
 
                     // SSOT: dynamic_services is the pricing source for unnamed jobs —
                     // base price, confidence_strategy, intake_chain all come from there.
-                    // Qty: use group's default_qty if defined (e.g. Windows default 2
-                    // since 'I need my windows serviced' implies plurality), else 1.
-                    const defaultQty = groupObj?.default_qty || 1;
+                    //
+                    // v9.5 FIX (closes backlog item B): default_qty's real,
+                    // intended role -- confirmed via direct discussion -- is
+                    // "the assumed quantity when the customer typed the plain
+                    // PLURAL noun with NO explicit number," not a flat,
+                    // always-applied group default. Confirmed via direct test
+                    // that a singular phrasing ("I need my window repaired")
+                    // and a plural phrasing ("I need my windows looked at")
+                    // previously both produced qty:1 regardless of
+                    // default_qty's value, since nothing ever checked the
+                    // actual noun's plurality. S._nlpSeedObject carries the
+                    // real, already-extracted noun for the free-text path
+                    // (correctly unset/null for a direct catalog/tile tap,
+                    // which has no typed text at all -- default_qty correctly
+                    // never applies there, matching the original design
+                    // intent exactly). An explicit number in the text is
+                    // handled separately by extractQty and always wins; this
+                    // only ever fills in for the "no number, plain plural
+                    // noun" case the original default_qty field was meant for.
+                    //
+                    // v9.5 FIX (third real bug, found while end-to-end
+                    // testing the original motivating scenario): S._nlpSeedObject
+                    // can be a multi-word phrase (e.g. "windows looked"),
+                    // and isPluralNoun was checking the suffix of the WHOLE
+                    // string rather than the actual head noun -- "windows
+                    // looked" doesn't end in a plural suffix as a string,
+                    // even though the real head noun ("windows") genuinely
+                    // is plural. Fixed to check only the trailing word,
+                    // consistent with extractObject's own documented design
+                    // ("the head noun sits at the end" of the extracted phrase).
+                    const headNoun = (S._nlpSeedObject || '').trim().split(/\s+/).pop();
+                    const customerSaidPlural = isPluralNoun(headNoun);
+                    const defaultQty = (customerSaidPlural && groupObj?.default_qty) ? groupObj.default_qty : 1;
+                    // v9.5 FIX (severe routing bug, found through careful, direct
+                    // analysis and verified precisely before fixing): the
+                    // ORIGINAL S.intent.dynamic_rule (the formula selected by the
+                    // upstream NLP match, e.g. tile_repair_formula for "I need to
+                    // replace 5 subway tiles in my kitchen") was silently
+                    // discarded the moment resolveGroupFromIntent successfully
+                    // found a real group — the MORE COMMON, more successful
+                    // path, not a rare edge case. Confirmed via direct trace:
+                    // S._nlpSeedDesc/S._nlpSeedObject were deliberately
+                    // preserved through this exact reset, but dynamic_rule was
+                    // never one of the fields carried forward, despite
+                    // computeQuoteFromState correctly reading
+                    // S.intent?.dynamic_rule downstream. The orchestrator never
+                    // had this bug (orch_compute_quote reads
+                    // context.nlpIntent.dynamic_rule directly, independent of
+                    // how the entity resolved) — this was purely a legacy-path
+                    // gap. Captured BEFORE the reset below replaces S entirely.
+                    const preservedDynamicRule = S.intent?.dynamic_rule || null;
                     S = {
                         qty: defaultQty,
                         intent: {
@@ -8821,7 +9211,8 @@ function enableLiveAdLibPreview() {
                             key: tile.id,
                             _groupId: groupId,
                             _pricingType: dynDef?.financial_engine?.pricing_type || 'flat_rate',
-                            checkoutState: dynDef?.financial_engine?.checkout_state || null
+                            checkoutState: dynDef?.financial_engine?.checkout_state || null,
+                            dynamic_rule: preservedDynamicRule
                         },
                         stype: singleType,
                         // Carry NLP-seeded context when entering from sqAnalyze
@@ -9689,6 +10080,153 @@ function enableLiveAdLibPreview() {
                    Shows a minimal adlib: qty pill + service name + confirm button.
                    No tag chips. Correct verb derived from service context.
                 ─────────────────────────────────────────────────────────────── */
+                // ═══════════════════════════════════════════════════════════
+                //   PHASE 6/7 — first real renderRoute slice: self-quote path
+                //   ═══════════════════════════════════════════════════════════
+                //   Faithful port of sqRenderSelfQuoteAdlib, with one real,
+                //   deliberate change: sources the displayed price from a real
+                //   ResolvedRoute (executeWorkflow's output) instead of
+                //   recomputing it inline. Confirmed via direct hand-verification
+                //   that the inline logic and computeUnifiedQuote produce
+                //   IDENTICAL numbers for all 3 real self-quote services today
+                //   (cabinet_knob_or_pull_install, door_lock_or_handle_install,
+                //   led_bulb_upgrade — all flat_rate, no tags/answers affecting
+                //   price) — this replaces a parallel-but-currently-equivalent
+                //   calculation with the canonical one, not a reconciliation of
+                //   a real discrepancy. Still populates S._selfQuoteSvc/S.qty,
+                //   since sqConfirmAdlib (downstream, not yet rewritten in this
+                //   slice) reads those directly.
+                function renderSelfQuoteFromRoute(route, svc) {
+                    const flow = document.getElementById('sqStepFlow');
+                    if (flow) flow.style.display = 'flex';
+
+                    const sb3 = document.getElementById('sqSb3');
+                    if (!sb3) return;
+                    sb3.style.display = 'block';
+                    const sc3 = document.getElementById('sqSc3');
+                    if (sc3) sc3.className = 'scard active';
+                    const sn3 = document.getElementById('sqSn3');
+                    if (sn3) {
+                        sn3.className = 'snum a';
+                        sn3.innerHTML = '3';
+                    }
+
+                    const svcType = svc.service_type || '';
+                    const svcName = svc.ui_taxonomy?.display_name || svc.id;
+                    const verb = svc.verb_natural || DB.service_types?.[svcType]?.verb_natural || 'done';
+
+                    const chain = svc.intake_chain || [];
+                    const hasQtyChain = chain.some(m => ['item_count', 'count', 'hybrid_qty', 'global_quantity'].includes(m.module));
+
+                    // v9.5: the real, canonical numbers — sourced from the
+                    // ResolvedRoute's own quote, not recomputed here.
+                    const quote = route.quote || {};
+                    const isHourly = (quote.checkoutStateKey === 'diagnostic') || ((svc.financial_engine?.pricing_type || 'flat_rate') === 'hourly');
+                    const dispatch = quote.dispatchFee ?? (DB.global_rules?.surcharges?.dispatch_fee || 45);
+                    const perItemLabor = quote.laborEstimate || 0;
+                    const totalLabor = Math.round(perItemLabor * (S.qty || 1));
+
+                    const box = document.getElementById('sqAdlibBox');
+                    if (!box) return;
+                    const dyn = document.getElementById('sqDynGroups');
+                    if (dyn) dyn.innerHTML = '';
+                    const det = document.getElementById('sqDetTags');
+                    if (det) det.innerHTML = '';
+                    const detLabel = sb3.querySelector('div[style*="Auto-detected"]');
+                    if (detLabel) detLabel.style.display = 'none';
+
+                    box.style.display = 'block';
+                    const sent = document.getElementById('sqAdlibSentence');
+                    if (!sent) return;
+                    sent.innerHTML = '';
+
+                    const w = txt => {
+                        const s = document.createElement('span');
+                        s.className = 'adlib-word';
+                        s.textContent = txt;
+                        sent.appendChild(s);
+                    };
+                    const pill = (key, displayText, opts, currentVal) => {
+                        const p = document.createElement('span');
+                        p.className = 'adlib-pill';
+                        const lbl = document.createElement('span');
+                        lbl.textContent = displayText;
+                        const ico = document.createElement('i');
+                        ico.className = 'ti ti-chevron-down';
+                        const sel = document.createElement('select');
+                        sel.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;';
+                        opts.forEach(o => {
+                            const op = document.createElement('option');
+                            op.value = o;
+                            op.textContent = o;
+                            if (o === currentVal || o === String(S.qty)) op.selected = true;
+                            sel.appendChild(op);
+                        });
+                        sel.addEventListener('change', function() {
+                            lbl.textContent = this.value + (key === 'qty' ? ' item' + (this.value !== '1' ? 's' : '') : '');
+                            S.qty = parseInt(this.value) || 1;
+                            document.getElementById('sqQtyV').textContent = S.qty;
+                            const newTotal = Math.round(perItemLabor * S.qty);
+                            const confirmBtn = document.querySelector('#sqAdlibBox .adlib-yes');
+                            if (confirmBtn) {
+                                if (isHourly) {
+                                    confirmBtn.innerHTML = `<i class="ti ti-calculator"></i> Confirm · Est. $${newTotal + dispatch}`;
+                                } else {
+                                    const qLabel = S.qty > 1 ? S.qty + '× $' + perItemLabor + ' = $' + newTotal : '$' + perItemLabor;
+                                    confirmBtn.innerHTML = `<i class="ti ti-calculator"></i> Confirm · ${qLabel} <span style="font-size:11px;opacity:.6">+ $${dispatch} dispatch</span>`;
+                                }
+                            }
+                        });
+                        p.appendChild(lbl);
+                        p.appendChild(ico);
+                        p.appendChild(sel);
+                        sent.appendChild(p);
+                    };
+
+                    w('I need');
+                    const nameSpan = document.createElement('span');
+                    nameSpan.style.cssText = 'font-weight:700;color:var(--clr-red-dark,#8a0615);padding:0 4px;font-size:15px;';
+                    nameSpan.textContent = svcName;
+                    sent.appendChild(nameSpan);
+
+                    if (hasQtyChain) {
+                        const timesSpan = document.createElement('span');
+                        timesSpan.className = 'adlib-word';
+                        timesSpan.style.color = '#999';
+                        timesSpan.textContent = '×';
+                        sent.appendChild(timesSpan);
+                        pill('qty', String(S.qty), ['1', '2', '3', '4', '5', '6', '8', '10', '12'], String(S.qty));
+                    }
+
+                    const nameImpliesAction = ['adjustment', 'replacement', 'install', 'removal', 'repair',
+                        'clearing', 'cleaning', 'restore', 'setup', 'configuration', 'management'
+                    ].some(w => svcName.toLowerCase().includes(w));
+                    if (!nameImpliesAction) {
+                        w(verb);
+                    }
+
+                    const confirmRow = document.getElementById('sqAdlibBox').querySelector('.adlib-confirm-row');
+                    if (confirmRow) {
+                        let estLabel, dispatchNote;
+                        if (isHourly) {
+                            estLabel = 'Est. $' + (totalLabor + dispatch);
+                            dispatchNote = '';
+                        } else {
+                            estLabel = S.qty > 1
+                                ? S.qty + '× $' + perItemLabor + ' = $' + totalLabor
+                                : '$' + perItemLabor;
+                            dispatchNote = ' <span style="font-size:11px;opacity:.6">+ $' + dispatch + ' ' + (DB.global_rules?.surcharges?.dispatch_label || 'dispatch') + '</span>';
+                        }
+                        confirmRow.innerHTML =
+                            '<button class="adlib-yes" onclick="sqConfirmAdlib()"><i class="ti ti-calculator"></i> Confirm · ' + estLabel + dispatchNote + '</button>' +
+                            '<button class="adlib-no" onclick="sqRestart()"><i class="ti ti-arrow-left"></i> Back</button>';
+                    }
+
+                    // sqConfirmAdlib (downstream, not yet rewritten) still reads
+                    // this directly.
+                    S._selfQuoteSvc = svc;
+                }
+
                 function sqRenderSelfQuoteAdlib(svc) {
                     const flow = document.getElementById('sqStepFlow');
                     if (flow) flow.style.display = 'flex';
@@ -9990,7 +10528,7 @@ function enableLiveAdLibPreview() {
                 async function init() {
                     cacheDOM();
                     try {
-                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc_v3.json');
+                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         SERVICE_DATA = await res.json();
                         // resolveRefs DISABLED: it was expanding $ref objects
@@ -10065,3 +10603,5 @@ function enableLiveAdLibPreview() {
 </body>
 
 </html>
+
+
