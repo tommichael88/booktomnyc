@@ -1,14 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tommichael88.github.io/booktomnyc/schema/btnyc_schema.json",
-  "title": "BTNYC Configuration Schema",
-  "description": "Schema for the btnyc.json configuration file – single source of truth for pricing, services, and UI.",
+  "$id": "https://tommichael88.github.io/booktomnyc/schema/btnyc_schema_corrected.json",
+  "title": "BTNYC v7 Compiled JSON Schema (Corrected)",
+  "description": "Complete, corrected schema for the v7 compiler output, matching the actual JSON structure.",
   "type": "object",
+  "additionalProperties": false,
   "required": [
+    "$schema",
+    "$id",
     "meta",
     "global_rules",
     "pricing_formulas",
-    "confidence_tiers",
     "checkout_states",
     "ui_config",
     "adlib_phrase_overrides",
@@ -22,463 +24,193 @@
     "dynamic_services",
     "intake_modules",
     "materials_catalog",
-    "furniture_catalog"
+    "furniture_catalog",
+    "workflow",
+    "invariants",
+    "group_archetypes",
+    "compiled",
+    "_compiler_metadata",
+    "_validation",
+    "_additive_diff"
   ],
-  "additionalProperties": false,
   "properties": {
-    "$schema": {
-      "type": "string",
-      "description": "v9.1: SSOT linkage back to btnyc_schema.json so validators/editors can resolve the schema without being told the path out-of-band."
-    },
-    "$id": {
-      "type": "string",
-      "description": "v9.1: canonical published URL of this data file (GitHub Pages)."
-    },
+    "$schema": { "type": "string" },
+    "$id": { "type": "string" },
+    "meta": { "$ref": "#/$defs/meta" },
+    "global_rules": { "$ref": "#/$defs/global_rules" },
+    "pricing_formulas": { "$ref": "#/$defs/pricing_formulas" },
+    "checkout_states": { "$ref": "#/$defs/checkout_states" },
+    "ui_config": { "$ref": "#/$defs/ui_config" },
+    "adlib_phrase_overrides": { "$ref": "#/$defs/adlib_phrase_overrides" },
+    "negation_library": { "$ref": "#/$defs/negation_library" },
+    "intent_mappings": { "$ref": "#/$defs/intent_mappings" },
+    "smart_tags": { "$ref": "#/$defs/smart_tags" },
+    "service_types": { "$ref": "#/$defs/service_types" },
+    "category": { "$ref": "#/$defs/category" },
+    "group": { "$ref": "#/$defs/group" },
+    "services": { "$ref": "#/$defs/services" },
+    "dynamic_services": { "$ref": "#/$defs/dynamic_services" },
+    "intake_modules": { "$ref": "#/$defs/intake_modules" },
+    "materials_catalog": { "$ref": "#/$defs/materials_catalog" },
+    "furniture_catalog": { "$ref": "#/$defs/furniture_catalog" },
+    "workflow": { "$ref": "#/$defs/workflow" },
+    "invariants": { "$ref": "#/$defs/invariants" },
+    "group_archetypes": { "$ref": "#/$defs/group_archetypes" },
+    "compiled": { "$ref": "#/$defs/compiled" },
+    "_compiler_metadata": { "$ref": "#/$defs/_compiler_metadata" },
+    "_validation": { "$ref": "#/$defs/_validation" },
+    "_additive_diff": { "$ref": "#/$defs/_additive_diff" }
+  },
+  "$defs": {
     "meta": {
       "type": "object",
-      "required": [
-        "version",
-        "last_updated",
-        "note",
-        "global_rates",
-        "estimate_disclaimers"
-      ],
+      "required": ["version", "schema_version", "last_updated", "note", "global_rates", "estimate_disclaimers"],
       "properties": {
-        "version": {
-          "type": "string",
-          "description": "Content/release counter. Bumps on any meaningful edit (new services, retagged smart_tags, new modules). Distinct from schema_version — see that field's description."
-        },
-        "schema_version": {
-          "type": "string",
-          "description": "v9.3: structural compatibility counter. Only bumps when the JSON's SHAPE changes in a way old code would misread (renamed/removed keys, new required fields, changed nesting) — not on ordinary content edits. btnyc.py's MIGRATIONS dict keys off this field to decide whether a migration preview is needed on load. Optional for backward compatibility with files saved before this field existed; treated as the last-known-compatible version when absent."
-        },
-        "last_updated": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "note": {
-          "type": "string"
-        },
+        "version": { "type": "string" },
+        "schema_version": { "type": "string" },
+        "last_updated": { "type": "string", "format": "date-time" },
+        "note": { "type": "string" },
         "global_rates": {
           "type": "object",
+          "required": ["standard_labor", "specialized_repair"],
           "properties": {
-            "standard_labor": {
-              "type": "number"
-            },
-            "specialized_repair": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "standard_labor",
-            "specialized_repair"
-          ]
+            "standard_labor": { "type": "number" },
+            "specialized_repair": { "type": "number" }
+          }
         },
         "estimate_disclaimers": {
           "type": "object",
+          "required": ["flat_fee", "hourly", "project_based"],
           "properties": {
-            "flat_fee": {
-              "type": "string"
-            },
-            "hourly": {
-              "type": "string"
-            },
-            "project_based": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "flat_fee",
-            "hourly",
-            "project_based"
-          ]
+            "flat_fee": { "type": "string" },
+            "hourly": { "type": "string" },
+            "project_based": { "type": "string" }
+          }
         }
       }
     },
     "global_rules": {
       "type": "object",
-      "required": [
-        "complexity_tiers",
-        "confidence_escalation",
-        "diagnostic_governance",
-        "force_modules_by_variability",
-        "pricing_engines",
-        "surcharges"
-      ],
+      "required": ["complexity_tiers", "confidence_escalation", "diagnostic_governance", "force_modules_by_variability", "pricing_engines", "surcharges"],
       "properties": {
         "complexity_tiers": {
           "type": "object",
-          "patternProperties": {
-            "^(routine|skilled|specialized)$": {
-              "type": "object",
-              "required": [
-                "min_minutes",
-                "hourly_rate",
-                "description"
-              ],
-              "properties": {
-                "min_minutes": {
-                  "type": "integer"
-                },
-                "max_minutes": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ]
-                },
-                "hourly_rate": {
-                  "type": "number"
-                },
-                "description": {
-                  "type": "string"
-                }
-              }
-            }
-          },
+          "patternProperties": { "^(routine|skilled|specialized)$": { "$ref": "#/$defs/complexity_tier" } },
           "additionalProperties": false
         },
         "confidence_escalation": {
           "type": "object",
-          "required": [
-            "skilled",
-            "specialized",
-            "max_minimum_quote_confidence",
-            "max_followup_questions_absolute"
-          ],
+          "required": ["skilled", "specialized", "max_minimum_quote_confidence", "max_followup_questions_absolute"],
           "properties": {
             "skilled": {
               "type": "object",
+              "required": ["minimum_quote_confidence_delta", "maximum_followup_questions_delta"],
               "properties": {
-                "minimum_quote_confidence_delta": {
-                  "type": "integer"
-                },
-                "maximum_followup_questions_delta": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "minimum_quote_confidence_delta",
-                "maximum_followup_questions_delta"
-              ]
+                "minimum_quote_confidence_delta": { "type": "integer" },
+                "maximum_followup_questions_delta": { "type": "integer" }
+              }
             },
             "specialized": {
               "type": "object",
+              "required": ["minimum_quote_confidence_delta", "maximum_followup_questions_delta"],
               "properties": {
-                "minimum_quote_confidence_delta": {
-                  "type": "integer"
-                },
-                "maximum_followup_questions_delta": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "minimum_quote_confidence_delta",
-                "maximum_followup_questions_delta"
-              ]
+                "minimum_quote_confidence_delta": { "type": "integer" },
+                "maximum_followup_questions_delta": { "type": "integer" }
+              }
             },
-            "max_minimum_quote_confidence": {
-              "type": "integer"
-            },
-            "max_followup_questions_absolute": {
-              "type": "integer"
-            }
+            "max_minimum_quote_confidence": { "type": "integer" },
+            "max_followup_questions_absolute": { "type": "integer" }
           }
         },
         "diagnostic_governance": {
           "type": "object",
           "properties": {
-            "_rule": {
-              "type": "string"
-            },
-            "_verified_zero_exceptions_across_n_services": {
-              "type": "integer"
-            },
-            "_consuming_code_should": {
-              "type": "string"
-            }
+            "_rule": { "type": "string" },
+            "_verified_zero_exceptions_across_n_services": { "type": "integer" },
+            "_consuming_code_should": { "type": "string" }
           }
         },
         "force_modules_by_variability": {
           "type": "object",
-          "patternProperties": {
-            "^(low|medium|high|diagnostic)$": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
+          "patternProperties": { "^(low|medium|high|diagnostic)$": { "type": "array", "items": { "type": "string" } } }
         },
         "pricing_engines": {
           "type": "object",
           "properties": {
             "flat_rate": {
               "type": "object",
+              "required": ["type", "formula_components"],
               "properties": {
-                "type": {
-                  "type": "string"
-                },
-                "formula_components": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "required": [
-                "type",
-                "formula_components"
-              ]
+                "type": { "type": "string" },
+                "formula_components": { "type": "array", "items": { "type": "string" } }
+              }
             },
             "hourly_estimate": {
               "type": "object",
+              "required": ["type", "formula_components", "minimum_billable_hours"],
               "properties": {
-                "type": {
-                  "type": "string"
-                },
-                "formula_components": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "minimum_billable_hours": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "type",
-                "formula_components",
-                "minimum_billable_hours"
-              ]
+                "type": { "type": "string" },
+                "formula_components": { "type": "array", "items": { "type": "string" } },
+                "minimum_billable_hours": { "type": "integer" }
+              }
             }
           }
         },
         "surcharges": {
           "type": "object",
+          "required": ["dispatch_fee", "materials_markup_percent", "dispatch_note_template", "dispatch_label", "dispatch_scope_note"],
           "properties": {
-            "dispatch_fee": {
-              "type": "number"
-            },
-            "materials_markup_percent": {
-              "type": "number"
-            },
-            "dispatch_note_template": {
-              "type": "string"
-            },
-            "dispatch_label": {
-              "type": "string"
-            },
-            "dispatch_scope_note": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "dispatch_fee",
-            "materials_markup_percent",
-            "dispatch_note_template",
-            "dispatch_label",
-            "dispatch_scope_note"
-          ]
+            "dispatch_fee": { "type": "number" },
+            "materials_markup_percent": { "type": "number" },
+            "dispatch_note_template": { "type": "string" },
+            "dispatch_label": { "type": "string" },
+            "dispatch_scope_note": { "type": "string" }
+          }
         }
+      }
+    },
+    "complexity_tier": {
+      "type": "object",
+      "required": ["min_minutes", "hourly_rate", "description"],
+      "properties": {
+        "min_minutes": { "type": "integer" },
+        "max_minutes": { "type": ["integer", "null"] },
+        "hourly_rate": { "type": "number" },
+        "description": { "type": "string" }
       }
     },
     "pricing_formulas": {
       "type": "object",
-      "properties": {
-        "drywall_repair_formula": {
-          "type": "object",
-          "properties": {
-            "base_minutes": {
-              "type": "integer"
-            },
-            "minutes_per_sqft": {
-              "type": "integer"
-            },
-            "patch_fee": {
-              "type": "integer"
-            },
-            "texture_fee": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "base_minutes",
-            "minutes_per_sqft",
-            "patch_fee",
-            "texture_fee"
-          ]
-        },
-        "furniture_repair_formula": {
-          "type": "object",
-          "properties": {
-            "base_minutes": {
-              "type": "integer"
-            },
-            "hourly_rate": {
-              "type": "integer"
-            },
-            "complexity_multiplier": {
-              "type": "integer"
-            },
-            "per_unit_minutes": {
-              "type": "integer",
-              "description": "Extra minutes added per unit beyond the first (qty-aware, same role as tile_repair_formula.minutes_per_tile). Lets a 4-drawer job scale by actual per-drawer effort instead of the generic global +30min/unit padding."
-            },
-            "issue_type_fees": {
-              "type": "object",
-              "description": "Keyed by the exact client_response label string from the 'issue' intake_module (e.g. 'Broken piece (leg, frame, etc.)'). Each entry adds a flat fee and/or minutes on top of base_minutes — same lookup pattern as tile_repair_formula's grout_repair/water_damage checks, generalized to any label rather than a hardcoded Yes/No.",
-              "patternProperties": {
-                ".*": {
-                  "type": "object",
-                  "properties": {
-                    "fee": {
-                      "type": "integer"
-                    },
-                    "minutes": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "required": [
-            "base_minutes",
-            "hourly_rate",
-            "complexity_multiplier"
-          ]
-        },
-        "pax_wardrobe_formula": {
-          "type": "object",
-          "properties": {
-            "price_per_hour": {
-              "type": "integer"
-            },
-            "start_fee": {
-              "type": "integer"
-            },
-            "minimum_hours_for_start_fee_waiver": {
-              "type": "integer"
-            },
-            "coefficients": {
-              "type": "object",
-              "properties": {
-                "cabinet_frame_hours": {
-                  "type": "number"
-                },
-                "hinge_door_hours": {
-                  "type": "number"
-                },
-                "sliding_door_hours": {
-                  "type": "number"
-                },
-                "interior_item_hours": {
-                  "type": "number"
-                }
-              },
-              "required": [
-                "cabinet_frame_hours",
-                "hinge_door_hours",
-                "sliding_door_hours",
-                "interior_item_hours"
-              ]
-            }
-          },
-          "required": [
-            "price_per_hour",
-            "start_fee",
-            "minimum_hours_for_start_fee_waiver",
-            "coefficients"
-          ]
-        },
-        "tile_repair_formula": {
-          "type": "object",
-          "properties": {
-            "base_minutes": {
-              "type": "integer"
-            },
-            "minutes_per_tile": {
-              "type": "integer"
-            },
-            "grout_penalty_minutes": {
-              "type": "integer"
-            },
-            "grout_fee": {
-              "type": "integer"
-            },
-            "water_damage_penalty_minutes": {
-              "type": "integer"
-            },
-            "water_damage_fee": {
-              "type": "integer"
-            },
-            "high_ceiling_penalty_minutes": {
-              "type": "integer"
-            },
-            "high_ceiling_fee": {
-              "type": "integer"
-            },
-            "disposal_fee": {
-              "type": "integer"
-            },
-            "disposal_minutes": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "base_minutes",
-            "minutes_per_tile",
-            "grout_penalty_minutes",
-            "grout_fee",
-            "water_damage_penalty_minutes",
-            "water_damage_fee",
-            "high_ceiling_penalty_minutes",
-            "high_ceiling_fee",
-            "disposal_fee",
-            "disposal_minutes"
-          ]
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "base_minutes": { "type": "integer" },
+          "minutes_per_sqft": { "type": "integer" },
+          "patch_fee": { "type": "integer" },
+          "texture_fee": { "type": "integer" },
+          "hourly_rate": { "type": "integer" },
+          "complexity_multiplier": { "type": "integer" },
+          "per_unit_minutes": { "type": "integer" },
+          "issue_type_fees": { "type": "object" },
+          "price_per_hour": { "type": "integer" },
+          "start_fee": { "type": "integer" },
+          "minimum_hours_for_start_fee_waiver": { "type": "integer" },
+          "coefficients": { "type": "object" },
+          "minutes_per_tile": { "type": "integer" },
+          "grout_penalty_minutes": { "type": "integer" },
+          "grout_fee": { "type": "integer" },
+          "water_damage_penalty_minutes": { "type": "integer" },
+          "water_damage_fee": { "type": "integer" },
+          "high_ceiling_penalty_minutes": { "type": "integer" },
+          "high_ceiling_fee": { "type": "integer" },
+          "disposal_fee": { "type": "integer" },
+          "disposal_minutes": { "type": "integer" },
+          "flat_tier_price": { "type": "integer" },
+          "minutes_per_unit_swap": { "type": "integer" },
+          "minutes_per_unit_new_holes": { "type": "integer" },
+          "_note": { "type": "string" }
         }
       }
-    },
-    "confidence_tiers": {
-      "type": "object",
-      "patternProperties": {
-        "^(high_confidence_simple|medium_confidence_standard|low_confidence_complex)$": {
-          "type": "object",
-          "properties": {
-            "description": {
-              "type": "string"
-            },
-            "action": {
-              "type": "string"
-            },
-            "force_modules": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "examples_for_tagging": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "base_confidence": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "description",
-            "action",
-            "force_modules",
-            "examples_for_tagging",
-            "base_confidence"
-          ]
-        }
-      },
-      "additionalProperties": false
     },
     "checkout_states": {
       "type": "object",
@@ -486,51 +218,21 @@
         "^(database_summation|diagnostic|project_based|standard_flat_rate)$": {
           "type": "object",
           "properties": {
-            "ui_message": {
-              "type": "string"
-            },
-            "button_text": {
-              "type": "string"
-            },
-            "button_class": {
-              "type": "string"
-            },
-            "hide_materials": {
-              "type": "boolean"
-            },
-            "hide_time": {
-              "type": "boolean"
-            },
-            "ui_badge_label": {
-              "type": "string"
-            },
-            "ui_badge_icon": {
-              "type": "string"
-            },
-            "quote_badge_key": {
-              "type": "string"
-            },
-            "button_text_labor_only": {
-              "type": "string"
-            },
-            "button_text_no_mat": {
-              "type": "string"
-            },
-            "button_text_with_mat": {
-              "type": "string"
-            },
-            "button_class_no_mat": {
-              "type": "string"
-            },
-            "button_class_with_mat": {
-              "type": "string"
-            }
+            "ui_message": { "type": "string" },
+            "button_text": { "type": "string" },
+            "button_class": { "type": "string" },
+            "hide_materials": { "type": "boolean" },
+            "hide_time": { "type": "boolean" },
+            "ui_badge_label": { "type": "string" },
+            "ui_badge_icon": { "type": "string" },
+            "quote_badge_key": { "type": "string" },
+            "button_text_labor_only": { "type": "string" },
+            "button_text_no_mat": { "type": "string" },
+            "button_text_with_mat": { "type": "string" },
+            "button_class_no_mat": { "type": "string" },
+            "button_class_with_mat": { "type": "string" }
           },
-          "required": [
-            "ui_badge_label",
-            "ui_badge_icon",
-            "quote_badge_key"
-          ]
+          "required": ["ui_badge_label", "ui_badge_icon", "quote_badge_key"]
         }
       },
       "additionalProperties": false
@@ -541,67 +243,22 @@
         "_internal_only": {
           "type": "object",
           "properties": {
-            "confidence_display": {
-              "type": "boolean"
-            },
-            "complexity_display": {
-              "type": "boolean"
-            }
+            "confidence_display": { "type": "boolean" },
+            "complexity_display": { "type": "boolean" }
           }
         },
-        "_note": {
-          "type": "string"
-        },
-        "affects_price_icon": {
-          "type": "string"
-        },
-        "affects_price_label": {
-          "type": "string"
-        },
+        "_note": { "type": "string" },
+        "affects_price_icon": { "type": "string" },
+        "affects_price_label": { "type": "string" },
         "pricing_type_badges": {
           "type": "object",
           "properties": {
-            "hourly": {
-              "type": "object",
-              "properties": {
-                "label": {
-                  "type": "string"
-                },
-                "icon": {
-                  "type": "string"
-                }
-              }
-            },
-            "flat_rate": {
-              "type": "object",
-              "properties": {
-                "label": {
-                  "type": "string"
-                },
-                "icon": {
-                  "type": "string"
-                }
-              }
-            },
-            "assembly_formula": {
-              "type": "object",
-              "properties": {
-                "label": {
-                  "type": "string"
-                },
-                "icon": {
-                  "type": "string"
-                }
-              }
-            }
+            "hourly": { "type": "object", "properties": { "label": { "type": "string" }, "icon": { "type": "string" } } },
+            "flat_rate": { "type": "object", "properties": { "label": { "type": "string" }, "icon": { "type": "string" } } },
+            "assembly_formula": { "type": "object", "properties": { "label": { "type": "string" }, "icon": { "type": "string" } } }
           }
         },
-        "step2_types": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
+        "step2_types": { "type": "array", "items": { "type": "string" } }
       }
     },
     "adlib_phrase_overrides": {
@@ -610,284 +267,130 @@
         "adlib": {
           "type": "object",
           "properties": {
-            "sentence_start": {
-              "type": "string"
-            },
-            "scope_separator": {
-              "type": "string"
-            },
-            "answer_joiner": {
-              "type": "string"
-            },
-            "location_prefix": {
-              "type": "string"
-            },
-            "logistic_strip_label": {
-              "type": "string"
-            },
-            "_note": {
-              "type": "string"
-            }
+            "sentence_start": { "type": "string" },
+            "scope_separator": { "type": "string" },
+            "answer_joiner": { "type": "string" },
+            "location_prefix": { "type": "string" },
+            "logistic_strip_label": { "type": "string" },
+            "_note": { "type": "string" }
           }
         },
-        "group_templates": {
-          "type": "object",
-          "patternProperties": {
-            ".*": {
-              "type": "string"
-            }
-          }
-        }
+        "group_templates": { "type": "object", "additionalProperties": { "type": "string" } }
       }
     },
     "negation_library": {
       "type": "object",
+      "required": ["action_conjugations", "large_size_words", "negation_confirmations", "negative_words", "nlp_condition_phrases", "nlp_location_words", "nlp_service_verbs", "nlp_stop_preps", "nlp_stop_words", "nlp_verb_past_map", "standard_size_words"],
       "properties": {
-        "_note": {
-          "type": "string"
-        },
+        "_note": { "type": "string" },
         "action_conjugations": {
           "type": "object",
           "properties": {
-            "_note": {
-              "type": "string"
-            },
-            "Install": {
-              "$ref": "#/$defs/action_conjugation"
-            },
-            "Repair": {
-              "$ref": "#/$defs/action_conjugation"
-            },
-            "Diagnostic": {
-              "$ref": "#/$defs/action_conjugation"
-            },
-            "Assembly": {
-              "$ref": "#/$defs/action_conjugation"
-            },
-            "Setup": {
-              "$ref": "#/$defs/action_conjugation"
-            },
+            "_note": { "type": "string" },
+            "Install": { "$ref": "#/$defs/action_conjugation" },
+            "Repair": { "$ref": "#/$defs/action_conjugation" },
+            "Diagnostic": { "$ref": "#/$defs/action_conjugation" },
+            "Assembly": { "$ref": "#/$defs/action_conjugation" },
+            "Setup": { "$ref": "#/$defs/action_conjugation" },
             "_extra_actions_not_tied_to_service_type": {
               "type": "object",
-              "additionalProperties": {
-                "$ref": "#/$defs/action_conjugation"
-              }
+              "additionalProperties": { "$ref": "#/$defs/action_conjugation" }
             }
-          }
+          },
+          "additionalProperties": false
         },
-        "large_size_words": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "negation_confirmations": {
-          "type": "object",
-          "patternProperties": {
-            "^#": {
-              "type": "string"
-            }
-          }
-        },
-        "negative_words": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
+        "large_size_words": { "type": "array", "items": { "type": "string" } },
+        "negation_confirmations": { "type": "object", "patternProperties": { "^#": { "type": "string" } } },
+        "negative_words": { "type": "array", "items": { "type": "string" } },
         "nlp_condition_phrases": {
           "type": "array",
+          "items": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "string" } }
+        },
+        "nlp_clause_boundaries": { "type": "array", "items": { "type": "string" } },
+        "nlp_location_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_service_verbs": { "type": "array", "items": { "type": "string" } },
+        "nlp_stop_preps": { "type": "array", "items": { "type": "string" } },
+        "nlp_stop_words": { "type": "array", "items": { "type": "string" } },
+        "nlp_verb_past_map": { "type": "object", "additionalProperties": { "type": "string" } },
+        "standard_size_words": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "action_conjugation": {
+      "type": "object",
+      "required": ["infinitive_for_adlib", "all_forms"],
+      "properties": {
+        "infinitive_for_adlib": { "type": "string" },
+        "all_forms": { "type": "array", "items": { "type": "string" } },
+        "synonym_clusters": {
+          "type": "array",
           "items": {
-            "type": "array",
-            "minItems": 2,
-            "maxItems": 2,
-            "items": {
-              "type": "string"
+            "type": "object",
+            "required": ["infinitive", "forms"],
+            "properties": {
+              "infinitive": { "type": "string" },
+              "forms": { "type": "array", "items": { "type": "string" } }
             }
           }
-        },
-        "nlp_clause_boundaries": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Relative pronouns / clause-introducing words (that, which, who, whose, where) that terminate object-noun extraction, same role as nlp_stop_preps but for relative clauses rather than prepositional phrases. Without this, a sentence like 'the medallion THAT has separated' kept walking past 'that' into the clause that describes the object instead of stopping at the object itself, since nlp_stop_words only skips these words rather than treating them as a boundary."
-        },
-        "nlp_location_words": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "nlp_service_verbs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "nlp_stop_preps": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "nlp_stop_words": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "nlp_verb_past_map": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "standard_size_words": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
-      },
-      "required": [
-        "action_conjugations",
-        "large_size_words",
-        "negation_confirmations",
-        "negative_words",
-        "nlp_condition_phrases",
-        "nlp_location_words",
-        "nlp_service_verbs",
-        "nlp_stop_preps",
-        "nlp_stop_words",
-        "nlp_verb_past_map",
-        "standard_size_words"
-      ]
+      }
     },
     "intent_mappings": {
       "type": "object",
       "properties": {
         "default_fallback": {
           "type": "object",
+          "required": ["category", "service_type", "base_price"],
           "properties": {
-            "category": {
-              "type": "string"
-            },
-            "service_type": {
-              "type": "string"
-            },
-            "base_price": {
-              "type": "integer"
-            },
-            "note": {
-              "type": "string"
-            },
-            "service_id": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "category",
-            "service_type",
-            "base_price"
-          ]
+            "category": { "type": "string" },
+            "service_type": { "type": "string" },
+            "base_price": { "type": "integer" },
+            "note": { "type": "string" },
+            "service_id": { "type": "string" }
+          }
         },
         "objects": {
           "type": "array",
           "items": {
             "type": "object",
+            "required": ["keyword"],
             "properties": {
-              "keyword": {
-                "type": "string"
-              },
+              "keyword": { "type": "string" },
               "synonyms": {
                 "type": "array",
-                "items": {
-                  "oneOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "$ref": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  ]
-                }
+                "items": { "anyOf": [{ "type": "string" }, { "type": "object", "properties": { "$ref": { "type": "string" } } }] }
               },
-              "default_dynamic_category": {
-                "type": "string"
-              },
-              "default_service_type": {
-                "type": "string"
-              },
+              "default_dynamic_category": { "type": "string" },
+              "default_service_type": { "type": "string" },
               "contextual_overrides": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "keywords": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "override_sku": {
-                      "type": "string"
-                    },
-                    "override_base_price": {
-                      "type": "integer"
-                    },
-                    "adjustment_fee": {
-                      "type": "integer"
-                    },
-                    "adjustment_minutes": {
-                      "type": "integer"
-                    },
-                    "smart_tag": {
-                      "type": "object",
-                      "properties": {
-                        "$ref": {
-                          "type": "string"
-                        }
-                      }
-                    }
+                    "keywords": { "type": "array", "items": { "type": "string" } },
+                    "override_sku": { "type": "string" },
+                    "override_base_price": { "type": "integer" },
+                    "adjustment_fee": { "type": "integer" },
+                    "adjustment_minutes": { "type": "integer" },
+                    "smart_tag": { "type": "object", "properties": { "$ref": { "type": "string" } } },
+                    "note": { "type": "string" },
+                    "_note": { "type": "string" }
                   }
                 }
               },
-              "dynamic_rule": {
-                "type": "string"
-              },
-              "confidence_weight": {
-                "type": "integer"
-              },
-              "default_service_sku": {
-                "type": "string"
-              },
-              "resolver": {
-                "type": "string"
-              },
+              "dynamic_rule": { "type": "string" },
+              "confidence_weight": { "type": "integer" },
+              "default_service_sku": { "type": "string" },
+              "resolver": { "type": "string" },
               "fallback": {
                 "type": "object",
                 "properties": {
-                  "category": {
-                    "type": "string"
-                  },
-                  "service_type": {
-                    "type": "string"
-                  },
-                  "base_price": {
-                    "type": "integer"
-                  }
+                  "category": { "type": "string" },
+                  "service_type": { "type": "string" },
+                  "base_price": { "type": "integer" }
                 }
-              }
-            },
-            "required": [
-              "keyword"
-            ]
+              },
+              "_note": { "type": "string" }
+            }
           }
         }
       }
@@ -897,159 +400,59 @@
       "patternProperties": {
         "^#": {
           "type": "object",
+          "required": ["synonyms", "effects", "answers", "requires", "display_group", "applicable_categories", "is_logistic", "ui_phrase", "negation_phrase"],
           "properties": {
             "synonyms": {
               "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "$ref": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                ]
-              }
+              "items": { "anyOf": [{ "type": "string" }, { "type": "object", "properties": { "$ref": { "type": "string" } } }] }
             },
-            "effects": {
-              "$ref": "#/$defs/effects"
-            },
+            "effects": { "$ref": "#/$defs/effects" },
             "answers": {
               "type": "object",
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "$ref": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                ]
-              }
+              "additionalProperties": { "anyOf": [{ "type": "string" }, { "type": "object", "properties": { "$ref": { "type": "string" } } }] }
             },
-            "requires": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "$ref": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "display_group": {
-              "type": "string"
-            },
-            "applicable_categories": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "applicable_group_ids": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "Optional further narrowing WITHIN an already-matching category (see tagValidForCategory in qr.html). When present on a tag whose applicable_categories spans multiple categories, must include the correct group id(s) from EVERY one of those categories — group ids are not unique across categories, so an incomplete list silently excludes the tag from categories it's still meant to apply to."
-            },
-            "mutually_exclusive": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "is_default_for_group": {
-              "type": "boolean"
-            },
-            "is_logistic": {
-              "type": "boolean"
-            },
-            "ui_phrase": {
-              "type": "string"
-            },
-            "negation_phrase": {
-              "type": "string"
-            },
-            "escalate_complexity": {
-              "type": "string"
-            },
-            "derived_from": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "$ref": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "note": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "synonyms",
-            "effects",
-            "answers",
-            "requires",
-            "display_group",
-            "applicable_categories",
-            "is_logistic",
-            "ui_phrase",
-            "negation_phrase"
-          ]
+            "requires": { "type": "array", "items": { "type": "object", "properties": { "$ref": { "type": "string" } } } },
+            "display_group": { "type": "string" },
+            "applicable_categories": { "type": "array", "items": { "type": "string" } },
+            "applicable_group_ids": { "type": "array", "items": { "type": "string" } },
+            "mutually_exclusive": { "type": "array", "items": { "type": "string" } },
+            "is_default_for_group": { "type": "boolean" },
+            "is_logistic": { "type": "boolean" },
+            "ui_phrase": { "type": "string" },
+            "negation_phrase": { "type": "string" },
+            "escalate_complexity": { "type": "string" },
+            "derived_from": { "type": "array", "items": { "type": "object", "properties": { "$ref": { "type": "string" } } } },
+            "note": { "type": "string" }
+          }
         }
       },
       "additionalProperties": false
+    },
+    "effects": {
+      "type": "object",
+      "properties": {
+        "fee": { "type": "number" },
+        "minutes": { "type": "integer" },
+        "complexity_override": { "type": "string" },
+        "checkout_state_override": { "type": "string" },
+        "mat_min": { "type": "number" },
+        "mat_max": { "type": "number" }
+      }
     },
     "service_types": {
       "type": "object",
       "patternProperties": {
         "^(Assembly|Diagnostic|Install|Mount|Repair|Setup)$": {
           "type": "object",
+          "required": ["base_price", "default_complexity", "icon", "verb_natural", "ui_badge_label"],
           "properties": {
-            "base_price": {
-              "type": "integer"
-            },
-            "default_complexity": {
-              "type": "string"
-            },
-            "required_intake_modules": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "icon": {
-              "type": "string"
-            },
-            "verb_natural": {
-              "type": "string"
-            },
-            "ui_badge_label": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "base_price",
-            "default_complexity",
-            "icon",
-            "verb_natural",
-            "ui_badge_label"
-          ]
+            "base_price": { "type": "integer" },
+            "default_complexity": { "type": "string" },
+            "required_intake_modules": { "type": "array", "items": { "type": "string" } },
+            "icon": { "type": "string" },
+            "verb_natural": { "type": "string" },
+            "ui_badge_label": { "type": "string" }
+          }
         }
       },
       "additionalProperties": false
@@ -1058,28 +461,12 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "display_name",
-          "icon",
-          "group_ids"
-        ],
+        "required": ["id", "display_name", "icon", "group_ids"],
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "display_name": {
-            "type": "string"
-          },
-          "icon": {
-            "type": "string"
-          },
-          "group_ids": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
+          "id": { "type": "string" },
+          "display_name": { "type": "string" },
+          "icon": { "type": "string" },
+          "group_ids": { "type": "array", "items": { "type": "string" } }
         }
       }
     },
@@ -1087,47 +474,17 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "category_id",
-          "display_name",
-          "icon"
-        ],
+        "required": ["id", "category_id", "display_name", "icon"],
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "category_id": {
-            "type": "string"
-          },
-          "display_name": {
-            "type": "string"
-          },
-          "icon": {
-            "type": "string"
-          },
-          "parent_group": {
-            "type": "string"
-          },
-          "explicit_services": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "dynamic_service_types": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "default_qty": {
-            "type": "integer"
-          },
-          "typical_location": {
-            "type": "string",
-            "description": "v9.5: optional. When a group's items are almost always found in one room (e.g. a stove is always in the kitchen), this lets the SmartQuote guided builder skip its generic 'Where in the home?' step instead of asking a question with an obvious, self-evident answer. Must match one of BLD_LOCATIONS' real `value` strings in qr.html (e.g. 'kitchen', 'bathroom') -- left unset for genuinely ambiguous groups (e.g. furniture, wall-mounted items, which could be in any room)."
-          }
+          "id": { "type": "string" },
+          "category_id": { "type": "string" },
+          "parent_group": { "type": "string" },
+          "display_name": { "type": "string" },
+          "icon": { "type": "string" },
+          "explicit_services": { "type": "array", "items": { "type": "string" } },
+          "dynamic_service_types": { "type": "array", "items": { "type": "string" } },
+          "default_qty": { "type": "integer" },
+          "typical_location": { "type": "string" }
         }
       }
     },
@@ -1135,249 +492,101 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "service_type",
-          "pricing_engine",
-          "financial_engine",
-          "ui_taxonomy",
-          "operational_metrics",
-          "confidence_strategy",
-          "verb_natural"
-        ],
+        "required": ["id", "service_type", "pricing_engine", "financial_engine", "ui_taxonomy", "operational_metrics", "confidence_strategy", "verb_natural"],
         "properties": {
-          "id": {
-            "type": "string"
-          },
+          "id": { "type": "string" },
           "operational_metrics": {
             "type": "object",
             "properties": {
-              "expected_minutes": {
-                "type": "integer"
-              },
-              "high_case_minutes": {
-                "type": "integer"
-              },
-              "complexity_tier": {
-                "type": "string"
-              }
+              "expected_minutes": { "type": "integer" },
+              "high_case_minutes": { "type": "integer" },
+              "complexity_tier": { "type": "string" }
             }
           },
-          "pricing_engine": {
-            "type": "string"
-          },
+          "pricing_engine": { "type": "string" },
           "default_estimates": {
             "type": "object",
             "properties": {
               "materials": {
                 "type": "object",
-                "properties": {
-                  "min": {
-                    "type": "number"
-                  },
-                  "max": {
-                    "type": "number"
-                  },
-                  "note": {
-                    "type": "string"
-                  }
-                }
+                "properties": { "min": { "type": "number" }, "max": { "type": "number" }, "note": { "type": "string" } }
               },
               "total_minutes": {
                 "type": "object",
-                "properties": {
-                  "min": {
-                    "type": "integer"
-                  },
-                  "max": {
-                    "type": "integer"
-                  },
-                  "note": {
-                    "type": "string"
-                  }
-                }
+                "properties": { "min": { "type": "integer" }, "max": { "type": "integer" }, "note": { "type": "string" } }
               },
-              "disclaimer": {
-                "type": "string"
-              }
+              "disclaimer": { "type": "string" }
             }
           },
           "ui_taxonomy": {
             "type": "object",
+            "required": ["category_id", "display_name", "icon", "description", "sort_order"],
             "properties": {
-              "category_id": {
-                "type": "string"
-              },
-              "group_id": {
-                "type": "string"
-              },
-              "display_name": {
-                "type": "string"
-              },
-              "icon": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              },
-              "sort_order": {
-                "type": "integer"
-              },
+              "category_id": { "type": "string" },
+              "group_id": { "type": "string" },
+              "display_name": { "type": "string" },
+              "icon": { "type": "string" },
+              "description": { "type": "string" },
+              "sort_order": { "type": "integer" },
               "presentation_strategy": {
                 "type": "object",
                 "properties": {
-                  "display_enabled": {
-                    "type": "boolean"
-                  },
-                  "buffer_label": {
-                    "type": "string"
-                  },
-                  "calculation_basis": {
-                    "type": "string"
-                  }
+                  "display_enabled": { "type": "boolean" },
+                  "buffer_label": { "type": "string" },
+                  "calculation_basis": { "type": "string" }
                 }
               }
-            },
-            "required": [
-              "category_id",
-              "display_name",
-              "icon",
-              "description",
-              "sort_order"
-            ]
+            }
           },
           "financial_engine": {
             "type": "object",
+            "required": ["pricing_type", "base_price", "base_materials", "checkout_state"],
             "properties": {
-              "pricing_type": {
-                "type": "string"
-              },
-              "base_price": {
-                "type": "number"
-              },
-              "base_materials": {
-                "type": "number"
-              },
-              "checkout_state": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "pricing_type",
-              "base_price",
-              "base_materials",
-              "checkout_state"
-            ]
-          },
-          "aliases": {
-            "type": "array",
-            "items": {
-              "type": "string"
+              "pricing_type": { "type": "string" },
+              "base_price": { "type": "number" },
+              "base_materials": { "type": "number" },
+              "checkout_state": { "type": "string" },
+              "pricing_archetype": { "type": "string" }
             }
           },
-          "service_type": {
-            "type": "string"
-          },
+          "aliases": { "type": "array", "items": { "type": "string" } },
+          "service_type": { "type": "string" },
           "intake_chain": {
             "type": "array",
-            "items": {
-              "$ref": "#/$defs/intake_chain_step"
-            }
+            "items": { "$ref": "#/$defs/intake_chain_step" }
           },
-          "default_tags": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "$ref": {
-                  "type": "string"
-                }
-              }
-            }
-          },
+          "default_tags": { "type": "array", "items": { "type": "object", "properties": { "$ref": { "type": "string" } } } },
+          "suggested_tags": { "type": "array", "items": { "type": "object", "properties": { "$ref": { "type": "string" } } } },
           "confidence_strategy": {
             "type": "object",
             "properties": {
-              "minimum_quote_confidence": {
-                "type": "integer"
-              },
-              "maximum_followup_questions": {
-                "type": "integer"
-              },
-              "diagnostic_threshold": {
-                "type": "integer"
-              },
-              "base_confidence": {
-                "type": "integer"
-              },
-              "_variability_tier": {
-                "type": "string"
-              },
-              "_variability_score": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "_confidence_cap_applied": {
-                "type": "boolean"
-              },
-              "_confidence_cap_reason": {
-                "type": "string"
-              }
+              "minimum_quote_confidence": { "type": "integer" },
+              "maximum_followup_questions": { "type": "integer" },
+              "diagnostic_threshold": { "type": "integer" },
+              "base_confidence": { "type": "integer" },
+              "_variability_tier": { "type": "string" },
+              "_variability_score": { "type": ["number", "null"] },
+              "_confidence_cap_applied": { "type": "boolean" },
+              "_confidence_cap_reason": { "type": "string" }
             }
           },
-          "verb_natural": {
-            "type": "string"
-          },
-          "required_materials": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "optional_materials": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "override_root": {
-            "type": "boolean"
-          },
-          "detail_prompt": {
-            "type": "string"
-          },
-          "details": {
-            "type": "array"
-          },
-          "materials_included": {
-            "type": "boolean"
-          },
-          "requires_furniture_selection": {
-            "type": "boolean"
-          },
-          "intake_modules_refs": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
+          "verb_natural": { "type": "string" },
+          "required_materials": { "type": "array", "items": { "type": "string" } },
+          "optional_materials": { "type": "array", "items": { "type": "string" } },
+          "override_root": { "type": "boolean" },
+          "detail_prompt": { "type": "string" },
+          "details": { "type": "array" },
+          "materials_included": { "type": "boolean" },
+          "requires_furniture_selection": { "type": "boolean" },
+          "intake_modules_refs": { "type": "array", "items": { "type": "string" } },
           "behavior": {
             "type": "object",
             "properties": {
-              "bypass_intake": {
-                "type": "boolean"
-              },
-              "force_confidence": {
-                "type": "integer"
-              }
+              "bypass_intake": { "type": "boolean" },
+              "force_confidence": { "type": "integer" }
             }
           },
-          "per_unit_answers_vary": {
-            "type": "boolean",
-            "description": "v9.5: when true, this service's intake answers genuinely describe ONE specific unit (e.g. a particular door's size/style/frame-removal status), not a generalizable per-unit fact that scales safely with quantity. Such a service should NOT show the qty stepper at all -- a customer needing this work done on two structurally different units (e.g. a front door vs. a bathroom door, each with its own size, material, and removal status) should book two SEPARATE service requests, each with its own correct, specific answers, rather than one qty=2 entry that can only carry a single shared set of answers and would silently misattribute one unit's specifics to both. Distinct from a real, generalizable quantity question (e.g. 'how many light bulbs' -- the answer genuinely is the same fact applied N times)."
-          }
+          "per_unit_answers_vary": { "type": "boolean" }
         }
       }
     },
@@ -1386,34 +595,23 @@
       "patternProperties": {
         ".*\\+.*": {
           "type": "object",
+          "required": ["financial_engine", "confidence_strategy"],
           "properties": {
             "financial_engine": {
               "type": "object",
+              "required": ["pricing_type", "base_price"],
               "properties": {
-                "pricing_type": {
-                  "type": "string"
-                },
-                "base_price": {
-                  "type": "number"
-                }
-              },
-              "required": [
-                "pricing_type",
-                "base_price"
-              ]
+                "pricing_type": { "type": "string" },
+                "base_price": { "type": "number" },
+                "pricing_archetype": { "type": "string" }
+              }
             },
             "operational_metrics": {
               "type": "object",
               "properties": {
-                "complexity_tier": {
-                  "type": "string"
-                },
-                "target_hourly_yield": {
-                  "type": "integer"
-                },
-                "minimum_minutes": {
-                  "type": "integer"
-                }
+                "complexity_tier": { "type": "string" },
+                "target_hourly_yield": { "type": "integer" },
+                "minimum_minutes": { "type": "integer" }
               }
             },
             "default_estimate": {
@@ -1421,79 +619,33 @@
               "properties": {
                 "materials": {
                   "type": "object",
-                  "properties": {
-                    "min": {
-                      "type": "integer"
-                    },
-                    "max": {
-                      "type": "integer"
-                    },
-                    "note": {
-                      "type": "string"
-                    }
-                  }
+                  "properties": { "min": { "type": "integer" }, "max": { "type": "integer" }, "note": { "type": "string" } }
                 },
                 "total_minutes": {
                   "type": "object",
-                  "properties": {
-                    "min": {
-                      "type": "integer"
-                    },
-                    "max": {
-                      "type": "integer"
-                    }
-                  }
+                  "properties": { "min": { "type": "integer" }, "max": { "type": "integer" } }
                 },
-                "disclaimer": {
-                  "type": "string"
-                }
+                "disclaimer": { "type": "string" }
               }
             },
             "intake_chain": {
               "type": "array",
-              "items": {
-                "$ref": "#/$defs/intake_chain_step"
-              }
+              "items": { "$ref": "#/$defs/intake_chain_step" }
             },
-            "suggested_tags": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "$ref": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
+            "suggested_tags": { "type": "array", "items": { "type": "object", "properties": { "$ref": { "type": "string" } } } },
+            "smart_tags": { "type": "array" },
             "confidence_strategy": {
               "type": "object",
               "properties": {
-                "minimum_quote_confidence": {
-                  "type": "integer"
-                },
-                "maximum_followup_questions": {
-                  "type": "integer"
-                },
-                "diagnostic_threshold": {
-                  "type": "integer"
-                },
-                "base_confidence": {
-                  "type": "integer"
-                },
-                "_variability_tier": {
-                  "type": "string"
-                }
+                "minimum_quote_confidence": { "type": "integer" },
+                "maximum_followup_questions": { "type": "integer" },
+                "diagnostic_threshold": { "type": "integer" },
+                "base_confidence": { "type": "integer" },
+                "_variability_tier": { "type": "string" }
               }
             },
-            "merge_strategy": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "financial_engine",
-            "confidence_strategy"
-          ]
+            "merge_strategy": { "type": "string" }
+          }
         }
       },
       "additionalProperties": false
@@ -1503,106 +655,86 @@
       "patternProperties": {
         ".*": {
           "type": "object",
+          "required": ["question", "type"],
           "properties": {
-            "question": {
-              "type": "string"
-            },
-            "type": {
-              "type": "string"
-            },
+            "question": { "type": "string" },
+            "type": { "type": "string" },
             "client_response": {
               "type": "array",
               "items": {
                 "type": "object",
+                "required": ["label", "effects"],
                 "properties": {
-                  "label": {
-                    "type": "string"
-                  },
-                  "effects": {
-                    "$ref": "#/$defs/effects"
-                  },
-                  "tags": {
-                    "type": "array"
-                  },
-                  "location_hints": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "v9.5: list of negation_library.nlp_location_words values for which THIS specific answer is the strongly likely/default one (e.g. a 'front door' implies solid-core; a 'bedroom'/'hallway' door implies hollow-core). Genuinely ambiguous locations are simply omitted from every answer's location_hints for this module (e.g. a 'guest bedroom' vs 'bathroom' both plausibly mean a toilet -- neither should claim it confidently). When S._location matches exactly one answer's location_hints, that answer is pre-selected (still changeable by the customer, never silently applied without being shown). This generalizes beyond doors: any intake question whose correct answer correlates strongly with WHERE the job is should use this, since the location chip otherwise sits unused as filler/notes despite carrying real, derivable intent."
-                  }
-                },
-                "required": [
-                  "label",
-                  "effects"
-                ]
+                  "label": { "type": "string" },
+                  "effects": { "$ref": "#/$defs/effects" },
+                  "tags": { "type": "array" },
+                  "location_hints": { "type": "array", "items": { "type": "string" } },
+                  "qty_value": { "type": "integer" }
+                }
               }
             },
-            "purpose": {
-              "type": "string"
-            },
-            "confidence_gain": {
-              "type": "integer"
-            },
-            "affects_price": {
-              "type": "boolean"
-            },
-            "min_val": {
-              "type": "integer"
-            },
-            "max_val": {
-              "type": "integer"
-            },
-            "ui_render_type": {
-              "type": "string"
-            },
+            "purpose": { "type": "string" },
+            "confidence_gain": { "type": "integer" },
+            "affects_price": { "type": "boolean" },
+            "min_val": { "type": "integer" },
+            "max_val": { "type": "integer" },
+            "ui_render_type": { "type": "string" },
             "config": {
               "type": "object",
               "properties": {
-                "dropdown_range": {
-                  "type": "array",
-                  "minItems": 2,
-                  "maxItems": 2,
-                  "items": {
-                    "type": "integer"
-                  }
-                },
-                "custom_trigger_label": {
-                  "type": "string"
-                },
-                "allow_numeric_typing": {
-                  "type": "boolean"
-                },
-                "min_val": {
-                  "type": "integer"
-                },
-                "max_val": {
-                  "type": "integer"
-                }
+                "dropdown_range": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } },
+                "custom_trigger_label": { "type": "string" },
+                "allow_numeric_typing": { "type": "boolean" },
+                "min_val": { "type": "integer" },
+                "max_val": { "type": "integer" }
               }
             },
             "effects": {
               "type": "object",
               "properties": {
-                "multiplier_logic": {
-                  "type": "string"
-                },
-                "base_fee_per_unit": {
-                  "type": "integer"
-                },
-                "minutes_per_unit": {
-                  "type": "integer"
-                }
+                "multiplier_logic": { "type": "string" },
+                "base_fee_per_unit": { "type": "integer" },
+                "minutes_per_unit": { "type": "integer" }
               }
             },
-            "_note": {
-              "type": "string"
+            "_note": { "type": "string" },
+            "_template_note": { "type": "string" },
+            "_orphan_backlog_note": { "type": "string" },
+            "_disambiguation_note": { "type": "string" }
+          }
+        }
+      }
+    },
+    "intake_chain_step": {
+      "type": "object",
+      "required": ["module"],
+      "properties": {
+        "module": { "type": "string" },
+        "then": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "item_noun": { "type": "string" },
+            "question_override": { "type": "string" },
+            "client_response": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["label", "effects"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "effects": { "$ref": "#/$defs/effects" },
+                  "tags": { "type": "array" }
+                }
+              }
             }
-          },
-          "required": [
-            "question",
-            "type"
-          ]
+          }
         }
       }
     },
@@ -1611,39 +743,16 @@
       "patternProperties": {
         "^MAT-": {
           "type": "object",
-          "required": [
-            "sku",
-            "name",
-            "price",
-            "markup_percent",
-            "unit",
-            "category"
-          ],
+          "required": ["sku", "name", "price", "markup_percent", "unit", "category"],
           "properties": {
-            "sku": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "price": {
-              "type": "number"
-            },
-            "markup_percent": {
-              "type": "number"
-            },
-            "unit": {
-              "type": "string"
-            },
-            "category": {
-              "type": "string"
-            },
-            "sub_category": {
-              "type": "string"
-            },
-            "description": {
-              "type": "string"
-            }
+            "sku": { "type": "string" },
+            "name": { "type": "string" },
+            "price": { "type": "number" },
+            "markup_percent": { "type": "number" },
+            "unit": { "type": "string" },
+            "category": { "type": "string" },
+            "sub_category": { "type": "string" },
+            "description": { "type": "string" }
           }
         }
       },
@@ -1653,77 +762,309 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "display_name",
-          "brand",
-          "type",
-          "minutes",
-          "flat_fee",
-          "sku"
-        ],
+        "required": ["display_name", "brand", "type", "minutes", "flat_fee", "sku"],
         "properties": {
-          "display_name": {
-            "type": "string"
-          },
-          "brand": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "minutes": {
-            "type": "integer"
-          },
-          "article": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "flat_fee": {
-            "type": "number",
-            "description": "Flat per-item assembly fee in dollars, typically computed as (minutes / 60) * shop hourly rate and rounded to the nearest dollar. Replaces the legacy, never-consumed upcharge_percent field."
-          },
-          "sku": {
-            "type": "string"
-          }
+          "display_name": { "type": "string" },
+          "brand": { "type": "string" },
+          "type": { "type": "string" },
+          "minutes": { "type": "integer" },
+          "article": { "type": ["string", "null"] },
+          "flat_fee": { "type": "number" },
+          "sku": { "type": "string" }
         }
       }
-    }
-  },
-  "$defs": {
-    "action_conjugation": {
+    },
+    "workflow": {
       "type": "object",
-      "required": [
-        "infinitive_for_adlib",
-        "all_forms"
-      ],
       "properties": {
-        "infinitive_for_adlib": {
-          "type": "string"
-        },
-        "all_forms": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "synonym_clusters": {
+        "version": { "type": "string" },
+        "_note": { "type": "string" },
+        "required_fields": { "type": "array", "items": { "type": "string" } },
+        "steps": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "infinitive",
-              "forms"
-            ],
+            "required": ["id", "operation"],
             "properties": {
-              "infinitive": {
-                "type": "string"
+              "id": { "type": "string" },
+              "operation": { "type": "string" },
+              "_note": { "type": "string" },
+              "sources": { "type": "array", "items": { "type": "string" } },
+              "fallback": { "type": "object" },
+              "produces": { "type": "object" },
+              "ref": { "type": "string" }
+            }
+          }
+        },
+        "ui_template_matrix": {
+          "type": "object",
+          "required": ["operation", "rules", "fallback"],
+          "properties": {
+            "operation": { "type": "string" },
+            "_note": { "type": "string" },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["if", "then"],
+                "properties": {
+                  "if": { "type": "object" },
+                  "then": {
+                    "type": "object",
+                    "properties": {
+                      "ui_template": { "type": "string" },
+                      "_legacy_fn": { "type": "string" },
+                      "bypass_intake": { "type": "boolean" },
+                      "force_confidence_after_real_answers": { "type": "string" },
+                      "force_dynamic_fallback": { "type": "boolean" }
+                    }
+                  },
+                  "_note": { "type": "string" }
+                }
+              }
+            },
+            "fallback": {
+              "type": "object",
+              "properties": {
+                "ui_template": { "type": "string" }
               },
-              "forms": {
+              "required": ["ui_template"]
+            }
+          }
+        },
+        "intake_bypass_rules": {
+          "type": "object",
+          "required": ["operation", "rules", "fallback"],
+          "properties": {
+            "operation": { "type": "string" },
+            "_note": { "type": "string" },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["if", "then"],
+                "properties": {
+                  "if": { "type": "object" },
+                  "then": {
+                    "type": "object",
+                    "properties": {
+                      "skip_type_selection": { "type": "boolean" },
+                      "preseed_action_from": { "type": "string" }
+                    }
+                  },
+                  "_note": { "type": "string" }
+                }
+              }
+            },
+            "fallback": {
+              "type": "object",
+              "properties": {
+                "skip_type_selection": { "type": "boolean" },
+                "_reason": { "type": "string" }
+              }
+            }
+          }
+        },
+        "fallback_routing_rules": {
+          "type": "object",
+          "required": ["operation", "rules", "fallback"],
+          "properties": {
+            "operation": { "type": "string" },
+            "_note": { "type": "string" },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["if", "then"],
+                "properties": {
+                  "if": { "type": "object" },
+                  "then": {
+                    "type": "object",
+                    "properties": {
+                      "route_to": { "type": "string" },
+                      "via": { "type": "string" },
+                      "render_as": { "type": "string" },
+                      "_legacy_fn": { "type": "string" }
+                    }
+                  },
+                  "_note": { "type": "string" }
+                }
+              }
+            },
+            "fallback": {
+              "type": "object",
+              "properties": {
+                "route_to": { "type": "string" },
+                "_reason": { "type": "string" }
+              }
+            }
+          }
+        },
+        "resolution_thresholds": {
+          "type": "object",
+          "required": ["auto_select_named_service", "route_to_group_other_tile"],
+          "properties": {
+            "auto_select_named_service": { "type": "integer" },
+            "route_to_group_other_tile": { "type": "integer" },
+            "_note": { "type": "string" }
+          }
+        }
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "rule", "check"],
+        "properties": {
+          "id": { "type": "string" },
+          "rule": { "type": "string" },
+          "check": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string" },
+              "field": { "type": "string" },
+              "allowed": { "type": "array" },
+              "if_field": { "type": "string" },
+              "if_value": { "type": ["string", "array"] },
+              "then_field": { "type": "string" },
+              "if_values": { "type": "array" },
+              "forbidden_value": { "type": "string" },
+              "field_a": { "type": "string" },
+              "field_b": { "type": "string" }
+            }
+          },
+          "_note": { "type": "string" }
+        }
+      }
+    },
+    "group_archetypes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["display_name", "category_id", "real_actions_in_group", "real_components", "component_to_service_ids", "real_symptoms", "symptom_to_service_ids", "real_gaps"],
+        "properties": {
+          "display_name": { "type": "string" },
+          "category_id": { "type": "string" },
+          "real_actions_in_group": { "type": "array", "items": { "type": "string" } },
+          "real_components": { "type": "array", "items": { "type": "string" } },
+          "component_to_service_ids": {
+            "type": "object",
+            "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          },
+          "real_symptoms": { "type": "array", "items": { "type": "string" } },
+          "symptom_to_service_ids": {
+            "type": "object",
+            "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          },
+          "real_gaps": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "compiled": {
+      "type": "object",
+      "required": ["pricing_index", "component_index", "action_index", "symptom_index", "service_index", "candidate_matrix"],
+      "properties": {
+        "pricing_index": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["pricing_engine_key", "is_real_registered_formula", "formula_params", "pricing_archetype", "pricing_type", "base_price", "checkout_state"],
+            "properties": {
+              "pricing_engine_key": { "type": ["string", "null"] },
+              "is_real_registered_formula": { "type": "boolean" },
+              "formula_params": { "type": "object" },
+              "pricing_archetype": { "type": ["string", "null"] },
+              "pricing_type": { "type": ["string", "null"] },
+              "base_price": { "type": ["number", "null"] },
+              "checkout_state": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "component_index": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["synonyms", "candidate_services", "notes"],
+            "properties": {
+              "synonyms": { "type": "array", "items": { "type": "string" } },
+              "candidate_services": { "type": "array", "items": { "type": "string" } },
+              "notes": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "type": "object",
+                  "properties": {
+                    "override_sku": { "type": "string" },
+                    "keywords": { "type": "array", "items": { "type": "string" } },
+                    "note": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "action_index": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["synonyms", "candidate_services"],
+            "properties": {
+              "synonyms": { "type": "array", "items": { "type": "string" } },
+              "candidate_services": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "symptom_index": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["synonyms", "candidate_services"],
+            "properties": {
+              "synonyms": { "type": "array", "items": { "type": "string" } },
+              "candidate_services": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "service_index": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["name", "service_type", "category", "group", "aliases", "intake_chain", "pricing", "dynamic", "default_estimates", "required_materials", "optional_materials", "default_tags", "modules_needed_for_exact"],
+            "properties": {
+              "name": { "type": "string" },
+              "service_type": { "type": ["string", "null"] },
+              "category": { "type": ["string", "null"] },
+              "group": { "type": ["string", "null"] },
+              "aliases": { "type": "array", "items": { "type": "string" } },
+              "intake_chain": { "type": "array" },
+              "pricing": { "type": "object" },
+              "dynamic": { "type": "boolean" },
+              "default_estimates": { "type": "object" },
+              "required_materials": { "type": "array", "items": { "type": "string" } },
+              "optional_materials": { "type": "array", "items": { "type": "string" } },
+              "default_tags": { "type": "array", "items": { "type": "string" } },
+              "modules_needed_for_exact": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "candidate_matrix": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["service_id", "confidence", "source"],
+                  "properties": {
+                    "service_id": { "type": "string" },
+                    "confidence": { "type": ["integer", "number"] },
+                    "source": { "type": "string" },
+                    "note": { "type": "string" }
+                  }
                 }
               }
             }
@@ -1731,83 +1072,30 @@
         }
       }
     },
-    "effects": {
+    "_compiler_metadata": {
       "type": "object",
+      "required": ["version", "source_compiler", "real_keywords_excluded_from_candidate_matrix"],
       "properties": {
-        "fee": {
-          "type": "number"
-        },
-        "minutes": {
-          "type": "integer"
-        },
-        "complexity_override": {
-          "type": "string"
-        },
-        "checkout_state_override": {
-          "type": "string",
-          "description": "v9.3 architecture (backlog — see CHANGELOG): lets a SPECIFIC answer escalate checkout_state (e.g. to 'diagnostic') independently of the service's default, instead of the service-wide flag applying to every answer uniformly regardless of which one was actually chosen. Must be a key in checkout_states. Most-restrictive-wins across all answered questions, same ratchet pattern as complexity_override. Not yet authored on any client_response — this field is schema-ready but the actual per-answer authoring work for the 16 currently-always-diagnostic services is deferred."
-        },
-        "mat_min": {
-          "type": "number"
-        },
-        "mat_max": {
-          "type": "number"
-        }
+        "version": { "type": "string" },
+        "source_compiler": { "type": "string" },
+        "real_keywords_excluded_from_candidate_matrix": { "type": "array", "items": { "type": "string" } }
       }
     },
-    "intake_chain_step": {
+    "_validation": {
       "type": "object",
-      "description": "v9.1: shared by services.intake_chain and dynamic_services.intake_chain so the two never drift. 'params' lets a step override a parameterized intake_module (e.g. item_count_template) with per-service values (item_noun, client_response bands) without duplicating the module definition in intake_modules.",
+      "required": ["errors", "valid"],
       "properties": {
-        "module": {
-          "type": "string"
-        },
-        "then": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "params": {
-          "type": "object",
-          "description": "Per-step override values for a parameterized intake_module (e.g. item_count_template). Common keys: item_noun (string substituted into the module's {item_noun} placeholder), client_response (array, same shape as intake_modules[*].client_response, overrides the template's generic bands with this service's exact fee/minute values), question_override (string, exact original question text as a fallback if noun substitution reads awkwardly).",
-          "properties": {
-            "item_noun": {
-              "type": "string"
-            },
-            "question_override": {
-              "type": "string"
-            },
-            "client_response": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "label": {
-                    "type": "string"
-                  },
-                  "effects": {
-                    "$ref": "#/$defs/effects"
-                  },
-                  "tags": {
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "label",
-                  "effects"
-                ]
-              }
-            }
-          }
-        }
-      },
-      "required": [
-        "module"
-      ]
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "valid": { "type": "boolean" }
+      }
+    },
+    "_additive_diff": {
+      "type": "object",
+      "required": ["unchanged", "CHANGED (should never happen)"],
+      "properties": {
+        "unchanged": { "type": "array", "items": { "type": "string" } },
+        "CHANGED (should never happen)": { "type": "array", "items": { "type": "string" } }
+      }
     }
   }
 }
