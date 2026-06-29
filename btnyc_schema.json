@@ -1,0 +1,2119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tommichael88.github.io/booktomnyc/schema/btnyc_schema.json",
+  "title": "BTNYC Configuration Schema",
+  "description": "Schema for the btnyc.json configuration file – single source of truth for pricing, services, and UI.",
+  "type": "object",
+  "required": [
+    "meta",
+    "global_rules",
+    "pricing_formulas",
+    "checkout_states",
+    "ui_config",
+    "adlib_phrase_overrides",
+    "negation_library",
+    "intent_mappings",
+    "smart_tags",
+    "service_types",
+    "category",
+    "group",
+    "services",
+    "dynamic_services",
+    "intake_modules",
+    "materials_catalog",
+    "furniture_catalog",
+    "workflow",
+    "invariants"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "v9.1: SSOT linkage back to btnyc_schema.json so validators/editors can resolve the schema without being told the path out-of-band."
+    },
+    "$id": {
+      "type": "string",
+      "description": "v9.1: canonical published URL of this data file (GitHub Pages)."
+    },
+    "meta": {
+      "type": "object",
+      "required": [
+        "version",
+        "last_updated",
+        "note",
+        "global_rates",
+        "estimate_disclaimers"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Content/release counter. Bumps on any meaningful edit (new services, retagged smart_tags, new modules). Distinct from schema_version — see that field's description."
+        },
+        "schema_version": {
+          "type": "string",
+          "description": "v9.3: structural compatibility counter. Only bumps when the JSON's SHAPE changes in a way old code would misread (renamed/removed keys, new required fields, changed nesting) — not on ordinary content edits. btnyc.py's MIGRATIONS dict keys off this field to decide whether a migration preview is needed on load. Optional for backward compatibility with files saved before this field existed; treated as the last-known-compatible version when absent."
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string"
+        },
+        "global_rates": {
+          "type": "object",
+          "properties": {
+            "standard_labor": {
+              "type": "number"
+            },
+            "specialized_repair": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "standard_labor",
+            "specialized_repair"
+          ]
+        },
+        "estimate_disclaimers": {
+          "type": "object",
+          "properties": {
+            "flat_fee": {
+              "type": "string"
+            },
+            "hourly": {
+              "type": "string"
+            },
+            "project_based": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "flat_fee",
+            "hourly",
+            "project_based"
+          ]
+        }
+      }
+    },
+    "global_rules": {
+      "type": "object",
+      "required": [
+        "complexity_tiers",
+        "confidence_escalation",
+        "diagnostic_governance",
+        "force_modules_by_variability",
+        "pricing_engines",
+        "surcharges"
+      ],
+      "properties": {
+        "complexity_tiers": {
+          "type": "object",
+          "patternProperties": {
+            "^(routine|skilled|specialized)$": {
+              "type": "object",
+              "required": [
+                "min_minutes",
+                "hourly_rate",
+                "description"
+              ],
+              "properties": {
+                "min_minutes": {
+                  "type": "integer"
+                },
+                "max_minutes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "hourly_rate": {
+                  "type": "number"
+                },
+                "description": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "confidence_escalation": {
+          "type": "object",
+          "required": [
+            "skilled",
+            "specialized",
+            "max_minimum_quote_confidence",
+            "max_followup_questions_absolute"
+          ],
+          "properties": {
+            "skilled": {
+              "type": "object",
+              "properties": {
+                "minimum_quote_confidence_delta": {
+                  "type": "integer"
+                },
+                "maximum_followup_questions_delta": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "minimum_quote_confidence_delta",
+                "maximum_followup_questions_delta"
+              ]
+            },
+            "specialized": {
+              "type": "object",
+              "properties": {
+                "minimum_quote_confidence_delta": {
+                  "type": "integer"
+                },
+                "maximum_followup_questions_delta": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "minimum_quote_confidence_delta",
+                "maximum_followup_questions_delta"
+              ]
+            },
+            "max_minimum_quote_confidence": {
+              "type": "integer"
+            },
+            "max_followup_questions_absolute": {
+              "type": "integer"
+            }
+          }
+        },
+        "diagnostic_governance": {
+          "type": "object",
+          "properties": {
+            "_rule": {
+              "type": "string"
+            },
+            "_verified_zero_exceptions_across_n_services": {
+              "type": "integer"
+            },
+            "_consuming_code_should": {
+              "type": "string"
+            }
+          }
+        },
+        "force_modules_by_variability": {
+          "type": "object",
+          "patternProperties": {
+            "^(low|medium|high|diagnostic)$": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "pricing_engines": {
+          "type": "object",
+          "properties": {
+            "flat_rate": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "formula_components": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "type",
+                "formula_components"
+              ]
+            },
+            "hourly_estimate": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "formula_components": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "minimum_billable_hours": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "formula_components",
+                "minimum_billable_hours"
+              ]
+            }
+          }
+        },
+        "surcharges": {
+          "type": "object",
+          "properties": {
+            "dispatch_fee": {
+              "type": "number"
+            },
+            "materials_markup_percent": {
+              "type": "number"
+            },
+            "dispatch_note_template": {
+              "type": "string"
+            },
+            "dispatch_label": {
+              "type": "string"
+            },
+            "dispatch_scope_note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "dispatch_fee",
+            "materials_markup_percent",
+            "dispatch_note_template",
+            "dispatch_label",
+            "dispatch_scope_note"
+          ]
+        }
+      }
+    },
+    "pricing_formulas": {
+      "type": "object",
+      "properties": {
+        "drywall_repair_formula": {
+          "type": "object",
+          "properties": {
+            "base_minutes": {
+              "type": "integer"
+            },
+            "minutes_per_sqft": {
+              "type": "integer"
+            },
+            "patch_fee": {
+              "type": "integer"
+            },
+            "texture_fee": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "base_minutes",
+            "minutes_per_sqft",
+            "patch_fee",
+            "texture_fee"
+          ]
+        },
+        "furniture_repair_formula": {
+          "type": "object",
+          "properties": {
+            "base_minutes": {
+              "type": "integer"
+            },
+            "hourly_rate": {
+              "type": "integer"
+            },
+            "complexity_multiplier": {
+              "type": "integer"
+            },
+            "per_unit_minutes": {
+              "type": "integer",
+              "description": "Extra minutes added per unit beyond the first (qty-aware, same role as tile_repair_formula.minutes_per_tile). Lets a 4-drawer job scale by actual per-drawer effort instead of the generic global +30min/unit padding."
+            },
+            "issue_type_fees": {
+              "type": "object",
+              "description": "Keyed by the exact client_response label string from the 'issue' intake_module (e.g. 'Broken piece (leg, frame, etc.)'). Each entry adds a flat fee and/or minutes on top of base_minutes — same lookup pattern as tile_repair_formula's grout_repair/water_damage checks, generalized to any label rather than a hardcoded Yes/No.",
+              "patternProperties": {
+                ".*": {
+                  "type": "object",
+                  "properties": {
+                    "fee": {
+                      "type": "integer"
+                    },
+                    "minutes": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": [
+            "base_minutes",
+            "hourly_rate",
+            "complexity_multiplier"
+          ]
+        },
+        "pax_wardrobe_formula": {
+          "type": "object",
+          "properties": {
+            "price_per_hour": {
+              "type": "integer"
+            },
+            "start_fee": {
+              "type": "integer"
+            },
+            "minimum_hours_for_start_fee_waiver": {
+              "type": "integer"
+            },
+            "coefficients": {
+              "type": "object",
+              "properties": {
+                "cabinet_frame_hours": {
+                  "type": "number"
+                },
+                "hinge_door_hours": {
+                  "type": "number"
+                },
+                "sliding_door_hours": {
+                  "type": "number"
+                },
+                "interior_item_hours": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "cabinet_frame_hours",
+                "hinge_door_hours",
+                "sliding_door_hours",
+                "interior_item_hours"
+              ]
+            }
+          },
+          "required": [
+            "price_per_hour",
+            "start_fee",
+            "minimum_hours_for_start_fee_waiver",
+            "coefficients"
+          ]
+        },
+        "tile_repair_formula": {
+          "type": "object",
+          "properties": {
+            "base_minutes": {
+              "type": "integer"
+            },
+            "minutes_per_tile": {
+              "type": "integer"
+            },
+            "grout_penalty_minutes": {
+              "type": "integer"
+            },
+            "grout_fee": {
+              "type": "integer"
+            },
+            "water_damage_penalty_minutes": {
+              "type": "integer"
+            },
+            "water_damage_fee": {
+              "type": "integer"
+            },
+            "high_ceiling_penalty_minutes": {
+              "type": "integer"
+            },
+            "high_ceiling_fee": {
+              "type": "integer"
+            },
+            "disposal_fee": {
+              "type": "integer"
+            },
+            "disposal_minutes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "base_minutes",
+            "minutes_per_tile",
+            "grout_penalty_minutes",
+            "grout_fee",
+            "water_damage_penalty_minutes",
+            "water_damage_fee",
+            "high_ceiling_penalty_minutes",
+            "high_ceiling_fee",
+            "disposal_fee",
+            "disposal_minutes"
+          ]
+        }
+      }
+    },
+    "confidence_tiers": {
+      "type": "object",
+      "patternProperties": {
+        "^(high_confidence_simple|medium_confidence_standard|low_confidence_complex)$": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "force_modules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "examples_for_tagging": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "base_confidence": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "description",
+            "action",
+            "force_modules",
+            "examples_for_tagging",
+            "base_confidence"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "checkout_states": {
+      "type": "object",
+      "patternProperties": {
+        "^(database_summation|diagnostic|project_based|standard_flat_rate)$": {
+          "type": "object",
+          "properties": {
+            "ui_message": {
+              "type": "string"
+            },
+            "button_text": {
+              "type": "string"
+            },
+            "button_class": {
+              "type": "string"
+            },
+            "hide_materials": {
+              "type": "boolean"
+            },
+            "hide_time": {
+              "type": "boolean"
+            },
+            "ui_badge_label": {
+              "type": "string"
+            },
+            "ui_badge_icon": {
+              "type": "string"
+            },
+            "quote_badge_key": {
+              "type": "string"
+            },
+            "button_text_labor_only": {
+              "type": "string"
+            },
+            "button_text_no_mat": {
+              "type": "string"
+            },
+            "button_text_with_mat": {
+              "type": "string"
+            },
+            "button_class_no_mat": {
+              "type": "string"
+            },
+            "button_class_with_mat": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ui_badge_label",
+            "ui_badge_icon",
+            "quote_badge_key"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ui_config": {
+      "type": "object",
+      "properties": {
+        "_internal_only": {
+          "type": "object",
+          "properties": {
+            "confidence_display": {
+              "type": "boolean"
+            },
+            "complexity_display": {
+              "type": "boolean"
+            }
+          }
+        },
+        "_note": {
+          "type": "string"
+        },
+        "affects_price_icon": {
+          "type": "string"
+        },
+        "affects_price_label": {
+          "type": "string"
+        },
+        "pricing_type_badges": {
+          "type": "object",
+          "properties": {
+            "hourly": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "icon": {
+                  "type": "string"
+                }
+              }
+            },
+            "flat_rate": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "icon": {
+                  "type": "string"
+                }
+              }
+            },
+            "assembly_formula": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "icon": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "step2_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "adlib_phrase_overrides": {
+      "type": "object",
+      "properties": {
+        "adlib": {
+          "type": "object",
+          "properties": {
+            "sentence_start": {
+              "type": "string"
+            },
+            "scope_separator": {
+              "type": "string"
+            },
+            "answer_joiner": {
+              "type": "string"
+            },
+            "location_prefix": {
+              "type": "string"
+            },
+            "logistic_strip_label": {
+              "type": "string"
+            },
+            "_note": {
+              "type": "string"
+            }
+          }
+        },
+        "group_templates": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "negation_library": {
+      "type": "object",
+      "properties": {
+        "_note": {
+          "type": "string"
+        },
+        "action_conjugations": {
+          "type": "object",
+          "properties": {
+            "_note": {
+              "type": "string"
+            },
+            "Install": {
+              "$ref": "#/$defs/action_conjugation"
+            },
+            "Repair": {
+              "$ref": "#/$defs/action_conjugation"
+            },
+            "Diagnostic": {
+              "$ref": "#/$defs/action_conjugation"
+            },
+            "Assembly": {
+              "$ref": "#/$defs/action_conjugation"
+            },
+            "Setup": {
+              "$ref": "#/$defs/action_conjugation"
+            },
+            "_extra_actions_not_tied_to_service_type": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/action_conjugation"
+              }
+            }
+          }
+        },
+        "large_size_words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "negation_confirmations": {
+          "type": "object",
+          "patternProperties": {
+            "^#": {
+              "type": "string"
+            }
+          }
+        },
+        "negative_words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nlp_condition_phrases": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "nlp_clause_boundaries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Relative pronouns / clause-introducing words (that, which, who, whose, where) that terminate object-noun extraction, same role as nlp_stop_preps but for relative clauses rather than prepositional phrases. Without this, a sentence like 'the medallion THAT has separated' kept walking past 'that' into the clause that describes the object instead of stopping at the object itself, since nlp_stop_words only skips these words rather than treating them as a boundary."
+        },
+        "nlp_location_words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nlp_service_verbs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nlp_stop_preps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nlp_stop_words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nlp_verb_past_map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "standard_size_words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "action_conjugations",
+        "large_size_words",
+        "negation_confirmations",
+        "negative_words",
+        "nlp_condition_phrases",
+        "nlp_location_words",
+        "nlp_service_verbs",
+        "nlp_stop_preps",
+        "nlp_stop_words",
+        "nlp_verb_past_map",
+        "standard_size_words"
+      ]
+    },
+    "intent_mappings": {
+      "type": "object",
+      "properties": {
+        "default_fallback": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string"
+            },
+            "service_type": {
+              "type": "string"
+            },
+            "base_price": {
+              "type": "integer"
+            },
+            "note": {
+              "type": "string"
+            },
+            "service_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "category",
+            "service_type",
+            "base_price"
+          ]
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "keyword": {
+                "type": "string"
+              },
+              "synonyms": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$ref": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "default_dynamic_category": {
+                "type": "string"
+              },
+              "default_service_type": {
+                "type": "string"
+              },
+              "contextual_overrides": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "keywords": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "override_sku": {
+                      "type": "string"
+                    },
+                    "override_base_price": {
+                      "type": "integer"
+                    },
+                    "adjustment_fee": {
+                      "type": "integer"
+                    },
+                    "adjustment_minutes": {
+                      "type": "integer"
+                    },
+                    "smart_tag": {
+                      "type": "object",
+                      "properties": {
+                        "$ref": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "dynamic_rule": {
+                "type": "string"
+              },
+              "confidence_weight": {
+                "type": "integer"
+              },
+              "default_service_sku": {
+                "type": "string"
+              },
+              "resolver": {
+                "type": "string"
+              },
+              "fallback": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "service_type": {
+                    "type": "string"
+                  },
+                  "base_price": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "required": [
+              "keyword"
+            ]
+          }
+        }
+      }
+    },
+    "smart_tags": {
+      "type": "object",
+      "patternProperties": {
+        "^#": {
+          "type": "object",
+          "properties": {
+            "synonyms": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "$ref": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "effects": {
+              "$ref": "#/$defs/effects"
+            },
+            "answers": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "$ref": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "requires": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "$ref": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "display_group": {
+              "type": "string"
+            },
+            "applicable_categories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "applicable_group_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Optional further narrowing WITHIN an already-matching category (see tagValidForCategory in qr.html). When present on a tag whose applicable_categories spans multiple categories, must include the correct group id(s) from EVERY one of those categories — group ids are not unique across categories, so an incomplete list silently excludes the tag from categories it's still meant to apply to."
+            },
+            "mutually_exclusive": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "is_default_for_group": {
+              "type": "boolean"
+            },
+            "is_logistic": {
+              "type": "boolean"
+            },
+            "ui_phrase": {
+              "type": "string"
+            },
+            "negation_phrase": {
+              "type": "string"
+            },
+            "escalate_complexity": {
+              "type": "string"
+            },
+            "derived_from": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "$ref": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "synonyms",
+            "effects",
+            "answers",
+            "requires",
+            "display_group",
+            "applicable_categories",
+            "is_logistic",
+            "ui_phrase",
+            "negation_phrase"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "service_types": {
+      "type": "object",
+      "patternProperties": {
+        "^(Assembly|Diagnostic|Install|Mount|Repair|Setup)$": {
+          "type": "object",
+          "properties": {
+            "base_price": {
+              "type": "integer"
+            },
+            "default_complexity": {
+              "type": "string"
+            },
+            "required_intake_modules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "icon": {
+              "type": "string"
+            },
+            "verb_natural": {
+              "type": "string"
+            },
+            "ui_badge_label": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "base_price",
+            "default_complexity",
+            "icon",
+            "verb_natural",
+            "ui_badge_label"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "category": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "icon",
+          "group_ids"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "group_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "group": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category_id",
+          "display_name",
+          "icon"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "parent_group": {
+            "type": "string"
+          },
+          "explicit_services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dynamic_service_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default_qty": {
+            "type": "integer"
+          },
+          "typical_location": {
+            "type": "string",
+            "description": "v9.5: optional. When a group's items are almost always found in one room (e.g. a stove is always in the kitchen), this lets the SmartQuote guided builder skip its generic 'Where in the home?' step instead of asking a question with an obvious, self-evident answer. Must match one of BLD_LOCATIONS' real `value` strings in qr.html (e.g. 'kitchen', 'bathroom') -- left unset for genuinely ambiguous groups (e.g. furniture, wall-mounted items, which could be in any room)."
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "service_type",
+          "pricing_engine",
+          "financial_engine",
+          "ui_taxonomy",
+          "operational_metrics",
+          "confidence_strategy",
+          "verb_natural"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operational_metrics": {
+            "type": "object",
+            "properties": {
+              "expected_minutes": {
+                "type": "integer"
+              },
+              "high_case_minutes": {
+                "type": "integer"
+              },
+              "complexity_tier": {
+                "type": "string"
+              }
+            }
+          },
+          "pricing_engine": {
+            "type": "string"
+          },
+          "default_estimates": {
+            "type": "object",
+            "properties": {
+              "materials": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "number"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              },
+              "total_minutes": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "integer"
+                  },
+                  "max": {
+                    "type": "integer"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              },
+              "disclaimer": {
+                "type": "string"
+              }
+            }
+          },
+          "ui_taxonomy": {
+            "type": "object",
+            "properties": {
+              "category_id": {
+                "type": "string"
+              },
+              "group_id": {
+                "type": "string"
+              },
+              "display_name": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "sort_order": {
+                "type": "integer"
+              },
+              "presentation_strategy": {
+                "type": "object",
+                "properties": {
+                  "display_enabled": {
+                    "type": "boolean"
+                  },
+                  "buffer_label": {
+                    "type": "string"
+                  },
+                  "calculation_basis": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "required": [
+              "category_id",
+              "display_name",
+              "icon",
+              "description",
+              "sort_order"
+            ]
+          },
+          "financial_engine": {
+            "type": "object",
+            "properties": {
+              "pricing_type": {
+                "type": "string"
+              },
+              "base_price": {
+                "type": "number"
+              },
+              "base_materials": {
+                "type": "number"
+              },
+              "checkout_state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pricing_type",
+              "base_price",
+              "base_materials",
+              "checkout_state"
+            ]
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service_type": {
+            "type": "string"
+          },
+          "intake_chain": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/intake_chain_step"
+            }
+          },
+          "default_tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "$ref": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "confidence_strategy": {
+            "type": "object",
+            "properties": {
+              "minimum_quote_confidence": {
+                "type": "integer"
+              },
+              "maximum_followup_questions": {
+                "type": "integer"
+              },
+              "diagnostic_threshold": {
+                "type": "integer"
+              },
+              "base_confidence": {
+                "type": "integer"
+              },
+              "_variability_tier": {
+                "type": "string"
+              },
+              "_variability_score": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "_confidence_cap_applied": {
+                "type": "boolean"
+              },
+              "_confidence_cap_reason": {
+                "type": "string"
+              }
+            }
+          },
+          "verb_natural": {
+            "type": "string"
+          },
+          "required_materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "optional_materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "override_root": {
+            "type": "boolean"
+          },
+          "detail_prompt": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array"
+          },
+          "materials_included": {
+            "type": "boolean"
+          },
+          "requires_furniture_selection": {
+            "type": "boolean"
+          },
+          "intake_modules_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "behavior": {
+            "type": "object",
+            "properties": {
+              "bypass_intake": {
+                "type": "boolean"
+              },
+              "force_confidence": {
+                "type": "integer"
+              }
+            }
+          },
+          "per_unit_answers_vary": {
+            "type": "boolean",
+            "description": "v9.5: when true, this service's intake answers genuinely describe ONE specific unit (e.g. a particular door's size/style/frame-removal status), not a generalizable per-unit fact that scales safely with quantity. Such a service should NOT show the qty stepper at all -- a customer needing this work done on two structurally different units (e.g. a front door vs. a bathroom door, each with its own size, material, and removal status) should book two SEPARATE service requests, each with its own correct, specific answers, rather than one qty=2 entry that can only carry a single shared set of answers and would silently misattribute one unit's specifics to both. Distinct from a real, generalizable quantity question (e.g. 'how many light bulbs' -- the answer genuinely is the same fact applied N times)."
+          }
+        }
+      }
+    },
+    "dynamic_services": {
+      "type": "object",
+      "patternProperties": {
+        ".*\\+.*": {
+          "type": "object",
+          "properties": {
+            "financial_engine": {
+              "type": "object",
+              "properties": {
+                "pricing_type": {
+                  "type": "string"
+                },
+                "base_price": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "pricing_type",
+                "base_price"
+              ]
+            },
+            "operational_metrics": {
+              "type": "object",
+              "properties": {
+                "complexity_tier": {
+                  "type": "string"
+                },
+                "target_hourly_yield": {
+                  "type": "integer"
+                },
+                "minimum_minutes": {
+                  "type": "integer"
+                }
+              }
+            },
+            "default_estimate": {
+              "type": "object",
+              "properties": {
+                "materials": {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "integer"
+                    },
+                    "max": {
+                      "type": "integer"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "total_minutes": {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "integer"
+                    },
+                    "max": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "disclaimer": {
+                  "type": "string"
+                }
+              }
+            },
+            "intake_chain": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/intake_chain_step"
+              }
+            },
+            "suggested_tags": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "$ref": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "confidence_strategy": {
+              "type": "object",
+              "properties": {
+                "minimum_quote_confidence": {
+                  "type": "integer"
+                },
+                "maximum_followup_questions": {
+                  "type": "integer"
+                },
+                "diagnostic_threshold": {
+                  "type": "integer"
+                },
+                "base_confidence": {
+                  "type": "integer"
+                },
+                "_variability_tier": {
+                  "type": "string"
+                }
+              }
+            },
+            "merge_strategy": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "financial_engine",
+            "confidence_strategy"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "intake_modules": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "client_response": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects"
+                  },
+                  "tags": {
+                    "type": "array"
+                  },
+                  "location_hints": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "v9.5: list of negation_library.nlp_location_words values for which THIS specific answer is the strongly likely/default one (e.g. a 'front door' implies solid-core; a 'bedroom'/'hallway' door implies hollow-core). Genuinely ambiguous locations are simply omitted from every answer's location_hints for this module (e.g. a 'guest bedroom' vs 'bathroom' both plausibly mean a toilet -- neither should claim it confidently). When S._location matches exactly one answer's location_hints, that answer is pre-selected (still changeable by the customer, never silently applied without being shown). This generalizes beyond doors: any intake question whose correct answer correlates strongly with WHERE the job is should use this, since the location chip otherwise sits unused as filler/notes despite carrying real, derivable intent."
+                  }
+                },
+                "required": [
+                  "label",
+                  "effects"
+                ]
+              }
+            },
+            "purpose": {
+              "type": "string"
+            },
+            "confidence_gain": {
+              "type": "integer"
+            },
+            "affects_price": {
+              "type": "boolean"
+            },
+            "min_val": {
+              "type": "integer"
+            },
+            "max_val": {
+              "type": "integer"
+            },
+            "ui_render_type": {
+              "type": "string"
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "dropdown_range": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                "custom_trigger_label": {
+                  "type": "string"
+                },
+                "allow_numeric_typing": {
+                  "type": "boolean"
+                },
+                "min_val": {
+                  "type": "integer"
+                },
+                "max_val": {
+                  "type": "integer"
+                }
+              }
+            },
+            "effects": {
+              "type": "object",
+              "properties": {
+                "multiplier_logic": {
+                  "type": "string"
+                },
+                "base_fee_per_unit": {
+                  "type": "integer"
+                },
+                "minutes_per_unit": {
+                  "type": "integer"
+                }
+              }
+            },
+            "_note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "question",
+            "type"
+          ]
+        }
+      }
+    },
+    "materials_catalog": {
+      "type": "object",
+      "patternProperties": {
+        "^MAT-": {
+          "type": "object",
+          "required": [
+            "sku",
+            "name",
+            "price",
+            "markup_percent",
+            "unit",
+            "category"
+          ],
+          "properties": {
+            "sku": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "price": {
+              "type": "number"
+            },
+            "markup_percent": {
+              "type": "number"
+            },
+            "unit": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string"
+            },
+            "sub_category": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "furniture_catalog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "display_name",
+          "brand",
+          "type",
+          "minutes",
+          "flat_fee",
+          "sku"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "minutes": {
+            "type": "integer"
+          },
+          "article": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "flat_fee": {
+            "type": "number",
+            "description": "Flat per-item assembly fee in dollars, typically computed as (minutes / 60) * shop hourly rate and rounded to the nearest dollar. Replaces the legacy, never-consumed upcharge_percent field."
+          },
+          "sku": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "description": "Phase 0 of the Orchestrator Overhaul. The active rulebook for routing, intake-question composition, confidence gating, and pricing -- consulted by executeWorkflow(context, db) for every real entry path. See workflow._note for full context.",
+      "required": [
+        "version",
+        "required_fields",
+        "steps"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "required_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Root-level (or near-root) node names that must exist for the workflow to execute at all. Phase 5's pre-compile audit fails the build if any of these is missing."
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "operation"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "operation": {
+                "enum": [
+                  "lookup",
+                  "merge",
+                  "modify",
+                  "compose",
+                  "condition_map",
+                  "calculate"
+                ]
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "produces": {
+                "type": "object"
+              },
+              "ref": {
+                "type": "string"
+              },
+              "fallback": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "ui_template_matrix": {
+          "type": "object",
+          "required": [
+            "operation",
+            "rules",
+            "fallback"
+          ],
+          "properties": {
+            "operation": {
+              "const": "condition_map"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "if",
+                  "then"
+                ],
+                "properties": {
+                  "if": {
+                    "type": "object"
+                  },
+                  "then": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "fallback": {
+              "type": "object"
+            }
+          }
+        },
+        "intake_bypass_rules": {
+          "type": "object",
+          "required": [
+            "operation",
+            "rules",
+            "fallback"
+          ],
+          "properties": {
+            "operation": {
+              "const": "condition_map"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "if",
+                  "then"
+                ],
+                "properties": {
+                  "if": {
+                    "type": "object"
+                  },
+                  "then": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "fallback": {
+              "type": "object"
+            }
+          }
+        },
+        "fallback_routing_rules": {
+          "type": "object",
+          "required": [
+            "operation",
+            "rules",
+            "fallback"
+          ],
+          "properties": {
+            "operation": {
+              "const": "condition_map"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "if",
+                  "then"
+                ],
+                "properties": {
+                  "if": {
+                    "type": "object"
+                  },
+                  "then": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "fallback": {
+              "type": "object"
+            }
+          }
+        },
+        "resolution_thresholds": {
+          "type": "object",
+          "required": [
+            "auto_select_named_service",
+            "route_to_group_other_tile"
+          ],
+          "properties": {
+            "auto_select_named_service": {
+              "type": "number"
+            },
+            "route_to_group_other_tile": {
+              "type": "number"
+            }
+          },
+          "description": "The two real confidence thresholds governing free-text entity resolution -- previously hardcoded in two separate places, never read from the SSOT."
+        }
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "description": "The Judicial Rulebook (Master Blueprint Phase 4). Unbendable laws a ResolvedRoute must satisfy -- the RouteValidator's actual rulebook, not hardcoded JS conditionals. Each entry's `check` is evaluated generically by evaluateInvariant() in qr.html against a real ResolvedRoute.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "rule",
+          "check"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "string",
+            "description": "Human-readable statement of the law."
+          },
+          "check": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "description": "A small, generic check expression. type determines which other fields are required: exists/non_empty_array/non_negative (field); enum (field, allowed); conditional_exists (if_field, if_value, then_field); conditional_not_equal (if_field, if_values, then_field, forbidden_value); lte (field_a, field_b)."
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "action_conjugation": {
+      "type": "object",
+      "required": [
+        "infinitive_for_adlib",
+        "all_forms"
+      ],
+      "properties": {
+        "infinitive_for_adlib": {
+          "type": "string"
+        },
+        "all_forms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "synonym_clusters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "infinitive",
+              "forms"
+            ],
+            "properties": {
+              "infinitive": {
+                "type": "string"
+              },
+              "forms": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "effects": {
+      "type": "object",
+      "properties": {
+        "fee": {
+          "type": "number"
+        },
+        "minutes": {
+          "type": "integer"
+        },
+        "complexity_override": {
+          "type": "string"
+        },
+        "checkout_state_override": {
+          "type": "string",
+          "description": "v9.3 architecture (backlog — see CHANGELOG): lets a SPECIFIC answer escalate checkout_state (e.g. to 'diagnostic') independently of the service's default, instead of the service-wide flag applying to every answer uniformly regardless of which one was actually chosen. Must be a key in checkout_states. Most-restrictive-wins across all answered questions, same ratchet pattern as complexity_override. Not yet authored on any client_response — this field is schema-ready but the actual per-answer authoring work for the 16 currently-always-diagnostic services is deferred."
+        },
+        "mat_min": {
+          "type": "number"
+        },
+        "mat_max": {
+          "type": "number"
+        },
+        "formula_override": {
+          "type": "string",
+          "description": "Lets a SPECIFIC answer set/override which pricing_formulas entry applyPricingFormula should use, independently of any upstream NLP keyword match. Closes a real gap found during the backlog item A investigation: dynamic_rule previously only ever lived on intent_mappings.objects (set once, before the customer answers any real question), meaning a customer reaching the same tile/drywall-specific branch via a DIFFERENT entry path (e.g. tapping a generic Other tile, then answering surface_type directly) never triggered the formula at all, even though they answered the exact same question. Must be a key in pricing_formulas. First real answer to set this wins (does not need a ratchet/most-restrictive pattern like checkout_state_override, since at most one surface_type answer can ever be selected)."
+        }
+      }
+    },
+    "intake_chain_step": {
+      "type": "object",
+      "description": "v9.1: shared by services.intake_chain and dynamic_services.intake_chain so the two never drift. 'params' lets a step override a parameterized intake_module (e.g. item_count_template) with per-service values (item_noun, client_response bands) without duplicating the module definition in intake_modules.",
+      "properties": {
+        "module": {
+          "type": "string"
+        },
+        "then": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "params": {
+          "type": "object",
+          "description": "Per-step override values for a parameterized intake_module (e.g. item_count_template). Common keys: item_noun (string substituted into the module's {item_noun} placeholder), client_response (array, same shape as intake_modules[*].client_response, overrides the template's generic bands with this service's exact fee/minute values), question_override (string, exact original question text as a fallback if noun substitution reads awkwardly).",
+          "properties": {
+            "item_noun": {
+              "type": "string"
+            },
+            "question_override": {
+              "type": "string"
+            },
+            "client_response": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects"
+                  },
+                  "tags": {
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "label",
+                  "effects"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "module"
+      ]
+    },
+    "booking_context": {
+      "type": "object",
+      "description": "Phase 1 of the Orchestrator Overhaul. The single, strict shape every real entry path (Catalog browse, Other-tile tap, free-text SmartQuote) must produce before calling executeWorkflow. No UI element may make a routing or pricing decision -- it may only populate these fields from what the user directly did (tapped, typed) or what a real NLP/lookup function directly returned. This is documentation of the JS-side BookingContext factory's exact output shape, not data consumed by qr.html at runtime -- it exists here so the contract is auditable from the SSOT side, matching this project's broader principle that the JSON should describe the process, not just hold inert data.",
+      "required": [
+        "entry"
+      ],
+      "properties": {
+        "entry": {
+          "enum": [
+            "catalog",
+            "other_tile",
+            "free_text"
+          ],
+          "description": "Which of the 3 real UI entry points produced this context. Drives nothing on its own -- every downstream workflow step treats all 3 identically once a BookingContext exists. Its only purpose is trace logging (Phase 7) and shadow-mode diffing (Phase 5.5)."
+        },
+        "selectedServiceId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Set when entry='catalog' (a named service was tapped directly) or when entry='free_text' resolved to a specific recommendedSku at high confidence. Null otherwise."
+        },
+        "selectedCategoryId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selectedGroupId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Set when entry='other_tile' (a synthetic 'Other' tile for a known category+group was tapped) or when free-text resolved to a group via intent_mappings.objects without a confident enough match for a specific service."
+        },
+        "rawText": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The customer's literal typed text. Only ever set when entry='free_text'. Never populated or synthesized for catalog/other_tile entries -- a directly-tapped service has no typed text behind it, and treating default_tags or other inherent service facts as if they came from typed text was a confirmed real bug this session (the 'We understood: ...' banner falsely firing for a directly-tapped service)."
+        },
+        "nlpIntent": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The raw, unmodified return value of detectIntentNLP(rawText) when entry='free_text'. Carries category, stype, group, base, recommendedSku, _matchConfidence, dynamic_rule, and the contextual-override fields (_ctxFee/_ctxMin/_ctxTags) exactly as detectIntentNLP produces them -- never re-derived or guessed by the entry-point collector itself."
+        },
+        "extractedQty": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "extractedObject": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The literal noun phrase extractObject() pulled from rawText (e.g. 'fridge', 'drawer pulls'). Distinct from selectedServiceId/selectedGroupId -- this is raw extraction, resolve_entity (workflow step) is what turns it into a real entity."
+        },
+        "extractedLocation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The literal location word extractLocation() pulled from rawText, matched against negation_library.nlp_location_words. Consumed by the workflow's apply_location_hints step -- never used to pre-fill an answer by the entry-point collector itself, since that decision (exactly-one-match-or-stay-silent) belongs to the orchestrator, not the UI."
+        },
+        "manuallyToggledTagIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags the user explicitly tapped as a chip. Distinct from NLP-detected tags and from a service's inherent default_tags -- see inherentTagIds below, the same real distinction the session's 'We understood' banner fix established."
+        },
+        "negatedTagIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "uncoveredServiceTypes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Set when entry='other_tile'. The list of service_types not yet covered by a named service for this group (carried from the tile's own uncovered_service_types). Consumed by workflow.intake_bypass_rules: when this array has exactly one entry, the action/type-selection step is unambiguous and can be skipped."
+        }
+      }
+    }
+  }
+}

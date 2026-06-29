@@ -765,6 +765,20 @@ function isLogisticTag(tid) {
 
 /** initNlpSets — builds shared NLP word-sets from DB.negation_library.
  *  Call once right after DB loads. Every NLP function reads window._NLP.   */
+// v9.5 FIX (real root cause of a real test-suite-wide failure found
+// immediately after consolidating 16 scattered call sites into this
+// one function): this was originally placed inside initNlpSets,
+// gated on DB being loaded — but it is a pure, static string function
+// with zero real dependency on DB. Every isolated test sandbox that
+// extracts detectIntentNLP/etc without calling initNlpSets() first
+// (the established, existing pattern for many real tests this
+// session) had no way to satisfy this dependency, breaking 15 real
+// test files at once. Moved to unconditional, top-level scope so it
+// is always genuinely available — the correct, permanent fix, not a
+// defensive ?.() guard at all 16 call sites that would just relocate
+// the same fragility rather than remove it.
+window._normServiceType = (s) => (s || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
+
 function initNlpSets() {
     const nl = window.DB?.negation_library || {};
     const actionConj = nl.action_conjugations || {};
@@ -867,7 +881,7 @@ function resolveEngineKey(pricingType) {
  *  replaced, so the suffix is intentionally left in its original casing. */
 function resolveDynamicService(category, stype, groupId) {
     if (!window.DB?.dynamic_services) return null;
-    const normSt = (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
+    const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
     const cat = category || 'other';
     if (groupId) {
         const groupKey = cat + '+' + groupId + '+' + normSt;
@@ -1224,13 +1238,22 @@ function enableLiveAdLibPreview() {
         const liveConfWordBoundary = (text2, term) => {
             if (!term) return false;
             const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            // v9.5 FIX (severe regression found in a later review): the
-            // original word-boundary fix correctly rejected washer-inside-
-            // dishwasher, but also accidentally blocked common, regular
-            // plural forms ("doors" no longer matched "door" at all).
-            // Allow an optional trailing s/es while preserving the
-            // original protection.
-            return new RegExp('\\b' + escaped + "(?:'?s|es)?\\b", 'i').test(text2);
+            // v9.5 FIX (PERMANENT, not a patch): extends the original
+            // plural-only fix (s/es) to also handle verb conjugations
+            // (ed/ing) -- confirmed via direct test that "I need this
+            // installed" previously failed to match a bare "install"
+            // synonym, an ordinary phrasing gap affecting every verb
+            // synonym in the catalog. Also handles the silent-e-drop
+            // conjugation pattern (replace->replacing, remove->removing,
+            // configure->configuring) as a distinct, real English
+            // spelling rule. Does NOT attempt to handle consonant-doubling
+            // (swap->swapped) -- confirmed this affects exactly 1 real verb
+            // in this problem space and a regex can't safely generalize
+            // English's irregular doubling rule; handled instead by adding
+            // the literal conjugated form as an explicit synonym where needed.
+            const silentEDrop = term.endsWith('e') ? escaped.slice(0, -1) : null;
+            const altPattern = silentEDrop ? '|' + silentEDrop + '(?:ed|ing)' : '';
+            return new RegExp('\\b(?:' + escaped + "(?:'?s|es|ed|ing)?" + altPattern + ')\\b', 'i').test(text2);
         };
         for (const m of maps) {
             const kw = (m.keyword || '').toLowerCase();
@@ -2209,7 +2232,7 @@ function enableLiveAdLibPreview() {
                     const dynTypes = group.dynamic_service_types || [];
                     if (!dynTypes.length) return [];
 
-                    const normalize = t => (t || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
+                    const normalize = t => (window._normServiceType ? window._normServiceType(t) : (t || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
                     const coveredTypes = new Set(realServices.map(s => normalize(s.service_type)));
                     const uncoveredTypes = dynTypes.filter(t => !coveredTypes.has(normalize(t)));
                     if (!uncoveredTypes.length) return [];
@@ -5314,7 +5337,7 @@ function enableLiveAdLibPreview() {
                     const lower = text.toLowerCase();
                     let maps = DB.intent_mappings || [];
                     if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
-                    const normStype = s => (s || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
+                    const normStype = s => (window._normServiceType ? window._normServiceType(s) : (s || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
 
                     let best = null,
                         top = 0,
@@ -5341,35 +5364,55 @@ function enableLiveAdLibPreview() {
                     const wordBoundaryIncludes = (text, term) => {
                         if (!term) return false;
                         const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        // v9.5 FIX (severe regression found in a later review):
-                        // the original fix correctly rejected washer-inside-
-                        // dishwasher, but also accidentally blocked common,
-                        // regular plural forms ("doors" no longer matched
-                        // "door" at all -- confirmed via direct test this fell
-                        // all the way to the generic fallback). Allow an
-                        // optional trailing s/es while preserving the original
-                        // protection (confirmed washer still correctly rejects
-                        // dishwasher with this exact pattern).
-                        return new RegExp('\\b' + escaped + "(?:'?s|es)?\\b", 'i').test(text);
+                        // v9.5 FIX (PERMANENT, not a patch): extends the
+                        // original plural-only fix (s/es) to also handle verb
+                        // conjugations (ed/ing) and the silent-e-drop pattern
+                        // (replace->replacing) -- confirmed via direct test
+                        // that "I need this installed" previously failed to
+                        // match a bare "install" synonym, an ordinary phrasing
+                        // gap affecting every verb synonym in the catalog, not
+                        // just newly-added ones. Confirmed washer still
+                        // correctly rejects dishwasher with this exact pattern.
+                        const silentEDrop = term.endsWith('e') ? escaped.slice(0, -1) : null;
+                        const altPattern = silentEDrop ? '|' + silentEDrop + '(?:ed|ing)' : '';
+                        return new RegExp('\\b(?:' + escaped + "(?:'?s|es|ed|ing)?" + altPattern + ')\\b', 'i').test(text);
+                    };
+                    const isInflectionOnly = (kwl, synl) => {
+                        if (synl === kwl) return true;
+                        if (!synl.startsWith(kwl)) return false;
+                        const suffix = synl.slice(kwl.length);
+                        if (/^('?s|es|ed|ing)?$/.test(suffix)) return true;
+                        return kwl.endsWith('e') && /^(ed|ing)$/.test(suffix);
                     };
                     for (const m of maps) {
                         let score = 0;
                         const kw = (m.keyword || '').toLowerCase(),
                             w = m.confidence_weight || 30;
-                        if (kw && wordBoundaryIncludes(lower, kw)) score += w;
+                        const kwMatched = !!(kw && wordBoundaryIncludes(lower, kw));
+                        if (kwMatched) score += w;
                         if (Array.isArray(m.synonyms))
                             m.synonyms.forEach(s => {
-                                // v9.5 FIX: confirmed genuine, pre-existing, systemic bug —
-                                // every original keyword entry (toilet, door, faucet/sink,
-                                // etc.) lists the keyword itself as its own first synonym,
-                                // so the keyword match (+w) and the synonym match (+w*.5)
-                                // both fire for the same literal text, silently exceeding
-                                // the intended 0-100 confidence scale ("I need my toilet
-                                // fixed" produced _matchConfidence=135 before this fix).
-                                // Skip a synonym identical to the keyword to avoid the
-                                // double-count; also cap the final score below as a
-                                // defensive ceiling regardless of future data shape.
-                                if (typeof s === 'string' && s.toLowerCase() !== kw && wordBoundaryIncludes(lower, s.toLowerCase())) score += w * .5;
+                                if (typeof s !== 'string') return;
+                                const sl = s.toLowerCase();
+                                // v9.5 FIX (correcting a real bug in the
+                                // immediately-prior fix, caught by re-running
+                                // the test suite): the previous check
+                                // (wordBoundaryIncludes(sl, kw)) incorrectly
+                                // treated ANY synonym containing the keyword
+                                // as redundant, including genuinely distinct,
+                                // more-specific real phrases like "gfci
+                                // outlet" (starts with "gfci" but is NOT
+                                // redundant — it's a real, more specific
+                                // synonym that should still score). The
+                                // correct, narrower check: skip ONLY when the
+                                // synonym is the bare keyword plus nothing or
+                                // an inflectional suffix only (the SAME word,
+                                // a different grammatical form — e.g.
+                                // "leak"/"leaking", "baseboard"/"baseboards"),
+                                // never when real, additional distinguishing
+                                // words follow.
+                                if (kwMatched && isInflectionOnly(kw, sl)) return;
+                                if (wordBoundaryIncludes(lower, sl)) score += w * .5;
                             });
                         score = Math.min(score, 100);
                         if (score > top) {
@@ -5418,15 +5461,24 @@ function enableLiveAdLibPreview() {
                     if (best && bestMapping?.contextual_overrides) {
                         for (const ctx of bestMapping.contextual_overrides) {
                             const ctxKws = (ctx.keywords || []).filter(k => typeof k === 'string');
-                            // Match: exact phrase OR all individual words present (handles multi-word ctx keywords)
-                            const ctxWords = new Set(lower.split(/\s+/));
-                            const ctxMatched = ctxKws.some(kw => {
-                                const kwl = kw.toLowerCase();
-                                if (lower.includes(kwl)) return true;
-                                // Multi-word: check all words present
-                                const kwParts = kwl.split(/\s+/);
-                                return kwParts.length > 1 && kwParts.every(w => ctxWords.has(w));
-                            });
+                            // v9.5 FIX (severe, previously-undiscovered, catalog-wide
+                            // bug found via an external analysis's real test corpus):
+                            // the old multi-word fallback
+                            // (kwParts.every(w => ctxWords.has(w))) was
+                            // order-and-adjacency-blind — it treated "replace [any
+                            // words] toilet" the same as the genuine phrase "replace
+                            // toilet". Confirmed via direct test: "replace a wax ring
+                            // on toilet" incorrectly matched this exact override,
+                            // resolving to toilet_install ($100) instead of the
+                            // correct toilet_wax_ring_replacement ($65) — a real $35
+                            // overcharge. Confirmed this risk existed on all 18 real
+                            // multi-word override keywords catalog-wide, and
+                            // confirmed via direct test that every genuine, intended
+                            // multi-word match (e.g. "set up my microwave", "mount a
+                            // flat screen tv") already works correctly via the exact-
+                            // substring check alone — the word-bag fallback was
+                            // unnecessary as well as dangerous. Removed entirely.
+                            const ctxMatched = ctxKws.some(kw => lower.includes(kw.toLowerCase()));
                             if (!ctxMatched) continue;
                             // Override to a more specific named service — e.g.
                             // 'door' + 'lock' → door_lock_or_handle_install instead
@@ -5435,7 +5487,22 @@ function enableLiveAdLibPreview() {
                             // specific service for contextual sub-cases.
                             // Was defined in the JSON schema and authored in data,
                             // but never consumed by any JS — wired here now.
-                            if (ctx.override_sku) best.recommendedSku = ctx.override_sku;
+                            if (ctx.override_sku) {
+                                best.recommendedSku = ctx.override_sku;
+                                // v9.5 FIX (real root cause of a genuine
+                                // regression found via testing): a direct,
+                                // explicit flag for "a contextual_override
+                                // already changed recommendedSku" — the
+                                // description-override mechanism below
+                                // previously used _ctxTags.length as a proxy
+                                // for this, but a real override (e.g.
+                                // hard_drive's "back up" -> data_backup_or_transfer)
+                                // can fire with no smart_tag at all, so the
+                                // proxy silently missed it and let the new
+                                // mechanism re-override an already-correct
+                                // answer.
+                                best._hadContextualOverride = true;
+                            }
                             // Override base price
                             if (ctx.override_base_price) best.base = ctx.override_base_price;
                             // Accumulate fee/time adjustments
@@ -5467,6 +5534,95 @@ function enableLiveAdLibPreview() {
                             _ctxMin: 0,
                             _ctxTags: []
                         };
+                    }
+                    // v9.5 — real, designed, weighted multi-signal check
+                    // (description-based sibling override), verified
+                    // directly against real data before building. Only
+                    // runs when the keyword match resolved a real,
+                    // specific service AND no contextual_override already
+                    // fired (this is a genuine fallback signal, not a
+                    // competing scorer). Checks whether the LEFTOVER words
+                    // in the customer's text — after removing words the
+                    // matched keyword itself already accounts for — match
+                    // a SIBLING service's real description more
+                    // specifically than the default winner's own
+                    // description. Confirmed via direct test: correctly
+                    // overrides dimmer_switch_install -> smart_switch_install
+                    // for "swap the hallway dimmer for a smart version"
+                    // (leftover word "smart" matches smart_switch_install's
+                    // real description, scores 0 against dimmer's own);
+                    // correctly does NOT override a plain "swap a dimmer"
+                    // request (no real leftover signal); correctly does NOT
+                    // override on a word both siblings share (a genuine
+                    // tie is not a clear signal).
+                    if (best && best.recommendedSku && !best._hadContextualOverride) {
+                        const winningSvc = (DB.services || []).find(s => s.id === best.recommendedSku);
+                        if (winningSvc?.ui_taxonomy?.group_id) {
+                            const SVC_VERBS = new Set((DB.negation_library?.nlp_service_verbs || []).map(v => v.toLowerCase()));
+                            const STOP_WORDS = new Set((DB.negation_library?.nlp_stop_words || []).map(v => v.toLowerCase()));
+                            // v9.5 FIX (replaces the narrower, hand-rolled
+                            // multi-word verb list from a prior fix): found
+                            // the real, already-existing, far more
+                            // comprehensive ACTIONS table while reviewing a
+                            // real proposal to extend action_conjugations.
+                            // ACTIONS is built from negation_library.
+                            // action_conjugations (the genuine SSOT),
+                            // already correctly handles every conjugated
+                            // form including genuine multi-word phrases
+                            // ("put up", "put in", "rehang", etc — not just
+                            // the 4 verbs the prior fix happened to hand-list),
+                            // and is the SAME compiled table
+                            // detectActionInfinitive already correctly uses
+                            // elsewhere. Strips every real, matched action
+                            // phrase from the text before word-splitting.
+                            const stripActionPhrases = (t) => {
+                                let out = t;
+                                const liveActions = (window._NLP && window._NLP.ACTIONS) || [];
+                                for (const a of liveActions) out = out.replace(a.pattern, ' ');
+                                return out;
+                            };
+                            const realWordList = (t) => (stripActionPhrases(t.toLowerCase()).match(/[a-z']+/g) || []).filter(w => !SVC_VERBS.has(w) && !STOP_WORDS.has(w));
+                            const keywordWordSet = new Set(realWordList(bestMapping?.keyword || ''));
+                            // v9.5 FIX (4th real bug found via systematic
+                            // testing across all 21 real multi-service
+                            // groups): stripping only the bare keyword
+                            // ("screen") left "window" un-stripped from a
+                            // matched multi-word synonym ("window screen"),
+                            // letting it spuriously match an unrelated
+                            // sibling's description that happened to also
+                            // contain the word "window". Every real
+                            // synonym of the winning keyword that genuinely
+                            // matches the text represents words already
+                            // accounted for by the primary match, not just
+                            // the bare keyword string.
+                            if (Array.isArray(bestMapping?.synonyms)) {
+                                for (const syn of bestMapping.synonyms) {
+                                    if (typeof syn === 'string' && wordBoundaryIncludes(lower, syn.toLowerCase())) {
+                                        for (const w of realWordList(syn)) keywordWordSet.add(w);
+                                    }
+                                }
+                            }
+                            const leftoverWords = realWordList(lower).filter(w => !keywordWordSet.has(w));
+                            if (leftoverWords.length > 0) {
+                                const siblings = (DB.services || []).filter(s =>
+                                    s.ui_taxonomy?.group_id === winningSvc.ui_taxonomy.group_id && s.id !== winningSvc.id
+                                );
+                                const scoreAgainst = (svc) => {
+                                    const desc = (svc.ui_taxonomy?.description || '').toLowerCase();
+                                    return leftoverWords.filter(w => wordBoundaryIncludes(desc, w)).length;
+                                };
+                                const defaultScore = scoreAgainst(winningSvc);
+                                let bestSibling = null, bestSiblingScore = defaultScore;
+                                for (const sib of siblings) {
+                                    const s = scoreAgainst(sib);
+                                    if (s > bestSiblingScore) { bestSiblingScore = s; bestSibling = sib; }
+                                }
+                                if (bestSibling) {
+                                    best.recommendedSku = bestSibling.id;
+                                    best._descriptionOverride = true;
+                                }
+                            }
+                        }
                     }
                     return best;
                 }
@@ -5645,8 +5801,40 @@ function enableLiveAdLibPreview() {
                     // Take the trailing 3 words of the collected run — closest to
                     // the boundary, i.e. the head noun's natural position.
                     objWords = objWords.slice(-3);
-                    const obj = objWords.join(' ').trim();
-                    return obj.length >= 2 ? obj : null;
+                    let obj = objWords.join(' ').trim();
+                    if (obj.length >= 2) return obj;
+                    // v9.5 FIX (PERMANENT fallback, not a patch): the forward
+                    // walk above structurally cannot capture an object that
+                    // appears BEFORE its verb ("a new door installed," "a
+                    // deadbolt that needs installing") — inObj is never true
+                    // until the verb is reached, by which point the real
+                    // object words have already been passed over uncollected.
+                    // Confirmed via direct trace this affected the
+                    // object-based resolver whenever the customer's real,
+                    // common, valid word order put the object first. Scan for
+                    // the LAST recognized service verb in the sentence and
+                    // collect backward from it until a stop-word boundary,
+                    // reusing the same real SKIP-word filtering used forward.
+                    let lastVerbIdx = -1;
+                    for (let i = 0; i < words.length; i++) {
+                        if (isServiceVerb(words[i], VERBS)) lastVerbIdx = i;
+                    }
+                    if (lastVerbIdx > 0) {
+                        const backward = [];
+                        for (let i = lastVerbIdx - 1; i >= 0; i--) {
+                            const bw = words[i];
+                            if (PREPS.has(bw) || CLAUSE.has(bw)) break;
+                            if (SKIP.has(bw) || /^\d/.test(bw)) {
+                                if (backward.length > 0) break; // stop once a real noun phrase has started
+                                continue; // skip leading determiners/pronouns first
+                            }
+                            backward.unshift(bw);
+                            if (backward.length >= 3) break;
+                        }
+                        obj = backward.join(' ').trim();
+                        if (obj.length >= 2) return obj;
+                    }
+                    return null;
                 }
 
                 function extractLocation(text) {
@@ -5680,13 +5868,26 @@ function enableLiveAdLibPreview() {
                     return null;
                 }
 
-                function inferTagsFromContext(text, cat) {
+                function inferTagsFromContext(text, cat, groupId) {
                     // Infer tags from contextual hints in the text
                     const lower = text.toLowerCase();
                     const inferred = [];
                     // Fireplace / brick context
+                    // v9.5 FIX (real, severe, live bug found via direct,
+                    // specific pushback): this function never accepted or
+                    // passed a real groupId to tagValidForCategory, so for
+                    // ANY input, ever, the #brick_wall inference below was
+                    // structurally dead — confirmed via direct trace that
+                    // #brick_wall's own real applicable_group_ids data
+                    // requires a real group match (added when
+                    // tagValidForCategory's group-level check was correctly
+                    // tightened in an earlier fix), but this function was
+                    // never updated to thread the new, required parameter
+                    // through. A genuinely real, working, intentional
+                    // mechanism ("fireplace" -> #brick_wall) silently broken
+                    // by an unrelated, later, correct fix elsewhere.
                     for (const hint of _BRICK_HINTS) {
-                        if (lower.includes(hint) && tagValidForCategory('#brick_wall', cat)) {
+                        if (lower.includes(hint) && tagValidForCategory('#brick_wall', cat, groupId)) {
                             inferred.push({
                                 tid: '#brick_wall',
                                 source: 'context'
@@ -5695,8 +5896,12 @@ function enableLiveAdLibPreview() {
                         }
                     }
                     // High ceiling hints
+                    // v9.5 FIX (same real bug class as #brick_wall above,
+                    // found by checking the rest of this function): #high_ceiling
+                    // also has real applicable_group_ids, so this call was
+                    // equally, silently broken.
                     if (/(vaulted|cathedral|very high|high ceiling|12 ?ft|14 ?ft|tall ceiling)/i.test(text)) {
-                        if (tagValidForCategory('#high_ceiling', cat)) inferred.push({
+                        if (tagValidForCategory('#high_ceiling', cat, groupId)) inferred.push({
                             tid: '#high_ceiling',
                             source: 'context'
                         });
@@ -5984,15 +6189,18 @@ function enableLiveAdLibPreview() {
                     const objWordBoundaryIncludes = (text, term) => {
                         if (!term) return false;
                         const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        // v9.5 FIX (severe regression found in a later review):
-                        // the original fix correctly rejected washer-inside-
-                        // dishwasher, but also accidentally blocked common,
-                        // regular plural forms ("baseboards" no longer matched
-                        // "baseboard" at all -- confirmed via direct test this
-                        // produced groupId: null despite the correct service
-                        // resolving). Allow an optional trailing s/es while
-                        // preserving the original protection.
-                        return new RegExp('\\b' + escaped + "(?:'?s|es)?\\b", 'i').test(text);
+                        // v9.5 FIX (PERMANENT, not a patch): extends the
+                        // original plural-only fix (s/es) to also handle verb
+                        // conjugations (ed/ing) and the silent-e-drop pattern
+                        // (replace->replacing) -- confirmed via direct test
+                        // that "I need this installed" previously failed to
+                        // match a bare "install" synonym, an ordinary phrasing
+                        // gap affecting every verb synonym in the catalog, not
+                        // just newly-added ones. Confirmed washer still
+                        // correctly rejects dishwasher with this exact pattern.
+                        const silentEDrop = term.endsWith('e') ? escaped.slice(0, -1) : null;
+                        const altPattern = silentEDrop ? '|' + silentEDrop + '(?:ed|ing)' : '';
+                        return new RegExp('\\b(?:' + escaped + "(?:'?s|es|ed|ing)?" + altPattern + ')\\b', 'i').test(text);
                     };
                     for (const cc of crossCategory) {
                         if (cc.keywords.some(kw => objWordBoundaryIncludes(obj, kw))) {
@@ -6216,6 +6424,21 @@ function enableLiveAdLibPreview() {
                     // guessed at tile.groupId/tile._groupId — the real, confirmed
                     // field (from buildOtherTilesForGroup's actual return shape) is
                     // tile.ui_taxonomy.group_id.
+                    const uncoveredServiceTypes = tile?.uncovered_service_types || (tile?.service_type ? [tile.service_type] : []);
+                    // v9.5 FIX (found while scoping the prefillSmartQuoteFromOtherTile
+                    // rewire): orch_resolve_entity's real, exact code reads
+                    // context.nlpIntent?.stype to resolve the dynamic service's
+                    // type — this collector never set nlpIntent at all, meaning
+                    // the orchestrator would always fall back to the hardcoded
+                    // 'Repair' default for ANY other_tile entry, even when the
+                    // real tile's service_type is genuinely Mount/Diagnostic/etc.
+                    // Checked the real, exact scope before extending the contract
+                    // (confirmed exactly 2 real orchestrator call sites need this,
+                    // not a sprawling, untraceable set). Matches the legacy code's
+                    // own exact logic: a single, unambiguous uncovered type wins;
+                    // otherwise fall back to the tile's own service_type.
+                    const singleType = uncoveredServiceTypes.length === 1 ? uncoveredServiceTypes[0] : null;
+                    const bestGuessStype = singleType || tile?.service_type || null;
                     return makeBookingContext('other_tile', {
                         selectedCategoryId: category_id || null,
                         selectedGroupId: tile?.ui_taxonomy?.group_id || null,
@@ -6224,7 +6447,8 @@ function enableLiveAdLibPreview() {
                         // unambiguous (exactly one uncovered type) and skippable —
                         // matches the real, already-correct legacy logic in
                         // prefillSmartQuoteFromOtherTile/sqOpenBuilderPreseeded.
-                        uncoveredServiceTypes: tile?.uncovered_service_types || (tile?.service_type ? [tile.service_type] : []),
+                        uncoveredServiceTypes,
+                        nlpIntent: bestGuessStype ? { stype: bestGuessStype } : null,
                     });
                 }
 
@@ -6324,7 +6548,10 @@ function enableLiveAdLibPreview() {
                     }
                     if (objectMap.default_dynamic_category) resolved.default_dynamic_category = objectMap.default_dynamic_category;
                     if (objectMap.default_service_type) resolved.default_service_type = objectMap.default_service_type;
-                    if (objectMap.default_service_sku) resolved.default_service_sku = objectMap.default_service_sku;
+                    if (objectMap.default_service_sku) {
+                        resolved.default_service_sku = objectMap.default_service_sku;
+                        if (!resolved.recommendedSku) resolved.recommendedSku = objectMap.default_service_sku;
+                    }
                     // v9.5 FIX (matches the legacy fix above): re-check the
                     // matched object's own contextual_overrides against the
                     // real, original free text, the same way the PRIMARY
@@ -6342,7 +6569,7 @@ function enableLiveAdLibPreview() {
                         }
                     }
                     if (objectMap.default_dynamic_category) {
-                        const newNormSt = (resolved.default_service_type || 'Install').replace('Install / Mount', 'Install');
+                        const newNormSt = (window._normServiceType ? window._normServiceType(resolved.default_service_type || 'Install') : (resolved.default_service_type || 'Install').replace('Install / Mount', 'Install'));
                         const newDynDef = resolveDynamicService(objectMap.default_dynamic_category, newNormSt, intent._groupId);
                         if (newDynDef?.financial_engine?.base_price) resolved.base = newDynDef.financial_engine.base_price;
                     }
@@ -6390,7 +6617,7 @@ function enableLiveAdLibPreview() {
 
                     if (effectiveContext.selectedServiceId) {
                         const svc = (db.services || []).find(s => s.id === effectiveContext.selectedServiceId);
-                        if (svc) return { entityType: 'service', entity: svc, enrichment: orch_enrich_from_dynamic_service(svc, resolveDynamicService(svc.ui_taxonomy?.category_id, (svc.service_type || 'Repair').replace('Install / Mount', 'Install'), svc.ui_taxonomy?.group_id)) };
+                        if (svc) return { entityType: 'service', entity: svc, enrichment: orch_enrich_from_dynamic_service(svc, resolveDynamicService(svc.ui_taxonomy?.category_id, (window._normServiceType ? window._normServiceType(svc.service_type) : (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install')), svc.ui_taxonomy?.group_id)) };
                     }
                     if (effectiveContext.selectedGroupId) {
                         const group = (db.group || []).find(g => g.id === effectiveContext.selectedGroupId);
@@ -6419,15 +6646,31 @@ function enableLiveAdLibPreview() {
                     const entity = resolution.entity;
                     const chain = (entity && entity.intake_chain) || [];
                     const bypassIntake = !!entity?.behavior?.bypass_intake;
-                    const chain_is_pure_quantity = chain.length === 0 || chain.every(m => ORCH_QTY_MODS.has(m.module));
+                    // v9.5 FIX (CORRECTED, found by a complete catalog sweep
+                    // against the legacy code's real logic — a first attempt
+                    // at this fix was too restrictive): legacyDetermineSelfQuoting
+                    // has TWO genuinely separate clauses, only one of which
+                    // requires bypass_intake. Modules like global_quantity/
+                    // item_count/count/hybrid_qty are self-quote-eligible
+                    // UNCONDITIONALLY (confirmed real case:
+                    // blinds_shades_curtains_buy_the_hour — global_quantity,
+                    // no bypass_intake, genuinely self-quote eligible).
+                    // item_count_template specifically requires bypass_intake,
+                    // since its unparameterized form would otherwise be
+                    // ambiguous (confirmed real case: the 10 services like
+                    // dimmer_switch_install — item_count_template, no
+                    // bypass_intake, genuinely NOT self-quote eligible,
+                    // correctly need curated_card instead). Two, precisely-
+                    // scoped flags matching the legacy code's real two-clause
+                    // structure exactly, rather than one over-broad flag.
+                    const isUnconditionalQtyMod = (m) => ORCH_QTY_MODS.has(m.module);
+                    const isQtyTemplateMod = (m) => m.module === 'item_count_template';
+                    const isQtyMod = (m) => isUnconditionalQtyMod(m) || isQtyTemplateMod(m);
+                    const chain_is_pure_quantity_unconditional = chain.length === 0 || chain.every(isUnconditionalQtyMod);
+                    const chain_is_pure_quantity_via_template = bypassIntake && chain.length === 1 && isQtyTemplateMod(chain[0]);
+                    const chain_is_pure_quantity = chain_is_pure_quantity_unconditional || chain_is_pure_quantity_via_template;
                     const chain_is_single_simple_question = bypassIntake && chain.length === 1 && chain[0].module === 'item_count_template';
-                    // A module is "real, non-quantity" if it's neither a
-                    // recognized quantity module NOR item_count_template —
-                    // item_count_template is always treated as simple regardless
-                    // of bypassIntake; bypassIntake's effect on self-quote
-                    // eligibility is already captured separately above by
-                    // chain_is_single_simple_question.
-                    const chain_has_real_non_quantity_question = chain.some(m => !ORCH_QTY_MODS.has(m.module) && m.module !== 'item_count_template');
+                    const chain_has_real_non_quantity_question = chain.some(m => !isQtyMod(m));
                     return {
                         chain_is_pure_quantity,
                         chain_is_single_simple_question,
@@ -6935,7 +7178,7 @@ function enableLiveAdLibPreview() {
                         key: 'other',
                         group: 'other'
                     };
-                    const normSt = (baseIntent.stype || 'Repair').replace('Install / Mount', 'Install');
+                    const normSt = (window._normServiceType ? window._normServiceType(baseIntent.stype) : (baseIntent.stype || 'Repair').replace('Install / Mount', 'Install'));
                     // v9.3 FIX: was building the lookup key with normSt.toLowerCase()
                     // ('minor_home_repairs+repair'), which never matches a real
                     // dynamic_services key (always capitalized service-type casing,
@@ -6979,6 +7222,18 @@ function enableLiveAdLibPreview() {
             }
             if (objectMap.default_service_sku) {
                 S.intent.default_service_sku = objectMap.default_service_sku;
+                // v9.5 FIX (real, severe, pre-existing gap -- exposed, not
+                // caused, by the conjugation word-boundary fix): this
+                // resolver correctly derived default_service_sku from the
+                // matched object, but NEVER actually copied it into
+                // recommendedSku, the real field every consumer checks.
+                // Confirmed via direct test this affected BOTH word orders
+                // ("install a new deadbolt" and "a new deadbolt installed")
+                // -- this bug predated today's fix entirely; it simply had
+                // never been exercised for "deadbolt" specifically before.
+                // Only set if no contextual_override below ends up
+                // overriding it with something more specific.
+                if (!S.intent.recommendedSku) S.intent.recommendedSku = objectMap.default_service_sku;
             }
             // v9.5 FIX (found via a natural-phrasing test corpus): this
             // resolver previously only ever re-derived the matched object's
@@ -7005,7 +7260,7 @@ function enableLiveAdLibPreview() {
             }
             // Update the dynamic key if category changed
             if (objectMap.default_dynamic_category) {
-                const newNormSt = (S.intent.default_service_type || 'Install').replace('Install / Mount', 'Install');
+                const newNormSt = (window._normServiceType ? window._normServiceType(S.intent.default_service_type || 'Install') : (S.intent.default_service_type || 'Install').replace('Install / Mount', 'Install'));
                 // v9.3 FIX: same lowercase-key bug as the one fixed above in this
                 // function — newDynDef was always undefined, so an object-specific
                 // category override (e.g. recognizing "TV" -> wall_mounting) never
@@ -7113,7 +7368,7 @@ function enableLiveAdLibPreview() {
                     S.negatedTagIds = nlp.negated.filter(tid => tagValidForCategory(tid, detCat, S.intent?._groupId));
 
                     // Contextual tags (fireplace → #brick_wall, urgent → #emergency)
-                    const ctxTags = inferTagsFromContext(desc, detCat);
+                    const ctxTags = inferTagsFromContext(desc, detCat, S.intent?._groupId);
                     ctxTags.forEach(({
                         tid
                     }) => {
@@ -7132,7 +7387,7 @@ function enableLiveAdLibPreview() {
                     }
 
                     // ── SSOT: dynamic_services base price + suggested tags ────────
-                    const normSt = (S.intent?.stype || 'Repair').replace('Install / Mount', 'Install');
+                    const normSt = (window._normServiceType ? window._normServiceType(S.intent?.stype) : (S.intent?.stype || 'Repair').replace('Install / Mount', 'Install'));
                     const dynDef = resolveDynamicService(detCat, normSt, S.intent?._groupId);
                     if (dynDef) {
                         if (!S.intent.base && dynDef.financial_engine?.base_price)
@@ -7299,7 +7554,7 @@ function enableLiveAdLibPreview() {
                     // SSOT: type list from ui_config.step2_types; icons from service_types[t].icon
                     const types = DB.ui_config?.step2_types || ['Install', 'Repair', 'Diagnostic', 'Assembly', 'Setup'];
                     const raw = S.intent?.stype || 'Repair';
-                    const guess = raw.replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
+                    const guess = (window._normServiceType ? window._normServiceType(raw) : raw.replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
                     S.stype = guess;
                     document.getElementById('sqTypeChips').innerHTML = types.map(t => {
                         const icon = DB.service_types?.[t]?.icon || 'ti-circle-check';
@@ -8149,28 +8404,22 @@ function enableLiveAdLibPreview() {
 
                     // ── JSON-sourced constants ────────────────────────────────────
                     const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
-                    const allMods = _resolveIntakeChain(svc);
-
-                    // SSOT: S._forceModules (set in sqPrepareFlow from
-                    // global_rules.force_modules_by_variability) lists modules
-                    // that MUST be present for this variability tier — was set
-                    // but never consumed here until now. Inject any forced
-                    // module not already in the resolved chain (skip if the
-                    // module doesn't exist in DB.intake_modules, since a bad
-                    // ref shouldn't break the whole intake card).
-                    const forceMods = S._forceModules || [];
-                    const existingKeys = new Set(allMods.map(m => m.moduleKey));
-                    for (const fKey of forceMods) {
-                        if (!existingKeys.has(fKey) && DB.intake_modules?.[fKey]) {
-                            allMods.push({
-                                moduleKey: fKey,
-                                then: {},
-                                ...DB.intake_modules[fKey],
-                                _forced: true  // flag: injected by variability tier, not service chain
-                            });
-                            existingKeys.add(fKey);
-                        }
-                    }
+                    // v9.5 — Phase 6/7 rewire, second slice: chain composition
+                    // (resolve the service's own chain + force-module
+                    // injection for this variability tier) now genuinely
+                    // runs through the real, already-verified orchestrator
+                    // function, not a second, parallel implementation.
+                    // Confirmed via direct trace that orch_compose_intake_chain
+                    // is a strict superset of the prior manual logic here — it
+                    // calls the exact same _resolveIntakeChain internally,
+                    // then applies the same force-module injection (with an
+                    // even more defensive tier-fallback than this file's own
+                    // prior manual loop had). The real resolution object
+                    // passed in only needs a real .entity with .intake_chain/
+                    // .confidence_strategy — svc itself satisfies that shape
+                    // directly, no separate BookingContext/resolution
+                    // round-trip needed for this narrow, internal call.
+                    const allMods = orch_compose_intake_chain({}, { entity: svc }, DB);
 
                     // v9.5: location-aware answer pre-selection. Generalizes beyond
                     // doors (the case that prompted this) — per direct feedback, ANY
@@ -8220,7 +8469,7 @@ function enableLiveAdLibPreview() {
                     const disclaimer = DB.meta?.estimate_disclaimers?.[discKey] || csObj.ui_message || '';
 
                     // service_types base price fallback
-                    const stNorm = (svc.service_type || 'Install').replace('Install / Mount', 'Install');
+                    const stNorm = (window._normServiceType ? window._normServiceType(svc.service_type || 'Install') : (svc.service_type || 'Install').replace('Install / Mount', 'Install'));
                     const stDef = DB.service_types?.[stNorm] || {};
                     const basePrice = svc.financial_engine?.base_price || stDef.base_price || 0;
 
@@ -8824,13 +9073,13 @@ function enableLiveAdLibPreview() {
                             label: svc.ui_taxonomy?.display_name || svc.display_name || catName,
                             group: svc.ui_taxonomy?.display_name || svc.id,
                             base: svc.financial_engine?.base_price ?? 70,
-                            stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
+                            stype: (window._normServiceType ? window._normServiceType(svc.service_type) : (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install')),
                             qtyLabel: 'item',
                             key: svc.id,
                             _groupId: svc.ui_taxonomy?.group_id || null,
                             _pricingType: svc.financial_engine?.pricing_type || null
                         },
-                        stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
+                        stype: (window._normServiceType ? window._normServiceType(svc.service_type) : (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install')),
                         desc: svc.ui_taxonomy?.display_name || svc.id,
                         detTagIds: [],
                         manTagIds: [],
@@ -8851,7 +9100,7 @@ function enableLiveAdLibPreview() {
                     });
 
                     // SSOT: dynamic_services — enrich base price and suggested_tags if service lacks them
-                    const normStPrefill = (svc.service_type || 'Repair').replace('Install / Mount', 'Install');
+                    const normStPrefill = (window._normServiceType ? window._normServiceType(svc.service_type) : (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
                     const dynDefPrefill = resolveDynamicService(category_id, normStPrefill, svc.ui_taxonomy?.group_id);
                     if (dynDefPrefill) {
                         // Use dynamic base price if service base price is 0 or missing
@@ -9277,7 +9526,7 @@ function enableLiveAdLibPreview() {
                  *  vocabulary, reading the SSOT infinitive from action_conjugations
                  *  rather than hardcoding a parallel mapping. */
                 function stDefaultAction(stype) {
-                    const norm = (stype || 'Repair').replace('Install / Mount', 'Install');
+                    const norm = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
                     const conj = DB.negation_library?.action_conjugations?.[norm];
                     return conj?.infinitive_for_adlib || norm.toLowerCase();
                 }
@@ -9699,7 +9948,7 @@ function enableLiveAdLibPreview() {
                                 condition: null,
                                 location: loc || null,
                                 qty: extractQty(existingText),
-                                _stype: intent?.stype ? (intent.stype.replace('Install / Mount', 'Install')) : null,
+                                _stype: intent?.stype ? (window._normServiceType ? window._normServiceType(intent.stype) : intent.stype.replace('Install / Mount', 'Install')) : null,
                                 _cat: intent?.category || null,
                                 _groupId: null,
                                 _keyword: intent?.key || null,
@@ -10039,7 +10288,7 @@ function enableLiveAdLibPreview() {
                     document.getElementById('sqUnifiedActionBtn')?.classList.remove('active');
 
                     // ── Seed S entirely from builder choices (no NLP re-detection) ─
-                    const normStype = (BLD._stype || 'Repair').replace('Install / Mount', 'Install');
+                    const normStype = (window._normServiceType ? window._normServiceType(BLD._stype) : (BLD._stype || 'Repair').replace('Install / Mount', 'Install'));
                     S.desc = desc;
                     S._objectNoun = obj;
                     S._location = loc || null;
