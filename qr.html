@@ -9923,15 +9923,17 @@ function wireGlobalEvents() {
   return { createStore: createStore, store: store };
 });</script>
 
-    <script>
+   <script>
 (async function init() {
   try {
-    // 1. Load SSOT
+    // ─── 1. LOAD SSOT ───────────────────────────────────────────────
     const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     SERVICE_DATA = await res.json();
     DB = SERVICE_DATA;
     window.DB = DB;
+
+    // ─── 2. INITIALISE MODULES ──────────────────────────────────────
     initNlpSets();
     cacheDOM();
     buildDataMaps(SERVICE_DATA);
@@ -9939,23 +9941,39 @@ function wireGlobalEvents() {
     initSmartQuote();
     wireGlobalEvents();
 
-    // 2. Load cart from sessionStorage into the legacy State (still needed for now)
-    State.serviceRequest = loadCart();
-    renderCart();
+    // ─── 3. LOAD CART FROM SESSIONSTORAGE (ONCE) ───────────────────
+    const loadedCart = loadCart();
+    State.serviceRequest = loadedCart;   // legacy state (still used by renderers)
 
-    // 3. Create the store and bind legacy globals
-    const store = window.createStore();   // uses global appReducer
-    window.__store = store;               // make it globally available
+    // ─── 4. CREATE STORE & SEED IT ─────────────────────────────────
+    const store = window.createStore();  // uses global appReducer
+    window.__store = store;              // make it globally accessible
+
+    // Use the optional action creators (exposed by appReducer.js)
+    const { setCart } = window.actions;  // or fallback to raw object if not available
+    if (typeof setCart === 'function') {
+      store.dispatch(setCart(loadedCart));
+    } else {
+      // fallback to raw action (safe)
+      store.dispatch({ type: 'cart/SET', payload: { serviceRequest: loadedCart } });
+    }
+
+    // ─── 5. BIND LEGACY GLOBALS (STORE → S & State) ──────────────
     const unsubscribeLegacy = store.bindLegacyGlobals(window);
 
-    // 4. (Optional) Sync the store’s cart with sessionStorage on every change
+    // ─── 6. RENDER UI (reads from State, now in sync) ──────────────
+    renderCart();
+
+    // ─── 7. PERSIST STORE CHANGES TO SESSIONSTORAGE ───────────────
     store.subscribe((state) => {
       try {
         sessionStorage.setItem('booktom_cart_v2', JSON.stringify(state.cart.serviceRequest));
-      } catch (_) {}
+      } catch (_) {
+        // ignore storage errors
+      }
     });
 
-    // 5. Ensure containers are in correct initial state
+    // ─── 8. SET INITIAL CONTAINER STATES ───────────────────────────
     ['intakeQuestionsContainer', 'serviceRequestSummary', 'quoteOut'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
@@ -9963,60 +9981,62 @@ function wireGlobalEvents() {
     const catGrid = document.getElementById('category-card');
     if (catGrid) catGrid.style.display = 'grid';
 
+    // ─── 9. VIEWPORT HEIGHT (MOBILE FIX) ───────────────────────────
     setViewportHeight();
 
-    // 6. Expose SmartQuote functions (unchanged)
-      window.sqAnalyze = sqAnalyze;
-      window.sqUnifiedAction = sqUnifiedAction;
-      window.sqToggleBuilder = sqToggleBuilder;
-      window.sqBuilderBack = sqBuilderBack;
-      window.sqPickType = sqPickType;
-      window.sqHandleStep2 = sqHandleStep2;
-      window.sqOpenStep = sqOpenStep;
-      window.sqToggleTag = sqToggleTag;
-      window.sqAdjQty = sqAdjQty;
-      window.sqBuildAdlib = sqBuildAdlib;
-      window.sqEditAdlib = sqEditAdlib;
-      window.sqConfirmAdlib = sqConfirmAdlib;
-      window.sqAddToCart = sqAddToCart;
-      window.sqRestart = sqRestart;
-      window._sqSwitchToRecommended = _sqSwitchToRecommended;
-      window._sqRevertAutoSelect = _sqRevertAutoSelect;
-      window.prefillSmartQuoteFromService = prefillSmartQuoteFromService;
+    // ─── 10. EXPOSE SMARQUOTE FUNCTIONS (global for inline onclick) ─
+    window.sqAnalyze = sqAnalyze;
+    window.sqUnifiedAction = sqUnifiedAction;
+    window.sqToggleBuilder = sqToggleBuilder;
+    window.sqBuilderBack = sqBuilderBack;
+    window.sqPickType = sqPickType;
+    window.sqHandleStep2 = sqHandleStep2;
+    window.sqOpenStep = sqOpenStep;
+    window.sqToggleTag = sqToggleTag;
+    window.sqAdjQty = sqAdjQty;
+    window.sqBuildAdlib = sqBuildAdlib;
+    window.sqEditAdlib = sqEditAdlib;
+    window.sqConfirmAdlib = sqConfirmAdlib;
+    window.sqAddToCart = sqAddToCart;
+    window.sqRestart = sqRestart;
+    window._sqSwitchToRecommended = _sqSwitchToRecommended;
+    window._sqRevertAutoSelect = _sqRevertAutoSelect;
+    window.prefillSmartQuoteFromService = prefillSmartQuoteFromService;
 
-      // 10. Define renderRoute globally (used by orchestrator if ever enabled)
-      window.renderRoute = function(route) {
-        window._currentRoute = route;
-        const catGrid = document.getElementById('category-card');
-        const intakeContainer = document.getElementById('intakeQuestionsContainer');
-        const summaryContainer = document.getElementById('serviceRequestSummary');
-        const quoteOut = document.getElementById('sqQuoteOut');
+    // ─── 11. DEFINE renderRoute (orchestrator output renderer) ─────
+    window.renderRoute = function(route) {
+      window._currentRoute = route;
+      const catGrid = document.getElementById('category-card');
+      const intakeContainer = document.getElementById('intakeQuestionsContainer');
+      const summaryContainer = document.getElementById('serviceRequestSummary');
+      const quoteOut = document.getElementById('sqQuoteOut');
 
-        if (catGrid) catGrid.style.display = 'none';
-        if (intakeContainer) intakeContainer.style.display = 'none';
-        if (summaryContainer) summaryContainer.style.display = 'none';
-        if (quoteOut) quoteOut.style.display = 'none';
+      if (catGrid) catGrid.style.display = 'none';
+      if (intakeContainer) intakeContainer.style.display = 'none';
+      if (summaryContainer) summaryContainer.style.display = 'none';
+      if (quoteOut) quoteOut.style.display = 'none';
 
-        switch (route.uiTemplate) {
-          case 'self_quote':
-            renderSelfQuoteFromRoute(route);
-            break;
-          case 'curated_card':
-            renderCuratedCardFromRoute(route);
-            if (summaryContainer) summaryContainer.style.display = 'block';
-            break;
-          case 'legacy_flow':
-            if (intakeContainer) {
-              intakeContainer.style.display = 'block';
-              intakeContainer.innerHTML = '<div class="repair-hint">Legacy flow – please use the new UI.</div>';
-            }
-            break;
-          default:
-            if (catGrid) catGrid.style.display = 'grid';
-        }
-      };
+      switch (route.uiTemplate) {
+        case 'self_quote':
+          renderSelfQuoteFromRoute(route);
+          break;
+        case 'curated_card':
+          renderCuratedCardFromRoute(route);
+          if (summaryContainer) summaryContainer.style.display = 'block';
+          break;
+        case 'legacy_flow':
+          if (intakeContainer) {
+            intakeContainer.style.display = 'block';
+            intakeContainer.innerHTML = '<div class="repair-hint">Legacy flow – please use the new UI.</div>';
+          }
+          break;
+        default:
+          if (catGrid) catGrid.style.display = 'grid';
+      }
+    };
 
-      console.log('✅ BookTOM initialized successfully.');
+    console.log('✅ BookTOM initialized successfully.');
+
   } catch (err) {
     console.error('❌ BookTOM failed to initialize:', err);
     toast('Could not load services. Please refresh.', 'error');
