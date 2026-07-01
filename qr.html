@@ -10048,24 +10048,22 @@ function renderPaxConfigurator(anchorElement, container, svc, category_id) {
 <script>
   (async function init() {
     try {
-      // 1. Load the SSOT
-      const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
-      if (!res.ok) throw new Error("Could not load SSOT");
-      window.DB = await res.json();
+// 1. Load the SSOT
+const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
+if (!res.ok) throw new Error("Could not load SSOT");
 
+// Assign to BOTH so legacy and new code both see it
+window.DB = await res.json();
+SERVICE_DATA = window.DB; 
     // 2. Populate DOM cache (from UIRenderer)
     cacheDOM();
-
     // 3. Render the initial category grid (from UIRenderer)
     renderCategoryCards();
-
     // 4. Wire all event listeners (the new one from AppController)
     wireGlobalEvents();
-
     // 5. Initialise the cart from session storage
     State.serviceRequest = loadCart();
     renderCart();
-
     // 6. Render the initial route (home: show categories)
     // The category grid is already visible, so just ensure other containers are hidden.
     const containers = ['intakeQuestionsContainer', 'serviceRequestSummary', 'quoteOut'];
@@ -10113,13 +10111,15 @@ function renderPaxConfigurator(anchorElement, container, svc, category_id) {
     };
 
     // 8. Load the initial route (home) – just show categories
-} catch (err) {
+} 
+    catch (err) {
       console.error("BookTOM failed to initialize:", err);
 ;
 }
   })();
 </script>
-        <script>
+
+<script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
