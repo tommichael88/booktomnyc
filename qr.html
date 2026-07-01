@@ -3639,6 +3639,32 @@ function makeBookingContext(entry, overrides) {
                         uncoveredServiceTypes: null,
                     }, overrides || {});
                 }
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    executeWorkflow,
+    orch_resolve_entity,
+    orch_apply_object_based_resolution,
+    orch_enrich_from_dynamic_service,
+    orch_compute_variability_flags,
+    orch_compose_intake_chain,
+    orch_apply_location_hints,
+    orch_compute_confidence,
+    orch_select_ui_template,
+    orch_merge_materials_estimate,
+    orch_compute_quote,
+    orch_apply_intake_bypass_rules,
+    readRoutePath,
+    evaluateInvariant,
+    describeInvariantFailure,
+    validateRoute,
+    catastrophicFallbackRoute,
+    collectBookingContext_catalog,
+    collectBookingContext_otherTile,
+    collectBookingContext_freeText,
+    makeBookingContext,
+    _resolveIntakeChain
+  };
 </script> 
    
    <!-- UiRenderer -->
@@ -5736,16 +5762,38 @@ function renderCuratedCardFromRoute(route) {
 
 function showGroupsForCategory(category_id, fromBack = false) {
     if (!fromBack) Breadcrumbs.push({ type: 'categories' });
+    if (!fromBack) enterFocusedMode();   // 👈 enter full‑screen glass mode
+
     const groups = (DB.group || []).filter(g => g.category_id === category_id);
     const container = DOM.serviceContainer;
     container.replaceChildren();
+    container.className = 'group-grid';  // use the grid layout from focused-mode CSS
+
+    if (groups.length === 0) {
+        container.innerHTML = '<div class="empty-message">No groups available.</div>';
+        return;
+    }
+
     groups.forEach(g => {
-        const btn = document.createElement('button');
-        btn.textContent = g.display_name;
-        btn.className = 'group-tile';
-        btn.onclick = () => showSubGroups(g, category_id);
-        container.appendChild(btn);
+        const tile = document.createElement('div');
+        tile.className = 'group-tile';
+        tile.tabIndex = 0;
+        tile.role = 'button';
+
+        const icon = document.createElement('span');
+        icon.className = 'tile-icon';
+        icon.textContent = g.icon || '📂';
+
+        const name = document.createElement('span');
+        name.className = 'tile-name';
+        name.textContent = g.display_name || g.name;
+
+        tile.appendChild(icon);
+        tile.appendChild(name);
+        tile.addEventListener('click', () => showSubGroups(g, category_id));
+        container.appendChild(tile);
     });
+
     container.style.display = 'block';
     DOM.categoriesGrid.style.display = 'none';
     setStep(2);
@@ -5754,11 +5802,11 @@ function showGroupsForCategory(category_id, fromBack = false) {
 function showSubGroups(group, category_id, fromBack = false) {
     const container = DOM.serviceContainer;
     container.replaceChildren();
+    // Service tiles are already styled by createServiceCardElement (uses .service-tile)
     const services = servicesByGroup.get(group.id) || [];
     services.forEach(svc => {
         container.appendChild(createServiceCardElement(svc, category_id));
     });
-    // Add "Other" tile if any uncovered types
     const otherTiles = buildOtherTilesForGroup(services, group.id);
     otherTiles.forEach(t => container.appendChild(createOtherTileElement(t, category_id)));
     container.style.display = 'block';
@@ -5767,10 +5815,8 @@ function showSubGroups(group, category_id, fromBack = false) {
 }
 
 function selectGroupForCategory(group, category_id) {
-    // If needed, call showSubGroups
     showSubGroups(group, category_id, true);
 }
-
 const setText = (el, text) => {
                     if (el) el.textContent = text;
                 }
@@ -9123,509 +9169,30 @@ function wireGlobalEvents() {
     });
 }
     
-// ---- LEGACY NAVIGATION FUNCTIONS ----
-function showGroupsForCategory(category_id, fromBack = false) {
-    if (!fromBack) Breadcrumbs.push({ type: 'categories' });
-    const groups = (DB.group || []).filter(g => g.category_id === category_id);
-    const container = DOM.serviceContainer;
-    container.replaceChildren();
-    if (groups.length === 0) {
-        container.innerHTML = '<div class="empty-message">No groups available.</div>';
-        return;
-    }
-    groups.forEach(g => {
-        const tile = create('div', { class: 'group-tile', tabindex: '0', role: 'button' });
-        tile.appendChild(create('span', { class: 'tile-icon', text: g.icon || '📂' }));
-        tile.appendChild(create('span', { class: 'tile-name', text: g.display_name || g.name }));
-        tile.addEventListener('click', () => showSubGroups(g, category_id));
-        container.appendChild(tile);
-    });
-    container.style.display = 'block';
-    DOM.categoriesGrid.style.display = 'none';
-    setStep(2);
-}
-
-function showSubGroups(group, category_id, fromBack = false) {
-    const container = DOM.serviceContainer;
-    container.replaceChildren();
-    const services = servicesByGroup.get(group.id) || [];
-    const otherTiles = buildOtherTilesForGroup(services, group.id);
-    const allTiles = [...services, ...otherTiles];
-    if (allTiles.length === 0) {
-        container.innerHTML = '<div class="empty-message">No services in this group.</div>';
-        return;
-    }
-    // Render named services and other tiles (using existing renderServices logic)
-    renderServices(container, allTiles, category_id, group.id);
-    container.style.display = 'block';
-    setStep(3);
-    if (!fromBack) Breadcrumbs.push({ type: 'subgroup', group: group.id, category_id });
-}
-
-function selectGroupForCategory(group, category_id) {
-    // same as showSubGroups, but used by Breadcrumbs.goBack
-    showSubGroups(group, category_id, true);
-
-}
-function removeFurnitureEntry(serviceId, idx) {
-                    const svc = State.serviceRequest.find(s => s.id === serviceId);
-                    if (!svc?.furnitureItems) return;
-                    svc.furnitureItems.splice(idx, 1);
-                    if (svc.name?.toLowerCase().includes('assembly') && svc.furnitureItems.length === 0) {
-                        removeServiceFromCart(serviceId);
-                        return;
-                    }
-                    const mins = svc.furnitureItems.map(f => f.minutes);
-                    const charge = mathFurnitureAssembly(mins);
-                    svc.estimatedHours = charge.hours;
-                    svc.estimatedPrice = charge.price;
-                    svc.price = `$${charge.price.toFixed(2)}`;
-                    svc.notes = `Furniture Items: ${svc.furnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
-                    persistCart();
-                    renderCart();
-                }
-
-function _recomputeInstanceLabels() {
-                    const groups = {};
-                    State.serviceRequest.forEach(s => {
-                        if (s.furnitureItems) return;
-                        const key = s.name + '::' + s.category_id;
-                        (groups[key] = groups[key] || []).push(s);
-                    });
-                    Object.values(groups).forEach(group => {
-                        if (group.length <= 1) {
-                            group.forEach(s => delete s._instanceLabel);
-                        } else {
-                            group.forEach((s, i) => { s._instanceLabel = `#${i + 1}`; });
-                        }
-                    });
-                }
-
-// ───────────────────────── Mixed widgets (render + mutate, kept whole) ───
-
-function renderFurnitureSelection(container, svc, category_id) {
-                    container.replaceChildren();
-                    State.furnitureItems = [];
-                    const masterList = [];
-                    for (const [key, item] of furnitureMap.entries()) {
-                        if (key === 'PAX_CUSTOM') continue;
-                        masterList.push({
-                            key,
-                            label: item.display_name,
-                            brand: item.brand === 'IKEA' ? 'IKEA' : 'Generic',
-                            type: item.type || 'Other',
-                            article: item.article,
-                            minutes: item.minutes,
-                            isIkea: item.brand === 'IKEA'
-                        });
-                    }
-                    const distinctBrands = [...new Set(masterList.map(i => i.brand))].sort();
-                    let selectedBrand = null;
-                    if (svc.requires_furniture_selection) {
-                        const serviceName = svc.ui_taxonomy?.display_name.toLowerCase();
-                        selectedBrand = serviceName.includes('ikea') ? 'IKEA' : 'Generic';
-                    }
-                    const brandPreselected = selectedBrand !== null;
-                    let selectedType = null;
-                    const selectionWrapper = create('div', {
-                        id: 'furniture-selection-wrapper'
-                    });
-                    selectionWrapper.style.display = 'none';
-                    const stepContent = create('div', {
-                        id: 'furniture-step-content'
-                    });
-                    container.appendChild(stepContent);
-                    container.appendChild(selectionWrapper);
-                    const showBrandGrid = () => {
-                        stepContent.replaceChildren();
-                        selectedBrand = null;
-                        selectedType = null;
-                        const hdr = create('h4', {
-                            text: 'Select Furniture Brand',
-                            style: 'color:#fff;margin-bottom:12px;'
-                        });
-                        const grid = create('div', {
-                            class: 'group-grid'
-                        });
-                        distinctBrands.forEach(brand => {
-                            const card = create('div', {
-                                class: 'group-tile',
-                                tabindex: '0',
-                                role: 'button',
-                                'aria-label': brand
-                            });
-                            if (brand === 'IKEA') {
-                                card.style.background = '#0057AD';
-                                card.style.color = '#FBDA0C';
-                                card.style.fontWeight = '800';
-                                card.style.fontSize = '1.2rem';
-                                card.style.border = '6px solid #FBDA0C';
-                            }
-                            card.appendChild(create('span', {
-                                class: 'tile-name',
-                                text: brand
-                            }));
-                            card.addEventListener('click', () => {
-                                selectedBrand = brand;
-                                showTypeGrid(brand);
-                            });
-                            card.addEventListener('keydown', e => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    selectedBrand = brand;
-                                    showTypeGrid(brand);
-                                }
-                            });
-                            grid.appendChild(card);
-                        });
-                        stepContent.appendChild(hdr);
-                        stepContent.appendChild(grid);
-                    };
-                    const showTypeGrid = (brand) => {
-                        stepContent.replaceChildren();
-                        selectedType = null;
-                        const types = [...new Set(masterList.filter(i => i.brand === brand).map(i => i.type))].sort();
-                        const hdr = create('h4', {
-                            text: `Select Furniture Type (${brand})`,
-                            style: 'color:#fff;margin-bottom:12px;'
-                        });
-                        const grid = create('div', {
-                            class: 'group-grid'
-                        });
-                        const iconMap = {
-                            'Shelving': '📚',
-                            'Seating': '💺',
-                            'Wardrobe/Closet': '🚪',
-                            'Bed': '🛏️',
-                            'Table': '𓊯',
-                            'Sofa': '🛋️',
-                            'Dresser': '🗄',
-                            'TV/Media': '📺',
-                            'Desk': '▛▀▜'
-                        };
-                        types.forEach(type => {
-                            const card = create('div', {
-                                class: 'group-tile',
-                                tabindex: '0',
-                                role: 'button',
-                                'aria-label': type
-                            });
-                            card.appendChild(create('span', {
-                                class: 'tile-icon',
-                                text: iconMap[type] || '📦'
-                            }));
-                            card.appendChild(create('span', {
-                                class: 'tile-name',
-                                text: type
-                            }));
-                            card.addEventListener('click', () => {
-                                selectedType = type;
-                                showSearchAndList(brand, type);
-                            });
-                            grid.appendChild(card);
-                        });
-                        stepContent.appendChild(hdr);
-                        stepContent.appendChild(grid);
-                        addBackButton(stepContent, brandPreselected ? () => Breadcrumbs.goBack() : showBrandGrid);
-                    };
-                    const showSearchAndList = (brand, type) => {
-                        stepContent.replaceChildren();
-                        const chipsRow = create('div', {
-                            style: 'display:flex;gap:8px;margin-bottom:12px;align-items:center;'
-                        });
-                        const brandChip = create('button', {
-                            class: 'chip-btn selected',
-                            type: 'button',
-                            text: `${brand} ✕`
-                        });
-                        if (brand === 'IKEA') {
-                            brandChip.style.background = '#0057AD';
-                            brandChip.style.color = '#FBDA0C';
-                            brandChip.style.border = '2px solid #FBDA0C';
-                            brandChip.style.fontWeight = '800';
-                            brandChip.style.backgroundImage = 'none';
-                        }
-                        brandChip.addEventListener('click', showBrandGrid);
-                        chipsRow.appendChild(brandChip);
-                        const typeChip = create('button', {
-                            class: 'chip-btn selected',
-                            type: 'button',
-                            text: `${type} ✕`
-                        });
-                        typeChip.addEventListener('click', () => showTypeGrid(brand));
-                        chipsRow.appendChild(typeChip);
-                        stepContent.appendChild(chipsRow);
-                        const searchInput = create('input', {
-                            type: 'text',
-                            class: 'furniture-search-input',
-                            placeholder: 'Search by name or article number',
-                            autocomplete: 'off'
-                        });
-                        stepContent.appendChild(searchInput);
-                        const resultsList = create('div', {
-                            class: 'furniture-results-list'
-                        });
-                        stepContent.appendChild(resultsList);
-                        const updateList = (term = '') => {
-                            const filtered = masterList.filter(item => item.brand === brand && item.type === type && (item.label.toLowerCase().includes(term) || (item.article && String(item.article).includes(term))));
-                            resultsList.replaceChildren();
-                            if (!filtered.length) {
-                                resultsList.appendChild(create('div', {
-                                    class: 'empty-message',
-                                    text: 'No matching items'
-                                }));
-                                return;
-                            }
-                            filtered.forEach(item => {
-                                const row = create('div', {
-                                    class: 'furniture-result-item'
-                                });
-                                const textWrap = create('div', {
-                                    style: 'flex:1;min-width:0;'
-                                });
-                                textWrap.appendChild(create('div', {
-                                    class: 'furniture-result-name',
-                                    text: item.label
-                                }));
-                                if (item.article) textWrap.appendChild(create('div', {
-                                    class: 'furniture-result-meta',
-                                    text: `Art. ${item.article} · ${item.brand}`
-                                }));
-                                row.appendChild(textWrap);
-                                const addBtn = create('button', {
-                                    class: 'furniture-add-btn',
-                                    type: 'button',
-                                    text: '+ Add'
-                                });
-                                addBtn.addEventListener('click', () => {
-                                    State.furnitureItems.push({
-                                        key: item.key,
-                                        label: item.label,
-                                        articleNumber: item.article,
-                                        minutes: item.minutes,
-                                        isIkea: item.isIkea
-                                    });
-                                    updateSelectedFurnitureUI();
-                                    toast(`${item.label} added`, 'success');
-                                });
-                                row.appendChild(addBtn);
-                                if (brand === 'IKEA' && item.label.toUpperCase().includes('PAX')) {
-                                    const paxCfgBtn = create('button', {
-                                        class: 'furniture-add-btn',
-                                        style: 'background:rgba(222,160,0,0.7); margin-left:4px;',
-                                        type: 'button',
-                                        text: '⚙️'
-                                    });
-                                    paxCfgBtn.addEventListener('click', (e) => {
-                                        e.stopPropagation();
-                                        renderPaxConfigurator(paxCfgBtn, stepContent, svc, category_id);
-                                    });
-                                    row.appendChild(paxCfgBtn);
-                                }
-                                resultsList.appendChild(row);
-                            });
-                        };
-                        updateList('');
-                        searchInput.addEventListener('input', debounce((e) => updateList(e.target.value.trim().toLowerCase()), 200));
-                        addBackButton(stepContent, () => showTypeGrid(brand));
-                    };
-
-                    function updateSelectedFurnitureUI() {
-                        selectionWrapper.replaceChildren();
-                        if (!State.furnitureItems.length) {
-                            selectionWrapper.style.display = 'none';
-                            return;
-                        }
-                        selectionWrapper.style.display = 'block';
-                        selectionWrapper.appendChild(create('h5', {
-                            text: 'Furniture Selected:',
-                            style: 'margin-top:15px;color:#fff;margin-bottom:8px;'
-                        }));
-                        const ul = create('ul', {
-                            class: 'furniture-added-list'
-                        });
-                        State.furnitureItems.forEach((item, idx) => {
-                            let label = item.label;
-                            if (item.articleNumber) label += ` (${item.articleNumber})`;
-                            const li = create('li');
-                            const checkMark = create('span', {
-                                text: '✓',
-                                style: 'color: #22c55e; font-weight: 900; font-size: 1.1rem; margin-right: 8px; display: inline-block;'
-                            });
-                            li.appendChild(checkMark);
-                            li.appendChild(create('span', {
-                                text: label
-                            }));
-                            const rmBtn = create('button', {
-                                text: '✕',
-                                class: 'remove-item',
-                                type: 'button'
-                            });
-                            rmBtn.addEventListener('click', () => {
-                                State.furnitureItems.splice(idx, 1);
-                                updateSelectedFurnitureUI();
-                            });
-                            li.appendChild(rmBtn);
-                            ul.appendChild(li);
-                        });
-                        selectionWrapper.appendChild(ul);
-                        const addBtn = create('button', {
-                            class: 'add-more-button',
-                            type: 'button',
-                            text: '🛒 Add Selection to Cart',
-                            style: 'width:100%;margin-top:12px;'
-                        });
-                        addBtn.addEventListener('click', () => {
-                            const minutes = State.furnitureItems.map(f => f.minutes);
-                            const charge = mathFurnitureAssembly(minutes);
-                            const entry = {
-                                id: `${svc.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                                serviceId: svc.id,
-                                category_id,
-                                name: svc.ui_taxonomy?.display_name,
-                                price: `$${charge.price.toFixed(2)}`,
-                                icon: svc.icon || '🛋️',
-                                detail: 'Furniture Service',
-                                notes: `Items: ${State.furnitureItems.map(f => f.label).join(', ')}`,
-                                furnitureItems: [...State.furnitureItems],
-                                estimatedHours: charge.hours,
-                                estimatedPrice: charge.price
-                            };
-                            addToCart(entry);
-                            State.furnitureItems = [];
-                            updateSelectedFurnitureUI();
-                            container.style.display = 'none';
-                            exitFocusedMode();
-                            if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
-                            DOM.serviceRequestSummary.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start'
-                            });
-                            renderCart();
-                            toast('Furniture added to cart!', 'success');
-                        });
-                        selectionWrapper.appendChild(addBtn);
-                    }
-                    if (selectedBrand) showTypeGrid(selectedBrand);
-                    else showBrandGrid();
-                }
-function renderPaxConfigurator(anchorElement, container, svc, category_id) {
-                    const existing = document.querySelector('.pax-calc-module');
-                    if (existing) existing.remove();
-                    const mod = create('div', {
-                        class: 'pax-calc-module'
-                    });
-                    mod.innerHTML = `
-                    <div class="total-panel">
-                      <div class="price-main"><span class="price-label">Estimate</span><span class="price-value" id="paxTotalPrice">$0.00</span></div>
-                      <div style="display:flex;justify-content:space-between;margin-top:8px;">
-                        <div class="hours-badge"><i>🕒</i> <span id="paxTotalHours">0.0</span> hours</div>
-                        <div style="font-size:0.9rem;color:#4a5f6e;">+ start fee*</div>
-                      </div>
-                    </div>
-                    <div class="items-list">
-                      <div class="calc-row"><div class="item-info"><span class="item-name">Wardrobe frames</span><button class="info-btn" data-tooltip="frames" type="button">ⓘ</button></div><div class="item-controls"><button class="ctrl-btn pax-sub" data-target="frames" type="button">−</button><span class="count-display" id="pax-frames-count">0</span><button class="ctrl-btn pax-add" data-target="frames" type="button">+</button></div></div>
-                      <div class="calc-row"><div class="item-info"><span class="item-name">Hinge doors</span><button class="info-btn" data-tooltip="hinge" type="button">ⓘ</button></div><div class="item-controls"><button class="ctrl-btn pax-sub" data-target="hinge" type="button">−</button><span class="count-display" id="pax-hinge-count">0</span><button class="ctrl-btn pax-add" data-target="hinge" type="button">+</button></div></div>
-                      <div class="calc-row"><div class="item-info"><span class="item-name">Sliding doors</span><button class="info-btn" data-tooltip="sliding" type="button">ⓘ</button></div><div class="item-controls"><button class="ctrl-btn pax-sub" data-target="sliding" type="button">−</button><span class="count-display" id="pax-sliding-count">0</span><button class="ctrl-btn pax-add" data-target="sliding" type="button">+</button></div></div>
-                      <div class="calc-row"><div class="item-info"><span class="item-name">Interiors</span><button class="info-btn" data-tooltip="interiors" type="button">ⓘ</button></div><div class="item-controls"><button class="ctrl-btn pax-sub" data-target="interiors" type="button">−</button><span class="count-display" id="pax-interiors-count">0</span><button class="ctrl-btn pax-add" data-target="interiors" type="button">+</button></div></div>
-                    </div>
-                    <div class="pax-action-buttons">
-                      <button class="pax-cancel-btn" id="paxCancelBtn" type="button">Cancel</button>
-                      <button class="pax-add-btn" id="paxAddToCartBtn" type="button">Complete</button>
-                    </div>`;
-                    anchorElement.parentNode.insertBefore(mod, anchorElement.nextSibling);
-                    const counts = {
-                        frames: mod.querySelector('#pax-frames-count'),
-                        hinge: mod.querySelector('#pax-hinge-count'),
-                        sliding: mod.querySelector('#pax-sliding-count'),
-                        interiors: mod.querySelector('#pax-interiors-count')
-                    };
-                    const priceEl = mod.querySelector('#paxTotalPrice');
-                    const hoursEl = mod.querySelector('#paxTotalHours');
-                    const update = () => {
-                        const c = {
-                            cabinet: parseInt(counts.frames.textContent) || 0,
-                            standardDoor: parseInt(counts.hinge.textContent) || 0,
-                            slidingDoor: parseInt(counts.sliding.textContent) || 0,
-                            insideItem: parseInt(counts.interiors.textContent) || 0
-                        };
-                        const raw = c.cabinet * COEFF.cabinet + c.standardDoor * COEFF.standardDoor + c.slidingDoor * COEFF.slidingDoor + c.insideItem * COEFF.insideItem;
-                        const hours = Math.max(0, raw);
-                        const price = hours * PRICE_PER_HOUR + (hours < 3 ? START_FEE : 0);
-                        hoursEl.textContent = hours.toFixed(1);
-                        priceEl.textContent = `$${price.toFixed(2)}`;
-                    };
-                    mod.addEventListener('click', e => {
-                        const btn = e.target.closest('.pax-add, .pax-sub');
-                        if (!btn) return;
-                        e.stopPropagation();
-                        const isAdd = btn.classList.contains('pax-add');
-                        const target = btn.dataset.target;
-                        const el = counts[target];
-                        if (!el) return;
-                        let val = parseInt(el.textContent) || 0;
-                        val = Math.max(0, val + (isAdd ? 1 : -1));
-                        el.textContent = val;
-                        update();
-                    });
-                    mod.querySelector('#paxCancelBtn').addEventListener('click', () => mod.remove());
-                    mod.querySelector('#paxAddToCartBtn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const frames = parseInt(counts.frames.textContent) || 0;
-                        const hinge = parseInt(counts.hinge.textContent) || 0;
-                        const sliding = parseInt(counts.sliding.textContent) || 0;
-                        const interiors = parseInt(counts.interiors.textContent) || 0;
-                        if (!frames && !hinge && !sliding && !interiors) {
-                            toast('Add at least one component.', 'error');
-                            return;
-                        }
-                        const totalHours = frames * COEFF.cabinet + hinge * COEFF.standardDoor + sliding * COEFF.slidingDoor + interiors * COEFF.insideItem;
-                        const minutes = Math.round(totalHours * 60);
-                        const label = `PAX: ${frames} frames, ${hinge} hinge, ${sliding} sliding, ${interiors} interiors`;
-                        State.furnitureItems.push({
-                            key: 'PAX_CUSTOM',
-                            label,
-                            minutes,
-                            isIkea: true,
-                            articleNumber: null
-                        });
-                        setTimeout(() => {
-                            const wrapper = document.getElementById('furniture-selection-wrapper');
-                            if (wrapper) wrapper.querySelector('.add-more-button')?.click();
-                        }, 0);
-                        toast(`Added ${label}`, 'success');
-                        mod.remove();
-                    });
-                    update();
-                }
 </script>
 
-    <script>
+<script>
   (async function init() {
     try {
       // 1. Load the SSOT
       const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
-      if (!res.ok) throw new Error("Could not load SSOT");
-      window.DB = await res.json();
-      SERVICE_DATA = window.DB; 
-
-      // 2. Initialise NLP sets (needed for SmartQuote & tag detection)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      SERVICE_DATA = await res.json();
+      DB = SERVICE_DATA;
+      window.DB = DB;               // expose for all helpers
+      // 2. Build NLP sets (needed for SmartQuote)
       initNlpSets();
-
-      // 3. Populate DOM cache (from UIRenderer)
       cacheDOM();
-
-      // 4. Render the initial category grid
+      // 3. Build data maps (categories, groups, services, furniture)
+      buildDataMaps(SERVICE_DATA);
+      // 4. Render the category grid
       renderCategoryCards();
-
-      // 5. Wire all event listeners (the new ones from AppController)
+      // 5. Wire all event listeners (contact, cart, etc.)
       wireGlobalEvents();
-
-      // 6. Initialise the cart from session storage
+      // 6. Load cart from session storage and render it
       State.serviceRequest = loadCart();
       renderCart();
-
-      // 7. Ensure containers are in the right state
+      // 7. Ensure containers are in the right initial state
       const containers = ['intakeQuestionsContainer', 'serviceRequestSummary', 'quoteOut'];
       containers.forEach(id => {
         const el = document.getElementById(id);
@@ -9634,7 +9201,29 @@ function renderPaxConfigurator(anchorElement, container, svc, category_id) {
       const catGrid = document.getElementById('category-card');
       if (catGrid) catGrid.style.display = 'grid';
 
-      // 8. Define renderRoute globally (so it can be called from events)
+      // 8. Set viewport height (fix for mobile)
+      setViewportHeight();
+
+      // 9. Expose SmartQuote functions to global scope for inline onclick handlers
+      window.sqAnalyze = sqAnalyze;
+      window.sqUnifiedAction = sqUnifiedAction;
+      window.sqToggleBuilder = sqToggleBuilder;
+      window.sqBuilderBack = sqBuilderBack;
+      window.sqPickType = sqPickType;
+      window.sqHandleStep2 = sqHandleStep2;
+      window.sqOpenStep = sqOpenStep;
+      window.sqToggleTag = sqToggleTag;
+      window.sqAdjQty = sqAdjQty;
+      window.sqBuildAdlib = sqBuildAdlib;
+      window.sqEditAdlib = sqEditAdlib;
+      window.sqConfirmAdlib = sqConfirmAdlib;
+      window.sqAddToCart = sqAddToCart;
+      window.sqRestart = sqRestart;
+      window._sqSwitchToRecommended = _sqSwitchToRecommended;
+      window._sqRevertAutoSelect = _sqRevertAutoSelect;
+      window.prefillSmartQuoteFromService = prefillSmartQuoteFromService;
+
+      // 10. Define renderRoute globally (used by orchestrator if ever enabled)
       window.renderRoute = function(route) {
         window._currentRoute = route;
         const catGrid = document.getElementById('category-card');
@@ -9666,12 +9255,14 @@ function renderPaxConfigurator(anchorElement, container, svc, category_id) {
         }
       };
 
-      console.log('BookTOM initialized successfully.');
+      console.log('✅ BookTOM initialized successfully.');
     } catch (err) {
-      console.error('BookTOM failed to initialize:', err);
+      console.error('❌ BookTOM failed to initialize:', err);
+      toast('Could not load services. Please refresh.', 'error');
     }
   })();
 </script>
+
 
     <script>
         if ('serviceWorker' in navigator) {
