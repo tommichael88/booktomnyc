@@ -1305,7 +1305,86 @@ function enableLiveAdLibPreview() {
         </div>
     </div>
 
+<script>// ───────────────────────── GLOBAL STATE & CACHE ─────────────────────────
+let SERVICE_DATA = null;
+let DB = null;
+let smartQuoteReady = false;
+let smartQuoteCallbacks = [];
+let __sqActive = false;
+let cartCurrentPage = 1;
+const ITEMS_PER_PAGE = 4;
+const STORAGE_KEY = "booktom_cart_v2";
 
+const State = {
+    serviceRequest: [],
+    furnitureItems: [],
+    currentStep: 1
+};
+
+const Breadcrumbs = {
+    stack: [],
+    push(state) { this.stack.push(state); },
+    pop() { return this.stack.pop(); },
+    clear() { this.stack = []; },
+    goBack() {
+        if (this.stack.length === 0) { restoreCategoryView(); return; }
+        const prev = this.stack.pop();
+        if (prev.type === 'group') showGroupsForCategory(prev.category_id, true);
+        else if (prev.type === 'subgroups') showSubGroups(prev.group, prev.category_id, true);
+        else if (prev.type === 'serviceDetail') {
+            selectGroupForCategory(prev.groups, prev.category_id);
+            if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
+            if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'block';
+        } else restoreCategoryView();
+    }
+};
+
+const categoryMap = new Map();
+const groupMap = new Map();
+const servicesByGroup = new Map();
+const furnitureMap = new Map();
+window.groupChildrenMap = new Map();
+
+// ───────────────────────── UTILITIES & LIMITERS ─────────────────────────
+class RateLimiter {
+    constructor(max = 3, windowMs = 60000) {
+        this.max = max;
+        this.windowMs = windowMs;
+        this.requests = new Map();
+    }
+    isAllowed(key) {
+        const now = Date.now();
+        const ts = (this.requests.get(key) || []).filter(t => now - t < this.windowMs);
+        if (ts.length >= this.max) return false;
+        ts.push(now);
+        this.requests.set(key, ts);
+        return true;
+    }
+}
+const contactLimiter = new RateLimiter(3, 60000);
+const cartLimiter = new RateLimiter(5, 2000);
+
+const decodeB64 = (s) => { try { return atob(s); } catch (_) { return ''; } };
+const safePhone = (s) => (s || '').replace(/[^+\d\s\-()]/g, '').trim();
+const safeEmail = (s) => (s || '').replace(/[^A-Za-z0-9@._+\-]/g, '').trim();
+const debounce = (fn, ms = 220) => {
+    let t, raf;
+    return function(...args) {
+        const ctx = this;
+        if (t) clearTimeout(t);
+        if (raf) cancelAnimationFrame(raf);
+        if (ms <= 16) raf = requestAnimationFrame(() => fn.apply(ctx, args));
+        else t = setTimeout(() => fn.apply(ctx, args), ms);
+    };
+};
+
+// ───────────────────────── PAX COEFFICIENTS ─────────────────────────
+const PAX_COEFF_B64 = "eyJwcmljZVBlckhvdXIiOjg1LCJzdGFydEZlZSI6MCwiY29lZmZpY2llbnRzIjp7ImNhYmluZXQiOjEuMywic3RhbmRhcmREb29yIjowLjYsInNsaWRpbmdEb29yIjowLjksImluc2lkZUl0ZW0iOjAuMzV9fQ==";
+const PAX_CONFIG = JSON.parse(atob(PAX_COEFF_B64));
+const PRICE_PER_HOUR = PAX_CONFIG.pricePerHour;
+const START_FEE = PAX_CONFIG.startFee;
+const COEFF = PAX_CONFIG.coefficients;
+</script>
    
    <!-- pricing_engine.js -->
    <script>
@@ -9968,9 +10047,11 @@ function renderPaxConfigurator(anchorElement, container, svc, category_id) {
 
 <script>
   (async function init() {
-    // 1. Load the SSOT
-    const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
-    window.DB = await res.json();
+    try {
+      // 1. Load the SSOT
+      const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
+      if (!res.ok) throw new Error("Could not load SSOT");
+      window.DB = await res.json();
 
     // 2. Populate DOM cache (from UIRenderer)
     cacheDOM();
@@ -10032,9 +10113,21 @@ function renderPaxConfigurator(anchorElement, container, svc, category_id) {
     };
 
     // 8. Load the initial route (home) – just show categories
-    console.log('BookTOM initialized with Orchestrator.');
+} catch (err) {
+      console.error("BookTOM failed to initialize:", err);
+;
+}
   })();
 </script>
+        <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
+        }
+    </script>
 
 </body>
 
