@@ -220,6 +220,10 @@ body.modal-active{overflow:hidden}
 .sq-live-preview i.ti-sparkles { font-size:.9rem; color:var(--clr-red-dark,#8a0615); opacity:.7; flex-shrink:0; }
 .sq-live-preview .preview-empty { color:#9ca3af; font-style:italic; font-size:.82rem; }
 .sq-live-preview .preview-tag { background:rgba(222,0,0,.1); border-radius:30px; padding:2px 8px; font-size:.68rem; font-weight:600; color:#8a0615; white-space:nowrap; margin-left:2px; }
+.sq-live-tag-hints { min-height:0; transition:all .15s ease; }
+.sq-live-tag-row { display:flex; flex-wrap:wrap; gap:6px; padding:4px 0 6px; }
+.sq-live-tag-chip { display:inline-flex; align-items:center; background:rgba(138,6,21,.07); border:1px solid rgba(138,6,21,.18); color:#8a0615; border-radius:20px; padding:3px 10px; font-size:.72rem; font-weight:600; white-space:nowrap; animation:tagFadeIn .15s ease; }
+@keyframes tagFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
 /* interactive adlib word */
 .lp-word { color:#555; font-size:.83rem; font-weight:400; }
 /* interactive adlib pill (dropdown trigger) */
@@ -1314,6 +1318,45 @@ function enableLiveAdLibPreview() {
             const conf = estimateLiveConfidence(text);
             const phraseMatch = previewDiv.innerHTML.match(/preview-phrase">([^<]+)</);
             renderUnifiedSqButton(conf, phraseMatch ? phraseMatch[1] : null);
+
+            // v9.5: Real-time passive tag confirmations shown below the adlib sentence.
+            // These are NOT friction questions -- they show the user what we've already
+            // inferred from what they typed. Chips appear and disappear as they type.
+            const liveTagEl = document.getElementById('sqLiveTagHints');
+            if (liveTagEl && text.length > 4 && window.DB && window.DB.smart_tags) {
+                const detectedTids = [];
+                if (typeof detectTagsNLP === 'function') {
+                    const r = detectTagsNLP(text);
+                    detectedTids.push(...r.found);
+                }
+                if (typeof inferTagsFromContext === 'function') {
+                    const nlpIntent = typeof detectIntentNLP === 'function' ? detectIntentNLP(text) : null;
+                    const cat = nlpIntent && nlpIntent.category ? nlpIntent.category : 'other';
+                    const grp = nlpIntent && nlpIntent._groupId ? nlpIntent._groupId : null;
+                    const ctx = inferTagsFromContext(text, cat, grp);
+                    ctx.forEach(function(x) { if (!detectedTids.includes(x.tid)) detectedTids.push(x.tid); });
+                }
+                if (typeof extractSizeHint === 'function') {
+                    const hint = extractSizeHint(text);
+                    const fragileWords = /(neon|glass|canvas|painting|art|fragile|delicate)/i.test(text);
+                    if ((hint === 'large' || hint === 'oversized') && fragileWords) {
+                        if (!detectedTids.includes('#fragile_item')) detectedTids.push('#fragile_item');
+                    } else if ((hint === 'large' || hint === 'oversized') && !fragileWords) {
+                        if (!detectedTids.includes('#heavy_item')) detectedTids.push('#heavy_item');
+                    }
+                }
+                if (detectedTids.length) {
+                    var chips = detectedTids.map(function(tid) {
+                        var tag = window.DB.smart_tags[tid];
+                        if (!tag) return '';
+                        var label = tag.display_name || tid.replace(/^#/, '').replace(/_/g, ' ');
+                        return '<span class="sq-live-tag-chip" title="Detected from your description"><i class="ti ti-sparkles" style="font-size:10px;margin-right:3px;opacity:.7"></i>' + label + '</span>';
+                    }).filter(Boolean).join('');
+                    liveTagEl.innerHTML = chips ? '<div class="sq-live-tag-row">' + chips + '</div>' : '';
+                } else {
+                    liveTagEl.innerHTML = '';
+                }
+            }
         }, 80);
     }
     update();
@@ -5965,14 +6008,30 @@ function enableLiveAdLibPreview() {
                 }
 
                 function extractSizeHint(text, tags) {
-                    // Detect dimensions like 12x12, 6ft, 65 inch
+                    // Detect dimensions like 12x12, 6ft, 65 inch, "6ft x 4ft"
                     const lower = text.toLowerCase();
+                    // v9.5 FIX: original regex /(\d+)\s*[x×]\s*(\d+)/ missed "6ft x 4ft"
+                    // because the unit suffix came between the digit and the x.
+                    // Also fixed dimension thresholds: the original 200/600 was calibrated
+                    // for inches/pixels. For feet-based dimensions (6ft x 4ft = 24 sq ft),
+                    // we compare against ft-appropriate thresholds (>12 sq ft = large,
+                    // >30 sq ft = oversized). For pure numbers, keep the original thresholds.
+
+                    // Check for feet-based dimensions: "6ft x 4ft", "3 ft x 5 ft"
+                    const ftDimMatch = lower.match(/(\d+)\s*(?:ft|feet|foot)\s*[x×]\s*(\d+)/);
+                    if (ftDimMatch) {
+                        const area = parseInt(ftDimMatch[1]) * parseInt(ftDimMatch[2]);
+                        if (area >= 30) return 'oversized'; // 6x5ft, 5x6ft etc
+                        if (area >= 12) return 'large';     // 4x3ft, 6x2ft etc
+                        return 'standard';
+                    }
+                    // Inch/pure dimension: 12x12, 24x36 etc
                     const dimMatch = lower.match(/(\d+)\s*[x×]\s*(\d+)/);
                     if (dimMatch) {
                         const area = parseInt(dimMatch[1]) * parseInt(dimMatch[2]);
                         if (area > 600) return 'oversized';
                         if (area > 200) return 'large';
-                        return 'standard'; // Means NOT oversized, NOT heavy
+                        return 'standard';
                     }
                     // "12 inch", "65 inch" TV → heavy/large
                     const inchMatch = lower.match(/(\d+)\s*(?:inch|in\b|")/);
@@ -5981,6 +6040,16 @@ function enableLiveAdLibPreview() {
                         if (n >= 65) return 'large'; // 65"+ TV → heavy_item candidate
                         if (n <= 24) return 'standard';
                     }
+                    // Foot-based single dimension: "6ft sign", "8 foot banner"
+                    const ftMatch = lower.match(/(\d+)\s*(?:foot|feet|ft)\b/);
+                    if (ftMatch) {
+                        const n = parseInt(ftMatch[1]);
+                        if (n >= 8) return 'oversized';
+                        if (n >= 5) return 'large';
+                    }
+                    // Explicit size words -- "neon sign" is a proxy for a large/heavy item
+                    if (/\b(very large|oversized|enormous|gigantic|huge)\b/i.test(text)) return 'oversized';
+                    if (/\b(large|big|neon sign)\b/i.test(text)) return 'large';
                     return null;
                 }
 
@@ -6133,6 +6202,8 @@ function enableLiveAdLibPreview() {
       <i class="ti ti-sparkles"></i>
       <span class="preview-empty">✨ Describe your job — we’ll build a clear request for you</span>
     </div>
+    <!-- LIVE TAG HINTS: passive tag confirmations from typed text -->
+    <div id="sqLiveTagHints" class="sq-live-tag-hints"></div>
     <div class="sq-inline-row">
       <textarea id="sqDescIn" rows="2" placeholder="e.g. mount a large neon sign on a drywall wall in the bedroom…"></textarea>
     </div>
@@ -6591,6 +6662,81 @@ function enableLiveAdLibPreview() {
                             nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText
                         );
                     }
+
+                    // v9.5 FIX: run full tag detection so the orchestrator path gets
+                    // the same #brick_wall / #heavy_item / contextual-tag signals that
+                    // sqPrepareFlow (legacy S-state path) was computing at lines 7663-7674.
+                    // Without this, the orchestrator route always got detectedTagIds:[]
+                    // meaning "mantel" never triggered #brick_wall, "large sign" never
+                    // triggered #heavy_item, etc. This was confirmed as the root cause
+                    // of the screenshot regression.
+                    const detCat = nlpIntent?.category || 'other';
+                    const detGroup = selectedGroupId || nlpIntent?._groupId || null;
+                    const nlpTagResult = (typeof detectTagsNLP === 'function')
+                        ? detectTagsNLP(rawText) : { found: [], negated: [] };
+                    const detectedTagIds = nlpTagResult.found.filter(tid =>
+                        typeof tagValidForCategory === 'function'
+                            ? tagValidForCategory(tid, detCat, detGroup)
+                            : true
+                    );
+                    const negatedTagIds = nlpTagResult.negated.filter(tid =>
+                        typeof tagValidForCategory === 'function'
+                            ? tagValidForCategory(tid, detCat, detGroup)
+                            : true
+                    );
+
+                    // Contextual tags: "mantel" -> #brick_wall, "urgent" -> #emergency etc.
+                    if (typeof inferTagsFromContext === 'function') {
+                        const ctxTags = inferTagsFromContext(rawText, detCat, detGroup);
+                        ctxTags.forEach(({ tid }) => {
+                            if (!detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                detectedTagIds.push(tid);
+                        });
+                    }
+
+                    // v9.5 FIX: size hint -> tag injection.
+                    // extractSizeHint was only used to NEGATE heavy tags (standard size),
+                    // never to POSITIVELY inject them (large/oversized). Added positive
+                    // v9.5 update: size-hint injection now distinguishes between
+                    // fragile/high-value large items (neon signs, art, glass) vs
+                    // genuinely heavy items (stone slabs, large mirrors, equipment).
+                    // Large fragile items get #fragile_item, not #heavy_item.
+                    const sizeHint = (typeof extractSizeHint === 'function')
+                        ? extractSizeHint(rawText, DB.smart_tags || {}) : null;
+                    const isFragileItem = /(neon|glass|canvas|painting|art|fragile|delicate|stained)/i.test(rawText);
+                    if (sizeHint === 'oversized') {
+                        if (isFragileItem) {
+                            if (!detectedTagIds.includes('#fragile_item') && !negatedTagIds.includes('#fragile_item'))
+                                detectedTagIds.push('#fragile_item');
+                        } else {
+                            if (!detectedTagIds.includes('#very_heavy') && !negatedTagIds.includes('#very_heavy'))
+                                detectedTagIds.push('#very_heavy');
+                        }
+                    } else if (sizeHint === 'large') {
+                        if (isFragileItem) {
+                            if (!detectedTagIds.includes('#fragile_item') && !negatedTagIds.includes('#fragile_item'))
+                                detectedTagIds.push('#fragile_item');
+                        } else {
+                            if (!detectedTagIds.includes('#heavy_item') && !negatedTagIds.includes('#heavy_item'))
+                                detectedTagIds.push('#heavy_item');
+                        }
+                    } else if (sizeHint === 'standard') {
+                        // Standard size: suppress heavy tags if not already detected
+                        ['#heavy_item', '#very_heavy'].forEach(tid => {
+                            if (!detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                negatedTagIds.push(tid);
+                        });
+                    }
+
+                    // NLP _ctxTags (from contextual_overrides) -- same path sqAnalyze uses
+                    if (nlpIntent?._ctxTags?.length) {
+                        nlpIntent._ctxTags.forEach(tid => {
+                            if ((typeof tagValidForCategory !== 'function' || tagValidForCategory(tid, detCat, detGroup))
+                                && !detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                detectedTagIds.push(tid);
+                        });
+                    }
+
                     return makeBookingContext('free_text', {
                         rawText,
                         nlpIntent,
@@ -6600,6 +6746,8 @@ function enableLiveAdLibPreview() {
                         selectedServiceId: (nlpIntent?._matchConfidence >= thresholds.auto_select_named_service) ? (nlpIntent?.recommendedSku || null) : null,
                         selectedCategoryId: nlpIntent?.category || null,
                         selectedGroupId,
+                        detectedTagIds,
+                        negatedTagIds,
                     });
                 }
 
@@ -7332,8 +7480,10 @@ function enableLiveAdLibPreview() {
                     const trace = [];
                     let resolution = null, flags = null, intakeChain = [], answers = {},
                         confidenceState = null, uiTemplate = null, materialsEstimate = null, quote = null;
-                    const activeTagIds = [...new Set([...(context.manuallyToggledTagIds || [])])]
-                        .filter(tid => !(context.negatedTagIds || []).includes(tid));
+                    const activeTagIds = [...new Set([
+                        ...(context.detectedTagIds || []),
+                        ...(context.manuallyToggledTagIds || [])
+                    ])].filter(tid => !(context.negatedTagIds || []).includes(tid));
 
                     for (const step of workflow.steps) {
                         let outputSummary;
@@ -8319,10 +8469,32 @@ function enableLiveAdLibPreview() {
                 }
 
                 function sqEditAdlib() {
+                    // v9.5 FIX: "Edit" should take the user back to the text input
+                    // to modify their description, not just hide the adlib panel and
+                    // show a "Construct Estimate" button (which was confusing/dead-end).
+                    // The real expectation: I typed "mount a sign", confirmed step 1-2,
+                    // then got to the review and want to change "neon sign" to "metal sign".
+                    // Correct fix: restore the SmartQuote text bar, focus the textarea,
+                    // and exit focused mode so they're back at the start.
                     const box = document.getElementById('sqAdlibBox');
                     if (box) box.style.display = 'none';
-                    const bb = document.getElementById('sqS3build');
-                    if (bb) bb.style.display = 'inline-flex';
+
+                    // Return to the text bar if available
+                    const textBar = document.getElementById('sqTextBar');
+                    if (textBar) {
+                        exitFocusedMode();
+                        textBar.style.removeProperty('display');
+                        const ta = document.getElementById('sqDescIn');
+                        if (ta) {
+                            ta.value = S.desc || '';
+                            setTimeout(() => { ta.focus(); ta.select(); }, 50);
+                        }
+                        textBar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        // Fallback: just show the build button
+                        const bb = document.getElementById('sqS3build');
+                        if (bb) bb.style.display = 'inline-flex';
+                    }
                 }
 
                 function sqConfirmAdlib() {

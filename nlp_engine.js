@@ -936,14 +936,30 @@ function extractLocation(text) {
                 }
 
 function extractSizeHint(text, tags) {
-                    // Detect dimensions like 12x12, 6ft, 65 inch
+                    // Detect dimensions like 12x12, 6ft, 65 inch, "6ft x 4ft"
                     const lower = text.toLowerCase();
+                    // v9.5 FIX: original regex /(\d+)\s*[x×]\s*(\d+)/ missed "6ft x 4ft"
+                    // because the unit suffix came between the digit and the x.
+                    // Also fixed dimension thresholds: the original 200/600 was calibrated
+                    // for inches/pixels. For feet-based dimensions (6ft x 4ft = 24 sq ft),
+                    // we compare against ft-appropriate thresholds (>12 sq ft = large,
+                    // >30 sq ft = oversized). For pure numbers, keep the original thresholds.
+
+                    // Check for feet-based dimensions: "6ft x 4ft", "3 ft x 5 ft"
+                    const ftDimMatch = lower.match(/(\d+)\s*(?:ft|feet|foot)\s*[x×]\s*(\d+)/);
+                    if (ftDimMatch) {
+                        const area = parseInt(ftDimMatch[1]) * parseInt(ftDimMatch[2]);
+                        if (area >= 30) return 'oversized'; // 6x5ft, 5x6ft etc
+                        if (area >= 12) return 'large';     // 4x3ft, 6x2ft etc
+                        return 'standard';
+                    }
+                    // Inch/pure dimension: 12x12, 24x36 etc
                     const dimMatch = lower.match(/(\d+)\s*[x×]\s*(\d+)/);
                     if (dimMatch) {
                         const area = parseInt(dimMatch[1]) * parseInt(dimMatch[2]);
                         if (area > 600) return 'oversized';
                         if (area > 200) return 'large';
-                        return 'standard'; // Means NOT oversized, NOT heavy
+                        return 'standard';
                     }
                     // "12 inch", "65 inch" TV → heavy/large
                     const inchMatch = lower.match(/(\d+)\s*(?:inch|in\b|")/);
@@ -952,6 +968,16 @@ function extractSizeHint(text, tags) {
                         if (n >= 65) return 'large'; // 65"+ TV → heavy_item candidate
                         if (n <= 24) return 'standard';
                     }
+                    // Foot-based single dimension: "6ft sign", "8 foot banner"
+                    const ftMatch = lower.match(/(\d+)\s*(?:foot|feet|ft)\b/);
+                    if (ftMatch) {
+                        const n = parseInt(ftMatch[1]);
+                        if (n >= 8) return 'oversized';
+                        if (n >= 5) return 'large';
+                    }
+                    // Explicit size words -- "neon sign" is a proxy for a large/heavy item
+                    if (/\b(very large|oversized|enormous|gigantic|huge)\b/i.test(text)) return 'oversized';
+                    if (/\b(large|big|neon sign)\b/i.test(text)) return 'large';
                     return null;
                 }
 

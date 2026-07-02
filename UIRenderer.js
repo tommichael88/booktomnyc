@@ -2954,3 +2954,265 @@ function updateSmartQuoteBarVisibility() {
                     const shouldShow = !isFocused || (isFocused && __sqActive);
                     bar.style.display = shouldShow ? 'block' : 'none';
                 }
+
+// ─── PHASE 7: Orchestrator-fed render functions ──────────────────────────────
+// These are the real, complete UIRenderer wiring for ResolvedRoute objects
+// produced by executeWorkflow(). Both functions use the real, existing CSS
+// classes and DOM IDs already present in qr.html's theme — no new markup.
+
+function renderRoute(route) {
+    // Dispatcher: routes a ResolvedRoute to the correct render function
+    // based on route.uiTemplate. Called from sqAnalyze (free-text) and
+    // prefillSmartQuoteFromService (catalog tap) — the two real entry points
+    // that now run through the orchestrator end-to-end.
+    if (!route) return;
+    // Store for live-recompute (answer chip clicks, qty changes)
+    window._currentRoute = route;
+
+    switch (route.uiTemplate) {
+        case 'self_quote':
+            // Self-quote path already has renderSelfQuoteFromRoute in qr.html
+            // (line ~10612). Re-use it directly — it reads from route.quote,
+            // exactly what executeWorkflow produces.
+            if (typeof renderSelfQuoteFromRoute === 'function') {
+                renderSelfQuoteFromRoute(route, route.entity);
+            }
+            break;
+        case 'curated_card':
+            renderCuratedCardFromRoute(route);
+            break;
+        case 'chip_grid':
+            // chip_grid: no real intake questions, just qty + tags.
+            // Re-use sqBuildStep3 via the existing legacy path — the S state
+            // has been pre-seeded by the collector, so this is safe.
+            if (typeof sqBuildStep3 === 'function') sqBuildStep3();
+            break;
+        case 'legacy_flow':
+            // legacy_flow (furniture/pax): keep existing path, no orchestrator
+            // gap here as confirmed in T30/T34. showIntakeQuestions handles it.
+            if (route.entity && typeof showIntakeQuestions === 'function') {
+                showIntakeQuestions(route.entity, route.entity.ui_taxonomy?.category_id);
+            }
+            break;
+        default:
+            // Veto / fallback: show a minimal recovery message in sqQuoteOut
+            const out = document.getElementById('sqQuoteOut');
+            if (out) out.innerHTML = '<div style="padding:16px;color:#555;">We couldn\'t find an exact match — try describing the job differently, or browse the categories below.</div>';
+    }
+}
+
+function renderCuratedCardFromRoute(route) {
+    // The real, Phase 7 curated-card renderer. Reads exclusively from the
+    // ResolvedRoute produced by executeWorkflow — no S-state reads, no
+    // inline computeUnifiedQuote call. Uses the real, existing CSS classes:
+    // #intakeQuestionsContainer, .intake-module-step, .ims-label, .ims-badge,
+    // .ims-chips, .ims-chip, .ims-chip.sel, #sqQuoteOut, .qpanel/.qhero/.qprice.
+    const container = document.getElementById('intakeQuestionsContainer');
+    if (!container) return;
+
+    const entity = route.entity;
+    if (!entity) {
+        container.innerHTML = '<div style="padding:16px;color:#aaa;">No service matched — try a different description.</div>';
+        container.style.display = 'block';
+        return;
+    }
+
+    // Show the flow container and scroll into view
+    const flow = document.getElementById('sqStepFlow');
+    if (flow) flow.style.display = 'flex';
+    container.style.display = 'flex';
+
+    // Track answers for live recompute
+    const answers = {};
+    window._curatedAnswers = answers;
+
+    function recomputeAndRenderPrice() {
+        // Live recompute on each chip answer -- uses computeUnifiedQuote
+        // directly (same real function the orchestrator uses internally for
+        // orch_compute_quote), with the real, current answers.
+        if (typeof computeUnifiedQuote !== 'function') return;
+        const dynDef = entity._isDynamic
+            ? (typeof resolveDynamicService === 'function'
+                ? resolveDynamicService(entity.ui_taxonomy?.category_id, entity.service_type, entity.ui_taxonomy?.group_id)
+                : null)
+            : null;
+        const u = computeUnifiedQuote({
+            svc: entity._isDynamic ? null : entity,
+            dynDef,
+            activeTagIds: route.activeTags || [],
+            answers,
+            qty: window._curatedQty || 1,
+            intentKeyword: null,
+            formulaId: entity.pricing_engine && DB?.pricing_formulas?.[entity.pricing_engine] ? entity.pricing_engine : null,
+            ctxAdjFee: 0,
+            ctxAdjMin: 0,
+        });
+
+        // Accumulate confidence from answered modules, matching sqBuildCuratedIntake's
+        // real logic (line ~8851). The route already has the initial confidence from
+        // orch_compute_confidence (now entry-type-aware -- catalog starts at 100).
+        // As questions are answered, confidence_gain per module accumulates.
+        const baseConf = route.confidence?.score ?? (entity.confidence_strategy?.base_confidence ?? 40);
+        const minConf = route.confidence?.minConf ?? (entity.confidence_strategy?.minimum_quote_confidence ?? 50);
+        const chain = route.intakeChain || [];
+        let accumulatedConf = baseConf;
+        chain.forEach(mod => {
+            if (!mod.confidence_gain) return;
+            const modKey = mod.moduleKey || mod.module;
+            if (answers[modKey]) accumulatedConf = Math.min(100, accumulatedConf + mod.confidence_gain);
+        });
+        const meetsConf = accumulatedConf >= minConf;
+
+        renderPriceInQout(u, entity, meetsConf, accumulatedConf, minConf);
+    }
+
+    function renderPriceInQout(u, svc, meetsConf, confScore, minConf) {
+        const out = document.getElementById('sqQuoteOut');
+        if (!out || !u) return;
+        // meetsConf defaults to true -- for catalog entries the route already starts at
+        // score 100 (after orch_compute_confidence fix), so most services pass immediately.
+        // For free_text entries with low NLP confidence, the button dims until
+        // enough questions are answered to accumulate sufficient confidence_gain.
+        if (meetsConf === undefined) meetsConf = (route.quote?.meetsConfidenceBar ?? true);
+        const dispatchFee = u.dispatchFee ?? 45;
+        const cs = typeof resolveCheckoutState === 'function'
+            ? resolveCheckoutState(u.checkoutStateKey, u.laborEstimate)
+            : { btnText: 'Add to Request', ui_message: '' };
+        const isDiag = u.isDiagnostic;
+        const isProject = u.isProject;
+        const priceDisplay = isDiag
+            ? `$${dispatchFee}<span style="font-size:20px;opacity:.7"> + on-site quote</span>`
+            : isProject
+                ? `From $${u.laborEstimate}`
+                : `$${u.laborEstimate}`;
+        const svcName = escapeHtml(svc.ui_taxonomy?.display_name || svc.id || 'Service');
+        const tier = u.complexityTier ? ` · ${u.complexityTier}` : '';
+
+        // Confidence hint: only show when below threshold and answering more questions
+        // would help (i.e. there are unanswered modules with confidence_gain)
+        const unansweredWithGain = (route.intakeChain || []).filter(m => m.confidence_gain && !answers[m.moduleKey || m.module]);
+        const confHint = !meetsConf && unansweredWithGain.length > 0
+            ? `<p style="font-size:.8rem;color:#e67e22;margin-top:8px;padding:6px 10px;background:#fef9f0;border-radius:6px;border:1px solid #f5d89e;">
+                 <i class="ti ti-info-circle"></i> Answer the questions above to get a firm estimate
+               </p>`
+            : '';
+
+        const btnDisabled = !meetsConf ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
+        const btnText = meetsConf ? escapeHtml(cs.btnText || 'Add to Request') : 'Answer questions above';
+
+        out.innerHTML = `
+          <div class="qpanel">
+            <div class="qhero">
+              <div class="qitag"><i class="ti ti-bolt"></i>${escapeHtml(u.checkoutStateKey?.replace(/_/g,' ') || 'estimate')}</div>
+              <div class="qprice">${priceDisplay}</div>
+              <div class="qpsub">${isDiag ? 'On-site quote after dispatch' : (isProject ? 'Starting price' : 'Total labor estimate')}${tier}</div>
+              ${!isDiag && dispatchFee > 0 ? `<div class="qmeta"><i class="ti ti-car"></i>$${dispatchFee} dispatch fee included</div>` : ''}
+            </div>
+            <div class="qbody">
+              <div class="qlines">
+                ${!isDiag && u.totalMin > 0 ? `<div class="ql"><span class="qll"><i class="ti ti-clock"></i>Estimated time</span><span class="qlv">~${u.totalMin} min</span></div>` : ''}
+                ${u.hideMaterials ? '' : `<div class="ql"><span class="qll"><i class="ti ti-package"></i>Materials</span><span class="qlv m">Not included — we\'ll advise on-site</span></div>`}
+              </div>
+              ${cs.ui_message ? `<p style="font-size:.8rem;color:#888;margin-top:12px;">${escapeHtml(cs.ui_message)}</p>` : ''}
+              ${confHint}
+              <button class="book-now-button" id="sqCurAddBtn" ${btnDisabled} style="width:100%;margin-top:14px;padding:14px;font-size:1rem;">${btnText}</button>
+            </div>
+          </div>`;
+
+        // Wire the Add to Request button
+        const addBtn = document.getElementById('sqCurAddBtn');
+        if (addBtn && typeof addToCart === 'function') {
+            addBtn.addEventListener('click', () => {
+                const matMin = svc.default_estimates?.materials?.min ?? 0;
+                const matMax = svc.default_estimates?.materials?.max ?? 0;
+                addToCart({
+                    id: 'sq-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                    serviceId: svc.id || 'smartquote',
+                    category_id: svc.ui_taxonomy?.category_id || 'other',
+                    name: svc.ui_taxonomy?.display_name || svc.id || 'Service',
+                    price: isDiag ? `$${dispatchFee}/hr` : `$${u.laborEstimate}`,
+                    icon: svc.ui_taxonomy?.icon || '⚙️',
+                    detail: isDiag ? 'On-site quote' : `Labor: $${u.laborEstimate}`,
+                    notes: Object.entries(answers).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(', ') || '',
+                    materialsNotIncluded: !u.hideMaterials && matMax > 0,
+                    materialsEstimateRange: [matMin, matMax],
+                });
+            });
+        }
+    }
+
+    // Render the service header + intake questions
+    const svcName = escapeHtml(entity.ui_taxonomy?.display_name || entity.id || 'Service');
+    const svcDesc = entity.ui_taxonomy?.description ? `<p>${escapeHtml(entity.ui_taxonomy.description)}</p>` : '';
+    container.innerHTML = `<h3>${svcName}</h3>${svcDesc}<div id="sqCurIntakeModules"></div>`;
+
+    // Render intake question chips from route.intakeChain
+    const chain = route.intakeChain || [];
+    const modsEl = document.getElementById('sqCurIntakeModules');
+    if (!modsEl) return;
+
+    function renderIntakeModules() {
+        modsEl.innerHTML = '';
+        chain.forEach((mod, idx) => {
+            const modKey = mod.moduleKey || mod.module;
+            const question = mod.question || modKey;
+            const responses = mod.client_response || [];
+            if (!responses.length) return;
+
+            // Respect _isModVisible if available
+            if (typeof _isModVisible === 'function' && !_isModVisible(mod, answers)) return;
+
+            const step = document.createElement('div');
+            step.className = 'intake-module-step';
+
+            const lbl = document.createElement('div');
+            lbl.className = 'ims-label';
+            lbl.textContent = `${idx + 1}. ${question}`;
+            if (mod.purpose === 'pricing') {
+                const badge = document.createElement('span');
+                badge.className = 'ims-badge';
+                badge.textContent = '💲 affects price';
+                lbl.appendChild(badge);
+            }
+            step.appendChild(lbl);
+
+            const chips = document.createElement('div');
+            chips.className = 'ims-chips';
+
+            responses.forEach(resp => {
+                const isSelected = answers[modKey] === resp.label;
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'ims-chip' + (isSelected ? ' sel' : '');
+                chip.textContent = resp.label;
+
+                const fee = resp.effects?.fee;
+                if (fee && fee !== 0) {
+                    const delta = document.createElement('span');
+                    delta.style.cssText = 'font-size:.75rem;opacity:.8;margin-left:4px;';
+                    delta.textContent = fee > 0 ? `+$${fee}` : `-$${Math.abs(fee)}`;
+                    chip.appendChild(delta);
+                }
+
+                chip.addEventListener('click', () => {
+                    answers[modKey] = resp.label;
+                    renderIntakeModules();
+                    recomputeAndRenderPrice();
+                });
+
+                chips.appendChild(chip);
+            });
+
+            step.appendChild(chips);
+            modsEl.appendChild(step);
+        });
+    }
+
+    renderIntakeModules();
+
+    // Render initial price from route.quote with route's confidence state
+    // (already correctly computed by orch_compute_confidence with entry-type fix:
+    // catalog entries start at 100, so meetsConf is true for most named services)
+    const initialMeetsConf = (route.confidence?.score ?? 100) >= (route.confidence?.minConf ?? 50);
+    renderPriceInQout(route.quote, entity, initialMeetsConf, route.confidence?.score, route.confidence?.minConf);
+}

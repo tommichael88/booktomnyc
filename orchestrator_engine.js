@@ -99,8 +99,10 @@ function executeWorkflow(context, db) {
                     const trace = [];
                     let resolution = null, flags = null, intakeChain = [], answers = {},
                         confidenceState = null, uiTemplate = null, materialsEstimate = null, quote = null;
-                    const activeTagIds = [...new Set([...(context.manuallyToggledTagIds || [])])]
-                        .filter(tid => !(context.negatedTagIds || []).includes(tid));
+                    const activeTagIds = [...new Set([
+                        ...(context.detectedTagIds || []),
+                        ...(context.manuallyToggledTagIds || [])
+                    ])].filter(tid => !(context.negatedTagIds || []).includes(tid));
 
                     for (const step of workflow.steps) {
                         let outputSummary;
@@ -124,10 +126,10 @@ function executeWorkflow(context, db) {
                                 break;
                             case 'merge':
                                 if (step.id === 'compute_confidence') {
-                                    confidenceState = orch_compute_confidence(resolution, activeTagIds, context.nlpIntent?._matchConfidence, db);
+                                    confidenceState = orch_compute_confidence(resolution, activeTagIds, context.nlpIntent?._matchConfidence, db, context.entry);
                                     outputSummary = confidenceState;
                                 } else if (step.id === 'merge_materials_estimate') {
-                                    materialsEstimate = orch_merge_materials_estimate(resolution, db);
+                                    materialsEstimate = orch_merge_materials_estimate(resolution, db, context.extractedQty);
                                     outputSummary = materialsEstimate;
                                 }
                                 break;
@@ -286,7 +288,30 @@ function orch_enrich_from_dynamic_service(entity, dynDef) {
                     if (dynDef.operational_metrics?.checkout_state && !(entity?.financial_engine?.checkout_state)) {
                         enrichment.checkoutState = dynDef.operational_metrics.checkout_state;
                     }
-                    (dynDef.suggested_tags || []).forEach(tagObj => {
+                    // v9.5 FIX (real, severe, customer-visible bug found via direct
+                    // screenshot review): this only ever read dynDef.suggested_tags,
+                    // with no way for a real, named service to provide its own, more
+                    // specific tags. Confirmed via direct trace this caused 10 real,
+                    // completely different services sharing one dynamic entity
+                    // (minor_home_repairs+Install: a cabinet knob, a washer install,
+                    // a microwave setup, a full interior door, etc.) to all show the
+                    // identical #drywall/#brick_wall/#high_ceiling hints — genuinely
+                    // confusing/wrong for most of them, and genuinely consequential
+                    // since S._suggestedTagIds feeds a real, live tag-hint UI, not
+                    // cosmetic data. Prefer the named service's own real
+                    // suggested_tags when it defines one; fall back to the dynamic
+                    // entity's only when the service doesn't.
+                    // v9.5 FIX (real mistake caught immediately by testing, not
+                    // assumed correct): entity?.suggested_tags?.length is falsy
+                    // for a deliberately-empty array, so a service correctly
+                    // wanting ZERO hints (suggested_tags: []) fell through to the
+                    // dynamic entity's generic tags anyway — the exact opposite
+                    // of this fix's intent. Check real PRESENCE (the key exists
+                    // on the object), not length, so an explicit empty array is
+                    // honored as a real, deliberate "no hints for this service,"
+                    // not silently treated as "this service has no opinion."
+                    const tagSource = (entity && 'suggested_tags' in entity ? entity.suggested_tags : dynDef.suggested_tags) || [];
+                    tagSource.forEach(tagObj => {
                         if (!tagObj || typeof tagObj !== 'object') return;
                         const segments = tagObj?.$ref ? tagObj.$ref.replace(/^#\//, '').split('/') : null;
                         const tagId = segments ? '#' + segments[segments.length - 1].replace('#', '') : null;
@@ -375,7 +400,7 @@ function orch_apply_location_hints(context, composedChain, answers) {
                     return newAnswers;
                 }
 
-function orch_compute_confidence(resolution, activeTagIds, matchConfidence, db) {
+function orch_compute_confidence(resolution, activeTagIds, matchConfidence, db, entryType) {
                     const entity = resolution.entity;
                     const baseStrategy = entity?.confidence_strategy || {};
                     const smartTags = db.smart_tags || {};
@@ -383,7 +408,28 @@ function orch_compute_confidence(resolution, activeTagIds, matchConfidence, db) 
                         ? applyLiveConfidenceEscalation(baseStrategy, activeTagIds || [], smartTags, db.global_rules?.confidence_escalation)
                         : { strategy: baseStrategy, escalatedBy: null };
                     const minConf = escalation.strategy?.minimum_quote_confidence || baseStrategy.minimum_quote_confidence || 80;
-                    const score = Math.min(100, (baseStrategy.base_confidence || 40) + Math.min(20, (matchConfidence || 0) * 0.2));
+
+                    // v9.5 FIX: entry-type-aware confidence scoring.
+                    // The original formula (base_confidence + 0.2 * matchConfidence) is an NLP
+                    // metric — it measures how certain free-text detection was. Applying it to a
+                    // direct catalog tap is wrong: when a customer taps a specific service card,
+                    // intent is 100% certain regardless of NLP. Score 40 with minConf 50–95
+                    // meant catalog taps ALWAYS failed the confidence bar, gating the estimate
+                    // button on every named service. Confirmed by direct trace: every named service
+                    // with confidence_strategy.minimum_quote_confidence > 40 was unreachable.
+                    let score;
+                    if (entryType === 'catalog') {
+                        // Direct tap: customer chose this exact service. Intent is certain.
+                        score = 100;
+                    } else if (entryType === 'other_tile') {
+                        // Group-level tap: category + group are known, specific service type
+                        // may not be. Start high but not perfect.
+                        score = Math.min(100, (baseStrategy.base_confidence || 40) + 45 + Math.min(15, (matchConfidence || 0) * 0.15));
+                    } else {
+                        // free_text: NLP-derived — use the original formula
+                        score = Math.min(100, (baseStrategy.base_confidence || 40) + Math.min(20, (matchConfidence || 0) * 0.2));
+                    }
+
                     return { score, minConf, escalatedBy: escalation.escalatedBy };
                 }
 
@@ -422,9 +468,10 @@ function orch_select_ui_template(flags, resolution, confidenceState, db) {
                     return Object.assign({}, db.workflow?.ui_template_matrix?.fallback || { ui_template: 'curated_card' });
                 }
 
-function orch_merge_materials_estimate(resolution, db) {
+function orch_merge_materials_estimate(resolution, db, qty) {
                     const entity = resolution.entity;
                     if (!entity) return { min: 0, max: 0, note: '' };
+                    const realQty = qty || 1;
                     const markupPct = (db.global_rules?.surcharges?.materials_markup_percent || 0) / 100;
                     const catalog = db.materials_catalog || {};
                     const sumSkus = (skus) => (skus || []).reduce((sum, sku) => {
@@ -435,9 +482,24 @@ function orch_merge_materials_estimate(resolution, db) {
                     const optTotal = sumSkus(entity.optional_materials);
                     const hasCatalogLink = (entity.required_materials || []).length > 0 || (entity.optional_materials || []).length > 0;
                     const legacy = entity.default_estimates?.materials || { min: 0, max: 0, note: '' };
+                    // v9.5 FIX (real, severe bug found via direct screenshot review):
+                    // this function never accounted for quantity at all, anywhere —
+                    // confirmed via direct trace this affects 49 real services that
+                    // are both flat_rate-priced (qty genuinely multiplies the labor
+                    // estimate) and have real, catalog-linked materials. A customer
+                    // ordering 10 real door locks would see a materials estimate for
+                    // 1 lock's hardware, displayed right beside a correctly-scaled,
+                    // 10x labor estimate — a real, severe, internally-inconsistent
+                    // display with no indication the materials figure doesn't
+                    // reflect the real quantity. The catalog-derived figure now
+                    // genuinely scales with qty; the legacy, pre-catalog fallback
+                    // range is intentionally left UNSCALED, since it was authored
+                    // as a real, already-complete per-job range (e.g. a door
+                    // install's $200-600 already describes the one, whole job),
+                    // not a per-unit figure meant to be multiplied.
                     return {
-                        min: hasCatalogLink ? Math.round(reqTotal * 100) / 100 : legacy.min || 0,
-                        max: hasCatalogLink ? Math.round((reqTotal + optTotal) * 100) / 100 : legacy.max || 0,
+                        min: hasCatalogLink ? Math.round(reqTotal * realQty * 100) / 100 : legacy.min || 0,
+                        max: hasCatalogLink ? Math.round((reqTotal + optTotal) * realQty * 100) / 100 : legacy.max || 0,
                         // Per workflow.steps.merge_materials_estimate's _note: ALWAYS
                         // carry forward the legacy note text verbatim, regardless of
                         // which range won — it frequently carries real,
@@ -476,7 +538,16 @@ function orch_compute_quote(resolution, context, answers, activeTagIds, db) {
                         qty: context.extractedQty || 1,
                         intentKeyword: context.nlpIntent?.key || null,
                         enrichment: resolution.enrichment || null,
-                        formulaId: context.nlpIntent?.dynamic_rule || entity?.pricing_engine?.dynamic_rule || null,
+                        // v9.5 FIX (real, severe, pre-existing bug found while
+                        // wiring a new formula): entity?.pricing_engine?.dynamic_rule
+                        // was structurally dead for every real service —
+                        // pricing_engine is always a real, plain string (e.g.
+                        // 'pax_wardrobe_formula'), never an object with its own
+                        // .dynamic_rule property. Confirmed via direct test this
+                        // meant EVERY real, formula-priced, named service never
+                        // actually fired its formula through the live orchestrator
+                        // path — a real answer produced zero change in totalMin.
+                        formulaId: context.nlpIntent?.dynamic_rule || entity?.pricing_engine || null,
                         ctxAdjFee: context.nlpIntent?._ctxFee || 0,
                         ctxAdjMin: context.nlpIntent?._ctxMin || 0,
                     });
@@ -559,12 +630,78 @@ function describeInvariantFailure(route, invariant) {
                     }
                 }
 
-function validateRoute(route, db) {
+const COMPONENT_MODULE_NAMES = new Set([
+                    "wall_type", "surface_type", "door_type", "door_style_pref", "door_size",
+                    "client_supplying_door", "existing_frame", "faucet_type", "sink_type",
+                    "toilet_style_pref", "existing_toilet_type", "window_type", "removal",
+                    "install_type", "existing_type", "furn_item", "mounting_item",
+                    "wall_mount_items", "item_type", "fixture_type", "electrical_item",
+                    "plumbing_fixture", "tech_device", "computer_component", "device_type",
+                    "laptop_or_desktop", "existing_box", "ducting", "length", "distance",
+                    "weight", "mounting_height", "tile_condition", "waterproof_area",
+                    "has_matching_tiles", "thermostat_type", "customer_supplied_part",
+                    "software_install_type", "brand", "router_owned", "mesh_network",
+                    "pax_cabinet_count", "pax_hinge_count", "pax_interior_count",
+                    "pax_sliding_count",
+                ]);
+                const SYMPTOM_MODULE_NAMES = new Set([
+                    "symptom", "toilet_symptom", "tech_problem_type", "leak_type",
+                    "drain_speed", "issue", "damage_type", "device_state",
+                    "internet_active", "tech_issue_source",
+                ]);
+
+function checkRoutingArchetypeConsistency(route, routingArchetypes) {
+                    // v9.5: the first genuine SEMANTIC check in validateRoute,
+                    // directly responding to a real, agreed-valuable critique
+                    // (T19): every existing invariant checks structure ("is
+                    // this field shaped correctly"), none check "does this
+                    // route's content actually make sense." This compares a
+                    // resolved, named service's REAL, complete, authored
+                    // intake_chain (component vs. symptom module mix) against
+                    // its own group's routing_archetype (computed by
+                    // btnyc_v8_compiler.py, the real, single source of truth
+                    // for this classification -- never duplicated into
+                    // qr.html itself, to avoid two, real, parallel
+                    // implementations drifting apart).
+                    //
+                    // DELIBERATELY INFORMATIONAL, NOT A HARD VIOLATION: direct,
+                    // individual review of every real, current disagreement
+                    // (internal_hardware_replacement leading with a component
+                    // question inside a symptom-first group; router_configuration
+                    // the same) confirmed BOTH are sensible, deliberate
+                    // authoring choices -- a customer replacing RAM already
+                    // knows the part; there's no real "symptom" to ask about
+                    // when setting up a new router. Treating either as a real
+                    // violation would have been actively wrong. This returns a
+                    // real, soft notice for a human to consider, never fails
+                    // the route.
+                    if (!routingArchetypes || route.entityType !== 'service' || !route.entity) return null;
+                    const gid = route.entity.ui_taxonomy?.group_id;
+                    const groupData = gid ? routingArchetypes[gid] : null;
+                    const archetype = groupData?.routing_archetype;
+                    if (!archetype || archetype === 'undetermined') return null;
+
+                    const chain = route.intakeChain || [];
+                    let c = 0, s = 0;
+                    chain.forEach(step => {
+                        const mod = step.moduleKey || step.module;
+                        if (COMPONENT_MODULE_NAMES.has(mod)) c++;
+                        else if (SYMPTOM_MODULE_NAMES.has(mod)) s++;
+                    });
+                    if (c + s < 2) return null; // genuinely not enough real signal in this service's own chain to compare
+
+                    const realLean = (s / (c + s)) >= 0.4 ? 'symptom_first' : 'component_first';
+                    if (realLean === archetype) return null;
+                    return `Real, soft notice (not a violation): "${route.entity.id}"'s authored intake_chain leans ${realLean} (${s} symptom vs ${c} component module(s)), but its group "${gid}" is classified ${archetype}. Confirmed via direct review this is sometimes a genuinely correct, deliberate choice (e.g. a part-replacement service inside a symptom-first group) -- review, don't assume a bug.`;
+                }
+
+function validateRoute(route, db, routingArchetypes) {
                     const violations = [];
+                    const notices = [];
 
                     if (!route || typeof route !== 'object') {
                         violations.push('route is not a real object at all');
-                        return { valid: false, violations };
+                        return { valid: false, violations, notices };
                     }
 
                     // The Judicial Rulebook: consult the real, declared
@@ -604,7 +741,16 @@ function validateRoute(route, db) {
                         }
                     }
 
-                    return { valid: violations.length === 0, violations };
+                    // v9.5: the first genuine semantic check, deliberately
+                    // soft -- see checkRoutingArchetypeConsistency's own,
+                    // complete rationale above. Only runs when the caller
+                    // explicitly supplies routingArchetypes (the compiler's
+                    // real output); silently skipped otherwise, never a hard
+                    // dependency for existing, structural validation to work.
+                    const archetypeNotice = checkRoutingArchetypeConsistency(route, routingArchetypes);
+                    if (archetypeNotice) notices.push(archetypeNotice);
+
+                    return { valid: violations.length === 0, violations, notices };
                 }
 
 function catastrophicFallbackRoute(originalRoute, violations) {
@@ -687,6 +833,81 @@ function collectBookingContext_freeText(rawText) {
                             nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText
                         );
                     }
+
+                    // v9.5 FIX: run full tag detection so the orchestrator path gets
+                    // the same #brick_wall / #heavy_item / contextual-tag signals that
+                    // sqPrepareFlow (legacy S-state path) was computing at lines 7663-7674.
+                    // Without this, the orchestrator route always got detectedTagIds:[]
+                    // meaning "mantel" never triggered #brick_wall, "large sign" never
+                    // triggered #heavy_item, etc. This was confirmed as the root cause
+                    // of the screenshot regression.
+                    const detCat = nlpIntent?.category || 'other';
+                    const detGroup = selectedGroupId || nlpIntent?._groupId || null;
+                    const nlpTagResult = (typeof detectTagsNLP === 'function')
+                        ? detectTagsNLP(rawText) : { found: [], negated: [] };
+                    const detectedTagIds = nlpTagResult.found.filter(tid =>
+                        typeof tagValidForCategory === 'function'
+                            ? tagValidForCategory(tid, detCat, detGroup)
+                            : true
+                    );
+                    const negatedTagIds = nlpTagResult.negated.filter(tid =>
+                        typeof tagValidForCategory === 'function'
+                            ? tagValidForCategory(tid, detCat, detGroup)
+                            : true
+                    );
+
+                    // Contextual tags: "mantel" -> #brick_wall, "urgent" -> #emergency etc.
+                    if (typeof inferTagsFromContext === 'function') {
+                        const ctxTags = inferTagsFromContext(rawText, detCat, detGroup);
+                        ctxTags.forEach(({ tid }) => {
+                            if (!detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                detectedTagIds.push(tid);
+                        });
+                    }
+
+                    // v9.5 FIX: size hint -> tag injection.
+                    // extractSizeHint was only used to NEGATE heavy tags (standard size),
+                    // never to POSITIVELY inject them (large/oversized). Added positive
+                    // v9.5 update: size-hint injection now distinguishes between
+                    // fragile/high-value large items (neon signs, art, glass) vs
+                    // genuinely heavy items (stone slabs, large mirrors, equipment).
+                    // Large fragile items get #fragile_item, not #heavy_item.
+                    const sizeHint = (typeof extractSizeHint === 'function')
+                        ? extractSizeHint(rawText, DB.smart_tags || {}) : null;
+                    const isFragileItem = /(neon|glass|canvas|painting|art|fragile|delicate|stained)/i.test(rawText);
+                    if (sizeHint === 'oversized') {
+                        if (isFragileItem) {
+                            if (!detectedTagIds.includes('#fragile_item') && !negatedTagIds.includes('#fragile_item'))
+                                detectedTagIds.push('#fragile_item');
+                        } else {
+                            if (!detectedTagIds.includes('#very_heavy') && !negatedTagIds.includes('#very_heavy'))
+                                detectedTagIds.push('#very_heavy');
+                        }
+                    } else if (sizeHint === 'large') {
+                        if (isFragileItem) {
+                            if (!detectedTagIds.includes('#fragile_item') && !negatedTagIds.includes('#fragile_item'))
+                                detectedTagIds.push('#fragile_item');
+                        } else {
+                            if (!detectedTagIds.includes('#heavy_item') && !negatedTagIds.includes('#heavy_item'))
+                                detectedTagIds.push('#heavy_item');
+                        }
+                    } else if (sizeHint === 'standard') {
+                        // Standard size: suppress heavy tags if not already detected
+                        ['#heavy_item', '#very_heavy'].forEach(tid => {
+                            if (!detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                negatedTagIds.push(tid);
+                        });
+                    }
+
+                    // NLP _ctxTags (from contextual_overrides) -- same path sqAnalyze uses
+                    if (nlpIntent?._ctxTags?.length) {
+                        nlpIntent._ctxTags.forEach(tid => {
+                            if ((typeof tagValidForCategory !== 'function' || tagValidForCategory(tid, detCat, detGroup))
+                                && !detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                detectedTagIds.push(tid);
+                        });
+                    }
+
                     return makeBookingContext('free_text', {
                         rawText,
                         nlpIntent,
@@ -696,6 +917,8 @@ function collectBookingContext_freeText(rawText) {
                         selectedServiceId: (nlpIntent?._matchConfidence >= thresholds.auto_select_named_service) ? (nlpIntent?.recommendedSku || null) : null,
                         selectedCategoryId: nlpIntent?.category || null,
                         selectedGroupId,
+                        detectedTagIds,
+                        negatedTagIds,
                     });
                 }
 
