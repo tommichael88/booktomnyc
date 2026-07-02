@@ -9926,56 +9926,22 @@ function enableLiveAdLibPreview() {
                 // types; "Hang / Mount" reads better to a customer as its
                 // own distinct choice than collapsing it into "Install"
                 // would, even though both share similar underlying pricing).
-                const BLD_ACTION_MAP = [{
-                        label: 'Fix / Repair',
-                        icon: DB.service_types?.Repair?.icon || 'ti-tool',
-                        value: 'fix',
-                        stype: 'Repair',
-                        verbLabel: 'fixed'
-                    },
-                    {
-                        label: 'Install',
-                        icon: DB.service_types?.Install?.icon || 'ti-wall',
-                        value: 'install',
-                        stype: 'Install',
-                        verbLabel: 'installed'
-                    },
-                    {
-                        label: 'Hang / Mount',
-                        icon: DB.service_types?.Mount?.icon || 'ti-wall',
-                        value: 'mount',
-                        stype: 'Install',
-                        verbLabel: 'mounted'
-                    },
-                    {
-                        label: 'Assemble',
-                        icon: DB.service_types?.Assembly?.icon || 'ti-armchair',
-                        value: 'assemble',
-                        stype: 'Assembly',
-                        verbLabel: 'assembled'
-                    },
-                    {
-                        label: 'Remove',
-                        icon: 'ti-trash',
-                        value: 'remove',
-                        stype: 'Repair',
-                        verbLabel: 'removed'
-                    },
-                    {
-                        label: 'Set up / Config',
-                        icon: DB.service_types?.Setup?.icon || 'ti-settings',
-                        value: 'set up',
-                        stype: 'Setup',
-                        verbLabel: 'set up'
-                    },
-                    {
-                        label: 'Diagnose',
-                        icon: DB.service_types?.Diagnostic?.icon || 'ti-search',
-                        value: 'look at',
-                        stype: 'Diagnostic',
-                        verbLabel: 'looked at'
-                    },
-                ];
+                // v9.5 FIX: was const BLD_ACTION_MAP = [...] which read DB.service_types
+                // at parse time when DB is null, crashing the entire IIFE before
+                // wireGlobalEvents(), renderCategoryCards(), initSmartQuote() could run.
+                // Now a lazy function -- called only after init() sets DB.
+                function getBldActionMap() {
+                    const st = DB?.service_types || {};
+                    return [
+                        { label: 'Fix / Repair', icon: st.Repair?.icon || 'ti-tool', value: 'fix', stype: 'Repair', verbLabel: 'fixed' },
+                        { label: 'Install', icon: st.Install?.icon || 'ti-wall', value: 'install', stype: 'Install', verbLabel: 'installed' },
+                        { label: 'Hang / Mount', icon: st.Mount?.icon || 'ti-wall', value: 'mount', stype: 'Install', verbLabel: 'mounted' },
+                        { label: 'Assemble', icon: st.Assembly?.icon || 'ti-armchair', value: 'assemble', stype: 'Assembly', verbLabel: 'assembled' },
+                        { label: 'Remove', icon: 'ti-trash', value: 'remove', stype: 'Repair', verbLabel: 'removed' },
+                        { label: 'Set up / Config', icon: st.Setup?.icon || 'ti-settings', value: 'set up', stype: 'Setup', verbLabel: 'set up' },
+                        { label: 'Diagnose', icon: st.Diagnostic?.icon || 'ti-search', value: 'look at', stype: 'Diagnostic', verbLabel: 'looked at' },
+                    ];
+                }
 
                 // Location step: NOT in btnyc.json — hardcoded UI list
                 // v9.5 FIX: was a hardcoded 8-room array, completely bypassing
@@ -10171,9 +10137,9 @@ function enableLiveAdLibPreview() {
                         // chips that don't even apply there). Falls back to the
                         // full list for fresh/free-text-seeded builder sessions.
                         choices: (bld) => {
-                            if (!bld._allowedTypes || !bld._allowedTypes.length) return BLD_ACTION_MAP;
-                            const filtered = BLD_ACTION_MAP.filter(a => bld._allowedTypes.includes(a.stype));
-                            return filtered.length ? filtered : BLD_ACTION_MAP;
+                            if (!bld._allowedTypes || !bld._allowedTypes.length) return getBldActionMap();
+                            const filtered = getBldActionMap().filter(a => bld._allowedTypes.includes(a.stype));
+                            return filtered.length ? filtered : getBldActionMap();
                         }
                     },
                     {

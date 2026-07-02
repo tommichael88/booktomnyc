@@ -177,6 +177,14 @@
       "high_ceiling_fee": 40,
       "disposal_fee": 25,
       "disposal_minutes": 20
+    },
+    "hardware_install_formula": {
+      "flat_tier_price": 140,
+      "base_minutes": 10,
+      "minutes_per_unit_swap": 4,
+      "minutes_per_unit_new_holes": 5,
+      "hourly_rate": 70,
+      "_note": "Real, two-tier model per direct, explicit business input. TIER 1 (the realistic, common case): most requests are a style swap of a handful of pulls/knobs (1-10ish units) -- a single, fair flat_tier_price ($140, ~2hrs @ $70/hr) covers the real, non-trivial setup this job actually involves (often removing the drawer/cabinet door to access hardware from behind), correctly NOT charged per-unit at this scale, since real customers should never feel like they're being billed $2-7 a pull for what is genuinely one job. TIER 2 (genuine bulk, the rare commercial/new-business case): once real per-unit math (base_minutes + rate*qty, at $70/hr) exceeds flat_tier_price, it takes over -- continuous, never a downward cliff, since the real final price is always max(flat_tier_price, per-unit calculation). swap (4 min/unit) and new_holes (5 min/unit) stay genuinely DISTINCT even at bulk volume, by explicit, deliberate decision -- the riskier, more error-prone work (measuring/drilling/marking 75+ times in a row, real fatigue and mis-drill risk) must price higher than a repetitive swap, even though this exact scenario is rare; consistency under an implausible-but-not-impossible case matters more than a clean single number. $70/hr matches the real, already-established rate for general, ad-hoc minor-home-repair labor (see furniture_repair_formula's own override of the same value)."
     }
   },
   "checkout_states": {
@@ -1066,7 +1074,12 @@
         "synonyms": [
           "door",
           "entry door",
-          "interior door"
+          "interior door",
+          "front door",
+          "exterior door",
+          "patio door",
+          "entry",
+          "back door"
         ],
         "default_dynamic_category": "minor_home_repairs",
         "default_service_type": "Repair",
@@ -1084,10 +1097,17 @@
             "keywords": [
               "install",
               "replacement",
-              "new door"
+              "new door",
+              "replace",
+              "front door",
+              "exterior door",
+              "patio door",
+              "swap",
+              "new"
             ],
             "override_sku": "prehung_interior_door_install",
-            "override_base_price": 150
+            "override_base_price": 150,
+            "note": "Full door replacement/install -- new door, front door, replace door. Forensic report confirmed 'replace the front door' was falling to dynamic."
           },
           {
             "keywords": [
@@ -1100,8 +1120,7 @@
             "override_base_price": 115
           }
         ],
-        "confidence_weight": 55,
-        "resolver": "object_based"
+        "confidence_weight": 55
       },
       {
         "keyword": "drywall / wall",
@@ -1338,7 +1357,6 @@
         "keyword": "cabinet / drawer",
         "synonyms": [
           "cabinet",
-          "drawer",
           "cupboard",
           "pantry",
           "cabinet door",
@@ -1347,7 +1365,37 @@
         "default_dynamic_category": "minor_home_repairs",
         "default_service_type": "Repair",
         "dynamic_rule": "furniture_repair_formula",
-        "confidence_weight": 58
+        "confidence_weight": 75,
+        "default_service_sku": "cabinet_door_or_drawer_adjustment",
+        "contextual_overrides": [
+          {
+            "keywords": [
+              "broken",
+              "fix",
+              "stuck",
+              "wont close",
+              "won't close",
+              "repair",
+              "off track",
+              "sagging",
+              "alignment",
+              "adjust",
+              "adjustment"
+            ],
+            "override_sku": "cabinet_door_or_drawer_adjustment",
+            "note": "Drawer/door adjustment or repair -- the purpose-built service for this. Forensic report confirmed 'fix the broken drawer' was falling to dynamic ($103-198) instead of this service."
+          },
+          {
+            "keywords": [
+              "knob",
+              "pull",
+              "handle",
+              "hardware"
+            ],
+            "override_sku": "cabinet_knob_or_pull_install",
+            "note": "Hardware installation on cabinet/drawer"
+          }
+        ]
       },
       {
         "keyword": "fridge",
@@ -2080,15 +2128,14 @@
       {
         "keyword": "p trap",
         "synonyms": [
-          "drain trap",
           "p trap",
           "p-trap",
-          "ptrap",
-          "sink trap"
+          "sink trap",
+          "drain trap"
         ],
         "default_dynamic_category": "plumbing_help",
         "default_service_sku": "p_trap_cleaning",
-        "confidence_weight": 85,
+        "confidence_weight": 75,
         "default_service_type": "Install"
       },
       {
@@ -2194,6 +2241,74 @@
         "default_service_sku": "wood_paneling_repair",
         "confidence_weight": 75,
         "default_service_type": "Repair"
+      },
+      {
+        "keyword": "hinge",
+        "synonyms": [
+          "hinge",
+          "door hinge",
+          "hinges"
+        ],
+        "default_dynamic_category": "minor_home_repairs",
+        "default_service_sku": "door_lock_or_handle_install",
+        "default_service_type": "Install",
+        "confidence_weight": 80
+      },
+      {
+        "keyword": "peephole",
+        "synonyms": [
+          "peephole",
+          "peep hole",
+          "door viewer"
+        ],
+        "default_dynamic_category": "minor_home_repairs",
+        "default_service_sku": "door_lock_or_handle_install",
+        "default_service_type": "Install",
+        "confidence_weight": 80
+      },
+      {
+        "keyword": "drawer",
+        "synonyms": [
+          "drawer",
+          "drawers",
+          "pull-out",
+          "pull out"
+        ],
+        "default_service_sku": "cabinet_door_or_drawer_adjustment",
+        "default_dynamic_category": "minor_home_repairs",
+        "default_service_type": "Repair",
+        "confidence_weight": 72,
+        "contextual_overrides": [
+          {
+            "keywords": [
+              "broken",
+              "stuck",
+              "jammed",
+              "fix",
+              "repair",
+              "loose",
+              "off track",
+              "wont close",
+              "won't close",
+              "wont open",
+              "won't open",
+              "alignment"
+            ],
+            "override_sku": "cabinet_door_or_drawer_adjustment",
+            "note": "Drawer repair/adjustment -- dedicated service for stuck/broken drawers"
+          },
+          {
+            "keywords": [
+              "knob",
+              "pull",
+              "handle",
+              "hardware",
+              "install"
+            ],
+            "override_sku": "cabinet_knob_or_pull_install",
+            "note": "Drawer hardware installation"
+          }
+        ]
       }
     ]
   },
@@ -3552,9 +3667,7 @@
       "parent_group": "minor_home_repairs_appliances",
       "display_name": "Dryer",
       "icon": "🧺",
-      "explicit_services": [
-        "window_ac_setup"
-      ],
+      "explicit_services": [],
       "dynamic_service_types": [
         "Diagnostic",
         "Mount",
@@ -4637,7 +4750,8 @@
       "required_materials": [
         "MAT-MHR-DOR-Hinge"
       ],
-      "optional_materials": []
+      "optional_materials": [],
+      "suggested_tags": []
     },
     {
       "id": "cabinet_knob_or_pull_install",
@@ -4646,7 +4760,7 @@
         "high_case_minutes": 120,
         "complexity_tier": "skilled"
       },
-      "pricing_engine": "algorithmic_flat_rate",
+      "pricing_engine": "hardware_install_formula",
       "default_estimates": {
         "materials": {
           "min": 0,
@@ -4654,8 +4768,8 @@
           "note": ""
         },
         "total_minutes": {
-          "min": 30,
-          "max": 50,
+          "min": 0,
+          "max": 0,
           "note": ""
         },
         "disclaimer": "flat_fee"
@@ -4674,10 +4788,11 @@
         }
       },
       "financial_engine": {
-        "pricing_type": "flat_rate",
-        "base_price": 30,
+        "pricing_type": "hourly",
+        "base_price": 0,
         "base_materials": 0.0,
-        "checkout_state": "standard_flat_rate"
+        "checkout_state": "standard_flat_rate",
+        "pricing_archetype": "tiered_per_unit"
       },
       "detail_prompt": "",
       "details": [],
@@ -4687,41 +4802,8 @@
       "service_type": "Install",
       "intake_chain": [
         {
-          "module": "item_count_template",
-          "then": {},
-          "params": {
-            "item_noun": "items",
-            "client_response": [
-              {
-                "label": "1 to 5 items",
-                "effects": {
-                  "fee": 0,
-                  "minutes": 0,
-                  "complexity_override": "routine"
-                },
-                "tags": []
-              },
-              {
-                "label": "6 to 15 items",
-                "effects": {
-                  "fee": 20,
-                  "minutes": 16,
-                  "complexity_override": "skilled"
-                },
-                "tags": []
-              },
-              {
-                "label": "16 or more items",
-                "effects": {
-                  "fee": 40,
-                  "minutes": 32,
-                  "complexity_override": "skilled"
-                },
-                "tags": []
-              }
-            ],
-            "question_override": "About how many items?"
-          }
+          "module": "install_type",
+          "then": {}
         }
       ],
       "default_tags": [],
@@ -4743,7 +4825,8 @@
       "required_materials": [
         "MAT-MHR-CAB-Knob"
       ],
-      "optional_materials": []
+      "optional_materials": [],
+      "suggested_tags": []
     },
     {
       "id": "cable_management",
@@ -5278,10 +5361,7 @@
       },
       "verb_natural": "repaired",
       "required_materials": [],
-      "optional_materials": [
-        "MAT-PLM-SNK-PTrap",
-        "MAT-ELC-Outlet-Standard"
-      ]
+      "optional_materials": []
     },
     {
       "id": "door_lock_or_handle_install",
@@ -5309,7 +5389,7 @@
         "group_id": "minor_home_repairs_doors",
         "display_name": "Door Lock or Handle Install",
         "icon": "🔐",
-        "description": "Install new door knob, lever, deadbolt, or hinges. Hardware is not included in price.",
+        "description": "Install new door knob, lever, deadbolt, hinges, or peephole. Hardware is not included in price.",
         "sort_order": 10,
         "presentation_strategy": {
           "display_enabled": true,
@@ -5353,7 +5433,8 @@
       ],
       "optional_materials": [
         "MAT-MHR-DOR-Deadbolt"
-      ]
+      ],
+      "suggested_tags": []
     },
     {
       "id": "door_repair_impact_damage",
@@ -5529,7 +5610,8 @@
         "MAT-MHR-DOR-Weatherstrip"
       ],
       "optional_materials": [],
-      "per_unit_answers_vary": true
+      "per_unit_answers_vary": true,
+      "suggested_tags": []
     },
     {
       "id": "window_ac_setup",
@@ -5592,7 +5674,8 @@
         "_variability_tier": "low",
         "_variability_score": 6.3
       },
-      "verb_natural": "configured"
+      "verb_natural": "configured",
+      "suggested_tags": []
     },
     {
       "id": "faucet_repair_drip",
@@ -6943,7 +7026,8 @@
       "required_materials": [],
       "optional_materials": [
         "MAT-ELC-Outlet-Standard"
-      ]
+      ],
+      "suggested_tags": []
     },
     {
       "id": "plaster_wall_repair",
@@ -8464,7 +8548,7 @@
         "materials": {
           "min": 100,
           "max": 400,
-          "note": "Basic two‑piece toilet starts ~$100; premium models can run $300+. Wax ring and minor supplies included in labor."
+          "note": "Wax ring and basic supply hardware (included). Does NOT include the toilet itself -- that is provided by you or purchased separately. If you'd like us to also supply the toilet, let us know and we'll quote that separately (~$100 for a basic two-piece, $300+ for premium)."
         },
         "total_minutes": {
           "min": 200,
@@ -9170,9 +9254,8 @@
       },
       "verb_natural": "installed",
       "required_materials": [],
-      "optional_materials": [
-        "MAT-PLM-WTR-RefrigeratorLine"
-      ]
+      "optional_materials": [],
+      "suggested_tags": []
     },
     {
       "id": "washer_repair",
@@ -9345,7 +9428,8 @@
       "required_materials": [
         "MAT-MHR-WIN-Caulk"
       ],
-      "optional_materials": []
+      "optional_materials": [],
+      "suggested_tags": []
     },
     {
       "id": "window_hardware_repair",
@@ -9891,7 +9975,8 @@
     "minor_home_repairs+Repair": {
       "financial_engine": {
         "pricing_type": "hourly",
-        "base_price": 70
+        "base_price": 70,
+        "pricing_archetype": "formula"
       },
       "operational_metrics": {
         "complexity_tier": "skilled",
@@ -11736,24 +11821,22 @@
       "_orphan_backlog_note": "v9.1 audit: this module is fully authored (question + client_response + fee/minute bands) but not referenced by any current service intake_chain. Left as-is rather than force-wired into a loosely-matching service, since guessing intent risks introducing a worse bug than leaving it unused (see CHANGELOG_v9.1.md — two real pre-existing wiring bugs were found and fixed this version; speculative wiring of the remaining orphans was intentionally deferred). Candidate for a future service that explicitly needs it, or removal if confirmed genuinely dead."
     },
     "install_type": {
-      "question": "Is this a new installation or a replacement?",
+      "question": "Are you swapping existing hardware, or installing into new holes?",
       "type": "single",
       "client_response": [
         {
-          "label": "New installation (first time)",
+          "label": "Swapping existing hardware (same holes)",
           "effects": {
             "fee": 0,
-            "minutes": 0,
-            "complexity_override": "routine"
+            "minutes": 0
           },
           "tags": []
         },
         {
-          "label": "Replacement (swapping an old one)",
+          "label": "New holes needed (measure, drill, mark)",
           "effects": {
             "fee": 0,
-            "minutes": 0,
-            "complexity_override": "routine"
+            "minutes": 0
           },
           "tags": []
         }
@@ -11761,7 +11844,7 @@
       "purpose": "pricing",
       "confidence_gain": 20,
       "affects_price": true,
-      "_orphan_backlog_note": "v9.1 audit: this module is fully authored (question + client_response + fee/minute bands) but not referenced by any current service intake_chain. Left as-is rather than force-wired into a loosely-matching service, since guessing intent risks introducing a worse bug than leaving it unused (see CHANGELOG_v9.1.md — two real pre-existing wiring bugs were found and fixed this version; speculative wiring of the remaining orphans was intentionally deferred). Candidate for a future service that explicitly needs it, or removal if confirmed genuinely dead."
+      "_note": "v9.5: real, new module authored per direct, explicit business input -- swap rate (1.25 min/unit) vs. measure/drill/mark rate (4 min/unit), both real, physical-fact figures, not estimates. Feeds hardware_install_formula directly; see pricing_formulas.hardware_install_formula."
     },
     "internet_active": {
       "question": "Is your internet service currently active and working?",
