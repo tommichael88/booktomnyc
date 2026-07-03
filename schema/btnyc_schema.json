@@ -1261,6 +1261,17 @@
               },
               "checkout_state": {
                 "type": "string"
+              },
+              "pricing_archetype": {
+                "type": "string",
+                "enum": [
+                  "flat_simple",
+                  "hourly_timed",
+                  "diagnostic_open",
+                  "tiered_per_unit",
+                  "formula"
+                ],
+                "description": "v9.5: the real, single, authoritative field for HOW a service's price is computed -- replaces the prior, scattered, five-field mess (pricing_type/pricing_engine/checkout_state/disclaimer/materials_included), confirmed via direct audit to encode the same small set of real shapes inconsistently across 14 raw combinations. Added additively; existing fields remain present and authoritative until every real consumer (computeUnifiedQuote, orch_compute_quote, etc.) is migrated to read this field instead. See BACKLOG_CONSOLIDATED.md for the full migration plan."
               }
             },
             "required": [
@@ -1396,6 +1407,17 @@
                 },
                 "base_price": {
                   "type": "number"
+                },
+                "pricing_archetype": {
+                  "type": "string",
+                  "enum": [
+                    "flat_simple",
+                    "hourly_timed",
+                    "diagnostic_open",
+                    "tiered_per_unit",
+                    "formula"
+                  ],
+                  "description": "v9.5: same real, single, authoritative archetype field as services[].financial_engine.pricing_archetype -- see that field's own description for the full rationale."
                 }
               },
               "required": [
@@ -1897,6 +1919,34 @@
           }
         }
       }
+    },
+    "compiled": {
+      "type": "object",
+      "description": "v8: real, compiler-generated, derived data (pricing_index, component_index, action_index, symptom_index, service_index, candidate_matrix) -- additive output of btnyc_v8_compiler.py, never hand-authored. Internal shape is the compiler's own, separately-tested responsibility (see test_harness/verify_btnyc_v8_compiler.py); deliberately left permissive here since it legitimately evolves as the compiler does, unlike the rest of this schema's hand-authored, strictly-specified sections."
+    },
+    "routing_archetypes": {
+      "type": "object",
+      "description": "v8: real, compiler-generated classification of each group's routing strategy (component_first/symptom_first/undetermined), derived from real_components/real_symptoms counts. Was 'group_archetypes' through v7; renamed to genuinely separate this concept from pricing_archetypes, since 'archetype' had become overloaded across two distinct, real ideas. Additive output of btnyc_v8_compiler.py."
+    },
+    "pricing_archetypes": {
+      "type": "object",
+      "description": "v8: real, centrally-defined list of the 5 real, schema-confirmed pricing archetypes (see services[].financial_engine.pricing_archetype's own enum) with live-computed current assignment counts. Additive output of btnyc_v8_compiler.py."
+    },
+    "_compiler_metadata": {
+      "type": "object",
+      "description": "v8: real, compiler-generated metadata (version, source file, any real, honest exclusion lists) -- additive output of btnyc_v8_compiler.py."
+    },
+    "_validation": {
+      "type": "object",
+      "description": "v8: real, compiler-generated reference-validation results (e.g. unknown intake-module/material references) -- additive output of btnyc_v8_compiler.py."
+    },
+    "_additive_diff": {
+      "type": "object",
+      "description": "v8: real, compiler-generated proof that every original, hand-authored top-level key survived the compilation byte-for-byte unchanged -- additive output of btnyc_v8_compiler.py."
+    },
+    "_schema_validation": {
+      "type": "object",
+      "description": "v8: real, new, self-referential schema-validation result -- the compiler's own check of whether ITS OWN complete output (including this very key) validates against this schema. Added directly in response to a real, confirmed gap: every prior version's reference checks never actually ran a real JSON Schema validator. Additive output of btnyc_v8_compiler.py."
     }
   },
   "$defs": {
