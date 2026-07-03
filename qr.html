@@ -6959,6 +6959,73 @@ function enableLiveAdLibPreview() {
                     if (effectiveContext.selectedGroupId) {
                         const group = (db.group || []).find(g => g.id === effectiveContext.selectedGroupId);
                         const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', effectiveContext.selectedGroupId);
+
+                        // v9.5 GAP 3 FIX: use routing_archetypes to resolve a specific
+                        // named service from group-level context. Previously, a phrase
+                        // like "door lock is broken" resolved the group correctly
+                        // (minor_home_repairs_doors) but then fell through to the generic
+                        // dynamic service -- ignoring the group's own component/symptom
+                        // map that clearly points to door_lock_or_handle_install.
+                        // This is the core purpose of routing_archetypes: group-level
+                        // resolution that goes beyond category-only dynamic fallback.
+                        const ra = db.routing_archetypes?.[effectiveContext.selectedGroupId];
+                        if (ra && !effectiveContext.selectedServiceId) {
+                            const rawText = (effectiveContext.rawText || '').toLowerCase();
+                            const extractedObj = (effectiveContext.extractedObject || '').toLowerCase();
+
+                            // Try component_to_service_ids first (for component-first groups)
+                            // then symptom_to_service_ids (for symptom-first groups)
+                            let candidateSvcId = null;
+                            const c2s = ra.component_to_service_ids || {};
+                            const s2s = ra.symptom_to_service_ids || {};
+
+                            // Check component map: does the raw text or extracted object
+                            // contain any component keyword from this group's map?
+                            for (const [component, svcIds] of Object.entries(c2s)) {
+                                const comp = component.toLowerCase();
+                                if (rawText.includes(comp) || extractedObj.includes(comp)) {
+                                    // Take the first (highest-priority) match
+                                    if (svcIds.length === 1) {
+                                        candidateSvcId = svcIds[0];
+                                        break;
+                                    }
+                                    // Multiple candidates: prefer the one whose name
+                                    // also appears in the text
+                                    const textMatch = svcIds.find(sid =>
+                                        rawText.includes(sid.replace(/_/g, ' ')) ||
+                                        rawText.includes(sid.replace(/_/g, '-'))
+                                    );
+                                    candidateSvcId = textMatch || svcIds[0];
+                                    break;
+                                }
+                            }
+
+                            // Fall back to symptom map if no component matched
+                            if (!candidateSvcId) {
+                                for (const [symptom, svcIds] of Object.entries(s2s)) {
+                                    const sym = symptom.toLowerCase();
+                                    if (rawText.includes(sym)) {
+                                        candidateSvcId = svcIds.length === 1 ? svcIds[0] : svcIds[0];
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // If routing_archetypes resolved a specific service,
+                            // use it instead of the generic dynamic entity
+                            if (candidateSvcId) {
+                                const resolvedSvc = (db.services || []).find(s => s.id === candidateSvcId);
+                                if (resolvedSvc) {
+                                    const enrichDyn = resolveDynamicService(
+                                        resolvedSvc.ui_taxonomy?.category_id,
+                                        (window._normServiceType ? window._normServiceType(resolvedSvc.service_type) : (resolvedSvc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install')),
+                                        resolvedSvc.ui_taxonomy?.group_id
+                                    );
+                                    return { entityType: 'service', entity: resolvedSvc, enrichment: orch_enrich_from_dynamic_service(resolvedSvc, enrichDyn), _resolvedFromRoutingArchetype: true };
+                                }
+                            }
+                        }
+
                         if (group || dynDef) return { entityType: 'dynamic', entity: dynDef, group, enrichment: orch_enrich_from_dynamic_service(null, dynDef) };
                     }
                     if (effectiveContext.selectedCategoryId) {
