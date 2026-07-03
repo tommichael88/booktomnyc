@@ -4784,6 +4784,24 @@ function enableLiveAdLibPreview() {
                     const dispatchFeeRaw = surcharges.dispatch_fee || 45;
                     const dispatchFee = dispatchEnabled ? dispatchFeeRaw : 0;
 
+                    // v9.5 GAP 2 FIX: route entities with financial_engine.pricing_archetype
+                    // through computeArchetypeQuote. Previously this field was authored on
+                    // entities (cabinet_knob_or_pull_install: tiered_per_unit, etc.) but
+                    // computeUnifiedQuote ignored it completely and ran its own parallel
+                    // logic. This wires the compiler's pricing_archetype concept into the
+                    // actual runtime: if an entity carries the field, the dedicated
+                    // calculator handles the core labor/time computation, and the result
+                    // flows into the existing downstream logic unchanged (tag fees,
+                    // checkout_state, dispatchFee, materials). Falls through to the
+                    // original logic for entities without the field -- zero regression risk.
+                    const _entity = svc || dynDef;
+                    const _pricingArchetype = _entity?.financial_engine?.pricing_archetype;
+                    let _archetypeResult = null;
+                    if (_pricingArchetype && typeof computeArchetypeQuote === 'function') {
+                        const _fId = formulaId || _entity?.pricing_engine || null;
+                        _archetypeResult = computeArchetypeQuote(_entity, _pricingArchetype, answers, qty, DB, _fId);
+                    }
+
                     const baseStrategy = resolveBaseConfidenceStrategy(svc, dynDef);
                     const variabilityTier = baseStrategy._variability_tier || 'medium';
 
@@ -5029,6 +5047,24 @@ function enableLiveAdLibPreview() {
                         laborEstimate = Math.round((base + extraFee) * qtyMultiplier);
                     } else {
                         laborEstimate = Math.round((base + extraFee + (totalMin / 60) * effectiveHourlyRate) * qtyMultiplier);
+                    }
+
+                    // GAP 2 FIX completion: if computeArchetypeQuote produced a result
+                    // for this entity, use it only when it's the authoritative source.
+                    // CRITICAL: only override for archetypes where computeArchetypeQuote
+                    // IS the correct calculator:
+                    //   - tiered_per_unit: the hardware_install_formula delegate
+                    //   - formula: explicitly named formula (already handled above too, but
+                    //     archetype result is consistent)
+                    // Do NOT override for flat_simple or hourly_timed when the entity
+                    // has a real formula path -- those services (dishwasher_repair, 
+                    // shelf_mortar_mounting, etc.) correctly use intake answers and
+                    // complexity multipliers that computeArchetypeQuote's simplified
+                    // branches don't replicate. The archetype classifies WHAT they are,
+                    // not HOW to compute them when a richer formula exists.
+                    if (_archetypeResult && (_pricingArchetype === 'tiered_per_unit' || _pricingArchetype === 'formula')) {
+                        laborEstimate = _archetypeResult.laborEstimate ?? laborEstimate;
+                        if (_archetypeResult.totalMin != null) totalMin = _archetypeResult.totalMin;
                     }
 
                     // v9.5 FIX: implements global_rules.diagnostic_governance, confirmed
@@ -7580,7 +7616,12 @@ function enableLiveAdLibPreview() {
                     // broken, replace with the safe catastrophic fallback —
                     // logging WHY, so this is visible in trace/diff logs rather
                     // than silently swapped.
-                    const validation = validateRoute(builtRoute, db);
+                    // v9.5 GAP 1 FIX: pass routing_archetypes so the semantic
+                    // check inside validateRoute actually runs. The compiled
+                    // artifact (btnyc_v8_compiled.json) carries this; if only
+                    // the SSOT is loaded, the check silently skips -- that is
+                    // the correct, safe fallback per the original design.
+                    const validation = validateRoute(builtRoute, db, db.routing_archetypes || null);
                     if (!validation.valid) {
                         trace.push({ step_id: 'route_validator_veto', operation: 'condition_map', output_summary: { violations: validation.violations } });
                         return catastrophicFallbackRoute(builtRoute, validation.violations);
