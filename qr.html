@@ -5686,46 +5686,39 @@ function exitFocusedMode() {
 
 async function init() {
                     cacheDOM();
+                    // Try local btnyc.json first, then fall back to remote.
+                    // Local-first makes development work without GitHub Pages.
+                    const DATA_URLS = ['./btnyc.json', 'https://tommichael88.github.io/booktomnyc/btnyc.json'];
                     try {
-                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        SERVICE_DATA = await res.json();
-                        // resolveRefs DISABLED: it was expanding $ref objects
-                        // (e.g. {"$ref":"#plumbing"}) to the full tag object, but
-                        // every consumer in the JS (prefillSmartQuoteFromService,
-                        // prefillSmartQuoteFromOtherTile, detectIntentNLP, etc.)
-                        // extracts the tag ID by reading tagRef.$ref as a string.
-                        // After expansion, tagRef.$ref is undefined → tag is
-                        // silently dropped → default_tags and suggested_tags never
-                        // populate S.detTagIds. All other $ref contexts (synonyms,
-                        // derived_from, requires) are also never read in expanded
-                        // form by any JS code, so resolveRefs provided no benefit
-                        // while actively breaking the most critical data paths.
-                        // SERVICE_DATA = resolveRefs(SERVICE_DATA); // ← broken, do not re-enable
-                        DB = SERVICE_DATA; // for SmartQuote engine
-                        window.DB = DB;    // expose globally for SSOT helpers
-                        initNlpSets();     // build NLP sets from DB.negation_library
-                        refreshNlpPreviewBindings();   // ← populate preview pipeline word sets
+                        let loaded = false;
+                        for (const url of DATA_URLS) {
+                            try {
+                                const res = await fetch(url);
+                                if (!res.ok) continue;
+                                SERVICE_DATA = await res.json();
+                                loaded = true;
+                                break;
+                            } catch (e) { /* try next */ }
+                        }
+                        if (!loaded) throw new Error('All data sources failed');
+                        DB = SERVICE_DATA;
+                        window.DB = DB;
+                        initNlpSets();
+                        refreshNlpPreviewBindings();
                     } catch (err) {
                         console.error('Service data load error:', err);
                         toast('Could not load services. Please refresh.', 'error');
-                        SERVICE_DATA = {
-                            meta: {},
-                            category: [],
-                            group: [],
-                            services: [],
-                            intake_modules: {}
-                        };
+                        SERVICE_DATA = { meta: {}, category: [], group: [], services: [], intake_modules: {} };
                         DB = SERVICE_DATA;
                     }
                     buildDataMaps(SERVICE_DATA);
                     renderCategoryCards();
+                    initSmartQuote();   // inject text bar immediately on page load
                     wireGlobalEvents();
                     renderCart();
                     if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
                     setViewportHeight();
                 }
-
 function initSmartQuote() {
                     let sqEl = document.getElementById('smartQuoteEngine');
                     if (!sqEl) {
@@ -10479,19 +10472,28 @@ function wireGlobalEvents() {
 (async function init() {
   try {
     // ─── 1. LOAD SSOT ───────────────────────────────────────────────
-    const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    SERVICE_DATA = await res.json();
+    // Try local btnyc.json first, then remote -- local-first for development.
+    let loaded = false;
+    for (const url of ['./btnyc.json', 'https://tommichael88.github.io/booktomnyc/btnyc.json']) {
+        try {
+            const r = await fetch(url);
+            if (!r.ok) continue;
+            SERVICE_DATA = await r.json();
+            loaded = true;
+            break;
+        } catch (e) { /* try next */ }
+    }
+    if (!loaded) throw new Error('All data sources failed');
     DB = SERVICE_DATA;
     window.DB = DB;
 
     // ─── 2. INITIALISE MODULES ──────────────────────────────────────
     initNlpSets();
-    refreshNlpPreviewBindings();   // ← populate preview pipeline word sets
+    refreshNlpPreviewBindings();
     cacheDOM();
     buildDataMaps(SERVICE_DATA);
     renderCategoryCards();
-    initSmartQuote();
+    initSmartQuote();   // inject text bar on page load
     wireGlobalEvents();
 
     // ─── 3. LOAD CART FROM SESSIONSTORAGE (ONCE) ───────────────────
