@@ -3669,6 +3669,7 @@ if (typeof module !== 'undefined' && module.exports) {
     makeBookingContext,
     _resolveIntakeChain
   };
+}
 </script> 
    
    <!-- UiRenderer -->
@@ -9098,23 +9099,27 @@ function wireGlobalEvents() {
         }
     });
 
-   <!-- // 6. ✨ NEW: Category card clicks – use the orchestrator ✨
-    document.querySelectorAll('.category-card').forEach(card => {
-//        // Remove any existing listeners to avoid duplicates (we'll attach fresh)
-        card.replaceWith(card.cloneNode(true));
-    });
-     Re-fetch and attach
-    document.querySelectorAll('.category-card').forEach(card => {
-       const catId = card.dataset.categoryId;
-        card.addEventListener('click', function() {
-//            // For category-level entry, we treat it as free-text with the category name.
-            // Alternatively, you can use a more specific collector if you have a service.
-            // For now, we'll route to a free-text context with the category name.
-//            const ctx = collectBookingContext_freeText(catId);
-//            const route = executeWorkflow(ctx, DB);
-//            renderRoute(route);
-//        });
-    }); -->
+   /* DISABLED experimental orchestrator category-card wiring.
+      This was written as an HTML comment (<!-- ... -->) inside a <script>, which is
+      NOT a valid JS block comment. The bare line "Re-fetch and attach" parsed as code
+      and threw "SyntaxError: Unexpected identifier 'and'", which stopped this ENTIRE
+      <script> block from executing — so setStep, prefillSmartQuoteFromService and the
+      rest of the orchestrator layer were never defined. Converted to a real block
+      comment so the block loads. Original (still disabled) content preserved:
+
+      document.querySelectorAll('.category-card').forEach(card => {
+          card.replaceWith(card.cloneNode(true));
+      });
+      // Re-fetch and attach:
+      document.querySelectorAll('.category-card').forEach(card => {
+         const catId = card.dataset.categoryId;
+          card.addEventListener('click', function() {
+              // const ctx = collectBookingContext_freeText(catId);
+              // const route = executeWorkflow(ctx, DB);
+              // renderRoute(route);
+          });
+      });
+   */
 
     // 7. ✨ NEW: SmartQuote “Get estimate” button (sqUnifiedActionBtn) ✨
     const sqBtn = document.getElementById('sqUnifiedActionBtn');
