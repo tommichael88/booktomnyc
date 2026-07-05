@@ -37,6 +37,8 @@ body.modal-active{overflow:hidden}
 .thandylogo{max-height:5rem;width:auto;flex:0 0 auto;object-fit:contain}
 .tmk_signature{flex:1 1 auto;min-width:0;margin:auto;position:relative;filter:drop-shadow(0 2px 4px #0000004d)}
 .tmk_signature img{width:auto;max-width:100%;filter:drop-shadow(0 2px 4px #0000004d)}
+.affirm-pivot-note{background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.3);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.85rem;color:rgba(255,255,255,.85);line-height:1.4}
+.affirm-pivot-note strong{color:#fff}
 .affirm-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:20px 18px 16px;margin:8px 0}
 .affirm-headline{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px}
 .affirm-adlib{font-size:1.05rem;font-weight:600;color:#fff;margin-bottom:12px;line-height:1.4}
@@ -1016,7 +1018,7 @@ function deriveComplexityTier(totalMinutes, tagOverrideTier, exactTier) {
                     return result;
                 }
 
-function applyPricingFormula(formulaId, answers, qty) {
+function applyPricingFormula(formulaId, answers, qty, svc = null) {
                     const f = DB.pricing_formulas?.[formulaId];
                     if (!f) return null;
                     let extraFee = 0, extraMin = f.base_minutes || 0;
@@ -1041,6 +1043,26 @@ function applyPricingFormula(formulaId, answers, qty) {
                         // Tier 2: per-unit minutes
                         extraMin += minsPerUnit * unitsNum;
                         overrideHourlyRate = f.hourly_rate || 70;
+                    } else if (formulaId === 'item_count_overflow_formula') {
+                        // v9.6 PLACEHOLDER-DATA FORMULA (T20). Dormant by design: only
+                        // activates once a future UI supplies an explicit exact count
+                        // (qty_value) for the open-ended top band -- until then, returns
+                        // exactly today's flat top-band price, zero behavior change.
+                        const svcId = svc?.id;
+                        const cfg = f.anchor_and_overflow_ref_by_service?.[svcId];
+                        if (!cfg) return { extraFee: 0, extraMin: 0, overrideHourlyRate: null };
+                        let exactQty = null;
+                        for (const [moduleKey, answerLabel] of Object.entries(answers)) {
+                            const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
+                            const resp = step?.params?.client_response?.find(r => r.label === answerLabel);
+                            if (resp?.qty_value != null) { exactQty = resp.qty_value; break; }
+                        }
+                        if (exactQty == null || exactQty <= cfg.anchor) {
+                            return { extraFee: 0, extraMin: 0, overrideHourlyRate: null };
+                        }
+                        const rate = DB.global_rules?.modifiers?.[cfg.overflow_rate_ref] || { fee: 0, minutes: 0 };
+                        const overUnits = exactQty - cfg.anchor;
+                        return { extraFee: rate.fee * overUnits, extraMin: rate.minutes * overUnits, overrideHourlyRate: null };
                     } else if (formulaId === 'tile_repair_formula') {
                         // Resolve modifier_refs from global_rules.modifiers (new SSOT schema)
                         // or fall back to direct values (old schema) for backward compat.
@@ -1593,11 +1615,17 @@ function computeUnifiedQuote(ctx) {
                     // NLP match always takes priority over inferring one from a
                     // later answer.
                     let effectiveFormulaId = formulaId;
-                    if (!effectiveFormulaId) {
+                    if (!effectiveFormulaId || !DB.pricing_formulas?.[effectiveFormulaId]) {
                         for (const [moduleKey, answerLabel] of Object.entries(answers)) {
+                            // Check the per-service override first (e.g. item_count_template's
+                            // params.client_response, which is what the customer actually
+                            // saw and answered) -- falls back to the generic, shared
+                            // intake_modules[moduleKey] definition if no per-service
+                            // override exists for this module.
+                            const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
+                            const overrideResponses = step?.params?.client_response;
                             const mod = DB.intake_modules?.[moduleKey];
-                            if (!mod) continue;
-                            const chosen = (mod.client_response || []).find(r => r.label === answerLabel);
+                            const chosen = (overrideResponses || mod?.client_response || []).find(r => r.label === answerLabel);
                             const fov = chosen?.formula_override;
                             if (fov && DB.pricing_formulas?.[fov]) { effectiveFormulaId = fov; break; }
                         }
@@ -1608,7 +1636,7 @@ function computeUnifiedQuote(ctx) {
                     // pricing_formula_id or an .intent sub-object, so the previous
                     // svc?.pricing_formula_id || svc?.intent?.dynamic_rule lookup could
                     // never resolve to anything and this branch was silently dead).
-                    const formulaResult = effectiveFormulaId ? applyPricingFormula(effectiveFormulaId, answers, qty) : null;
+                    const formulaResult = effectiveFormulaId ? applyPricingFormula(effectiveFormulaId, answers, qty, svc) : null;
 
 
                     let extraFee = 0, extraMin = 0;
@@ -3006,7 +3034,27 @@ function inferTagsFromContext(text, cat, groupId) {
                     return inferred;
                 }
 
-function resolveGroupFromIntent(category, objectNoun, stype, fullText) {
+function computeNegatedGroupHints(negatedTagIds, smartTags) {
+                    // T36: translate explicit tag negations into group/category
+                    // deprioritization hints. Only tags carrying real group/category
+                    // specificity (applicable_group_ids / applicable_categories)
+                    // participate -- the ~10 universal/logistic tags (parking, pets,
+                    // urgency, etc.) correctly contribute nothing: negating "pets
+                    // present" tells you nothing about which room or trade the job
+                    // involves.
+                    const groups = new Set(), categories = new Set();
+                    for (const tid of (negatedTagIds || [])) {
+                        const tag = smartTags?.[tid];
+                        if (!tag) continue;
+                        (tag.applicable_group_ids || []).forEach(g => groups.add(g));
+                        if (!tag.applicable_group_ids || tag.applicable_group_ids.length === 0) {
+                            (tag.applicable_categories || []).forEach(c => categories.add(c));
+                        }
+                    }
+                    return { groups, categories };
+                }
+
+function resolveGroupFromIntent(category, objectNoun, stype, fullText, negatedGroupHints = null) {
                     if (!category || !DB?.group) return null;
                     const obj = (objectNoun || '').toLowerCase();
                     const groups = (DB.group || []).filter(g => g.category_id === category);                    if (!groups.length) return null;
@@ -3137,18 +3185,36 @@ function resolveGroupFromIntent(category, objectNoun, stype, fullText) {
                     // again, contradicting this function's own documented contract.
                     if (!catRules) return null;
 
+                    // T36: a rule whose group was explicitly negated (via tag
+                    // removal) is deferred rather than excluded -- remembered as
+                    // a last-resort fallback, tried only if no other rule matches
+                    // anywhere in any pass. This is the real adaptation of the
+                    // design doc's "penalty" concept to this function's actual
+                    // architecture (a deterministic first-match rule cascade, not
+                    // a numeric scoring loop) -- deferring to last resort plays
+                    // the same role a capped penalty would, without inventing an
+                    // arbitrary magnitude for code that has no score to apply it to.
+                    const isNegated = (groupId) => !!negatedGroupHints?.groups?.has(groupId);
+                    let deferredMatch = null;
+
                     // Match object noun against keyword lists
                     for (const rule of catRules) {
                         if (rule.catchAll) continue; // skip catch-alls in first pass
                         // stype-only rules (furniture_fixes_assembly)
                         if (rule.stypes && !rule.keywords.length) {
                             if (stype && rule.stypes.some(st => stype.toLowerCase().includes(st.toLowerCase()))) {
-                                if (groups.find(g => g.id === rule.group)) return rule.group;
+                                if (groups.find(g => g.id === rule.group)) {
+                                    if (isNegated(rule.group)) { deferredMatch = deferredMatch || rule.group; continue; }
+                                    return rule.group;
+                                }
                             }
                             continue;
                         }
                         if (rule.keywords.some(kw => objWordBoundaryIncludes(obj, kw))) {
-                            if (groups.find(g => g.id === rule.group)) return rule.group;
+                            if (groups.find(g => g.id === rule.group)) {
+                                if (isNegated(rule.group)) { deferredMatch = deferredMatch || rule.group; continue; }
+                                return rule.group;
+                            }
                         }
                     }
 
@@ -3170,15 +3236,26 @@ function resolveGroupFromIntent(category, objectNoun, stype, fullText) {
                         for (const rule of catRules) {
                             if (rule.catchAll || (rule.stypes && !rule.keywords.length)) continue;
                             if (rule.keywords.some(kw => objWordBoundaryIncludes(lowerFull, kw))) {
-                                if (groups.find(g => g.id === rule.group)) return rule.group;
+                                if (groups.find(g => g.id === rule.group)) {
+                                    if (isNegated(rule.group)) { deferredMatch = deferredMatch || rule.group; continue; }
+                                    return rule.group;
+                                }
                             }
                         }
                     }
 
                     // Second pass: catch-alls
                     for (const rule of catRules) {
-                        if (rule.catchAll && groups.find(g => g.id === rule.group)) return rule.group;
+                        if (rule.catchAll && groups.find(g => g.id === rule.group)) {
+                            if (isNegated(rule.group)) { deferredMatch = deferredMatch || rule.group; continue; }
+                            return rule.group;
+                        }
                     }
+
+                    // Last resort: a negated group that matched is still better
+                    // than no group at all -- the negation deprioritizes, it
+                    // never permanently forbids.
+                    if (deferredMatch) return deferredMatch;
 
                     // SSOT: honor the documented contract above — "Returns null if
                     // no clear group can be determined" — rather than silently
@@ -3994,11 +4071,14 @@ function collectBookingContext_freeText(rawText) {
                     let selectedGroupId = null;
                     const hasCategory = nlpIntent?.category && nlpIntent.category !== 'other';
                     const hasMatchConf = (nlpIntent?._matchConfidence || 0) >= thresholds.route_to_group_other_tile;
+                    // T36 pass 1: preliminary group resolution (no negation hints yet --
+                    // needed only to validate which tags apply before we know what's negated).
                     if (hasCategory && hasMatchConf) {
                         selectedGroupId = resolveGroupFromIntent(
                             nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText
                         );
                     }
+                    const preliminaryGroupId = selectedGroupId;
 
                     // v9.5 FIX: run full tag detection so the orchestrator path gets
                     // the same #brick_wall / #heavy_item / contextual-tag signals that
@@ -4074,6 +4154,24 @@ function collectBookingContext_freeText(rawText) {
                         });
                     }
 
+                    // T36 pass 2: now that negation is fully known, re-resolve the
+                    // group with negatedGroupHints included -- this is "re-run the
+                    // same resolution pass with one more real input," per the design
+                    // doc's own stated architecture, not a separate pivot mode.
+                    let negationOverride = null;
+                    if (negatedTagIds.length > 0 && hasCategory && hasMatchConf) {
+                        const negatedGroupHints = computeNegatedGroupHints(negatedTagIds, DB.smart_tags || {});
+                        if (negatedGroupHints.groups.size > 0 || negatedGroupHints.categories.size > 0) {
+                            const reResolved = resolveGroupFromIntent(
+                                nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText, negatedGroupHints
+                            );
+                            if (reResolved && reResolved !== preliminaryGroupId) {
+                                selectedGroupId = reResolved;
+                                negationOverride = { from: preliminaryGroupId, to: reResolved, negatedTagIds: [...negatedTagIds] };
+                            }
+                        }
+                    }
+
                     return makeBookingContext('free_text', {
                         rawText,
                         nlpIntent,
@@ -4085,6 +4183,7 @@ function collectBookingContext_freeText(rawText) {
                         selectedGroupId,
                         detectedTagIds,
                         negatedTagIds,
+                        _negationOverride: negationOverride,
                     });
                 }
 
@@ -4101,6 +4200,7 @@ function makeBookingContext(entry, overrides) {
                         extractedLocation: null,
                         manuallyToggledTagIds: [],
                         negatedTagIds: [],
+                        _negationOverride: null,
                         uncoveredServiceTypes: null,
                     }, overrides || {});
                 }
@@ -6719,10 +6819,14 @@ function sqOpenStep(n) {
                     if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
                 }
 
-function renderTagAffirmationCard(detTagIds, intent, q) {
+function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                     // Fires when: detTagIds non-empty, not yet affirmed, service resolved.
                     // Shows: "We understood X" adlib + detected tag chips (tappable) +
                     // service recommendations + live dynamic price + Yes/No buttons.
+                    // T36: also reused for the negation-pivot "did you mean" prompt
+                    // (pivotInfo present) -- same component, different framing, per
+                    // the design doc's own explicit recommendation rather than a
+                    // separate, third UI surface.
                     const container = document.getElementById('serviceRequestSummary');
                     if (!container) return;
 
@@ -6776,10 +6880,18 @@ function renderTagAffirmationCard(detTagIds, intent, q) {
                         ? `<span class="affirm-price">From $${q.laborWithTags}</span>`
                         : '';
 
+                    const groupDefs = DB.group || [];
+                    const pivotToName = pivotInfo ? (groupDefs.find(g => g.id === pivotInfo.to)?.display_name || pivotInfo.to) : null;
+                    const headline = pivotInfo ? 'Did you mean:' : 'We understood:';
+                    const pivotNote = pivotInfo
+                        ? `<div class="affirm-pivot-note">You mentioned this isn't quite what we first thought, so we're now looking at <strong>${pivotToName}</strong> instead.</div>`
+                        : '';
+
                     container.innerHTML = `
                         <div class="affirm-card" id="sqAffirmCard">
-                            <div class="affirm-headline">We understood:</div>
+                            <div class="affirm-headline">${headline}</div>
                             <div class="affirm-adlib">${adlibText}</div>
+                            ${pivotNote}
                             <div class="affirm-chips" id="sqAffirmChips">${chipHtml}</div>
                             ${recHtml}
                             <div class="affirm-price-row">${priceDisplay}</div>
@@ -6793,6 +6905,14 @@ function renderTagAffirmationCard(detTagIds, intent, q) {
                 }
 
                 function sqAffirmYes() {
+                    if (S._pendingPivotInfo) {
+                        // T36: customer confirmed the group pivot. Re-run sqAnalyze
+                        // with the pivot accepted so the corrected group drives routing.
+                        S._negationPivotAccepted = true;
+                        S._pendingPivotInfo = null;
+                        sqAnalyze();
+                        return;
+                    }
                     // Customer confirmed all shown tags. Set affirmed, re-render quote.
                     S._tagsAffirmed = true;
                     S._affirmedTagSet = [...S.detTagIds]; // snapshot the set that was affirmed
@@ -6970,6 +7090,10 @@ function sqRestart() {
                         _svc: null,
                         answers: {},
                         _curatedMode: false,
+                        _tagsAffirmed: false,
+                        _affirmedTagSet: null,
+                        _negationPivotAccepted: false,
+                        _pendingPivotInfo: null,
                         _jobNotes: '',
                         _objectNoun: null,
                         _location: null,
@@ -8327,6 +8451,20 @@ function sqAnalyze() {
                                 return;
                             }
                         }
+                    }
+
+                    // ── T36: negation-pivot gate ──────────────────────────────────
+                    // If removing/negating a tag changed which group the request
+                    // resolves to (ctx._negationOverride is only ever set when this
+                    // is genuinely true -- see collectBookingContext_freeText), ask
+                    // before routing there. Silent otherwise, per the design's own
+                    // requirement: a negation that doesn't change the outcome should
+                    // not manufacture a prompt with nothing useful to say.
+                    if (ctx._negationOverride && !S._negationPivotAccepted) {
+                        const q = computeQuoteFromState();
+                        S._pendingPivotInfo = ctx._negationOverride;
+                        renderTagAffirmationCard(S.detTagIds || [], S.intent, q, ctx._negationOverride);
+                        return;
                     }
 
                     // ── Tag affirmation gate ─────────────────────────────────────
