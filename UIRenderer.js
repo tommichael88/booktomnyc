@@ -2297,7 +2297,7 @@ function sqRenderQuote() {
                             '<i class="ti ti-star" style="color:var(--clr-red,#de0000);font-size:15px;flex-shrink:0"></i>' +
                             '<div style="flex:1;min-width:0;"><strong>Possible match:</strong> ' + (_recSvc.ui_taxonomy?.display_name || _recSku) +
                             ' <span style="color:#888;font-size:12px;">— may give a more precise quote</span></div>' +
-                            '<button type="button" onclick="window._sqSwitchToRecommended(\'' + _recSku.replace(/'/g, "\\'") + '\',\'' + (_recCatId || '').replace(/'/g, "\\'") + '\')" ' +
+                            '<button type="button" onclick="window._sqSwitchToRecommended(\'' + _recSku.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + '\',\'' + (_recCatId || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'") + '\')" ' +
                             'style="flex-shrink:0;background:var(--clr-red-dark,#8a0615);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Use this</button>' +
                             '</div>' :
                             '';
