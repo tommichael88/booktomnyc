@@ -4773,7 +4773,7 @@ function createServiceCardElement(svc, category_id) {
                     }));
                     card.appendChild(iconEl);
                     card.appendChild(info);
-                  //  card.addEventListener('click', () => prefillSmartQuoteFromService(svc, category_id));
+                    card.addEventListener('click', () => prefillSmartQuoteFromService(svc, category_id));
                     card.addEventListener('keydown', e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
@@ -5769,7 +5769,11 @@ function showGroupsForCategory(category_id, fromBack = false) {
     if (!fromBack) Breadcrumbs.push({ type: 'categories' });
     if (!fromBack) enterFocusedMode();   // 👈 enter full‑screen glass mode
 
-    const groups = (DB.group || []).filter(g => g.category_id === category_id);
+    // Only TOP-LEVEL groups belong at the category level. Subgroups (e.g. Washer,
+    // Dryer under Appliances) carry the same category_id but a parent_group, and
+    // must appear only under their parent via showSubGroups/groupChildrenMap —
+    // otherwise groups and subgroups comingle in one flat row.
+    const groups = (DB.group || []).filter(g => g.category_id === category_id && !g.parent_group);
     const container = DOM.serviceContainer;
     container.replaceChildren();
     container.className = 'group-grid';  // use the grid layout from focused-mode CSS
