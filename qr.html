@@ -37,7 +37,25 @@ body.modal-active{overflow:hidden}
 .thandylogo{max-height:5rem;width:auto;flex:0 0 auto;object-fit:contain}
 .tmk_signature{flex:1 1 auto;min-width:0;margin:auto;position:relative;filter:drop-shadow(0 2px 4px #0000004d)}
 .tmk_signature img{width:auto;max-width:100%;filter:drop-shadow(0 2px 4px #0000004d)}
-.contact-button{position:relative;isolation:isolate;z-index:2;min-width:64px;min-height:36px;padding:8px 12px;font-size:.85rem;font-weight:700;color:#fff;background:#000000bf;border:1px solid #ffffff4d;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition);box-shadow:inset 0 1px 2px #ffffff40 inset 0 -1px 2px #0006;overflow:visible}
+.affirm-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:20px 18px 16px;margin:8px 0}
+.affirm-headline{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px}
+.affirm-adlib{font-size:1.05rem;font-weight:600;color:#fff;margin-bottom:12px;line-height:1.4}
+.affirm-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.affirm-chip{cursor:pointer;user-select:none;transition:opacity .15s}
+.affirm-chip:hover{opacity:.75}
+.affirm-recs{margin-bottom:14px}
+.affirm-recs-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.45);margin-bottom:8px}
+.affirm-rec-card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer;transition:background .15s}
+.affirm-rec-card:hover{background:rgba(255,255,255,.16)}
+.affirm-rec-name{display:block;font-size:.92rem;font-weight:600;color:#fff}
+.affirm-rec-desc{display:block;font-size:.78rem;color:rgba(255,255,255,.55);margin-top:2px}
+.affirm-price-row{margin-bottom:14px;min-height:24px}
+.affirm-price{font-size:1.1rem;font-weight:700;color:#fff}
+.affirm-actions{display:flex;gap:10px;flex-wrap:wrap}
+.affirm-yes-btn{flex:1;min-width:120px;background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .15s}
+.affirm-yes-btn:hover{opacity:.85}
+.affirm-no-btn{flex:1;min-width:120px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:12px 16px;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .15s}
+.affirm-no-btn:hover{background:rgba(255,255,255,.18)}position:relative;isolation:isolate;z-index:2;min-width:64px;min-height:36px;padding:8px 12px;font-size:.85rem;font-weight:700;color:#fff;background:#000000bf;border:1px solid #ffffff4d;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition);box-shadow:inset 0 1px 2px #ffffff40 inset 0 -1px 2px #0006;overflow:visible}
 .contact-button .contact-glow-ring,.contact-button .contact-sparkle,.contact-button::after,.contact-button::before{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);pointer-events:none;z-index:-1}
 .contact-button::before{width:4.2rem;height:4.2rem;background:radial-gradient(circle at 30% 30%,#ffffffe6 2%,transparent 4%),radial-gradient(circle at 70% 20%,#fffc 3%,transparent 5%),radial-gradient(circle at 20% 70%,#ffffffb3 2%,transparent 4%),radial-gradient(circle at 80% 80%,#fff9 3%,transparent 5%),radial-gradient(circle,#ffffff40 0,#ffffff26 25%,#ffffff14 50%,transparent 80%);border:1.5px solid #fff9;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);filter:blur(.5px) drop-shadow(0 0 8px #fff9)}
 .contact-button::after{width:3.6rem;height:3.6rem;background:radial-gradient(circle at 50% 50%,#fff6 0,#fff3 30%,#ffffff1a 50%,transparent 70%);clip-path:polygon(50% 0,58% 32%,95% 32%,65% 54%,76% 88%,50% 67%,24% 88%,35% 54%,5% 32%,42% 32%);filter:blur(1px);mix-blend-mode:screen}
@@ -801,10 +819,16 @@ const Breadcrumbs = {
     goBack() {
         if (this.stack.length === 0) { restoreCategoryView(); return; }
         const prev = this.stack.pop();
-        if (prev.type === 'group') showGroupsForCategory(prev.category_id, true);
-        else if (prev.type === 'subgroups') showSubGroups(prev.group, prev.category_id, true);
+        if (prev.type === 'categories') restoreCategoryView();
+        else if (prev.type === 'group') showGroupsForCategory(prev.category_id, true);
+        else if (prev.type === 'subgroup' || prev.type === 'subgroups') {
+            // subgroup can be a group object or a group.id -- handle both
+            const grp = typeof prev.group === 'object' ? prev.group : { id: prev.group };
+            showSubGroups(grp, prev.category_id, true);
+        }
         else if (prev.type === 'serviceDetail') {
-            selectGroupForCategory(prev.groups, prev.category_id);
+            if (prev.category_id) showGroupsForCategory(prev.category_id, true);
+            else restoreCategoryView();
             if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
             if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'block';
         } else restoreCategoryView();
@@ -927,7 +951,7 @@ function resolveServiceBadge(fe) {
     const csKey = fe?.checkout_state;
     const fromCS = window.DB?.checkout_states?.[csKey]?.ui_badge_label;
     if (fromCS) return fromCS;
-    const pt = ((fe?.type ?? fe?.pricing_type) || 'flat_rate').toLowerCase();
+    const pt = (fe?.type || fe?.pricing_type || 'flat_rate').toLowerCase();
     return window.DB?.ui_config?.pricing_type_badges?.[pt]?.label
         || '✅ Fixed price';
 }
@@ -952,7 +976,8 @@ function applyLiveConfidenceEscalation(baseStrategy, activeTagIds, smartTags, es
                     const RANK = { skilled: 1, specialized: 2 };
                     let worst = null, worstRank = 0;
                     for (const tid of activeTagIds) {
-                        const override = smartTags[tid]?.effects?.complexity_override;
+                        const tagDef = smartTags[tid];
+                        const override = tagDef?.escalate_complexity;
                         if (override && (RANK[override] || 0) > worstRank) {
                             worst = override;
                             worstRank = RANK[override];
@@ -996,23 +1021,66 @@ function applyPricingFormula(formulaId, answers, qty) {
                     if (!f) return null;
                     let extraFee = 0, extraMin = f.base_minutes || 0;
                     let overrideHourlyRate = null;
-                    // v9.4: formula surcharge fees live in global_rules.modifiers, referenced by *_modifier_ref.
-                    const _MODS = DB.global_rules?.modifiers || {};
-                    const modFee = (ref) => (ref && _MODS[ref] && typeof _MODS[ref].fee === 'number') ? _MODS[ref].fee : 0;
-                    const modMin = (ref) => (ref && _MODS[ref] && typeof _MODS[ref].minutes === 'number') ? _MODS[ref].minutes : 0;
 
-                    if (formulaId === 'tile_repair_formula') {
+                    if (formulaId === 'hardware_install_formula') {
+                        // Two-tier model per direct business input:
+                        // TIER 1 (common case, 1-10 units swap): flat_tier_price covers full job
+                        // TIER 2 (>10 units or new holes): per-unit minutes at formula hourly_rate
+                        const installType = answers.install_type || '';
+                        const isNewHoles = /new hole/i.test(installType) || /drilling/i.test(installType);
+                        const unitsNum = parseInt(answers.unit_count) || qty || 1;
+                        const minsPerUnit = isNewHoles ? (f.minutes_per_unit_new_holes || 5) : (f.minutes_per_unit_swap || 4);
+                        if (!isNewHoles && unitsNum <= 10) {
+                            // Tier 1: flat tier price -- return as an override via extraFee
+                            // so the caller (computeArchetypeQuote) can set the final price directly
+                            const flatPrice = f.flat_tier_price || 140;
+                            // Signal the flat price by setting overrideHourlyRate to 0 and extraFee to flatPrice
+                            // and extraMin to 0 so base price + extraFee = flatPrice
+                            return { extraFee: flatPrice, extraMin: 0, overrideHourlyRate: 0 };
+                        }
+                        // Tier 2: per-unit minutes
+                        extraMin += minsPerUnit * unitsNum;
+                        overrideHourlyRate = f.hourly_rate || 70;
+                    } else if (formulaId === 'tile_repair_formula') {
+                        // Resolve modifier_refs from global_rules.modifiers (new SSOT schema)
+                        // or fall back to direct values (old schema) for backward compat.
+                        const _mods = DB.global_rules?.modifiers || {};
+                        const _mod = (ref) => (ref && _mods[ref]) ? _mods[ref] : {};
                         const count = parseInt(answers.tile_count) || qty || 1;
                         extraMin += (f.minutes_per_tile || 5) * count;
-                        if (answers.grout_repair === 'Yes') { extraMin += f.grout_penalty_minutes || 0; extraFee += modFee(f.grout_modifier_ref); }
-                        if (answers.water_damage === 'Yes') { extraMin += f.water_damage_penalty_minutes || 0; extraFee += modFee(f.water_damage_modifier_ref); }
-                        if (answers.ceiling_height === 'High ceiling') { extraMin += f.high_ceiling_penalty_minutes || 0; extraFee += modFee(f.high_ceiling_modifier_ref); }
-                        if (answers.disposal === 'Yes') { extraMin += f.disposal_minutes || 0; extraFee += modFee(f.disposal_modifier_ref); }
+                        if (answers.grout_repair === 'Yes') {
+                            const m = _mod(f.grout_modifier_ref);
+                            extraMin += m.minutes ?? (f.grout_penalty_minutes || 0);
+                            extraFee += m.fee ?? (f.grout_fee || 0);
+                        }
+                        if (answers.water_damage === 'Yes') {
+                            const m = _mod(f.water_damage_modifier_ref);
+                            extraMin += m.minutes ?? (f.water_damage_penalty_minutes || 0);
+                            extraFee += m.fee ?? (f.water_damage_fee || 0);
+                        }
+                        if (answers.ceiling_height === 'High ceiling') {
+                            const m = _mod(f.high_ceiling_modifier_ref);
+                            extraMin += m.minutes ?? (f.high_ceiling_penalty_minutes || 0);
+                            extraFee += m.fee ?? (f.high_ceiling_fee || 0);
+                        }
+                        if (answers.disposal === 'Yes') {
+                            const m = _mod(f.disposal_modifier_ref);
+                            extraMin += m.minutes ?? (f.disposal_minutes || 0);
+                            extraFee += m.fee ?? (f.disposal_fee || 0);
+                        }
                     } else if (formulaId === 'drywall_repair_formula') {
+                        const _mods = DB.global_rules?.modifiers || {};
+                        const _mod = (ref) => (ref && _mods[ref]) ? _mods[ref] : {};
                         const sqft = parseInt(answers.area_sqft) || 2;
                         extraMin += (f.minutes_per_sqft || 5) * sqft;
-                        extraFee += modFee(f.patch_modifier_ref);
-                        if (answers.texture_match === 'Yes') extraFee += modFee(f.texture_modifier_ref);
+                        const patchMod = _mod(f.patch_modifier_ref);
+                        extraFee += patchMod.fee ?? (f.patch_fee || 0);
+                        extraMin += patchMod.minutes || 0;
+                        if (answers.texture_match === 'Yes') {
+                            const texMod = _mod(f.texture_modifier_ref);
+                            extraFee += texMod.fee ?? (f.texture_fee || 0);
+                            extraMin += texMod.minutes || 0;
+                        }
                     } else if (formulaId === 'furniture_repair_formula') {
                         // SSOT: issue_type_fees keyed by the exact 'issue' intake_module
                         // label — same lookup pattern as tile_repair_formula's
@@ -1021,10 +1089,14 @@ function applyPricingFormula(formulaId, answers, qty) {
                         // ignored `answers` entirely (base_minutes × multiplier only),
                         // which silently discarded every chip/question fee the user
                         // had just confirmed in the adlib sentence.
-                        const issueRef = f.issue_type_fees?.[answers.issue]?.modifier_ref || null;
-                        if (issueRef) {
-                            extraFee += modFee(issueRef);
-                            extraMin += modMin(issueRef);
+                        // v9.5: issue_type_fees entries now carry modifier_ref instead
+                        // of inline fee/minutes -- resolve via global_rules.modifiers.
+                        const _mods = DB.global_rules?.modifiers || {};
+                        const issueEntry = f.issue_type_fees?.[answers.issue] || null;
+                        if (issueEntry) {
+                            const m = issueEntry.modifier_ref ? (_mods[issueEntry.modifier_ref] || {}) : issueEntry;
+                            extraFee += m.fee || 0;
+                            extraMin += m.minutes || 0;
                         }
                         // Per-unit scaling for qty > 1 (e.g. 4 drawers), same role as
                         // tile_repair_formula's minutes_per_tile × count — replaces the
@@ -1050,7 +1122,7 @@ function applyPricingFormula(formulaId, answers, qty) {
                             const label = answers[moduleKey];
                             const mod = DB.intake_modules?.[moduleKey];
                             const chosen = mod?.client_response?.find(r => r.label === label);
-                            return chosen?.effects?.qty_value ?? (parseInt(label) || 0);
+                            return chosen?.qty_value ?? (parseInt(label) || 0);
                         };
                         const cabinet = resolveQtyValue('pax_cabinet_count');
                         const hinge = resolveQtyValue('pax_hinge_count');
@@ -1072,7 +1144,7 @@ function applyPricingFormula(formulaId, answers, qty) {
 function getServiceProfile(svc) {
                     const fe = svc.financial_engine || {};
                     const om = svc.operational_metrics || {};
-                    const pricingType = (fe.type ?? fe.pricing_type) || svc.service_type || 'Repair';
+                    const pricingType = fe.type || fe.pricing_type || svc.service_type || 'Repair';
                     const basePrice = fe.base_price || 0;
                     const checkoutState = fe.checkout_state || 'standard_flat_rate';
                     const chain = svc.intake_chain || [];
@@ -1081,7 +1153,7 @@ function getServiceProfile(svc) {
                     const isOther = defaultTags.some(t => t === '#adhoc' || t === '#manual_review');
                     const isDiagnostic = isDiagnosticService(fe); // SSOT: checkout_state is badge authority
                     const isProject = basePrice >= 150 || (svc.default_estimates?.disclaimer === 'project_based');
-                    const isHourly = (fe.type ?? fe.pricing_type) === 'hourly';
+                    const isHourly = fe.type === 'hourly' || fe.pricing_type === 'hourly';
                     const chainLen = chain.length;
                     let tier;
                     if (requiresSiteVisit) tier = 3;
@@ -1103,6 +1175,21 @@ function getServiceProfile(svc) {
                         tier
                     };
                 }
+
+function legacyDetermineSelfQuoting(svc) {
+    // Matches orchestrator's orch_compute_variability_flags exactly:
+    // item_count_template WITHOUT bypass_intake goes to curated_card, not self_quote.
+    const om = svc.operational_metrics || {};
+    const chain = svc.intake_chain || [];
+    const QTY_MODS_UNCONDITIONAL = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
+    const bypassIntake = !!svc.behavior?.bypass_intake;
+    const isQtyMod = (m) => QTY_MODS_UNCONDITIONAL.has(m.module) ||
+        (m.module === 'item_count_template' && bypassIntake);
+    const chainIsQtyOnly = chain.length === 0 || chain.every(isQtyMod);
+    const hasPricingData = (om.expected_minutes > 0) && om.complexity_tier && (svc.financial_engine?.base_price > 0);
+    const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(svc.financial_engine?.checkout_state);
+    return hasPricingData && isFlatCheckout && chainIsQtyOnly;
+}
 
 function getServicePriceRange(svc) {
                     if (svc.default_estimates && svc.default_estimates.total) {
@@ -1147,12 +1234,22 @@ function formatServicePrice(svc) {
     }
 
     // 4. Render exact string
+    const isHourly = svc.pricing_engine === 'hourly_estimate' || svc.financial_engine?.type === 'hourly' || svc.financial_engine?.pricing_type === 'hourly' || svc.pricing?.type === 'hourly';
+    const isAssembly = svc.pricing_engine === 'assembly_formula';
     if (displayTotal > 0) {
-        let suffix = (svc.pricing_engine === 'hourly_estimate' || svc.pricing?.type === 'hourly') ? '/hr' : '';
+        let suffix = (isHourly || isAssembly) ? '/hr' : '';
         let prefixHtml = strategy.buffer_label ? `<span class="price-prefix">${strategy.buffer_label}</span> ` : '';
         return `${prefixHtml}$${displayTotal}${suffix}`;
     }
-    
+
+    // Hourly/assembly services with base_price=0: show tier rate instead of 'Call'
+    if (isHourly || isAssembly) {
+        const tiers = DB?.global_rules?.complexity_tiers || {};
+        const tier = svc.operational_metrics?.complexity_tier || 'skilled';
+        const rate = tiers[tier]?.hourly_rate;
+        if (rate) return `from $${rate}/hr`;
+    }
+
     return svc.price || 'Call';
 }
 
@@ -1288,7 +1385,7 @@ function tagValidForCategory(tid, cat, groupId) {
                 }
 
 function isDiagnosticService(fe) {
-    return (fe?.checkout_state === 'diagnostic') || ((fe?.type ?? fe?.pricing_type) === 'Diagnostic');
+    return (fe?.checkout_state === 'diagnostic') || (fe?.pricing_type === 'Diagnostic');
 }
 
 function isLogisticTag(tid) {
@@ -1305,7 +1402,13 @@ function estimateLiveConfidence(text) {
         let best = 0;
         for (const m of maps) {
             const kw = (m.keyword || '').toLowerCase();
-            if (kw && kw !== 'other' && t.includes(kw)) {
+            // v9.5 FIX: word-boundary match prevents 'washer' matching inside 'dishwasher'
+            const liveConfWordBoundary = (text2, term) => {
+                if (!term) return false;
+                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return new RegExp('(?<![a-z])' + escaped + '(?![a-z])', 'i').test(text2);
+            };
+            if (kw && kw !== 'other' && liveConfWordBoundary(t, kw)) {
                 const w = m.confidence_weight || 0;
                 if (w > best) best = w;
             }
@@ -1395,7 +1498,34 @@ function computeUnifiedQuote(ctx) {
                     const { svc, dynDef, activeTagIds = [], answers = {}, qty = 1, intentKeyword = null, formulaId = null, ctxAdjFee = 0, ctxAdjMin = 0, enrichment = null } = ctx;
                     const smartTags = DB.smart_tags || {};
                     const surcharges = DB.global_rules?.surcharges || {};
-                    const dispatchFee = surcharges.dispatch_fee || 45;
+                    // v9.5: dispatch_fee_enabled toggle in global_rules.surcharges.
+                    // When false: dispatch fee is $0 globally.
+                    // dispatch_fee_apply_min_labor: if set, dispatch fee only applies
+                    // when labor < this threshold (e.g. "only for small jobs under $50").
+                    // This allows the fee to function as a minimum-visit charge without
+                    // burdening larger jobs with a visible surcharge line.
+                    // Business decision on threshold deferred -- toggle is live now.
+                    const dispatchEnabled = surcharges.dispatch_fee_enabled !== false; // default true
+                    const dispatchFeeRaw = surcharges.dispatch_fee || 45;
+                    const dispatchFee = dispatchEnabled ? dispatchFeeRaw : 0;
+
+                    // v9.5 GAP 2 FIX: route entities with financial_engine.pricing_archetype
+                    // through computeArchetypeQuote. Previously this field was authored on
+                    // entities (cabinet_knob_or_pull_install: tiered_per_unit, etc.) but
+                    // computeUnifiedQuote ignored it completely and ran its own parallel
+                    // logic. This wires the compiler's pricing_archetype concept into the
+                    // actual runtime: if an entity carries the field, the dedicated
+                    // calculator handles the core labor/time computation, and the result
+                    // flows into the existing downstream logic unchanged (tag fees,
+                    // checkout_state, dispatchFee, materials). Falls through to the
+                    // original logic for entities without the field -- zero regression risk.
+                    const _entity = svc || dynDef;
+                    const _pricingArchetype = _entity?.financial_engine?.pricing_archetype;
+                    let _archetypeResult = null;
+                    if (_pricingArchetype && typeof computeArchetypeQuote === 'function') {
+                        const _fId = formulaId || _entity?.pricing_engine || null;
+                        _archetypeResult = computeArchetypeQuote(_entity, _pricingArchetype, answers, qty, DB, _fId);
+                    }
 
                     const baseStrategy = resolveBaseConfidenceStrategy(svc, dynDef);
                     const variabilityTier = baseStrategy._variability_tier || 'medium';
@@ -1443,7 +1573,7 @@ function computeUnifiedQuote(ctx) {
                     // $15 undercharge on every loose_tile_replacement quote,
                     // not dead/duplicate data.
                     base += (fe.base_materials || 0);
-                    const pricingType = ((fe.type ?? fe.pricing_type) || '').toLowerCase();
+                    const pricingType = (fe.type || fe.pricing_type || '').toLowerCase();
 
                     // v9.5 FIX (closes the real, structural gap found during the
                     // backlog item A investigation): dynamic_rule previously only
@@ -1468,7 +1598,7 @@ function computeUnifiedQuote(ctx) {
                             const mod = DB.intake_modules?.[moduleKey];
                             if (!mod) continue;
                             const chosen = (mod.client_response || []).find(r => r.label === answerLabel);
-                            const fov = chosen?.effects?.formula_override;
+                            const fov = chosen?.formula_override;
                             if (fov && DB.pricing_formulas?.[fov]) { effectiveFormulaId = fov; break; }
                         }
                     }
@@ -1553,19 +1683,27 @@ function computeUnifiedQuote(ctx) {
                     let answerCheckoutOverride = null;
                     const CS_RESTRICTIVENESS = { standard_flat_rate: 0, project_based: 1, database_summation: 1, diagnostic: 2 };
                     if (!formulaResult) {
+                        const _mods = DB.global_rules?.modifiers || {};
                         for (const [moduleKey, answerLabel] of Object.entries(answers)) {
                             const mod = DB.intake_modules?.[moduleKey];
                             if (!mod) continue;
                             const chosen = (mod.client_response || []).find(r => r.label === answerLabel);
                             if (!chosen) continue;
-                            const _amod = chosen.modifier_ref ? (DB.global_rules?.modifiers?.[chosen.modifier_ref] || null) : null;
-                            extraFee += (chosen.effects?.fee ?? _amod?.fee ?? 0);
-                            extraMin += (chosen.effects?.minutes ?? _amod?.minutes ?? 0);
-                            const ov = chosen.effects?.complexity_override ?? chosen.complexity_override;
+                            // v9.6: fee/minutes resolve exclusively via modifier_ref ->
+                            // global_rules.modifiers. complexity_override/checkout_state_override
+                            // are top-level on the response object. This is the single,
+                            // consistent shape across the entire SSOT (verified: zero
+                            // remaining client_response entries anywhere use the old
+                            // nested effects.{fee,minutes,complexity_override,
+                            // checkout_state_override} pattern).
+                            const m = chosen.modifier_ref ? (_mods[chosen.modifier_ref] || {}) : {};
+                            extraFee += m.fee || 0;
+                            extraMin += m.minutes || 0;
+                            const ov = chosen.complexity_override;
                             if (ov && (RANK[ov] || 0) > (RANK[answerOverrideTier] || 0)) {
                                 answerOverrideTier = ov;
                             }
-                            const cso = chosen.effects?.checkout_state_override;
+                            const cso = chosen.checkout_state_override;
                             if (cso && (CS_RESTRICTIVENESS[cso] || 0) > (CS_RESTRICTIVENESS[answerCheckoutOverride] || -1)) {
                                 answerCheckoutOverride = cso;
                             }
@@ -1616,7 +1754,8 @@ function computeUnifiedQuote(ctx) {
                     // question answer.
                     let tagOverrideTier = answerOverrideTier, tagOverrideRank = RANK[answerOverrideTier] || 0;
                     for (const tid of activeTagIds) {
-                        const override = smartTags[tid]?.effects?.complexity_override;
+                        const tagDef = smartTags[tid];
+                        const override = tagDef?.escalate_complexity;
                         if (override && (RANK[override] || 0) > tagOverrideRank) {
                             tagOverrideTier = override;
                             tagOverrideRank = RANK[override];
@@ -1625,9 +1764,13 @@ function computeUnifiedQuote(ctx) {
                     const exactTier = svc?.operational_metrics?.complexity_tier || null;
                     const complexityTier = deriveComplexityTier(totalMin, tagOverrideTier, exactTier);
                     const tierRate = DB.global_rules?.complexity_tiers?.[complexityTier]?.hourly_rate || 85;
-                    const effectiveHourlyRate = formulaResult?.overrideHourlyRate || tierRate;
+                    const effectiveHourlyRate = (formulaResult && formulaResult.overrideHourlyRate != null) ? formulaResult.overrideHourlyRate : tierRate;
 
-                    const isFlatRate = pricingType === 'flat_rate';
+                    // isFlatRate: either the service's own financial_engine.type says so,
+                    // OR the fired formula explicitly signaled overrideHourlyRate: 0
+                    // (its extraFee IS the complete flat price -- e.g. hardware_install_formula's
+                    // Tier 1 flat_tier_price -- adding hourly time on top would double-count it).
+                    const isFlatRate = pricingType === 'flat_rate' || (formulaResult && formulaResult.overrideHourlyRate === 0);
                     // SSOT: qty-aware formulas (currently furniture_repair_formula, via
                     // per_unit_minutes) already scale totalMin for the requested
                     // quantity internally — multiplying the resulting labor estimate
@@ -1643,6 +1786,24 @@ function computeUnifiedQuote(ctx) {
                         laborEstimate = Math.round((base + extraFee) * qtyMultiplier);
                     } else {
                         laborEstimate = Math.round((base + extraFee + (totalMin / 60) * effectiveHourlyRate) * qtyMultiplier);
+                    }
+
+                    // GAP 2 FIX completion: if computeArchetypeQuote produced a result
+                    // for this entity, use it only when it's the authoritative source.
+                    // CRITICAL: only override for archetypes where computeArchetypeQuote
+                    // IS the correct calculator:
+                    //   - tiered_per_unit: the hardware_install_formula delegate
+                    //   - formula: explicitly named formula (already handled above too, but
+                    //     archetype result is consistent)
+                    // Do NOT override for flat_simple or hourly_timed when the entity
+                    // has a real formula path -- those services (dishwasher_repair, 
+                    // shelf_mortar_mounting, etc.) correctly use intake answers and
+                    // complexity multipliers that computeArchetypeQuote's simplified
+                    // branches don't replicate. The archetype classifies WHAT they are,
+                    // not HOW to compute them when a richer formula exists.
+                    if (_archetypeResult && (_pricingArchetype === 'tiered_per_unit' || _pricingArchetype === 'formula')) {
+                        laborEstimate = _archetypeResult.laborEstimate ?? laborEstimate;
+                        if (_archetypeResult.totalMin != null) totalMin = _archetypeResult.totalMin;
                     }
 
                     // v9.5 FIX: implements global_rules.diagnostic_governance, confirmed
@@ -1715,7 +1876,86 @@ const parsePriceToInt = (str) => {
                     return m ? Math.round(parseFloat(m[1])) : 0;
                 }
 
-    </script> 
+    
+
+function computeArchetypeQuote(entity, archetype, answers, qty, db, formulaId) {
+                    const fe = entity.financial_engine || {};
+                    const om = entity.operational_metrics || {};
+                    const rate = (db.global_rules?.complexity_tiers?.[om.complexity_tier || 'skilled']?.hourly_rate) || 85;
+
+                    if (archetype === 'flat_simple') {
+                        return { laborEstimate: Math.round((fe.base_price || 0) * (qty || 1)), totalMin: om.expected_minutes || 30 };
+                    }
+                    if (archetype === 'hourly_timed') {
+                        const mins = om.expected_minutes || 30;
+                        return { laborEstimate: Math.round((fe.base_price || 0) + (mins / 60) * rate), totalMin: mins };
+                    }
+                    if (archetype === 'diagnostic_open') {
+                        // Real, deliberate non-commitment: a diagnostic-priced
+                        // entity's real, honest price is the dispatch/diagnostic
+                        // fee alone -- the actual repair cost is genuinely
+                        // unknown until the technician is on-site. Returning
+                        // base_price here (the diagnostic visit fee) rather
+                        // than fabricating a labor estimate this archetype, by
+                        // its own real nature, cannot honestly produce.
+                        return { laborEstimate: Math.round(fe.base_price || 0), totalMin: null, isDiagnostic: true };
+                    }
+                    if (archetype === 'formula' || archetype === 'tiered_per_unit') {
+                        // v9.5 FIX (real bug caught by direct verification): the
+                        // real, correct formulaId source differs by entity
+                        // shape -- a NAMED service carries it on its own
+                        // entity.pricing_engine, but a DYNAMIC entity (e.g.
+                        // minor_home_repairs+Repair, shared by 3 real,
+                        // distinct formulas selected by whichever real keyword
+                        // resolved to it) has no such field of its own at all.
+                        // The caller must supply the real, correct id for
+                        // either shape explicitly; this function never guesses.
+                        const realFormulaId = formulaId || entity.pricing_engine;
+                        const f = db.pricing_formulas?.[realFormulaId];
+                        if (!f) return { laborEstimate: Math.round(fe.base_price || 0), totalMin: om.expected_minutes || 30 };
+                        const formulaResult = typeof applyPricingFormula === 'function' ? applyPricingFormula(realFormulaId, answers || {}, qty || 1) : null;
+                        // v9.5 FIX (third real gap, caught by direct, isolated
+                        // debugging): totalMin previously used
+                        // formulaResult.extraMin ALONE, never combining it with
+                        // the entity's own, real, separate baseMinutes
+                        // contribution (the SAME, established pattern
+                        // computeUnifiedQuote already correctly uses
+                        // elsewhere: the real midpoint of
+                        // default_estimate.total_minutes, or an
+                        // operational_metrics fallback) -- confirmed via direct
+                        // trace this is exactly why the real, dynamic-entity
+                        // tile case used 55 real minutes instead of the
+                        // correct 135 (80 real baseMinutes + 55 real formula
+                        // extraMin).
+                        const tm = entity.default_estimates?.total_minutes || entity.default_estimate?.total_minutes;
+                        const hasRealTm = tm && tm.min != null && tm.max != null && (tm.min + tm.max) > 0;
+                        // Only fall back to the generic entity-level expected_minutes when
+                        // there's no real curated total_minutes AND no formula fired to
+                        // supply its own self-contained time model. A fired formula's
+                        // extraMin (which already includes its own base_minutes, e.g.
+                        // hardware_install_formula's 10-minute setup) is the complete
+                        // time model for that formula -- adding a second, generic
+                        // baseMinutes on top would double-count setup time.
+                        const baseMinutes = hasRealTm
+                            ? Math.round((tm.min + tm.max) / 2)
+                            : (formulaResult ? 0 : (om.expected_minutes ?? om.minimum_minutes ?? 45));
+                        const totalMin = baseMinutes + (formulaResult ? formulaResult.extraMin : 0);
+                        const extraFee = formulaResult ? formulaResult.extraFee : 0;
+                        const realTier = typeof deriveComplexityTier === 'function'
+                            ? deriveComplexityTier(totalMin, null, om.complexity_tier || null)
+                            : (om.complexity_tier || 'skilled');
+                        const realRate = (formulaResult && formulaResult.overrideHourlyRate != null) ? formulaResult.overrideHourlyRate : ((db.global_rules?.complexity_tiers?.[realTier]?.hourly_rate) || rate);
+                        return { laborEstimate: Math.round((fe.base_price || 0) + extraFee + (totalMin / 60) * realRate), totalMin };
+                    }
+                    return null; // genuinely unrecognized archetype -- caller must fall back to the legacy path
+                }
+
+function _computePrice(svc, answers, qty) {
+    // Thin wrapper around computeUnifiedQuote for call sites using the
+    // legacy _computePrice(svc, answers, qty) signature.
+    return computeUnifiedQuote({ svc, dynDef: null, activeTagIds: [], answers: answers || {}, qty: qty || 1 });
+}
+</script> 
    
    <!-- nlp_engine.js -->
     <script>/**
@@ -1892,6 +2132,15 @@ function initNlpSets() {
         NEG:    new Set(nl.negative_words        || []),
         ACTIONS                                            // NEW: SSOT action matcher
     };
+    // Compatibility: expose as top-level window properties so cms_bridge.js,
+    // test harnesses, and any code that reads ACTIONS / SERVICE_VERBS etc.
+    // directly (rather than via window._NLP) continues to work.
+    window.ACTIONS        = ACTIONS;
+    window.SERVICE_VERBS  = window._NLP.VERBS;
+    window.STOP_PREPS     = window._NLP.PREPS;
+    window.VERB_PAST_MAP  = window._NLP.VMAP;
+    window.ROOMS          = window._NLP.ROOMS;
+    window.CONDITIONS     = window._NLP.CONDS;
 }
 
 // Lazy accessors used by the ANALYSIS pipeline to read the shared word sets.
@@ -2656,14 +2905,30 @@ function extractLocation(text) {
                 }
 
 function extractSizeHint(text, tags) {
-                    // Detect dimensions like 12x12, 6ft, 65 inch
+                    // Detect dimensions like 12x12, 6ft, 65 inch, "6ft x 4ft"
                     const lower = text.toLowerCase();
+                    // v9.5 FIX: original regex /(\d+)\s*[x×]\s*(\d+)/ missed "6ft x 4ft"
+                    // because the unit suffix came between the digit and the x.
+                    // Also fixed dimension thresholds: the original 200/600 was calibrated
+                    // for inches/pixels. For feet-based dimensions (6ft x 4ft = 24 sq ft),
+                    // we compare against ft-appropriate thresholds (>12 sq ft = large,
+                    // >30 sq ft = oversized). For pure numbers, keep the original thresholds.
+
+                    // Check for feet-based dimensions: "6ft x 4ft", "3 ft x 5 ft"
+                    const ftDimMatch = lower.match(/(\d+)\s*(?:ft|feet|foot)\s*[x×]\s*(\d+)/);
+                    if (ftDimMatch) {
+                        const area = parseInt(ftDimMatch[1]) * parseInt(ftDimMatch[2]);
+                        if (area >= 30) return 'oversized'; // 6x5ft, 5x6ft etc
+                        if (area >= 12) return 'large';     // 4x3ft, 6x2ft etc
+                        return 'standard';
+                    }
+                    // Inch/pure dimension: 12x12, 24x36 etc
                     const dimMatch = lower.match(/(\d+)\s*[x×]\s*(\d+)/);
                     if (dimMatch) {
                         const area = parseInt(dimMatch[1]) * parseInt(dimMatch[2]);
                         if (area > 600) return 'oversized';
                         if (area > 200) return 'large';
-                        return 'standard'; // Means NOT oversized, NOT heavy
+                        return 'standard';
                     }
                     // "12 inch", "65 inch" TV → heavy/large
                     const inchMatch = lower.match(/(\d+)\s*(?:inch|in\b|")/);
@@ -2672,6 +2937,16 @@ function extractSizeHint(text, tags) {
                         if (n >= 65) return 'large'; // 65"+ TV → heavy_item candidate
                         if (n <= 24) return 'standard';
                     }
+                    // Foot-based single dimension: "6ft sign", "8 foot banner"
+                    const ftMatch = lower.match(/(\d+)\s*(?:foot|feet|ft)\b/);
+                    if (ftMatch) {
+                        const n = parseInt(ftMatch[1]);
+                        if (n >= 8) return 'oversized';
+                        if (n >= 5) return 'large';
+                    }
+                    // Explicit size words -- "neon sign" is a proxy for a large/heavy item
+                    if (/\b(very large|oversized|enormous|gigantic|huge)\b/i.test(text)) return 'oversized';
+                    if (/\b(large|big|neon sign)\b/i.test(text)) return 'large';
                     return null;
                 }
 
@@ -2679,6 +2954,14 @@ function inferTagsFromContext(text, cat, groupId) {
                     // Infer tags from contextual hints in the text
                     const lower = text.toLowerCase();
                     const inferred = [];
+                    // v9.6 FIX: _BRICK_HINTS was referenced but never defined
+                    // anywhere in this file -- every call to this function threw
+                    // ReferenceError: _BRICK_HINTS is not defined and crashed the
+                    // entire collectBookingContext_freeText/sqAnalyze flow whenever
+                    // this line was reached. Derived from #brick_wall's own SSOT
+                    // synonyms (single source of truth) instead of a hardcoded
+                    // parallel word list that could drift from the tag's real data.
+                    const _BRICK_HINTS = DB.smart_tags?.['#brick_wall']?.synonyms || ['brick', 'concrete', 'masonry', 'cinder block', 'stone', 'cement', 'mantel', 'mantle', 'fireplace'];
                     // Fireplace / brick context
                     // v9.5 FIX (real, severe, live bug found via direct,
                     // specific pushback): this function never accepted or
@@ -2726,7 +3009,7 @@ function inferTagsFromContext(text, cat, groupId) {
 function resolveGroupFromIntent(category, objectNoun, stype, fullText) {
                     if (!category || !DB?.group) return null;
                     const obj = (objectNoun || '').toLowerCase();
-const groups = (DB.group || []).filter(g => g.category_id === category_id);                    if (!groups.length) return null;
+                    const groups = (DB.group || []).filter(g => g.category_id === category);                    if (!groups.length) return null;
 
                     // ── Cross-category override by object noun ─────────────────
                     // 'install' keyword maps to minor_home_repairs but some objects
@@ -3027,8 +3310,10 @@ function executeWorkflow(context, db) {
                     const trace = [];
                     let resolution = null, flags = null, intakeChain = [], answers = {},
                         confidenceState = null, uiTemplate = null, materialsEstimate = null, quote = null;
-                    const activeTagIds = [...new Set([...(context.manuallyToggledTagIds || [])])]
-                        .filter(tid => !(context.negatedTagIds || []).includes(tid));
+                    const activeTagIds = [...new Set([
+                        ...(context.detectedTagIds || []),
+                        ...(context.manuallyToggledTagIds || [])
+                    ])].filter(tid => !(context.negatedTagIds || []).includes(tid));
 
                     for (const step of workflow.steps) {
                         let outputSummary;
@@ -3052,10 +3337,10 @@ function executeWorkflow(context, db) {
                                 break;
                             case 'merge':
                                 if (step.id === 'compute_confidence') {
-                                    confidenceState = orch_compute_confidence(resolution, activeTagIds, context.nlpIntent?._matchConfidence, db);
+                                    confidenceState = orch_compute_confidence(resolution, activeTagIds, context.nlpIntent?._matchConfidence, db, context.entry);
                                     outputSummary = confidenceState;
                                 } else if (step.id === 'merge_materials_estimate') {
-                                    materialsEstimate = orch_merge_materials_estimate(resolution, db);
+                                    materialsEstimate = orch_merge_materials_estimate(resolution, db, context.extractedQty);
                                     outputSummary = materialsEstimate;
                                 }
                                 break;
@@ -3095,11 +3380,13 @@ function executeWorkflow(context, db) {
                         preseededAction: intakeBypass.preseededAction || null,
                         materialsEstimate,
                         quote,
-                        // v9.5 FIX (closes Archaeology Audit findings #3/#5):
-                        // resolution.enrichment was computed by orch_resolve_entity
-                        // but never actually read by anything downstream — exactly
-                        // the "looks wired, isn't" pattern this project exists to
-                        // catch. Now a real, accessible field on the route.
+                        // v9.5: expose activeTagIds on the route so downstream
+                        // renderers (renderCuratedCardFromRoute, renderSelfQuoteFromRoute)
+                        // can pass the same tags to computeUnifiedQuote for live
+                        // recompute. Without this, route.activeTags was always undefined
+                        // and recompute calls got [] -- tags had no effect on pricing
+                        // in any path that went through the UI renderer.
+                        activeTags: activeTagIds,
                         enrichment: resolution?.enrichment || null,
                         trace,
                     };
@@ -3109,7 +3396,12 @@ function executeWorkflow(context, db) {
                     // broken, replace with the safe catastrophic fallback —
                     // logging WHY, so this is visible in trace/diff logs rather
                     // than silently swapped.
-                    const validation = validateRoute(builtRoute, db);
+                    // v9.5 GAP 1 FIX: pass routing_archetypes so the semantic
+                    // check inside validateRoute actually runs. The compiled
+                    // artifact (btnyc_v8_compiled.json) carries this; if only
+                    // the SSOT is loaded, the check silently skips -- that is
+                    // the correct, safe fallback per the original design.
+                    const validation = validateRoute(builtRoute, db, db.routing_archetypes || null);
                     if (!validation.valid) {
                         trace.push({ step_id: 'route_validator_veto', operation: 'condition_map', output_summary: { violations: validation.violations } });
                         return catastrophicFallbackRoute(builtRoute, validation.violations);
@@ -3137,6 +3429,73 @@ function orch_resolve_entity(context, db) {
                     if (effectiveContext.selectedGroupId) {
                         const group = (db.group || []).find(g => g.id === effectiveContext.selectedGroupId);
                         const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', effectiveContext.selectedGroupId);
+
+                        // v9.5 GAP 3 FIX: use routing_archetypes to resolve a specific
+                        // named service from group-level context. Previously, a phrase
+                        // like "door lock is broken" resolved the group correctly
+                        // (minor_home_repairs_doors) but then fell through to the generic
+                        // dynamic service -- ignoring the group's own component/symptom
+                        // map that clearly points to door_lock_or_handle_install.
+                        // This is the core purpose of routing_archetypes: group-level
+                        // resolution that goes beyond category-only dynamic fallback.
+                        const ra = db.routing_archetypes?.[effectiveContext.selectedGroupId];
+                        if (ra && !effectiveContext.selectedServiceId) {
+                            const rawText = (effectiveContext.rawText || '').toLowerCase();
+                            const extractedObj = (effectiveContext.extractedObject || '').toLowerCase();
+
+                            // Try component_to_service_ids first (for component-first groups)
+                            // then symptom_to_service_ids (for symptom-first groups)
+                            let candidateSvcId = null;
+                            const c2s = ra.component_to_service_ids || {};
+                            const s2s = ra.symptom_to_service_ids || {};
+
+                            // Check component map: does the raw text or extracted object
+                            // contain any component keyword from this group's map?
+                            for (const [component, svcIds] of Object.entries(c2s)) {
+                                const comp = component.toLowerCase();
+                                if (rawText.includes(comp) || extractedObj.includes(comp)) {
+                                    // Take the first (highest-priority) match
+                                    if (svcIds.length === 1) {
+                                        candidateSvcId = svcIds[0];
+                                        break;
+                                    }
+                                    // Multiple candidates: prefer the one whose name
+                                    // also appears in the text
+                                    const textMatch = svcIds.find(sid =>
+                                        rawText.includes(sid.replace(/_/g, ' ')) ||
+                                        rawText.includes(sid.replace(/_/g, '-'))
+                                    );
+                                    candidateSvcId = textMatch || svcIds[0];
+                                    break;
+                                }
+                            }
+
+                            // Fall back to symptom map if no component matched
+                            if (!candidateSvcId) {
+                                for (const [symptom, svcIds] of Object.entries(s2s)) {
+                                    const sym = symptom.toLowerCase();
+                                    if (rawText.includes(sym)) {
+                                        candidateSvcId = svcIds.length === 1 ? svcIds[0] : svcIds[0];
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // If routing_archetypes resolved a specific service,
+                            // use it instead of the generic dynamic entity
+                            if (candidateSvcId) {
+                                const resolvedSvc = (db.services || []).find(s => s.id === candidateSvcId);
+                                if (resolvedSvc) {
+                                    const enrichDyn = resolveDynamicService(
+                                        resolvedSvc.ui_taxonomy?.category_id,
+                                        (window._normServiceType ? window._normServiceType(resolvedSvc.service_type) : (resolvedSvc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install')),
+                                        resolvedSvc.ui_taxonomy?.group_id
+                                    );
+                                    return { entityType: 'service', entity: resolvedSvc, enrichment: orch_enrich_from_dynamic_service(resolvedSvc, enrichDyn), _resolvedFromRoutingArchetype: true };
+                                }
+                            }
+                        }
+
                         if (group || dynDef) return { entityType: 'dynamic', entity: dynDef, group, enrichment: orch_enrich_from_dynamic_service(null, dynDef) };
                     }
                     if (effectiveContext.selectedCategoryId) {
@@ -3303,7 +3662,7 @@ function orch_apply_location_hints(context, composedChain, answers) {
                     return newAnswers;
                 }
 
-function orch_compute_confidence(resolution, activeTagIds, matchConfidence, db) {
+function orch_compute_confidence(resolution, activeTagIds, matchConfidence, db, entryType) {
                     const entity = resolution.entity;
                     const baseStrategy = entity?.confidence_strategy || {};
                     const smartTags = db.smart_tags || {};
@@ -3311,7 +3670,28 @@ function orch_compute_confidence(resolution, activeTagIds, matchConfidence, db) 
                         ? applyLiveConfidenceEscalation(baseStrategy, activeTagIds || [], smartTags, db.global_rules?.confidence_escalation)
                         : { strategy: baseStrategy, escalatedBy: null };
                     const minConf = escalation.strategy?.minimum_quote_confidence || baseStrategy.minimum_quote_confidence || 80;
-                    const score = Math.min(100, (baseStrategy.base_confidence || 40) + Math.min(20, (matchConfidence || 0) * 0.2));
+
+                    // v9.5 FIX: entry-type-aware confidence scoring.
+                    // The original formula (base_confidence + 0.2 * matchConfidence) is an NLP
+                    // metric — it measures how certain free-text detection was. Applying it to a
+                    // direct catalog tap is wrong: when a customer taps a specific service card,
+                    // intent is 100% certain regardless of NLP. Score 40 with minConf 50–95
+                    // meant catalog taps ALWAYS failed the confidence bar, gating the estimate
+                    // button on every named service. Confirmed by direct trace: every named service
+                    // with confidence_strategy.minimum_quote_confidence > 40 was unreachable.
+                    let score;
+                    if (entryType === 'catalog') {
+                        // Direct tap: customer chose this exact service. Intent is certain.
+                        score = 100;
+                    } else if (entryType === 'other_tile') {
+                        // Group-level tap: category + group are known, specific service type
+                        // may not be. Start high but not perfect.
+                        score = Math.min(100, (baseStrategy.base_confidence || 40) + 45 + Math.min(15, (matchConfidence || 0) * 0.15));
+                    } else {
+                        // free_text: NLP-derived — use the original formula
+                        score = Math.min(100, (baseStrategy.base_confidence || 40) + Math.min(20, (matchConfidence || 0) * 0.2));
+                    }
+
                     return { score, minConf, escalatedBy: escalation.escalatedBy };
                 }
 
@@ -3404,7 +3784,7 @@ function orch_compute_quote(resolution, context, answers, activeTagIds, db) {
                         qty: context.extractedQty || 1,
                         intentKeyword: context.nlpIntent?.key || null,
                         enrichment: resolution.enrichment || null,
-                        formulaId: context.nlpIntent?.dynamic_rule || entity?.pricing_engine?.dynamic_rule || null,
+                        formulaId: context.nlpIntent?.dynamic_rule || entity?.financial_engine?.formula_ref || entity?.pricing_engine || null,
                         ctxAdjFee: context.nlpIntent?._ctxFee || 0,
                         ctxAdjMin: context.nlpIntent?._ctxMin || 0,
                     });
@@ -3487,12 +3867,13 @@ function describeInvariantFailure(route, invariant) {
                     }
                 }
 
-function validateRoute(route, db) {
+function validateRoute(route, db, routingArchetypes) {
                     const violations = [];
+                    const notices = [];
 
                     if (!route || typeof route !== 'object') {
                         violations.push('route is not a real object at all');
-                        return { valid: false, violations };
+                        return { valid: false, violations, notices };
                     }
 
                     // The Judicial Rulebook: consult the real, declared
@@ -3508,10 +3889,6 @@ function validateRoute(route, db) {
                         });
                     } else {
                         // Fallback ONLY if db.invariants is genuinely missing
-                        // (e.g. an older btnyc.json captured before this node
-                        // existed, such as a historian replay of a pre-invariants
-                        // trace) — keeps validateRoute safe even against
-                        // historical data that predates the Judicial Rulebook.
                         if (!KNOWN_UI_TEMPLATES.has(route.uiTemplate)) {
                             violations.push(`uiTemplate "${route.uiTemplate}" is not one of the known real templates: ${[...KNOWN_UI_TEMPLATES].join(', ')}`);
                         }
@@ -3532,7 +3909,14 @@ function validateRoute(route, db) {
                         }
                     }
 
-                    return { valid: violations.length === 0, violations };
+                    // GAP 1 FIX completion: semantic consistency check via routing_archetypes.
+                    // Uses the supplied routingArchetypes (from db.routing_archetypes or the
+                    // compiled artifact) -- if absent, skips gracefully (correct fallback).
+                    const raSource = routingArchetypes || db?.routing_archetypes || null;
+                    const archetypeNotice = checkRoutingArchetypeConsistency(route, raSource);
+                    if (archetypeNotice) notices.push(archetypeNotice);
+
+                    return { valid: violations.length === 0, violations, notices };
                 }
 
 function catastrophicFallbackRoute(originalRoute, violations) {
@@ -3615,6 +3999,81 @@ function collectBookingContext_freeText(rawText) {
                             nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText
                         );
                     }
+
+                    // v9.5 FIX: run full tag detection so the orchestrator path gets
+                    // the same #brick_wall / #heavy_item / contextual-tag signals that
+                    // sqPrepareFlow (legacy S-state path) was computing at lines 7663-7674.
+                    // Without this, the orchestrator route always got detectedTagIds:[]
+                    // meaning "mantel" never triggered #brick_wall, "large sign" never
+                    // triggered #heavy_item, etc. This was confirmed as the root cause
+                    // of the screenshot regression.
+                    const detCat = nlpIntent?.category || 'other';
+                    const detGroup = selectedGroupId || nlpIntent?._groupId || null;
+                    const nlpTagResult = (typeof detectTagsNLP === 'function')
+                        ? detectTagsNLP(rawText) : { found: [], negated: [] };
+                    const detectedTagIds = nlpTagResult.found.filter(tid =>
+                        typeof tagValidForCategory === 'function'
+                            ? tagValidForCategory(tid, detCat, detGroup)
+                            : true
+                    );
+                    const negatedTagIds = nlpTagResult.negated.filter(tid =>
+                        typeof tagValidForCategory === 'function'
+                            ? tagValidForCategory(tid, detCat, detGroup)
+                            : true
+                    );
+
+                    // Contextual tags: "mantel" -> #brick_wall, "urgent" -> #emergency etc.
+                    if (typeof inferTagsFromContext === 'function') {
+                        const ctxTags = inferTagsFromContext(rawText, detCat, detGroup);
+                        ctxTags.forEach(({ tid }) => {
+                            if (!detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                detectedTagIds.push(tid);
+                        });
+                    }
+
+                    // v9.5 FIX: size hint -> tag injection.
+                    // extractSizeHint was only used to NEGATE heavy tags (standard size),
+                    // never to POSITIVELY inject them (large/oversized). Added positive
+                    // v9.5 update: size-hint injection now distinguishes between
+                    // fragile/high-value large items (neon signs, art, glass) vs
+                    // genuinely heavy items (stone slabs, large mirrors, equipment).
+                    // Large fragile items get #fragile_item, not #heavy_item.
+                    const sizeHint = (typeof extractSizeHint === 'function')
+                        ? extractSizeHint(rawText, DB.smart_tags || {}) : null;
+                    const isFragileItem = /(neon|glass|canvas|painting|art|fragile|delicate|stained)/i.test(rawText);
+                    if (sizeHint === 'oversized') {
+                        if (isFragileItem) {
+                            if (!detectedTagIds.includes('#fragile_item') && !negatedTagIds.includes('#fragile_item'))
+                                detectedTagIds.push('#fragile_item');
+                        } else {
+                            if (!detectedTagIds.includes('#very_heavy') && !negatedTagIds.includes('#very_heavy'))
+                                detectedTagIds.push('#very_heavy');
+                        }
+                    } else if (sizeHint === 'large') {
+                        if (isFragileItem) {
+                            if (!detectedTagIds.includes('#fragile_item') && !negatedTagIds.includes('#fragile_item'))
+                                detectedTagIds.push('#fragile_item');
+                        } else {
+                            if (!detectedTagIds.includes('#heavy_item') && !negatedTagIds.includes('#heavy_item'))
+                                detectedTagIds.push('#heavy_item');
+                        }
+                    } else if (sizeHint === 'standard') {
+                        // Standard size: suppress heavy tags if not already detected
+                        ['#heavy_item', '#very_heavy'].forEach(tid => {
+                            if (!detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                negatedTagIds.push(tid);
+                        });
+                    }
+
+                    // NLP _ctxTags (from contextual_overrides) -- same path sqAnalyze uses
+                    if (nlpIntent?._ctxTags?.length) {
+                        nlpIntent._ctxTags.forEach(tid => {
+                            if ((typeof tagValidForCategory !== 'function' || tagValidForCategory(tid, detCat, detGroup))
+                                && !detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
+                                detectedTagIds.push(tid);
+                        });
+                    }
+
                     return makeBookingContext('free_text', {
                         rawText,
                         nlpIntent,
@@ -3624,6 +4083,8 @@ function collectBookingContext_freeText(rawText) {
                         selectedServiceId: (nlpIntent?._matchConfidence >= thresholds.auto_select_named_service) ? (nlpIntent?.recommendedSku || null) : null,
                         selectedCategoryId: nlpIntent?.category || null,
                         selectedGroupId,
+                        detectedTagIds,
+                        negatedTagIds,
                     });
                 }
 
@@ -3644,32 +4105,76 @@ function makeBookingContext(entry, overrides) {
                     }, overrides || {});
                 }
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    executeWorkflow,
-    orch_resolve_entity,
-    orch_apply_object_based_resolution,
-    orch_enrich_from_dynamic_service,
-    orch_compute_variability_flags,
-    orch_compose_intake_chain,
-    orch_apply_location_hints,
-    orch_compute_confidence,
-    orch_select_ui_template,
-    orch_merge_materials_estimate,
-    orch_compute_quote,
-    orch_apply_intake_bypass_rules,
-    readRoutePath,
-    evaluateInvariant,
-    describeInvariantFailure,
-    validateRoute,
-    catastrophicFallbackRoute,
-    collectBookingContext_catalog,
-    collectBookingContext_otherTile,
-    collectBookingContext_freeText,
-    makeBookingContext,
-    _resolveIntakeChain
-  };
-}
+const COMPONENT_MODULE_NAMES = new Set([
+                    "wall_type", "surface_type", "door_type", "door_style_pref", "door_size",
+                    "client_supplying_door", "existing_frame", "faucet_type", "sink_type",
+                    "toilet_style_pref", "existing_toilet_type", "window_type", "removal",
+                    "install_type", "existing_type", "furn_item", "mounting_item",
+                    "wall_mount_items", "item_type", "fixture_type", "electrical_item",
+                    "plumbing_fixture", "tech_device", "computer_component", "device_type",
+                    "laptop_or_desktop", "existing_box", "ducting", "length", "distance",
+                    "weight", "mounting_height", "tile_condition", "waterproof_area",
+                    "has_matching_tiles", "thermostat_type", "customer_supplied_part",
+                    "software_install_type", "brand", "router_owned", "mesh_network",
+                    "pax_cabinet_count", "pax_hinge_count", "pax_interior_count",
+                    "pax_sliding_count",
+                ]);
+const SYMPTOM_MODULE_NAMES = new Set([
+                    "symptom", "toilet_symptom", "tech_problem_type", "leak_type",
+                    "drain_speed", "issue", "damage_type", "device_state",
+                    "internet_active", "tech_issue_source",
+                ]);
+
+function checkRoutingArchetypeConsistency(route, routingArchetypes) {
+                    // v9.5: the first genuine SEMANTIC check in validateRoute,
+                    // directly responding to a real, agreed-valuable critique
+                    // (T19): every existing invariant checks structure ("is
+                    // this field shaped correctly"), none check "does this
+                    // route's content actually make sense." This compares a
+                    // resolved, named service's REAL, complete, authored
+                    // intake_chain (component vs. symptom module mix) against
+                    // its own group's routing_archetype (computed by
+                    // btnyc_v8_compiler.py, the real, single source of truth
+                    // for this classification -- never duplicated into
+                    // qr.html itself, to avoid two, real, parallel
+                    // implementations drifting apart).
+                    //
+                    // DELIBERATELY INFORMATIONAL, NOT A HARD VIOLATION: direct,
+                    // individual review of every real, current disagreement
+                    // (internal_hardware_replacement leading with a component
+                    // question inside a symptom-first group; router_configuration
+                    // the same) confirmed BOTH are sensible, deliberate
+                    // authoring choices -- a customer replacing RAM already
+                    // knows the part; there's no real "symptom" to ask about
+                    // when setting up a new router. Treating either as a real
+                    // violation would have been actively wrong. This returns a
+                    // real, soft notice for a human to consider, never fails
+                    // the route.
+                    if (!routingArchetypes || route.entityType !== 'service' || !route.entity) return null;
+                    const gid = route.entity.ui_taxonomy?.group_id;
+                    const groupData = gid ? routingArchetypes[gid] : null;
+                    const archetype = groupData?.routing_archetype;
+                    if (!archetype || archetype === 'undetermined') return null;
+
+                    const chain = route.intakeChain || [];
+                    let c = 0, s = 0;
+                    chain.forEach(step => {
+                        const mod = step.moduleKey || step.module;
+                        if (COMPONENT_MODULE_NAMES.has(mod)) c++;
+                        else if (SYMPTOM_MODULE_NAMES.has(mod)) s++;
+                    });
+                    if (c + s < 2) return null; // genuinely not enough real signal in this service's own chain to compare
+
+                    const realLean = (s / (c + s)) >= 0.4 ? 'symptom_first' : 'component_first';
+                    if (realLean === archetype) return null;
+                    return `Real, soft notice (not a violation): "${route.entity.id}"'s authored intake_chain leans ${realLean} (${s} symptom vs ${c} component module(s)), but its group "${gid}" is classified ${archetype}. Confirmed via direct review this is sometimes a genuinely correct, deliberate choice (e.g. a part-replacement service inside a symptom-first group) -- review, don't assume a bug.`;
+                }
+
+function legacyComposeIntakeChain(svc) {
+                        // Adapter: wraps orch_compose_intake_chain with (svc)-style call
+                        // used by test harnesses that call it with just a service object.
+                        return orch_compose_intake_chain({}, { entity: svc }, DB);
+                    }
 </script> 
    
    <!-- UiRenderer -->
@@ -3795,6 +4300,18 @@ const escapeHtml = (str) => {
     }[c]));
 };
 
+// Canonical service-type normalizer used by every call site that resolves
+// dynamic services. Defined ONCE here, outside initNlpSets, so it's
+// available before the NLP init runs. All call sites use the defensive
+// ternary: (window._normServiceType ? window._normServiceType(x) : fallback)
+window._normServiceType = (stype) => {
+    if (!stype) return 'Repair';
+    return stype
+        .replace('Install / Mount', 'Install')
+        .replace('Install/Mount', 'Install')
+        .trim();
+};
+
 // ───────────────────────── Pure utilities (misclassified by an earlier ─────
 // ───────────────────────── cross-check document as impure — verified pure  ─
 // ───────────────────────── here; shipped alongside UIRenderer for cohesion ─
@@ -3837,7 +4354,7 @@ function buildOtherTilesForGroup(realServices, groupId) {
                             group_id: groupId,
                             description: 'Describe your ' + (group.display_name || 'job') + ' need — we\u2019ll ask only what\u2019s necessary.'
                         },
-                        financial_engine: { type: 'flat_rate', pricing_type: 'flat_rate', base_price: primaryStDef.base_price || 0 }
+                        financial_engine: { pricing_type: 'flat_rate', base_price: primaryStDef.base_price || 0 }
                     }];
                 }
 
@@ -4592,7 +5109,7 @@ function buildDataMaps(data) {
 
                     const furnitureSource = data.furniture_catalog || data.furniture_items || [];
                     furnitureSource.forEach(f => {
-                        const key = f.article || f.code || f.id;
+                        const key = f.sku || f.article || f.code || f.id;
                         if (key) furnitureMap.set(key, f);
                     });
                 }
@@ -4689,7 +5206,7 @@ function createServiceCardElement(svc, category_id) {
                     const requiresSiteVisit = defaultTags.some(t => t === '#site_visit_required');
                     const isDiagSvc = isDiagnosticService(fe); // SSOT: checkout_state drives this, not service_type
                     const isProjectSvc = (fe.base_price || 0) >= 150 || svc.default_estimates?.disclaimer === 'project_based';
-                    const isHourlySvc = (fe.type ?? fe.pricing_type) === 'hourly';
+                    const isHourlySvc = fe.pricing_type === 'hourly';
                     let complexityBadge = null;
                     if (requiresSiteVisit) {
                         complexityBadge = {
@@ -5098,7 +5615,13 @@ function enableLiveAdLibPreview() {
         let best = 0;
         for (const m of maps) {
             const kw = (m.keyword || '').toLowerCase();
-            if (kw && kw !== 'other' && t.includes(kw)) {
+            // v9.5 FIX: word-boundary match prevents 'washer' matching inside 'dishwasher'
+            const liveConfWordBoundary = (text2, term) => {
+                if (!term) return false;
+                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return new RegExp('(?<![a-z])' + escaped + '(?![a-z])', 'i').test(text2);
+            };
+            if (kw && kw !== 'other' && liveConfWordBoundary(t, kw)) {
                 const w = m.confidence_weight || 0;
                 if (w > best) best = w;
             }
@@ -5208,46 +5731,39 @@ function exitFocusedMode() {
 
 async function init() {
                     cacheDOM();
+                    // Try local btnyc.json first, then fall back to remote.
+                    // Local-first makes development work without GitHub Pages.
+                    const DATA_URLS = ['./btnyc.json', 'https://tommichael88.github.io/booktomnyc/btnyc.json'];
                     try {
-                        const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        SERVICE_DATA = await res.json();
-                        // resolveRefs DISABLED: it was expanding $ref objects
-                        // (e.g. {"$ref":"#plumbing"}) to the full tag object, but
-                        // every consumer in the JS (prefillSmartQuoteFromService,
-                        // prefillSmartQuoteFromOtherTile, detectIntentNLP, etc.)
-                        // extracts the tag ID by reading tagRef.$ref as a string.
-                        // After expansion, tagRef.$ref is undefined → tag is
-                        // silently dropped → default_tags and suggested_tags never
-                        // populate S.detTagIds. All other $ref contexts (synonyms,
-                        // derived_from, requires) are also never read in expanded
-                        // form by any JS code, so resolveRefs provided no benefit
-                        // while actively breaking the most critical data paths.
-                        // SERVICE_DATA = resolveRefs(SERVICE_DATA); // ← broken, do not re-enable
-                        DB = SERVICE_DATA; // for SmartQuote engine
-                        window.DB = DB;    // expose globally for SSOT helpers
-                        initNlpSets();     // build NLP sets from DB.negation_library
-                        refreshNlpPreviewBindings();   // ← populate preview pipeline word sets
+                        let loaded = false;
+                        for (const url of DATA_URLS) {
+                            try {
+                                const res = await fetch(url);
+                                if (!res.ok) continue;
+                                SERVICE_DATA = await res.json();
+                                loaded = true;
+                                break;
+                            } catch (e) { /* try next */ }
+                        }
+                        if (!loaded) throw new Error('All data sources failed');
+                        DB = SERVICE_DATA;
+                        window.DB = DB;
+                        initNlpSets();
+                        refreshNlpPreviewBindings();
                     } catch (err) {
                         console.error('Service data load error:', err);
                         toast('Could not load services. Please refresh.', 'error');
-                        SERVICE_DATA = {
-                            meta: {},
-                            category: [],
-                            group: [],
-                            services: [],
-                            intake_modules: {}
-                        };
+                        SERVICE_DATA = { meta: {}, category: [], group: [], services: [], intake_modules: {} };
                         DB = SERVICE_DATA;
                     }
                     buildDataMaps(SERVICE_DATA);
                     renderCategoryCards();
+                    initSmartQuote();   // inject text bar immediately on page load
                     wireGlobalEvents();
                     renderCart();
                     if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
                     setViewportHeight();
                 }
-
 function initSmartQuote() {
                     let sqEl = document.getElementById('smartQuoteEngine');
                     if (!sqEl) {
@@ -5627,21 +6143,26 @@ function restoreCategoryView() {
                 }
 
 
-function renderSelfQuoteFromRoute(route) {
+function renderSelfQuoteFromRoute(route, svc) {
     const container = document.getElementById('serviceRequestSummary');
     if (!container) return;
-    const q = route.quote;
-    if (!q) return;
+    const quote = route.quote;
+    if (!quote) return;
 
-    const svcName = route.entity?.ui_taxonomy?.display_name || 'Service';
+    // Reads price from the already-computed route quote -- no inline recomputation.
+    // This is the Phase 6 guarantee: renderSelfQuoteFromRoute NEVER recomputes price;
+    // it trusts the route's computeUnifiedQuote result exactly.
+    const perItemLabor = quote.laborEstimate;
+    const dispatch = quote.dispatchFee;
+    const svcName = (svc || route.entity)?.ui_taxonomy?.display_name || route.entity?.ui_taxonomy?.display_name || 'Service';
     container.style.display = 'block';
     container.innerHTML = `
         <div id="summary-header"><h3>${svcName}</h3></div>
         <div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
             <span>Total labor:</span>
-            <span class="price-value">$${q.laborEstimate}</span>
+            <span class="price-value">$${perItemLabor}</span>
         </div>
-        ${q.dispatchFee ? `<div style="font-size:0.9rem; color:#666; margin-top:4px;">+ $${q.dispatchFee} dispatch fee</div>` : ''}
+        ${quote.dispatchFee ? `<div style="font-size:0.9rem; color:#666; margin-top:4px;">+ $${quote.dispatchFee} dispatch fee</div>` : ''}
         <div class="action-buttons" style="display:flex; gap:10px; margin-top:16px;">
             <button class="book-now-button" id="btn-self-quote-add">Add to Request</button>
         </div>
@@ -5654,7 +6175,7 @@ function renderSelfQuoteFromRoute(route) {
             serviceId: route.entity?.id || 'smartquote',
             category_id: route.entity?.ui_taxonomy?.category_id || 'other',
             name: svcName,
-            price: '$' + q.laborEstimate,
+            price: '$' + perItemLabor,
             icon: route.entity?.ui_taxonomy?.icon || '⚡',
             detail: 'Self-quote',
             notes: 'Self-quote via direct pricing',
@@ -5686,6 +6207,10 @@ function renderCuratedCardFromRoute(route) {
     let html = `<div class="intake-wrapper"><h3>${entity.ui_taxonomy?.display_name || 'Service'}</h3>`;
     if (entity.ui_taxonomy?.description) {
         html += `<p style="color:#555; margin-bottom:16px;">${entity.ui_taxonomy.description}</p>`;
+    }
+    // per_unit_answers_vary: show book-separately guidance
+    if (entity.per_unit_answers_vary) {
+        html += `<p style="color:#666; font-size:0.9rem; margin-bottom:12px;">Need this for more than one? Each one can have different specifics (size, material, condition) — add this as its own request for each one so we get the right details for all of them.</p>`;
     }
 
     // Render each module as a set of chips
@@ -5770,11 +6295,7 @@ function showGroupsForCategory(category_id, fromBack = false) {
     if (!fromBack) Breadcrumbs.push({ type: 'categories' });
     if (!fromBack) enterFocusedMode();   // 👈 enter full‑screen glass mode
 
-    // Only TOP-LEVEL groups belong at the category level. Subgroups (e.g. Washer,
-    // Dryer under Appliances) carry the same category_id but a parent_group, and
-    // must appear only under their parent via showSubGroups/groupChildrenMap —
-    // otherwise groups and subgroups comingle in one flat row.
-    const groups = (DB.group || []).filter(g => g.category_id === category_id && !g.parent_group);
+    const groups = (DB.group || []).filter(g => g.category_id === category_id);
     const container = DOM.serviceContainer;
     container.replaceChildren();
     container.className = 'group-grid';  // use the grid layout from focused-mode CSS
@@ -5810,27 +6331,35 @@ function showGroupsForCategory(category_id, fromBack = false) {
 }
 
 function showSubGroups(group, category_id, fromBack = false) {
+    if (!fromBack) enterFocusedMode();
     const container = DOM.serviceContainer;
     container.replaceChildren();
+    container.className = 'group-grid';  // grid layout -- matches showGroupsForCategory
 
     const subGroups = window.groupChildrenMap.get(group.id) || [];
-    
+
     if (subGroups.length > 0) {
         // Render sub-groups if they exist
         subGroups.forEach(sg => {
             const tile = document.createElement('div');
             tile.className = 'group-tile';
+            tile.tabIndex = 0;
+            tile.role = 'button';
             tile.innerHTML = `<span class="tile-icon">${sg.icon || '📂'}</span><span class="tile-name">${sg.display_name || sg.name}</span>`;
-            tile.onclick = () => showSubGroups(sg, category_id);
+            tile.addEventListener('click', () => showSubGroups(sg, category_id));
+            tile.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSubGroups(sg, category_id); }
+            });
             container.appendChild(tile);
         });
     } else {
-        // Leaf node: render actual services using the orphaned renderServices function!
+        // Leaf node: render actual services
         const services = servicesByGroup.get(group.id) || [];
         renderServices(container, services, category_id, group.id);
     }
-    
+
     container.style.display = 'block';
+    DOM.categoriesGrid.style.display = 'none';
     setStep(3);
     if (!fromBack) Breadcrumbs.push({ type: 'subgroup', group: group.id, category_id });
 }
@@ -5876,6 +6405,62 @@ function showIntakeQuestions(svc, category_id, fromBack = false) {
                         return;
                     }
                     _renderSimpleConfirm(svc, category_id, container, prof);
+                }
+
+function computeQuoteFromState() {
+                    // Full display set -- every tag the customer sees (chips etc.)
+                    const allTagIds = [...new Set([...(S.detTagIds||[]), ...(S.manTagIds||[]), ...(S.inherentTagIds||[])])].filter(t => !(S.negatedTagIds||[]).includes(t));
+
+                    // Chargeable set -- what actually drives price.
+                    // detTagIds are gated: only included if the customer has
+                    // explicitly affirmed them (S._tagsAffirmed) OR if
+                    // meetsConfidenceBar is already true for the current quote.
+                    // manTagIds and inherentTagIds are never gated (manual tap
+                    // IS affirmation; inherent tags are service facts, not claims).
+                    const detAndMan = [...new Set([...S.detTagIds, ...S.manTagIds])];
+                    const svc = S._svc || (S.intent?.key ? DB.services.find(s => s.id === S.intent.key) : null);
+                    const dynDef = svc ? null : resolveDynamicService(S.intent?.category, S.stype || 'Repair', S.intent?._groupId);
+
+                    // Compute a preliminary quote with the full tag set to check meetsConfidenceBar
+                    const fullQuote = computeUnifiedQuote({
+                        svc, dynDef, activeTagIds: allTagIds,
+                        answers: S.answers || {}, qty: S.qty || 1,
+                        intentKeyword: S.intent?.key || null,
+                        formulaId: S.intent?.dynamic_rule || null,
+                        ctxAdjFee: S.intent?._ctxBaseAdjFee || 0,
+                        ctxAdjMin: S.intent?._ctxBaseAdjMin || 0,
+                    });
+
+                    // Gate: if not affirmed and not already confident, exclude detTagIds from price
+                    const detTagsChargeable = S._tagsAffirmed || fullQuote.meetsConfidenceBar;
+                    const activeTagIds = detTagsChargeable
+                        ? allTagIds
+                        : [...new Set([...(S.manTagIds||[]), ...(S.inherentTagIds||[])])].filter(t => !(S.negatedTagIds||[]).includes(t));
+
+                    // Final quote with correctly gated tag set
+                    const u = detTagsChargeable ? fullQuote : computeUnifiedQuote({
+                        svc, dynDef, activeTagIds,
+                        answers: S.answers || {}, qty: S.qty || 1,
+                        intentKeyword: S.intent?.key || null,
+                        formulaId: S.intent?.dynamic_rule || null,
+                        ctxAdjFee: S.intent?._ctxBaseAdjFee || 0,
+                        ctxAdjMin: S.intent?._ctxBaseAdjMin || 0,
+                    });
+
+                    return {
+                        laborCalc: u.laborEstimate,
+                        dispatchFee: u.dispatchFee,
+                        checkoutStateKey: u.checkoutStateKey,
+                        activeLabels: u.activeLabels || [],
+                        isDiagnostic: u.isDiagnostic,
+                        activeTagIds,
+                        allTagIds,
+                        detAndMan,
+                        meetsConfidenceBar: fullQuote.meetsConfidenceBar,
+                        detTagsChargeable,
+                        // Full-set price for affirmation card preview ("price with these tags")
+                        laborWithTags: fullQuote.laborEstimate,
+                    };
                 }
 
 function sqAddToCart() {
@@ -6132,6 +6717,132 @@ function sqOpenStep(n) {
                     });
                     const b = document.getElementById('sqSb' + n);
                     if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
+                }
+
+function renderTagAffirmationCard(detTagIds, intent, q) {
+                    // Fires when: detTagIds non-empty, not yet affirmed, service resolved.
+                    // Shows: "We understood X" adlib + detected tag chips (tappable) +
+                    // service recommendations + live dynamic price + Yes/No buttons.
+                    const container = document.getElementById('serviceRequestSummary');
+                    if (!container) return;
+
+                    const tagDefs = DB.smart_tags || {};
+
+                    // Build tag chip HTML -- tappable to remove (partial affirmation)
+                    const chipHtml = detTagIds.map(tid => {
+                        const tag = tagDefs[tid] || {};
+                        const label = sqTagLabel(tid, S.intent?.stype || 'Repair') || tag.display_name || tid;
+                        return `<span class="chip-btn sel affirm-chip" data-tid="${tid}" onclick="sqAffirmRemoveTag(this,'${tid}')">${label} ✕</span>`;
+                    }).join(' ');
+
+                    // Service recommendations: use recommendedSku + confidence siblings
+                    // Multiple recs if the intent was ambiguous (e.g. "unclog" → sink + toilet)
+                    const recs = [];
+                    const recSku = intent?.recommendedSku;
+                    if (recSku) {
+                        const primary = DB.services.find(s => s.id === recSku);
+                        if (primary) recs.push(primary);
+                    }
+                    // Add sibling services from the same group if confidence < 85 (ambiguous)
+                    if ((intent?._matchConfidence || 0) < 85 && intent?.category) {
+                        const siblings = (DB.services || []).filter(s =>
+                            s.ui_taxonomy?.category_id === intent.category &&
+                            s.ui_taxonomy?.group_id === intent?._groupId &&
+                            s.id !== recSku &&
+                            (s.financial_engine?.checkout_state === 'standard_flat_rate' ||
+                             s.financial_engine?.checkout_state === 'database_summation')
+                        ).slice(0, 2); // max 2 siblings
+                        siblings.forEach(s => { if (!recs.find(r => r.id === s.id)) recs.push(s); });
+                    }
+
+                    const recHtml = recs.length > 0 ? `
+                        <div class="affirm-recs">
+                            <div class="affirm-recs-label">Suggested service${recs.length > 1 ? 's' : ''}:</div>
+                            ${recs.map(svc => {
+                                const name = svc.ui_taxonomy?.display_name || svc.id;
+                                const desc = svc.ui_taxonomy?.description || '';
+                                return `<div class="affirm-rec-card" onclick="sqAffirmSelectService('${svc.id}')">
+                                    <span class="affirm-rec-name">${name}</span>
+                                    ${desc ? `<span class="affirm-rec-desc">${desc}</span>` : ''}
+                                </div>`;
+                            }).join('')}
+                        </div>` : '';
+
+                    // Adlib sentence
+                    const adlibText = S._adlibSentence || (intent?.label ? `a ${intent.label.toLowerCase()} job` : 'this job');
+
+                    // Live price display -- uses laborWithTags (full chargeable set)
+                    const priceDisplay = q.laborWithTags > 0
+                        ? `<span class="affirm-price">From $${q.laborWithTags}</span>`
+                        : '';
+
+                    container.innerHTML = `
+                        <div class="affirm-card" id="sqAffirmCard">
+                            <div class="affirm-headline">We understood:</div>
+                            <div class="affirm-adlib">${adlibText}</div>
+                            <div class="affirm-chips" id="sqAffirmChips">${chipHtml}</div>
+                            ${recHtml}
+                            <div class="affirm-price-row">${priceDisplay}</div>
+                            <div class="affirm-actions">
+                                <button class="affirm-yes-btn" onclick="sqAffirmYes()">✓ Yes, that's it!</button>
+                                <button class="affirm-no-btn" onclick="sqAffirmNo()">Let me explain further</button>
+                            </div>
+                        </div>`;
+                    container.style.display = 'block';
+                    enterFocusedMode();
+                }
+
+                function sqAffirmYes() {
+                    // Customer confirmed all shown tags. Set affirmed, re-render quote.
+                    S._tagsAffirmed = true;
+                    S._affirmedTagSet = [...S.detTagIds]; // snapshot the set that was affirmed
+                    const q = computeQuoteFromState();
+                    sqRenderQuote();
+                }
+
+                function sqAffirmNo() {
+                    // Customer wants to revise. Show the text input pre-filled with existing text.
+                    S._tagsAffirmed = false;
+                    const container = document.getElementById('serviceRequestSummary');
+                    if (container) { container.innerHTML = ''; container.style.display = 'none'; }
+                    const sqEl = document.getElementById('smartQuoteEngine');
+                    if (sqEl) sqEl.style.display = 'block';
+                    const textarea = document.getElementById('sqDescIn');
+                    if (textarea) { textarea.focus(); textarea.select(); }
+                }
+
+                function sqAffirmRemoveTag(el, tid) {
+                    // Removing a chip from the affirmation card is partial affirmation --
+                    // the remaining tags stay charged. Removing resets _affirmedTagSet
+                    // to only the remaining tags.
+                    S.detTagIds = S.detTagIds.filter(x => x !== tid);
+                    S.negatedTagIds.push(tid); // treat removal as explicit negation
+                    if (!S.detTagIds.length) {
+                        // All tags removed -- nothing to affirm, proceed directly
+                        S._tagsAffirmed = false;
+                        sqPrepareFlow(false);
+                        return;
+                    }
+                    // Re-check if remaining set still needs affirmation
+                    S._affirmedTagSet = null;
+                    S._tagsAffirmed = false;
+                    const q = computeQuoteFromState();
+                    // Update price display live
+                    const priceEl = document.querySelector('#sqAffirmCard .affirm-price');
+                    if (priceEl) priceEl.textContent = q.laborWithTags > 0 ? `From $${q.laborWithTags}` : '';
+                    // Remove the chip from DOM
+                    if (el) el.remove();
+                }
+
+                function sqAffirmSelectService(svcId) {
+                    // Customer tapped a recommended service card -- treat as selection + affirmation
+                    S._tagsAffirmed = true;
+                    S._affirmedTagSet = [...S.detTagIds];
+                    const svc = DB.services.find(s => s.id === svcId);
+                    if (svc) {
+                        const catId = svc.ui_taxonomy?.category_id || S.intent?.category || 'other';
+                        prefillSmartQuoteFromService(svc, catId);
+                    }
                 }
 
 function sqRenderQuote() {
@@ -7103,7 +7814,22 @@ function prefillSmartQuoteFromOtherTile(tile, category_id) {
                     // base price, confidence_strategy, intake_chain all come from there.
                     // Qty: use group's default_qty if defined (e.g. Windows default 2
                     // since 'I need my windows serviced' implies plurality), else 1.
-                    const defaultQty = groupObj?.default_qty || 1;
+                    // Plurality gate: only use default_qty when the head noun is actually
+                    // plural -- prevents "my window" from getting qty=2 just because the
+                    // windows group has default_qty:2.
+                    function isPluralNoun(word) {
+                        if (!word) return false;
+                        const w = word.toLowerCase().trim();
+                        const SINGULAR_EXCEPTIONS = new Set(['glass', 'gas', 'class']);
+                        if (SINGULAR_EXCEPTIONS.has(w)) return false;
+                        if (w.endsWith('ss')) return false;
+                        if (w.endsWith('es') && w.length > 3) return true;
+                        if (w.endsWith('s') && !w.endsWith('us') && w.length > 2) return true;
+                        return false;
+                    }
+                    const headNoun = (S._nlpSeedObject || '').trim().split(/\s+/).pop();
+                    const defaultQtyRaw = groupObj?.default_qty || 1;
+                    const defaultQty = (defaultQtyRaw > 1 && headNoun && !isPluralNoun(headNoun)) ? 1 : defaultQtyRaw;
                     S = {
                         qty: defaultQty,
                         intent: {
@@ -7115,7 +7841,7 @@ function prefillSmartQuoteFromOtherTile(tile, category_id) {
                             qtyLabel: 'item',
                             key: tile.id,
                             _groupId: groupId,
-                            _pricingType: (dynDef?.financial_engine?.type ?? dynDef?.financial_engine?.pricing_type) || 'flat_rate',
+                            _pricingType: dynDef?.financial_engine?.pricing_type || 'flat_rate',
                             checkoutState: dynDef?.financial_engine?.checkout_state || null
                         },
                         stype: singleType,
@@ -7215,6 +7941,10 @@ function prefillSmartQuoteFromService(svc, category_id) {
                     // Seed S from the service
                     const catObj = categoryMap.get(category_id);
                     const catName = catObj ? (catObj.display_name || catObj.name || category_id) : category_id;
+                    // v9.5 FIX: capture dynamic_rule before S reset -- it carries the
+                    // pricing formula (e.g. tile_repair_formula) from the NLP intent and
+                    // would be lost when S is reassigned below.
+                    const preservedDynamicRule = S.intent?.dynamic_rule || null;
                     S = {
                         qty: 1,
                         intent: {
@@ -7226,21 +7956,27 @@ function prefillSmartQuoteFromService(svc, category_id) {
                             qtyLabel: 'item',
                             key: svc.id,
                             _groupId: svc.ui_taxonomy?.group_id || null,
-                            _pricingType: (svc.financial_engine?.type ?? svc.financial_engine?.pricing_type) || null
+                            _pricingType: svc.financial_engine?.pricing_type || null,
+                            dynamic_rule: preservedDynamicRule
                         },
                         stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
                         desc: svc.ui_taxonomy?.display_name || svc.id,
                         detTagIds: [],
                         manTagIds: [],
                         negatedTagIds: [],
+                        // inherentTagIds: default_tags from the service definition.
+                        // These are SERVICE FACTS, not user-detected context -- they must
+                        // NOT go into detTagIds which drives the "We understood from your
+                        // text" banner. Kept separate so pricing still applies them.
+                        inherentTagIds: [],
                         adlibConfirmed: false
                     };
 
-                    // Seed default_tags from the service record
+                    // Seed default_tags into inherentTagIds (not detTagIds)
                     (svc.default_tags || []).forEach(tagRef => {
                         const tid = (typeof tagRef === 'object' && tagRef.$ref) ? tagRef.$ref : tagRef;
                         if (typeof tid === 'string' && tid.startsWith('#') && !S.negatedTagIds.includes(tid))
-                            S.detTagIds.push(tid);
+                            S.inherentTagIds.push(tid);
                     });
 
                     // SSOT: dynamic_services — enrich base price and suggested_tags if service lacks them
@@ -7297,6 +8033,13 @@ function prefillSmartQuoteFromService(svc, category_id) {
                     const flow = document.getElementById('sqStepFlow');
                     if (flow) flow.style.display = 'flex';
 
+                    // per_unit_answers_vary: each unit may have different specs
+                    // (e.g. each door has its own size/style/frame condition).
+                    // Force qty=1 so the intake chain's answers genuinely apply
+                    // to a single unit. The user books each separately.
+                    const perUnitVaries = !!svc.per_unit_answers_vary;
+                    if (perUnitVaries) S.qty = 1;
+
                     // ── Self-quoting check: services with full pricing data skip step 3 ──
                     // If service has base_price + expected_minutes + complexity_tier and
                     // its intake_chain only asks quantity, skip the chip grid and adlib entirely.
@@ -7304,8 +8047,10 @@ function prefillSmartQuoteFromService(svc, category_id) {
                     const om = svc.operational_metrics || {};
                     const de = svc.default_estimates || {};
                     const chain = svc.intake_chain || [];
-                    const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
-                    const chainIsQtyOnly = chain.length === 0 || chain.every(m => QTY_MODS.has(m.module));
+                    // Match orchestrator's logic: item_count_template needs bypass_intake to be self-quote
+                    const _bypassIntake = !!svc.behavior?.bypass_intake;
+                    const _isQtyMod = (m) => ['item_count','count','hybrid_qty','global_quantity'].includes(m.module) || (m.module === 'item_count_template' && _bypassIntake);
+                    const chainIsQtyOnly = chain.length === 0 || chain.every(_isQtyMod);
                     const hasPricingData = (om.expected_minutes > 0) && om.complexity_tier && (svc.financial_engine?.base_price > 0);
                     const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(svc.financial_engine?.checkout_state);
                     const isSelfQuoting = hasPricingData && isFlatCheckout && chainIsQtyOnly;
@@ -7333,8 +8078,19 @@ function prefillSmartQuoteFromService(svc, category_id) {
                         if (sb3) sb3.style.display = 'none';
                         if (sv3) sv3.textContent = S.qty + '× item';
 
-                        // Show focused adlib confirmation with just qty — no tag chips
-                        sqRenderSelfQuoteAdlib(svc);
+                        // Phase 6 rewire: route through the orchestrator instead of
+                        // sqRenderSelfQuoteAdlib directly. Ensures consistent pricing
+                        // (pricing_archetype dispatch), activeTags, and confidence.
+                        if (typeof collectBookingContext_catalog === 'function' &&
+                            typeof executeWorkflow === 'function' &&
+                            typeof renderSelfQuoteFromRoute === 'function' &&
+                            DB?.workflow) {
+                            const _selfQuoteCtx = collectBookingContext_catalog(svc, category_id);
+                            const _selfQuoteRoute = executeWorkflow(_selfQuoteCtx, DB);
+                            renderSelfQuoteFromRoute(_selfQuoteRoute, svc);
+                        } else {
+                            sqRenderSelfQuoteAdlib(svc);
+                        }
                     } else {
                         // ── VIEW TEMPLATE choice only — NOT a confidence/pricing decision ──
                         // Both branches below feed the SAME confidence engine
@@ -7411,12 +8167,27 @@ function sqAnalyze() {
                     }
 
                     S.desc = desc;
-                    const intent = detectIntentNLP(desc);
 
-                    // Extract richer NLP context
-                    S._objectNoun = extractObject(desc, intent?.key);
-                    S._location = extractLocation(desc);
-                    S._sizeHint = extractSizeHint(desc, DB.smart_tags || {});
+                    // v9.6 FIX (T40): route through the real, already-built,
+                    // already-tested collectBookingContext_freeText instead of
+                    // re-deriving NLP intent/object/location/tags inline. This
+                    // was a genuine, real accuracy gap, not just duplicated code:
+                    // sqAnalyze never called detectTagsNLP/inferTagsFromContext/
+                    // the size-hint tag injection that collectBookingContext_freeText
+                    // already does -- confirmed via direct test that phrases like
+                    // "hang a heavy tv on a brick wall" detected ZERO tags through
+                    // the free-text box (missing #brick_wall, #heavy_item,
+                    // #two_person_required) while the exact same text correctly
+                    // detects all of them through collectBookingContext_freeText.
+                    // Free-text users were silently getting worse pricing accuracy
+                    // than the catalog/other-tile paths for the identical request.
+                    const ctx = collectBookingContext_freeText(desc);
+                    const intent = ctx.nlpIntent;
+
+                    // Extract richer NLP context -- sourced from ctx, not re-derived
+                    S._objectNoun = ctx.extractedObject;
+                    S._location = ctx.extractedLocation;
+                    S._sizeHint = extractSizeHint(desc, DB.smart_tags || {}); // display-only, no tag side effects here -- ctx already applied size-hint tags
 
                     // Seed intent from NLP (dynamic_services base price enrichment happens in sqPrepareFlow)
                     const baseIntent = intent || {
@@ -7442,20 +8213,19 @@ function sqAnalyze() {
                     if (dynDef?.financial_engine?.base_price) baseIntent.base = dynDef.financial_engine.base_price;
                     S.intent = baseIntent;
                     S.manTagIds = [];
-                    S.qty = extractQty(desc);
+                    S.qty = ctx.extractedQty;
                     document.getElementById('sqQtyV').textContent = S.qty;
 
-                    // SSOT: apply contextual_override injected tags as detected tags
-                    if (S.intent._ctxTags?.length) {
-                        const cat = S.intent.category || 'other';
-                        S.intent._ctxTags.forEach(tid => {
-                            if (tagValidForCategory(tid, cat, S.intent._groupId) &&
-                                !S.detTagIds.includes(tid) && !S.negatedTagIds.includes(tid))
-                                S.detTagIds.push(tid);
-                        });
-                    }
+                    // v9.6 FIX (T40): detTagIds/negatedTagIds now come from the
+                    // real collector's full detection pipeline (detectTagsNLP +
+                    // inferTagsFromContext + size-hint injection + _ctxTags),
+                    // not just the narrower _ctxTags-only injection this block
+                    // used to do on its own.
+                    S.detTagIds = [...(ctx.detectedTagIds || [])];
+                    S.negatedTagIds = [...(ctx.negatedTagIds || [])];
+
                     if (S.intent.resolver === 'object_based') {
-    const object = extractObject(desc, S.intent.key);
+    const object = ctx.extractedObject; // already extracted by collectBookingContext_freeText -- no need to call extractObject again
     if (object) {
         const objects = (DB.intent_mappings?.objects || []);
         const objectMap = objects.find(o =>
@@ -7521,7 +8291,10 @@ function sqAnalyze() {
                     const hasCategory = S.intent?.category && S.intent.category !== 'other';
                     const hasMatchConf = (S.intent?._matchConfidence || 0) >= 50;
                     if (hasCategory && hasMatchConf) {
-                        const targetGroupId = resolveGroupFromIntent(
+                        // v9.6 FIX (T40): use ctx.selectedGroupId (already resolved
+                        // by collectBookingContext_freeText via the same
+                        // resolveGroupFromIntent call) instead of calling it again.
+                        const targetGroupId = ctx.selectedGroupId || resolveGroupFromIntent(
                             S.intent.category,
                             S._objectNoun || '',
                             S.intent.stype || 'Repair',
@@ -7556,9 +8329,36 @@ function sqAnalyze() {
                         }
                     }
 
+                    // ── Tag affirmation gate ─────────────────────────────────────
+                    // After NLP, S.detTagIds may contain detected tags. Gate them
+                    // before pricing: show the affirmation card if tags exist and
+                    // the customer hasn't affirmed this exact set yet.
+                    //
+                    // Reset rule (per-tag-set): if detTagIds has grown beyond the
+                    // previously-affirmed set, re-trigger affirmation. Text deletion
+                    // clears detTagIds naturally (NLP re-runs on shorter text and
+                    // detects nothing) -- no special handling needed.
+                    const newDetTags = (S.detTagIds || []);
+                    const prevAffirmed = S._affirmedTagSet || [];
+                    const hasNewTags = newDetTags.some(t => !prevAffirmed.includes(t));
+                    if (hasNewTags) S._tagsAffirmed = false; // re-gate if set grew
+
+                    if (newDetTags.length > 0 && !S._tagsAffirmed) {
+                        const q = computeQuoteFromState();
+                        if (!q.meetsConfidenceBar) {
+                            // Not confident enough to charge silently -- show the card
+                            renderTagAffirmationCard(newDetTags, S.intent, q);
+                            return; // don't fall through to sqPrepareFlow
+                        }
+                        // Already confident: charge silently, no card needed (§4 of design)
+                        S._tagsAffirmed = true;
+                        S._affirmedTagSet = [...newDetTags];
+                    }
+
                     // ── Final fallback: generic SmartQuote pipeline ─────────────
                     sqPrepareFlow(false);
                 }
+
 
 function sqBuildAdlib() {
                     const tags = DB.smart_tags || {};
@@ -7774,7 +8574,7 @@ function sqBuildAdlib() {
                     // When called after sqBuildCuratedIntake confirms (sqConfirmAdlib),
                     // show answered intake questions inline — matches curated card adlib output.
                     if (S._svc && S.answers && Object.keys(S.answers).length > 0) {
-                        const _QM = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
+                        const _QM = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'item_count_template']);
                         const _allResolvedMods = _resolveIntakeChain(S._svc);
                         const _answeredMods = _allResolvedMods.filter(m =>
                             !_QM.has(m.moduleKey) && _isModVisible(m, S.answers, _allResolvedMods) && S.answers[m.moduleKey]
@@ -7881,30 +8681,15 @@ function sqBuildCuratedIntake(svc) {
                     S._curatedMode = true;
                     S.userTagIds = S.userTagIds || [];
 
+                    // ── Phase 7 rewire: use orch_compose_intake_chain ──────────
+                    // Previously manually resolved chain + looped force-module injection.
+                    // orch_compose_intake_chain does both in one authoritative call.
+                    const allMods = orch_compose_intake_chain({}, { entity: svc }, DB);
+
                     // ── JSON-sourced constants ────────────────────────────────────
                     const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
-                    const allMods = _resolveIntakeChain(svc);
 
-                    // SSOT: S._forceModules (set in sqPrepareFlow from
-                    // global_rules.force_modules_by_variability) lists modules
-                    // that MUST be present for this variability tier — was set
-                    // but never consumed here until now. Inject any forced
-                    // module not already in the resolved chain (skip if the
-                    // module doesn't exist in DB.intake_modules, since a bad
-                    // ref shouldn't break the whole intake card).
-                    const forceMods = S._forceModules || [];
-                    const existingKeys = new Set(allMods.map(m => m.moduleKey));
-                    for (const fKey of forceMods) {
-                        if (!existingKeys.has(fKey) && DB.intake_modules?.[fKey]) {
-                            allMods.push({
-                                moduleKey: fKey,
-                                then: {},
-                                ...DB.intake_modules[fKey],
-                                _forced: true  // flag: injected by variability tier, not service chain
-                            });
-                            existingKeys.add(fKey);
-                        }
-                    }
+                    
 
                     const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
 
@@ -8812,7 +9597,7 @@ function sqRenderSelfQuoteAdlib(svc) {
                         }
                     };
                     const dispatch = DB.global_rules?.surcharges?.dispatch_fee || 45;
-                    const pricingType = (fe.type ?? fe.pricing_type) || 'flat_rate';
+                    const pricingType = fe.pricing_type || 'flat_rate';
                     const basePrice = fe.base_price || 70;
 
                     // Read pricing engine formula_components from SSOT
@@ -9010,6 +9795,40 @@ function sqToggleTag(el, tid) {
                     sqBuildStep3();
                 }
 
+function _recomputeInstanceLabels() {
+                    const groups = {};
+                    State.serviceRequest.forEach(s => {
+                        if (s.furnitureItems) return;
+                        const key = s.name + '::' + s.category_id;
+                        (groups[key] = groups[key] || []).push(s);
+                    });
+                    Object.values(groups).forEach(group => {
+                        if (group.length <= 1) {
+                            group.forEach(s => delete s._instanceLabel);
+                        } else {
+                            group.forEach((s, i) => { s._instanceLabel = `#${i + 1}`; });
+                        }
+                    });
+                }
+
+function removeFurnitureEntry(serviceId, idx) {
+                    const svc = State.serviceRequest.find(s => s.id === serviceId);
+                    if (!svc?.furnitureItems) return;
+                    svc.furnitureItems.splice(idx, 1);
+                    if (svc.name?.toLowerCase().includes('assembly') && svc.furnitureItems.length === 0) {
+                        removeServiceFromCart(serviceId);
+                        return;
+                    }
+                    const mins = svc.furnitureItems.map(f => f.minutes);
+                    const charge = mathFurnitureAssembly(mins);
+                    svc.estimatedHours = charge.hours;
+                    svc.estimatedPrice = charge.price;
+                    svc.price = `$${charge.price.toFixed(2)}`;
+                    svc.notes = `Furniture Items: ${svc.furnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
+                    persistCart();
+                    renderCart();
+                }
+
 function wireGlobalEvents() {
     // 1. Contact button (unchanged)
     const contactBtn = document.querySelector('#contact-button');
@@ -9099,27 +9918,13 @@ function wireGlobalEvents() {
         }
     });
 
-   /* DISABLED experimental orchestrator category-card wiring.
-      This was written as an HTML comment (<!-- ... -->) inside a <script>, which is
-      NOT a valid JS block comment. The bare line "Re-fetch and attach" parsed as code
-      and threw "SyntaxError: Unexpected identifier 'and'", which stopped this ENTIRE
-      <script> block from executing — so setStep, prefillSmartQuoteFromService and the
-      rest of the orchestrator layer were never defined. Converted to a real block
-      comment so the block loads. Original (still disabled) content preserved:
-
-      document.querySelectorAll('.category-card').forEach(card => {
-          card.replaceWith(card.cloneNode(true));
-      });
-      // Re-fetch and attach:
-      document.querySelectorAll('.category-card').forEach(card => {
-         const catId = card.dataset.categoryId;
-          card.addEventListener('click', function() {
-              // const ctx = collectBookingContext_freeText(catId);
-              // const route = executeWorkflow(ctx, DB);
-              // renderRoute(route);
-          });
-      });
-   */
+   // 6. ✨ NEW: Category card clicks – use the orchestrator ✨
+    // Category card clicks are wired by renderCategoryCards() which runs
+    // before wireGlobalEvents(). No re-wiring needed here -- the cards
+    // created by renderCategoryCards() already have correct click listeners
+    // (click → showGroupsForCategory). The old clone+re-attach block that
+    // was here was stripping those listeners and replacing them with an
+    // empty handler, which is why tiles appeared dead.
 
     // 7. ✨ NEW: SmartQuote “Get estimate” button (sqUnifiedActionBtn) ✨
     const sqBtn = document.getElementById('sqUnifiedActionBtn');
@@ -9942,19 +10747,22 @@ function wireGlobalEvents() {
 (async function init() {
   try {
     // ─── 1. LOAD SSOT ───────────────────────────────────────────────
-    const res = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    SERVICE_DATA = await res.json();
+    // btnyc.json is the SSOT -- it lives alongside qr.html as a separate
+    // file and is never inlined. Edit btnyc.json to change services,
+    // pricing, or content without touching application code.
+    const _r = await fetch('./btnyc.json');
+    if (!_r.ok) throw new Error('Failed to load btnyc.json: HTTP ' + _r.status);
+    SERVICE_DATA = await _r.json();
     DB = SERVICE_DATA;
     window.DB = DB;
 
     // ─── 2. INITIALISE MODULES ──────────────────────────────────────
     initNlpSets();
-    refreshNlpPreviewBindings();   // ← populate preview pipeline word sets
+    refreshNlpPreviewBindings();
     cacheDOM();
     buildDataMaps(SERVICE_DATA);
     renderCategoryCards();
-    initSmartQuote();
+    initSmartQuote();   // inject text bar on page load
     wireGlobalEvents();
 
     // ─── 3. LOAD CART FROM SESSIONSTORAGE (ONCE) ───────────────────
@@ -10002,7 +10810,11 @@ function wireGlobalEvents() {
 
     // ─── 10. EXPOSE SMARQUOTE FUNCTIONS (global for inline onclick) ─
     window.sqAnalyze = sqAnalyze;
-    window.sqUnifiedAction = sqUnifiedAction;
+    window.sqAffirmYes = sqAffirmYes;
+    window.sqAffirmNo = sqAffirmNo;
+    window.sqAffirmRemoveTag = sqAffirmRemoveTag;
+    window.sqAffirmSelectService = sqAffirmSelectService;
+    window.renderTagAffirmationCard = renderTagAffirmationCard;
     window.sqToggleBuilder = sqToggleBuilder;
     window.sqBuilderBack = sqBuilderBack;
     window.sqPickType = sqPickType;
@@ -10061,7 +10873,8 @@ function wireGlobalEvents() {
 </script>
 
 
-    <script>
+    
+<script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
