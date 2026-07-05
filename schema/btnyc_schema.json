@@ -41,7 +41,6 @@
         "version",
         "last_updated",
         "note",
-        "global_rates",
         "estimate_disclaimers"
       ],
       "properties": {
@@ -297,17 +296,25 @@
               "type": "integer"
             },
             "patch_fee": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Deprecated v9.4 -- superseded by patch_modifier_ref."
             },
             "texture_fee": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Deprecated v9.4 -- superseded by texture_modifier_ref."
+            },
+            "patch_modifier_ref": {
+              "type": "string",
+              "description": "v9.4: authoritative reference into global_rules.modifiers."
+            },
+            "texture_modifier_ref": {
+              "type": "string",
+              "description": "v9.4: authoritative reference into global_rules.modifiers."
             }
           },
           "required": [
             "base_minutes",
-            "minutes_per_sqft",
-            "patch_fee",
-            "texture_fee"
+            "minutes_per_sqft"
           ]
         },
         "furniture_repair_formula": {
@@ -406,22 +413,38 @@
               "type": "integer"
             },
             "grout_fee": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Deprecated v9.4 -- superseded by grout_modifier_ref."
+            },
+            "grout_modifier_ref": {
+              "type": "string"
             },
             "water_damage_penalty_minutes": {
               "type": "integer"
             },
             "water_damage_fee": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Deprecated v9.4 -- superseded by water_damage_modifier_ref."
+            },
+            "water_damage_modifier_ref": {
+              "type": "string"
             },
             "high_ceiling_penalty_minutes": {
               "type": "integer"
             },
             "high_ceiling_fee": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Deprecated v9.4 -- superseded by high_ceiling_modifier_ref."
+            },
+            "high_ceiling_modifier_ref": {
+              "type": "string"
             },
             "disposal_fee": {
-              "type": "integer"
+              "type": "integer",
+              "description": "Deprecated v9.4 -- superseded by disposal_modifier_ref."
+            },
+            "disposal_modifier_ref": {
+              "type": "string"
             },
             "disposal_minutes": {
               "type": "integer"
@@ -429,15 +452,7 @@
           },
           "required": [
             "base_minutes",
-            "minutes_per_tile",
-            "grout_penalty_minutes",
-            "grout_fee",
-            "water_damage_penalty_minutes",
-            "water_damage_fee",
-            "high_ceiling_penalty_minutes",
-            "high_ceiling_fee",
-            "disposal_fee",
-            "disposal_minutes"
+            "minutes_per_tile"
           ]
         }
       }
@@ -918,7 +933,13 @@
               }
             },
             "effects": {
-              "$ref": "#/$defs/effects"
+              "$ref": "#/$defs/effects",
+              "description": "Deprecated v9.4 -- smart_tags no longer carry independent fee/complexity effects directly. Use escalate_complexity for complexity-tier effects; per-answer fees now live on the intake_module's own client_response via modifier_ref."
+            },
+            "escalate_complexity": {
+              "type": "string",
+              "enum": ["routine", "skilled", "specialized"],
+              "description": "v9.4: replaces effects.complexity_override. Ratchets the resolved complexity tier up (never down) when this tag is active and there is real time-based headroom to escalate into."
             },
             "answers": {
               "type": "object",
@@ -1003,7 +1024,6 @@
           },
           "required": [
             "synonyms",
-            "effects",
             "answers",
             "requires",
             "display_group",
@@ -1250,17 +1270,27 @@
           "financial_engine": {
             "type": "object",
             "properties": {
+              "type": {
+                "type": "string",
+                "description": "v9.4: renamed from pricing_type as part of the financial_engine simplification. Values include flat_rate, hourly, formula, assembly_formula."
+              },
               "pricing_type": {
-                "type": "string"
+                "type": "string",
+                "description": "Deprecated v9.4 -- superseded by 'type'. Retained optionally for backward compatibility with pre-v9.4 files."
               },
               "base_price": {
                 "type": "number"
               },
               "base_materials": {
-                "type": "number"
+                "type": "number",
+                "description": "Deprecated v9.4 -- materials are now costed via required_materials/materials_catalog and shown separately as route.materialsEstimate, never folded into base price."
               },
               "checkout_state": {
                 "type": "string"
+              },
+              "formula_ref": {
+                "type": "string",
+                "description": "v9.4: authoritative reference into pricing_formulas for formula-priced services. Replaces reading the formula id off the sibling top-level pricing_engine field."
               },
               "pricing_archetype": {
                 "type": "string",
@@ -1271,13 +1301,11 @@
                   "tiered_per_unit",
                   "formula"
                 ],
-                "description": "v9.5: the real, single, authoritative field for HOW a service's price is computed -- replaces the prior, scattered, five-field mess (pricing_type/pricing_engine/checkout_state/disclaimer/materials_included), confirmed via direct audit to encode the same small set of real shapes inconsistently across 14 raw combinations. Added additively; existing fields remain present and authoritative until every real consumer (computeUnifiedQuote, orch_compute_quote, etc.) is migrated to read this field instead. See BACKLOG_CONSOLIDATED.md for the full migration plan."
+                "description": "Deprecated v9.4 -- pricing archetype is now derived from type + formula_ref (see compiled.pricing_index) rather than authored directly on the entity."
               }
             },
             "required": [
-              "pricing_type",
               "base_price",
-              "base_materials",
               "checkout_state"
             ]
           },
@@ -1402,11 +1430,19 @@
             "financial_engine": {
               "type": "object",
               "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "v9.4: renamed from pricing_type."
+                },
                 "pricing_type": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Deprecated v9.4 -- superseded by 'type'."
                 },
                 "base_price": {
                   "type": "number"
+                },
+                "formula_ref": {
+                  "type": "string"
                 },
                 "pricing_archetype": {
                   "type": "string",
@@ -1417,11 +1453,10 @@
                     "tiered_per_unit",
                     "formula"
                   ],
-                  "description": "v9.5: same real, single, authoritative archetype field as services[].financial_engine.pricing_archetype -- see that field's own description for the full rationale."
+                  "description": "Deprecated v9.4 -- see services[].financial_engine.pricing_archetype for the same deprecation note."
                 }
               },
               "required": [
-                "pricing_type",
                 "base_price"
               ]
             },
@@ -1542,7 +1577,29 @@
                     "type": "string"
                   },
                   "effects": {
-                    "$ref": "#/$defs/effects"
+                    "$ref": "#/$defs/effects",
+                    "description": "Deprecated v9.4, fully retired v9.6 -- superseded by modifier_ref and the top-level override fields below. Zero real client_response entries use this anymore (verified via exhaustive scan); kept in the schema only for historical-file compatibility."
+                  },
+                  "modifier_ref": {
+                    "type": "string",
+                    "description": "v9.4: authoritative reference into global_rules.modifiers for this answer's fee/minutes. Replaces inline effects.{fee,minutes}. As of v9.6 this is the only place fee/minutes are ever authored."
+                  },
+                  "complexity_override": {
+                    "type": "string",
+                    "enum": ["routine", "skilled", "specialized"],
+                    "description": "v9.4: top-level on the response, not nested under effects."
+                  },
+                  "checkout_state_override": {
+                    "type": "string",
+                    "description": "v9.4: top-level on the response, not nested under effects."
+                  },
+                  "formula_override": {
+                    "type": "string",
+                    "description": "v9.6: top-level on the response (was nested under effects pre-v9.6). References a pricing_formulas key -- when this answer is selected, computeUnifiedQuote routes pricing through the named formula instead of the entity's default engine."
+                  },
+                  "qty_value": {
+                    "type": "integer",
+                    "description": "v9.6: top-level on the response (was nested under effects pre-v9.6). Explicit numeric quantity this label represents (e.g. label '6 or more' -> qty_value 6), read instead of parsing the label text directly."
                   },
                   "tags": {
                     "type": "array"
@@ -1556,8 +1613,7 @@
                   }
                 },
                 "required": [
-                  "label",
-                  "effects"
+                  "label"
                 ]
               }
             },
@@ -2052,15 +2108,34 @@
                     "type": "string"
                   },
                   "effects": {
-                    "$ref": "#/$defs/effects"
+                    "$ref": "#/$defs/effects",
+                    "description": "Deprecated v9.4, fully retired v9.6 -- superseded by modifier_ref and the top-level override fields below."
+                  },
+                  "modifier_ref": {
+                    "type": "string",
+                    "description": "v9.4: authoritative reference into global_rules.modifiers. As of v9.6, per-service quantity-tier fees (e.g. item_count_template overrides) are each given a uniquely-named modifier here rather than an inline fee, so every fee in the SSOT resolves through the same single mechanism."
+                  },
+                  "complexity_override": {
+                    "type": "string",
+                    "enum": ["routine", "skilled", "specialized"]
+                  },
+                  "checkout_state_override": {
+                    "type": "string"
+                  },
+                  "formula_override": {
+                    "type": "string",
+                    "description": "v9.6: top-level (was nested under effects pre-v9.6)."
+                  },
+                  "qty_value": {
+                    "type": "integer",
+                    "description": "v9.6: top-level (was nested under effects pre-v9.6)."
                   },
                   "tags": {
                     "type": "array"
                   }
                 },
                 "required": [
-                  "label",
-                  "effects"
+                  "label"
                 ]
               }
             }
