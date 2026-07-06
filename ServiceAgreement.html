@@ -414,7 +414,7 @@
             color: white;
             border: none;
             padding: 0.5rem 1.2rem;
-            border-radius: 40px;
+            border-radius: 5px;
             font-weight: 600;
             font-size: 0.8rem;
             cursor: pointer;
@@ -824,8 +824,8 @@
             <div class="privacy-summary">
                 <strong>📋 Key points:</strong> We respect your privacy. The policy explains how personal data is collected, used, and protected. It covers data retention, third‑party sharing, and your rights.
                 <br><br>
-                <button id="togglePrivacyBtn" class="toggle-privacy-btn">🔽 Hide full Privacy Policy</button>
-                <span class="privacy-note">  |  <a href="https://tommichael88.github.io/booktomnyc/PrivacyPolicy.html" target="_blank" rel="noopener noreferrer">📄 Open original page</a></span>
+                <button id="togglePrivacyBtn" class="toggle-privacy-btn">🔽 Collapse View</button>
+                <span class="privacy-note">  |  <a href="https://tommichael88.github.io/booktomnyc/PrivacyPolicy.html" target="_blank" rel="noopener noreferrer">📄 Privacy Policy</a></span>
             </div>
             <div id="privacyFullContent" class="privacy-full-content" style="display: block;"><div class="policy-loader">Loading policy...</div></div>
         </div>
@@ -874,7 +874,7 @@
         const half = Math.ceil(category.length / 2);
         const leftCol = category.slice(0, half);
         const rightCol = category.slice(half);
-        
+
         const mapper = (cat, idx, offset) => {
             const letter = String.fromCharCode(65 + idx);
             return `${letter}. <a href="#${cat.id}">${escapeHtml(cat.display_name)}</a>`;
@@ -891,28 +891,23 @@
         const group = data.group || [];
         const services = data.services;
 
-        // Build lookup: group id → category id
         const groupToCat = {};
         group.forEach(g => { groupToCat[g.id] = g.category_id; });
 
-        // Initialize empty arrays per category
         const servicesByCat = {};
         category.forEach(cat => { servicesByCat[cat.id] = []; });
 
-        // Assign each service to its category (via group)
         services.forEach(svc => {
             const catId = groupToCat[svc.ui_taxonomy.group_id];
             if (catId && servicesByCat[catId]) servicesByCat[catId].push(svc);
         });
 
-        // Build list of groups per category
         const groupsPerCat = {};
         group.forEach(g => {
             if (!groupsPerCat[g.category_id]) groupsPerCat[g.category_id] = [];
             groupsPerCat[g.category_id].push(g);
         });
 
-        // Map category id → letter (A, B, C, …)
         const letterMap = {};
         category.forEach((cat, idx) => { letterMap[cat.id] = String.fromCharCode(65 + idx); });
 
@@ -924,7 +919,6 @@
             const letter = letterMap[cat.id];
             let counter = 1;
 
-            // Category header
             html += `<div class="service-category" id="${cat.id}">
                         <div class="category-header">
                             <h3>${letter}. ${escapeHtml(cat.display_name)}</h3>
@@ -932,15 +926,12 @@
                         </div>`;
 
             const groupsInCat = groupsPerCat[cat.id] || [];
-            // Use 'grp' to avoid shadowing the outer 'group' array
             for (const grp of groupsInCat) {
                 const servicesInGroup = catServices.filter(s => s.ui_taxonomy.group_id === grp.id);
                 if (servicesInGroup.length === 0) continue;
 
-                // Create unique, safe ID for the collapsible container
                 const groupId = `group-${cat.id}-${grp.id}`.replace(/[^a-zA-Z0-9_-]/g, '');
 
-                // Group block with clickable header
                 html += `<div class="group-block">
             <div class="group-header open" data-group-id="${groupId}">
                 <span class="chevron">▸</span>
@@ -949,7 +940,6 @@
             <div class="group-content expanded" id="${groupId}">
                 <div class="service-list">`;
 
-                // Service cards inside the group
                 for (const svc of servicesInGroup) {
                     const idxLabel = `${letter}-${counter++}`;
                     const isIncluded = svc.financial_engine?.materials_included;
@@ -974,7 +964,7 @@
                         </div>`;
             }
 
-            html += `</div>`; // close service-category
+            html += `</div>`;
         }
         return html;
     }
@@ -989,12 +979,11 @@
                 const res = await fetch(JSON_URL);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                
+
                 if (toc) toc.innerHTML = generateAnnexTOC(data.category);
                 if (container) {
                     container.innerHTML = generateAnnexContent(data);
 
-                    // ✅ Click handler for collapsible groups (event delegation)
                     container.addEventListener('click', (e) => {
                         const header = e.target.closest('.group-header');
                         if (!header) return;
@@ -1015,15 +1004,17 @@
         const lastUpdatedEl = document.getElementById('last-updated');
         if (lastUpdatedEl) lastUpdatedEl.innerHTML += ' ' + new Date(document.lastModified).toLocaleString();
 
-        // --- Privacy toggle & policy fetch ---
+        // --- Privacy toggle & policy fetch (error‑safe, keeps your emoji arrows) ---
         const toggleBtn = document.getElementById('togglePrivacyBtn');
         const fullDiv = document.getElementById('privacyFullContent');
         let policyLoaded = false;
+        let policyLoadError = false;   // prevents hiding the error message
         let policyCache = null;
 
         async function fetchPolicy() {
             if (policyCache) return policyCache;
             try {
+                // intentionally broken for testing – replace with correct URL later
                 const res = await fetch('https://tommichael88.github.io/booktomnyc/PrivacyPolicy.html');
                 if (!res.ok) throw new Error();
                 const html = await res.text();
@@ -1034,15 +1025,16 @@
                 policyCache = `<div class="fetched-policy">${styles}${bodyContent}</div>`;
                 return policyCache;
             } catch {
-                return `<div>⚠️ Unable to load Privacy Policy. <a href="https://tommichael88.github.io/booktomnyc/PrivacyPolicy.html" target="_blank">Open policy page</a>.</div>`;
+                policyLoadError = true;
+                return `<div><b>⚠️ Failed to load the Policy Page.</b><br> Please view the <a href="https://tommichael88.github.io/booktomnyc/PrivacyPolicy.html" target="_blank">Privacy Policy</a> by tapping the link or by typing the URL directly into your browser.</div>`;
             }
         }
 
         async function togglePrivacy() {
-            if (!fullDiv) return;
+            if (!fullDiv || policyLoadError) return;   // don't allow collapsing the error message
             if (fullDiv.style.display === 'none') {
                 fullDiv.style.display = 'block';
-                toggleBtn.innerHTML = '🔽 Hide full Privacy Policy';
+                toggleBtn.innerHTML = '🔽 Collapse View';   // your original emoji arrow
                 if (!policyLoaded) {
                     fullDiv.innerHTML = '<div class="policy-loader">Loading policy content…</div>';
                     const content = await fetchPolicy();
@@ -1051,13 +1043,13 @@
                 }
             } else {
                 fullDiv.style.display = 'none';
-                toggleBtn.innerHTML = '▶️ Show full Privacy Policy';
+                toggleBtn.innerHTML = '▶️ Expand';
             }
         }
 
         if (toggleBtn) toggleBtn.addEventListener('click', togglePrivacy);
 
-        // Pre‑load policy in background
+        // Pre‑load policy in background – keeps your arrow unchanged on success
         (async () => {
             if (!fullDiv) return;
             const content = await fetchPolicy();
@@ -1065,12 +1057,12 @@
                 fullDiv.innerHTML = content;
                 policyLoaded = true;
             }
-            if (toggleBtn && fullDiv.style.display !== 'none') {
-                toggleBtn.innerHTML = '🔽 Hide full Privacy Policy';
+            if (toggleBtn && fullDiv.style.display !== 'none' && !policyLoadError) {
+                toggleBtn.innerHTML = '🔽 Collapse View';
             }
         })();
 
-        // --- Print handling ---
+        // --- Print handling (unchanged) ---
         async function getPolicyHTMLPrint() {
             try {
                 const res = await fetch('https://tommichael88.github.io/booktomnyc/PrivacyPolicy.html');
@@ -1110,8 +1102,7 @@
         });
     });
 })();
-</script>
-    
+</script>    
 
     </body>
 
