@@ -8982,7 +8982,7 @@ function addToCart(entry) {
                             };
                             newCart = currentCart.map((item, i) => i === existingIndex ? updatedEntry : item);
                             window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
-                            renderCart();
+                            _recomputeInstanceLabels();
                             toast('Merged with existing furniture request', 'success');
                             return;
                         }
@@ -9003,7 +9003,7 @@ function addToCart(entry) {
                         const updatedEntry = { ...dupe, qty: newQty };
                         newCart = currentCart.map((item, i) => i === dupeIndex ? updatedEntry : item);
                         window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
-                        renderCart();
+                            _recomputeInstanceLabels();
                         toast(`${entry.name} — qty updated to ${newQty}`, 'success');
                         return;
                     }
@@ -9012,13 +9012,13 @@ function addToCart(entry) {
                     entry.qty = entry.qty || 1;
                     newCart = [...currentCart, entry];
                     window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
+                            _recomputeInstanceLabels();
 
 
                     if (DOM.cartFab) {
                         DOM.cartFab.style.animation = 'none';
                         requestAnimationFrame(() => DOM.cartFab.style.animation = 'cartBounce .4s ease');
                     }
-                    renderCart();
                 }
 
 function applySSOTRules() {
@@ -9422,7 +9422,7 @@ function removeServiceFromCart(id) {
                     const currentCart = window.__store.getState().cart.serviceRequest;
                     const newCart = currentCart.filter(s => s.id !== id);
                     window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
-                    renderCart();
+                            _recomputeInstanceLabels();
                 }
 
 function setStep(step) {
@@ -11135,7 +11135,7 @@ function removeFurnitureEntry(serviceId, idx) {
                         // Remove the whole service
                         const newCart = currentCart.filter((_, i) => i !== svcIndex);
                         window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
-                        renderCart();
+                            _recomputeInstanceLabels();
                         return;
                     }
 
@@ -11151,7 +11151,7 @@ function removeFurnitureEntry(serviceId, idx) {
                     };
                     const newCart = currentCart.map((s, i) => i === svcIndex ? updatedSvc : s);
                     window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
-                    renderCart();
+                            _recomputeInstanceLabels();
                 }
 
 function wireGlobalEvents() {
@@ -12055,14 +12055,32 @@ function wireGlobalEvents() {
    function bindLegacyGlobals(win) {
   win = win || (typeof window !== 'undefined' ? window : {});
   const mirror = function (state) {
-    // Remove or comment out the S mirroring:
-    // if (win.S && typeof win.S === 'object') {
-    //   Object.assign(win.S, state.session.legacyView);
-    // } else {
-    //   win.S = Object.assign({}, state.session.legacyView);
-    // }
-    // Only mirror the cart:
-    if (win.State && typeof win.State === 'object') {
+    if (win.S && typeof win.S === 'object') {
+      Object.assign(win.S, state.session.legacyView);
+    } else {
+      win.S = Object.assign({}, state.session.legacyView);
+    }
+    // v9.6 FIX: was `win.State && typeof win.State === 'object'`. State is
+    // declared with `const State = {...}` in qr.html's main script block --
+    // in classic (non-module) scripts, top-level const/let never becomes a
+    // window property (unlike var), so win.State was always undefined and
+    // this mirroring code silently never ran. Confirmed via direct test:
+    // the store correctly received dispatched cart changes, but the real,
+    // bare `State` object every render function actually reads stayed
+    // permanently stale/empty. This never mattered before the cart
+    // mutation functions were migrated to dispatch-based writes (the old
+    // code mutated the bare State object directly), but it's a real,
+    // user-visible bug now that they rely on this mirror. bindLegacyGlobals
+    // runs in the same shared global lexical scope as State (classic
+    // script tags share one lexical environment for top-level
+    // const/let/class declarations), so referencing the bare identifier
+    // directly is correct and safe here, guarded for contexts where it
+    // might not exist (e.g. an isolated Node test).
+    if (typeof State !== 'undefined' && State && typeof State === 'object') {
+      State.serviceRequest = state.cart.serviceRequest;
+      State.furnitureItems = state.cart.furnitureItems;
+      State.currentStep = state.cart.currentStep;
+    } else if (win.State && typeof win.State === 'object') {
       win.State.serviceRequest = state.cart.serviceRequest;
       win.State.furnitureItems = state.cart.furnitureItems;
       win.State.currentStep = state.cart.currentStep;
@@ -12219,732 +12237,16 @@ function wireGlobalEvents() {
   }
 })();
 </script>
-<script>
-// ============================================================
-//  BookTOM – Automated Fixes (v1.0)
-//  Paste this into the console or include as a script.
-//  It will patch the running app to fix:
-//    - Error handling on data load failure
-//    - Debounced rendering (performance)
-//    - Focus trap in modals
-//    - Swipe-to-close on mobile cart
-//    - Idempotent SmartQuote initialization
-// ============================================================
-
-(function patchBookTOM() {
-  'use strict';
-
-  // ------------------------------------------------------------------
-  // 1. Error handling for btnyc.json load
-  //    Override the init() function to add a retry button on failure.
-  // ------------------------------------------------------------------
-  const originalInit = window.init;
-  if (typeof originalInit === 'function') {
-    window.init = async function() {
-      try {
-        await originalInit();
-      } catch (err) {
-        console.error('[Patch] Init failed:', err);
-        // Show a retry button if not already present
-        if (!document.getElementById('booktom-retry-btn')) {
-          const btn = document.createElement('button');
-          btn.id = 'booktom-retry-btn';
-          btn.textContent = '🔄 Retry loading services';
-          btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:14px 24px;background:#8a0615;color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
-          btn.onclick = function() {
-            this.remove();
-            location.reload();
-          };
-          document.body.appendChild(btn);
-        }
-        // Also show a toast
-        if (typeof toast === 'function') {
-          toast('Could not load services. Click the red button to retry.', 'error');
-        }
-      }
-    };
-    console.log('[Patch] init() wrapped with error handling.');
-  }
-
-  // ------------------------------------------------------------------
-  // 2. Debounce heavy renders (sqBuildCuratedIntake & renderCuratedCardFromRoute)
-  //    We override the functions to use requestAnimationFrame coalescing.
-  // ------------------------------------------------------------------
-  function debounceRender(originalFn) {
-    let pending = false;
-    return function(...args) {
-      if (pending) return;
-      pending = true;
-      requestAnimationFrame(() => {
-        pending = false;
-        originalFn.apply(this, args);
-      });
-    };
-  }
-
-  // Patch sqBuildCuratedIntake
-  if (typeof window.sqBuildCuratedIntake === 'function') {
-    const orig = window.sqBuildCuratedIntake;
-    window.sqBuildCuratedIntake = function(svc) {
-      // We need to debounce the inner render, not the whole function.
-      // But the function itself calls render() inside. We can wrap the call.
-      // Since the original is complex, we'll just wrap the whole function call
-      // with a debounce – but that might delay the initial render.
-      // Safer: override the render variable inside that function, but we can't easily.
-      // We'll use a different approach: we'll intercept the call to the inner render
-      // by patching the function's local scope? Not possible.
-      // Instead, we'll just call the original and then apply a debounce to subsequent
-      // calls by redefining the function itself to be debounced.
-      // But sqBuildCuratedIntake is only called once per service selection.
-      // The real performance issue is the render() inside which gets called on every
-      // interaction (chip clicks, etc.) – that render() is defined as a local variable.
-      // We can't patch that without rewriting the function.
-      // So we'll provide a new version that uses the debounce pattern inside.
-      // This is a large rewrite; for a patch, we'll keep it simple: add a small delay
-      // on the event listeners to batch updates.
-      console.warn('[Patch] sqBuildCuratedIntake performance optimization requires rewriting the inner render. Skipping for safety.');
-      orig(svc);
-    };
-  }
-
-  // Instead, we'll add a global flag to prevent rapid re-renders.
-  // We'll patch the event listeners by adding a small delay.
-
-  // After the page loads, we can enhance the existing function by adding
-  // a debounced version of the render call, but we need to access the render function.
-  // Since we can't easily, we'll add a utility function that can be called manually.
-
-  console.log('[Patch] Performance: a full debounce is complex. Consider using requestAnimationFrame in your event handlers manually.');
-
-  // ------------------------------------------------------------------
-  // 3. Focus trap for cart overlay and booking modal
-  // ------------------------------------------------------------------
-  function trapFocus(container) {
-    if (!container) return;
-    const focusable = container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    container.addEventListener('keydown', function(e) {
-      if (e.key !== 'Tab') return;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    });
-    // Focus the first element when container opens
-    const observer = new MutationObserver(() => {
-      if (container.style.display !== 'none' && container.style.display !== '') {
-        first.focus();
-      }
-    });
-    observer.observe(container, { attributes: true, attributeFilter: ['style'] });
-    // Also store the observer so we can disconnect later if needed
-    container._focusTrapObserver = observer;
-  }
-
-  // Apply trap after the cart overlay is created
-  const cartOverlay = document.getElementById('cartOverlay');
-  if (cartOverlay) {
-    trapFocus(cartOverlay);
-    console.log('[Patch] Focus trap added to cart overlay.');
-  }
-  // Also for the booking modal
-  const bookingModal = document.getElementById('booking-modal');
-  if (bookingModal) {
-    trapFocus(bookingModal);
-    console.log('[Patch] Focus trap added to booking modal.');
-  }
-
-  // ------------------------------------------------------------------
-  // 4. Swipe-to-close on mobile for cart overlay
-  // ------------------------------------------------------------------
-  if (cartOverlay) {
-    let startY = 0;
-    let isDragging = false;
-    const content = cartOverlay.querySelector('.cart-modal-content');
-    if (content) {
-      content.addEventListener('touchstart', function(e) {
-        const touch = e.touches[0];
-        startY = touch.clientY;
-        isDragging = true;
-      }, { passive: true });
-
-      content.addEventListener('touchmove', function(e) {
-        if (!isDragging) return;
-        const touch = e.touches[0];
-        const deltaY = touch.clientY - startY;
-        if (deltaY > 50) {
-          // Swipe down far enough – close
-          isDragging = false;
-          if (typeof closeCartOverlay === 'function') {
-            closeCartOverlay();
-          } else if (cartOverlay.style.display === 'flex') {
-            cartOverlay.style.display = 'none';
-            document.body.classList.remove('modal-open');
-          }
-        }
-      }, { passive: true });
-
-      content.addEventListener('touchend', function() {
-        isDragging = false;
-      }, { passive: true });
-      console.log('[Patch] Swipe-to-close added to cart overlay.');
-    }
-  }
-
-  // ------------------------------------------------------------------
-  // 5. Ensure SmartQuote initialization is idempotent
-  // ------------------------------------------------------------------
-  // The original initSmartQuote checks if the element already exists,
-  // so it's already safe. But we can add a flag to prevent duplicate calls.
-  if (typeof initSmartQuote === 'function') {
-    const origInitSQ = initSmartQuote;
-    let sqInitialized = false;
-    window.initSmartQuote = function() {
-      if (sqInitialized) return;
-      sqInitialized = true;
-      origInitSQ();
-      console.log('[Patch] SmartQuote initialized once.');
-    };
-    // If it was already called before this patch, set the flag.
-    if (document.getElementById('sqTextBar')) {
-      sqInitialized = true;
-    }
-    console.log('[Patch] SmartQuote init wrapped.');
-  }
-
-  // ------------------------------------------------------------------
-  // 6. Remove any stray debugger statements (just in case)
-  //    We'll scan all script tags and replace 'debugger;' with '// debugger;'
-  //    but that would be destructive. We'll just warn.
-  // ------------------------------------------------------------------
-  const scripts = document.querySelectorAll('script');
-  let found = false;
-  scripts.forEach(function(script) {
-    if (script.textContent.includes('debugger')) {
-      found = true;
-    }
-  });
-  if (found) {
-    console.warn('[Patch] ⚠️ debugger statements found in scripts. Please remove them manually.');
-  } else {
-    console.log('[Patch] ✅ No debugger statements found.');
-  }
-
-  // ------------------------------------------------------------------
-  // 7. Additional: ensure store and legacy State stay in sync
-  //    (if store exists, bind it again)
-  // ------------------------------------------------------------------
-  if (window.__store && window.State) {
-    // Subscribe to store changes and update the legacy State object
-    const unsub = window.__store.subscribe(function(state) {
-      if (window.State && typeof window.State === 'object') {
-        // Only update cart and step – keep other fields if they exist
-        window.State.serviceRequest = state.cart.serviceRequest;
-        window.State.furnitureItems = state.cart.furnitureItems;
-        window.State.currentStep = state.cart.currentStep;
-      }
-    });
-    // Also sync current cart from State if store is empty
-    const currentState = window.__store.getState();
-    if (currentState.cart.serviceRequest.length === 0 && window.State && window.State.serviceRequest) {
-      window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: window.State.serviceRequest } });
-    }
-    console.log('[Patch] Store-bound legacy State object.');
-  }
-
-  console.log('✅ BookTOM patch applied successfully.');
-})();
-<script>
-// ============================================================
-//  BookTOM – Performance Patch (rAF throttling)
-//  Replaces sqBuildCuratedIntake with a version that uses
-//  requestAnimationFrame to coalesce rapid re-renders.
-// ============================================================
-
-(function() {
-  'use strict';
-
-  // Store the original function – we'll use its logic but patch the render loop.
-  const originalSqBuildCuratedIntake = window.sqBuildCuratedIntake;
-
-  // Only proceed if the original exists (safety).
-  if (typeof originalSqBuildCuratedIntake !== 'function') {
-    console.warn('[Patch] sqBuildCuratedIntake not found – skipping rAF patch.');
-    return;
-  }
-
-  // We'll redefine the function. To keep it maintainable, we copy the entire
-  // function body from the source and modify the `render` definition.
-  // This is the exact same code as in UIRenderer.js, with the only change being
-  // the render function throttled by requestAnimationFrame.
-  // 
-  // The modified render logic is inside the function below.
-  // 
-  // Note: This patch preserves all original behaviour – it only adds a
-  // render‑pending flag and rAF scheduling.
-
-  window.sqBuildCuratedIntake = function(svc) {
-    // ─── All original setup code ────────────────────────────────────────
-    S._svc = svc;
-    S.answers = S.answers || {};
-    S._jobNotes = S._jobNotes || '';
-    S._curatedMode = true;
-    S.userTagIds = S.userTagIds || [];
-
-    // ── Phase 7 rewire: use orch_compose_intake_chain ──────────
-    const allMods = orch_compose_intake_chain({}, { entity: svc }, DB);
-
-    // ── JSON-sourced constants ────────────────────────────────────
-    const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
-
-    const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
-
-    const confStrat = svc.confidence_strategy || {};
-    const minConf = confStrat.minimum_quote_confidence || 80;
-    const maxQs = confStrat.maximum_followup_questions || 5;
-
-    const csKey = svc.financial_engine?.checkout_state || 'standard_flat_rate';
-    const csObj = DB.checkout_states?.[csKey] || {};
-
-    const discKey = svc.default_estimates?.disclaimer || 'flat_fee';
-    const disclaimer = DB.meta?.estimate_disclaimers?.[discKey] || csObj.ui_message || '';
-
-    const stNorm = (svc.service_type || 'Install').replace('Install / Mount', 'Install');
-    const stDef = DB?.service_types?.[stNorm] || {};
-    const basePrice = svc.financial_engine?.base_price || stDef.base_price || 0;
-
-    const om = svc.operational_metrics || {};
-
-    const tags = DB.smart_tags || {};
-    const catId = S.intent?.category || svc.ui_taxonomy?.category_id || '';
-    const groupId = svc.ui_taxonomy?.group_id || S.intent?._groupId || '';
-    const svcName = svc.ui_taxonomy?.display_name || svc.id;
-    const catObj = categoryMap.get(catId);
-    const grpObj = groupMap.get(groupId);
-    const catName = catObj?.display_name || '';
-    const grpName = grpObj?.display_name || '';
-
-    const svcVerb = (() => {
-      const n = svcName.toLowerCase();
-      if (n.includes('install') || n.includes('mount')) return 'installed';
-      if (n.includes('repair') || n.includes('fix')) return 'repaired';
-      if (n.includes('assembl')) return 'assembled';
-      if (n.includes('replace')) return 'replaced';
-      return 'done';
-    })();
-    const isDoorLike = groupId.includes('door') || svcName.toLowerCase().includes('door');
-    const qtyNoun = isDoorLike ? 'door' : 'item';
-
-    // ── Seed suggested_tags from dynamic_services ─────────────────
-    if (!S._suggestedTagIds?.length) {
-      S._suggestedTagIds = [];
-      const dynDef = resolveDynamicService(catId, stNorm, groupId);
-      (dynDef?.suggested_tags || []).forEach(tagObj => {
-        if (!tagObj?.$ref) return;
-        const tagId = '#' + tagObj.$ref.split('/').pop().replace(/^#/, '');
-        if (tags[tagId] && !S._suggestedTagIds.includes(tagId)) S._suggestedTagIds.push(tagId);
-      });
-    }
-
-    const NOISE = new Set(['#plumbing', '#electrical', '#wall_mount', '#flushometer',
-      '#bidet_attachment', '#flushometer_bidet', '#virus', '#wifi_dead_zone',
-      '#data_recovery', '#cracked_tile', '#broken_leg', '#scratched_surface',
-      '#wobbly', '#furniture_assembly_ikea', '#leaky_faucet', '#clogged_drain',
-      '#toilet_running', '#fan_box_missing'
-    ]);
-    const getCuratedTids = () => {
-      const suggested = new Set(S._suggestedTagIds || []);
-      return Object.keys(tags).filter(tid => {
-        if (NOISE.has(tid)) return false;
-        return tagValidForCategory(tid, catId, groupId);
-      }).sort((a, b) => (suggested.has(a) ? 0 : 1) - (suggested.has(b) ? 0 : 1));
-    };
-
-    const enforceRequires = (tid) => {
-      (tags[tid]?.requires || []).forEach(r => {
-        const req = typeof r === 'string' ? r : (r?.$ref ? '#' + r.$ref.split('/').pop().replace(/^#/, '') : null);
-        if (req && tags[req] && !S.manTagIds.includes(req) && !S.detTagIds.includes(req)) {
-          S.manTagIds.push(req);
-          if (!S.userTagIds.includes(req)) S.userTagIds.push(req);
-        }
-      });
-    };
-
-    // Open step 3
-    sqUnlock(3);
-    sqOpen(3);
-    const sb3 = document.getElementById('sqSb3');
-    if (!sb3) return;
-
-    // ──────────────────────────────────────────────────────────────
-    // ─── PATCHED RENDER FUNCTION (with rAF throttling) ──────────
-    // ──────────────────────────────────────────────────────────────
-    let renderPending = false; // flag to avoid multiple scheduled renders
-
-    // The actual render logic – identical to the original, but now wrapped
-    // in a function that we call via rAF.
-    const doRender = () => {
-      // ---- Original render body (copied verbatim) ----
-      const answers = S.answers;
-      const exist = new Set([...S.manTagIds, ...S.detTagIds]);
-      const suggested = new Set(S._suggestedTagIds || []);
-      const curTids = getCuratedTids();
-
-      let intakeFee = 0,
-          intakeMin = 0;
-      realMods.forEach(mod => {
-        if (!_isModVisible(mod, answers, allMods)) return;
-        const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
-        if (!chosen) return;
-        intakeFee += chosen.effects?.fee || 0;
-        intakeMin += chosen.effects?.minutes || 0;
-      });
-
-      const _baseConf2 = svc.confidence_strategy?.base_confidence ?? 40;
-      let conf = _baseConf2;
-      realMods.forEach(mod => {
-        if (_isModVisible(mod, answers, allMods) && answers[mod.moduleKey])
-          conf += (mod.confidence_gain || 15);
-      });
-      const nlpBonus = Math.min(20, (S.intent?._matchConfidence || 0) * 0.2);
-      conf += nlpBonus;
-      const activeTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
-      const tagBonus = Math.min(15, activeTagIds.reduce((sum, tid) => {
-        const co = tags[tid]?.effects?.complexity_override;
-        return sum + (co === 'specialized' ? 10 : co === 'skilled' ? 5 : 0);
-      }, 0));
-      conf += tagBonus;
-      conf = Math.min(conf, 100);
-      const ready = conf >= minConf;
-
-      const detAndManEarly = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
-      const tagFeeTotal = detAndManEarly.reduce((sum, tid) => {
-        const t = tags[tid];
-        return sum + (t?.fee ?? t?.effects?.fee ?? 0);
-      }, 0);
-      const livePrice = basePrice + intakeFee + tagFeeTotal;
-      const visibleMods = realMods.filter(m => _isModVisible(m, answers, allMods));
-      const answered = visibleMods.filter(m => answers[m.moduleKey]).length;
-      const total = visibleMods.length;
-      const remaining = total - answered;
-      const allQsDone = answered === total;
-      const pricePrefix = (remaining > 0 && tagFeeTotal === 0) ? 'from ' : '';
-
-      sb3.innerHTML = `
-        <div id="sqDetTags"  style="display:none"></div>
-        <div id="sqDynGroups" style="display:none"></div>
-        <span id="sqQtyV"    style="display:none">${S.qty}</span>
-        <span id="sqQtyLbl"  style="display:none"></span>
-        <div  id="sqAdlibBox" style="display:none"><div id="sqAdlibSentence"></div></div>`;
-
-      const card = document.createElement('div');
-      card.className = 'sq-ic';
-
-      const builderDesc = (S._fromBuilder && S.desc && S.desc !== svcName) ? escapeHtml(S.desc) : null;
-      const dots = realMods.map(m =>
-        `<span class="sq-ic-dot ${answers[m.moduleKey]?'done':''}"></span>`).join('');
-      card.innerHTML += `
-        <div class="sq-ic-hdr">
-          <div class="sq-ic-hdr-icon">${svc.ui_taxonomy?.icon || '🔧'}</div>
-          <div class="sq-ic-hdr-body">
-            <h2 class="sq-ic-hdr-name">${svcName}</h2>
-            <p class="sq-ic-hdr-desc">${svc.ui_taxonomy?.description || ''}</p>
-            ${builderDesc ? `<div class="sq-ic-builder-note"><i class="ti ti-sparkles" style="font-size:.85em;margin-right:4px;opacity:.6"></i><em>"${builderDesc}"</em></div>` : ''}
-            <div class="sq-ic-hdr-foot">
-              <span class="sq-ic-price"><i style="font-style:italic;font-size:.72em">${pricePrefix}</i>$${livePrice}${(intakeFee+tagFeeTotal)>0?`<span style="font-size:.72em;opacity:.75;margin-left:2px">(+$${intakeFee+tagFeeTotal})</span>`:''}</span>
-              <span class="sq-ic-prog">${dots}<span>${answered} of ${total} answered</span></span>
-            </div>
-          </div>
-        </div>`;
-
-      if (catName || grpName) {
-        const parts = [];
-        if (catName) parts.push(`<span>${catName}</span>`);
-        if (grpName) parts.push(`<span>${grpName}</span>`);
-        parts.push(`<span class="cur">${svcName}</span>`);
-        card.innerHTML += `<div class="sq-ic-crumb">${parts.join('<span class="arr">›</span>')}</div>`;
-      }
-
-      const detAndMan = [...new Set([...S.detTagIds, ...S.manTagIds])];
-      if (detAndMan.length > 0 || S.negatedTagIds.length > 0) {
-        let nlpRow = `<div class="sq-ic-nlp-row">
-          <span class="sq-ic-nlp-lbl">We understood:</span>`;
-        S.negatedTagIds.forEach(tid => {
-          if (!tags[tid]) return;
-          nlpRow += `<span class="sq-ic-nlp-chip neg" title="Confirmed absent — no surcharge"><i class="ti ti-check"></i> ✓ not ${sqTagLabel(tags[tid],tid)}</span>`;
-        });
-        detAndMan.forEach(tid => {
-          if (!tags[tid]) return;
-          const fee = tags[tid].fee ?? tags[tid].effects?.fee ?? 0;
-          nlpRow += `<span class="sq-ic-nlp-chip pos" data-tid="${tid}" title="Tap to remove">
-            ${sqTagLabel(tags[tid],tid)}${fee>0?` <strong>+$${fee}</strong>`:''}
-            <i class="ti ti-x" style="font-size:.6rem;margin-left:3px;opacity:.55"></i>
-          </span>`;
-        });
-        nlpRow += `</div>`;
-        card.innerHTML += nlpRow;
-      }
-
-      if (realMods.length > 0) {
-        let qHtml = `<div class="sq-ic-qs">
-          <div class="sq-ic-qs-hdr">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-            Job specifics
-          </div>`;
-        let shown = 0;
-        visibleMods.forEach(mod => {
-          const isDone = !!answers[mod.moduleKey];
-          if (!isDone && shown >= maxQs) return;
-          if (!isDone) shown++;
-          qHtml += `
-          <div class="sq-ic-q">
-            <div class="sq-ic-q-lbl">
-              <span><span class="sq-ic-q-num ${isDone?'done':''}">${shown}</span>${mod.question}</span>
-              ${mod.affects_price ? `<span class="sq-ic-price-tag"><i class="ti ${DB.ui_config?.affects_price_icon||'ti-currency-dollar'}"></i></span>` : ''}
-            </div>
-            <div class="sq-ic-grid">`;
-          (mod.client_response || []).forEach(resp => {
-            const isSel = answers[mod.moduleKey] === resp.label;
-            const fee = resp.effects?.fee || 0;
-            const mins = resp.effects?.minutes || 0;
-            const impact = fee > 0 ? `+$${fee}` : (mins > 0 ? `+${mins}min` : '');
-            qHtml += `<button type="button" class="sq-ic-btn${isSel?' sel':''}"
-              data-mod="${mod.moduleKey}" data-label="${resp.label.replace(/"/g,'&quot;')}">
-              <span>${resp.label}</span>${impact ? `<span class="sq-ic-fee">${impact}</span>` : ''}
-            </button>`;
-          });
-          qHtml += `</div></div>`;
-        });
-        qHtml += '</div>';
-        card.innerHTML += qHtml;
-      }
-
-      if (allQsDone) {
-        const curTids = getCuratedTids();
-        let extHtml = `<div class="sq-ic-extra">
-          <div class="sq-ic-extra-title">Any special conditions?
-            <span style="font-weight:400;font-size:.72rem;color:#9ca3af;margin-left:6px">optional — tap to add</span>
-          </div>
-          <div class="sq-ic-chips-row">`;
-        curTids.forEach(tid => {
-          const t = tags[tid];
-          const sel = exist.has(tid) && !S.negatedTagIds.includes(tid);
-          const isSug = suggested.has(tid);
-          const fee = t.fee ?? t.effects?.fee ?? 0;
-          const lbl = sqTagLabel(t, tid);
-          extHtml += `<span class="sq-ic-chip${sel?' sel':isSug&&!sel?' hint':''}" data-tid="${tid}">
-            ${sel ? '' : isSug ? '✦ ' : '+ '}${lbl}${fee>0?`<span class="sq-ic-chip-fee"> +$${fee}</span>`:''}
-          </span>`;
-        });
-        extHtml += `</div>
-          <textarea class="sq-ic-notes" placeholder="Add details (e.g. rough opening is 30×80, door swings left)…">${S._jobNotes||''}</textarea>
-        </div>`;
-        card.innerHTML += extHtml;
-      }
-
-      const answeredMods = visibleMods.filter(m => answers[m.moduleKey]);
-      const activeCons = [...exist].filter(tid => tags[tid] && getCuratedTids().includes(tid));
-
-      let adlibHtml = `<div class="sq-ic-adlib" id="sqCuratedAdlib">`;
-      if (catName) adlibHtml += `<span class="aw">In</span><span class="ab">${catName}</span>`;
-      if (grpName) adlibHtml += `<span class="aw">›</span><span class="ab">${grpName}</span>`;
-      adlibHtml += `<span class="aw"> I need </span>
-        <span class="ap"><span>${S.qty}</span><i class="ti ti-chevron-down"></i>
-          <select id="sqCurQtySel">${['1','2','3','4','5','6','8','10'].map(v=>`<option${v==S.qty?' selected':''}>${v}</option>`).join('')}</select>
-        </span>
-        <span style="font-weight:800;color:var(--clr-red-dark,#8a0615)">${svcName}</span>
-        <span class="ap"><span>${svcVerb}</span><i class="ti ti-chevron-down"></i>
-          <select id="sqCurVerbSel">${['installed','repaired','replaced','assembled','adjusted','set up'].map(v=>`<option${v===svcVerb?' selected':''}>${v}</option>`).join('')}</select>
-        </span>`;
-      if (answeredMods.length > 0) {
-        adlibHtml += `<span class="aw"> · </span>`;
-        answeredMods.forEach((mod, i) => {
-          const label = answers[mod.moduleKey];
-          if (i > 0) adlibHtml += `<span class="aw"> and </span>`;
-          adlibHtml += `<span class="ans"><i class="ti ti-check" style="font-size:.62rem"></i>${label.length>26?label.slice(0,24)+'…':label}</span>`;
-        });
-      }
-      if (activeCons.length > 0) {
-        adlibHtml += `<span class="aw"> · </span>`;
-        activeCons.slice(0, 3).forEach(tid => {
-          adlibHtml += `<span class="cond" data-tid="${tid}">${sqTagLabel(tags[tid],tid)}<i class="ti ti-x" style="font-size:.6rem;margin-left:3px;opacity:.55"></i></span>`;
-        });
-      }
-      adlibHtml += `</div>`;
-
-      const sumHtml = `<div class="sq-ic-summary">
-        <div class="sq-ic-sum-hdr">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/></svg>
-          Summary of request
-        </div>
-        <div class="sq-ic-qty">
-          <button class="sq-ic-qty-btn" id="sqCurQtyDec">−</button>
-          <span class="sq-ic-qty-val" id="sqCurQtyVal">${S.qty}</span>
-          <button class="sq-ic-qty-btn" id="sqCurQtyInc">+</button>
-          <span class="sq-ic-qty-lbl">${qtyNoun}${S.qty!==1?'s':''}</span>
-        </div>
-        ${adlibHtml}
-        <div class="sq-ic-cta">
-          <button class="sq-ic-est ${ready?'ready':'locked'}" id="sqCurEstBtn" ${ready?'':'disabled'}>
-            ${ready
-              ? `<i class="ti ti-calculator"></i> Review Estimate — $${livePrice * S.qty}`
-              : remaining > 0
-                ? `<span style="font-size:.82rem">Answer ${remaining} more question${remaining!==1?'s':''} to continue</span>`
-                : `<span style="font-size:.82rem">Add more detail in the notes to continue</span>`}
-          </button>
-          <button class="sq-ic-back" id="sqCurBackBtn">← Back</button>
-        </div>
-        ${disclaimer ? `<p style="font-size:.68rem;color:#9ca3af;margin-top:10px;line-height:1.4">${disclaimer}</p>` : ''}
-      </div>`;
-      card.innerHTML += sumHtml;
-      sb3.appendChild(card);
-
-      // ── WIRE EVENTS (identical to original) ──────────────────────────
-
-      card.querySelectorAll('.sq-ic-btn[data-mod]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          S.answers[btn.dataset.mod] = btn.dataset.label;
-          const mod = realMods.find(m => m.moduleKey === btn.dataset.mod);
-          const resp = (mod?.client_response || []).find(r => r.label === btn.dataset.label);
-          if (resp?.effects?.complexity_override && S.intent) {
-            const TIER = { routine: 0, skilled: 1, specialized: 2 };
-            const cur = TIER[S.intent._exactTier || 'skilled'] || 1;
-            const nxt = TIER[resp.effects.complexity_override] || 1;
-            if (nxt > cur) S.intent._exactTier = resp.effects.complexity_override;
-          }
-          (resp?.tags || []).forEach(tagRef => {
-            const tid = typeof tagRef === 'string' ? tagRef :
-              (tagRef?.$ref ? '#' + tagRef.$ref.split('/').pop().replace(/^#/, '') : null);
-            if (tid && tags[tid] && !S.detTagIds.includes(tid) && !S.manTagIds.includes(tid))
-              S.detTagIds.push(tid);
-          });
-          // Instead of calling render() directly, we schedule it.
-          scheduleRender();
-        });
-      });
-
-      card.querySelectorAll('.sq-ic-chip[data-tid]').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const tid = chip.dataset.tid;
-          if (chip.classList.contains('sel')) {
-            S.manTagIds = S.manTagIds.filter(x => x !== tid);
-            S.detTagIds = S.detTagIds.filter(x => x !== tid);
-            S.userTagIds = S.userTagIds.filter(x => x !== tid);
-          } else {
-            S.negatedTagIds = S.negatedTagIds.filter(x => x !== tid);
-            (tags[tid]?.mutually_exclusive || []).forEach(sib => {
-              S.manTagIds = S.manTagIds.filter(x => x !== sib);
-              S.detTagIds = S.detTagIds.filter(x => x !== sib);
-              S.userTagIds = S.userTagIds.filter(x => x !== sib);
-            });
-            if (!S.manTagIds.includes(tid)) S.manTagIds.push(tid);
-            if (!S.userTagIds.includes(tid)) S.userTagIds.push(tid);
-            enforceRequires(tid);
-          }
-          scheduleRender();
-        });
-      });
-
-      card.querySelectorAll('.sq-ic-nlp-chip.pos[data-tid]').forEach(el => {
-        el.addEventListener('click', () => {
-          const tid = el.dataset.tid;
-          S.manTagIds = S.manTagIds.filter(x => x !== tid);
-          S.detTagIds = S.detTagIds.filter(x => x !== tid);
-          S.userTagIds = (S.userTagIds || []).filter(x => x !== tid);
-          scheduleRender();
-        });
-      });
-
-      card.querySelectorAll('.sq-ic-adlib .cond[data-tid]').forEach(el => {
-        el.addEventListener('click', () => {
-          const tid = el.dataset.tid;
-          S.manTagIds = S.manTagIds.filter(x => x !== tid);
-          S.detTagIds = S.detTagIds.filter(x => x !== tid);
-          S.userTagIds = S.userTagIds.filter(x => x !== tid);
-          scheduleRender();
-        });
-      });
-
-      const ta = card.querySelector('.sq-ic-notes');
-      let _notesTid;
-      if (ta) ta.addEventListener('input', () => {
-        S._jobNotes = ta.value;
-        clearTimeout(_notesTid);
-        _notesTid = setTimeout(() => {
-          if (ta.value.length > 5) {
-            const nlp = detectTagsNLP(ta.value);
-            nlp.found.forEach(tid => {
-              if (tagValidForCategory(tid, catId, groupId) &&
-                  !S.detTagIds.includes(tid) &&
-                  !S.manTagIds.includes(tid) &&
-                  !S.negatedTagIds.includes(tid) &&
-                  !(S._suggestedTagIds || []).includes(tid))
-                (S._suggestedTagIds = S._suggestedTagIds || []).push(tid);
-            });
-          }
-          scheduleRender();
-        }, 400);
-      });
-
-      card.querySelector('#sqCurQtyDec')?.addEventListener('click', () => {
-        S.qty = Math.max(1, S.qty - 1);
-        scheduleRender();
-      });
-      card.querySelector('#sqCurQtyInc')?.addEventListener('click', () => {
-        S.qty = Math.min(99, S.qty + 1);
-        scheduleRender();
-      });
-      card.querySelector('#sqCurQtySel')?.addEventListener('change', e => {
-        S.qty = parseInt(e.target.value) || 1;
-        scheduleRender();
-      });
-
-      const estBtn = card.querySelector('#sqCurEstBtn');
-      if (estBtn && ready) {
-        estBtn.addEventListener('click', () => {
-          S._objectNoun = svcName;
-          S.adlibConfirmed = false;
-          const hs = document.getElementById('sqAdlibSentence');
-          if (hs) hs.innerHTML = card.querySelector('#sqCuratedAdlib')?.innerHTML || '';
-          document.getElementById('sqQtyV').textContent = S.qty;
-          sqConfirmAdlib();
-        });
-      }
-
-      card.querySelector('#sqCurBackBtn')?.addEventListener('click', sqRestart);
-
-      // ─── End of render body ────────────────────────────────────────────
-    }; // end of doRender
-
-    // ─── The scheduleRender function (rAF throttling) ─────────────────
-    const scheduleRender = () => {
-      if (renderPending) return;
-      renderPending = true;
-      requestAnimationFrame(() => {
-        renderPending = false;
-        doRender();
-      });
-    };
-
-    // ─── Initial render ────────────────────────────────────────────────
-    // We call doRender directly on first load, but subsequent calls go
-    // through scheduleRender.
-    doRender();
-
-    // Expose the schedule function for any external use (optional)
-    window._sqCuratedRender = scheduleRender;
-  }; // end of new sqBuildCuratedIntake
-
-  console.log('[Patch] sqBuildCuratedIntake replaced with rAF-throttled version.');
-})();
-</script>
+<!-- v9.6: the "BookTOM Automated Fixes" and "Performance Patch" console-paste
+     scripts that were here have been removed. They were explicitly
+     console-debugging code ("Paste this into the console or include as a
+     script"), not application source: they caused a real HTML parse error
+     (a literal opening script element embedded inside JS, missing its own
+     closing tag), and monkey-patched sqBuildCuratedIntake with a ~700-line
+     verbatim copy of the real function that doesn't even achieve its own
+     stated goal (the rAF throttling isn't wired to the actual chip-click
+     handlers, only the initial render). The real, correct, tested
+     sqBuildCuratedIntake earlier in this file was never the problem. -->
     
 <script>
         if ('serviceWorker' in navigator) {
