@@ -6079,10 +6079,11 @@ const q = (sel, ctx = document) => (ctx || document).querySelector(sel);
 const qAll = (sel, ctx = document) => Array.from((ctx || document).querySelectorAll(sel));
 
 function renderCart() {
-                    updateFabVisibility();
-                    updateCartSummary();
-                    updateCartOverlayTotal();
-                    if (DOM.cartOverlay && DOM.cartOverlay.style.display === 'flex') updateCartOverlayIfOpen();
+                    const cart = window.__store.getState().cart.serviceRequest;
+                    updateFabVisibility(cart);
+                    updateCartSummary(cart);
+                    updateCartOverlayTotal(cart);
+                    if (DOM.cartOverlay && DOM.cartOverlay.style.display === 'flex') updateCartOverlayIfOpen(cart);
                 }
 
 function renderCategoryCards() {
@@ -6254,7 +6255,10 @@ function restoreCategoryView() {
                     if (DOM.summaryMainContainer) DOM.summaryMainContainer.style.display = 'none';
                     if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
                     if (DOM.serviceContainer) DOM.serviceContainer.innerHTML = '';
-                    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
+                    if (DOM.serviceRequestSummary) {
+                        const items = window.__store.getState().cart.serviceRequest;
+                        DOM.serviceRequestSummary.style.display = items.length ? 'block' : 'none';
+                    }
                     updateFabVisibility();
                     const stepFlow = document.getElementById('stepFlow');
                     if (stepFlow) stepFlow.style.display = 'none';
@@ -8357,16 +8361,17 @@ function update() {
         }, 80);
     }
 
-function updateCartOverlayIfOpen() {
+function updateCartOverlayIfOpen(cart) {
                     if (!DOM.cartOverlay || DOM.cartOverlay.style.display !== 'flex') return;
+                    const items = cart || window.__store.getState().cart.serviceRequest;
                     const list = DOM.cartServiceList;
                     if (!list) return;
-                    const totalItems = State.serviceRequest.length;
+                    const totalItems = items.length;
                     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
                     if (cartCurrentPage > totalPages && totalPages > 0) cartCurrentPage = totalPages;
                     if (totalPages === 0) cartCurrentPage = 1;
                     const start = (cartCurrentPage - 1) * ITEMS_PER_PAGE;
-                    const pageItems = State.serviceRequest.slice(start, start + ITEMS_PER_PAGE);
+                    const pageItems = items.slice(start, start + ITEMS_PER_PAGE);
                     list.replaceChildren();
                     if (totalItems === 0) {
                         list.innerHTML = `<div class="empty-invoice-message">🛒 Your cart is empty<br><button class="add-more-button" id="emptyCartBrowseBtn" type="button">Browse Catalog</button></div>`;
@@ -8385,6 +8390,20 @@ function updateCartOverlayIfOpen() {
                         if (disc) disc.remove();
                         return;
                     }
+                    // Compute instance labels for the current page (same grouping as updateCartSummary)
+                    const groups = {};
+                    items.forEach(s => {
+                        if (s.furnitureItems) return;
+                        const key = s.name + '::' + s.category_id;
+                        (groups[key] = groups[key] || []).push(s);
+                    });
+                    const labels = {};
+                    Object.values(groups).forEach(group => {
+                        if (group.length > 1) {
+                            group.forEach((s, i) => { labels[s.id] = `#${i + 1}`; });
+                        }
+                    });
+
                     pageItems.forEach(svc => {
                         const item = create('div', {
                             class: 'cart-service-item'
@@ -8396,15 +8415,14 @@ function updateCartOverlayIfOpen() {
                         const tw = create('div', {
                             class: 'cart-service-text'
                         });
-                        // v9.1: same instance-label badge as updateCartSummary —
-                        // see addToCart() for why this exists.
-                        const ovNameNode = svc._instanceLabel
+                        const instanceLabel = labels[svc.id];
+                        const nameNode = instanceLabel
                             ? create('span', {}, [
                                 document.createTextNode(svc.name + ' '),
-                                create('span', { class: 'cart-instance-badge', text: svc._instanceLabel })
+                                create('span', { class: 'cart-instance-badge', text: instanceLabel })
                             ])
                             : document.createTextNode(svc.name);
-                        tw.appendChild(create('h4', {}, [ovNameNode]));
+                        tw.appendChild(create('h4', {}, [nameNode]));
                         tw.appendChild(create('div', {
                             class: 'summary-service-detail',
                             text: svc.detail || ''
@@ -8510,7 +8528,8 @@ function updateCartOverlayIfOpen() {
                     } else termsWrap.style.display = 'flex';
                     const oldDisc = document.querySelector('#projectDisclaimerNote');
                     if (oldDisc) oldDisc.remove();
-                    const hasProjectBased = State.serviceRequest.some(s => {
+                    // Use items from store for project-based check
+                    const hasProjectBased = items.some(s => {
                         const foundSvc = SERVICE_DATA.services.find(service => service.id === s.serviceId);
                         return foundSvc && foundSvc.estimate_disclaimer === 'project_based';
                     });
@@ -8535,7 +8554,8 @@ function updateCartOverlayIfOpen() {
                                 toast('Please agree to the Service Agreement.', 'error');
                                 return;
                             }
-                            if (!State.serviceRequest.length) {
+                            const currentItems = window.__store.getState().cart.serviceRequest;
+                            if (!currentItems.length) {
                                 toast('No services to book.', 'error');
                                 return;
                             }
@@ -8562,17 +8582,33 @@ function updateCartOverlayIfOpen() {
                     }
                 }
 
-function updateCartOverlayTotal() {
-                    const total = State.serviceRequest.reduce((sum, svc) => sum + parsePriceToInt(svc.price), 0);
+function updateCartOverlayTotal(cart) {
+                    const items = cart || window.__store.getState().cart.serviceRequest;
+                    const total = items.reduce((sum, svc) => sum + parsePriceToInt(svc.price), 0);
                     if (DOM.cartTotal) setText(DOM.cartTotal, `$${total}`);
-                    if (DOM.serviceCount) setText(DOM.serviceCount, String(State.serviceRequest.length));
+                    if (DOM.serviceCount) setText(DOM.serviceCount, String(items.length));
                 }
 
-function updateCartSummary() {
+function updateCartSummary(cart) {
                     if (!DOM.serviceRequestList) return;
+                    const items = cart || window.__store.getState().cart.serviceRequest;
+                    // Compute instance labels dynamically (group by name+category)
+                    const groups = {};
+                    items.forEach(s => {
+                        if (s.furnitureItems) return;
+                        const key = s.name + '::' + s.category_id;
+                        (groups[key] = groups[key] || []).push(s);
+                    });
+                    const labels = {};
+                    Object.values(groups).forEach(group => {
+                        if (group.length > 1) {
+                            group.forEach((s, i) => { labels[s.id] = `#${i + 1}`; });
+                        }
+                    });
+
                     DOM.serviceRequestList.replaceChildren();
                     let total = 0;
-                    State.serviceRequest.forEach(svc => {
+                    items.forEach(svc => {
                         const item = create('div', {
                             class: 'summary-service-item'
                         });
@@ -8583,19 +8619,11 @@ function updateCartSummary() {
                         const tw = create('div', {
                             class: 'summary-service-text'
                         });
-                        // v9.1: when two cart entries share name+category+price but
-                        // have different notes/context (e.g. "Mount TV" in the
-                        // living room vs. the bedroom), addToCart() tags each with
-                        // an _instanceLabel ('#1', '#2'...) instead of silently
-                        // merging them into one qty count and losing the first
-                        // entry's location. Render that label as a small badge so
-                        // the distinction is actually visible, not just tracked
-                        // internally — this is the fix for the reported bug where
-                        // two genuinely different requests looked identical in cart.
-                        const nameNode = svc._instanceLabel
+                        const instanceLabel = labels[svc.id];
+                        const nameNode = instanceLabel
                             ? create('span', {}, [
                                 document.createTextNode(svc.name + ' '),
-                                create('span', { class: 'cart-instance-badge', text: svc._instanceLabel })
+                                create('span', { class: 'cart-instance-badge', text: instanceLabel })
                             ])
                             : document.createTextNode(svc.name);
                         tw.appendChild(create('h4', {}, [nameNode, svc.price && svc.price.includes('/hr') ? create('span', {
@@ -8657,20 +8685,20 @@ function updateCartSummary() {
                         DOM.serviceRequestList.appendChild(item);
                         total += parsePriceToInt(svc.price);
                     });
-                    const hasItems = State.serviceRequest.length > 0;
+                    const hasItems = items.length > 0;
                     if (DOM.estimateTotalSummary) DOM.estimateTotalSummary.style.display = hasItems ? 'flex' : 'none';
                     if (DOM.totalAmount) setText(DOM.totalAmount, `$${total}`);
                     if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = hasItems ? 'block' : 'none';
-                    if (DOM.serviceCount) setText(DOM.serviceCount, String(State.serviceRequest.length));
-                    if (DOM.fabCount) setText(DOM.fabCount, String(State.serviceRequest.length));
-                    persistCart();
+                    if (DOM.serviceCount) setText(DOM.serviceCount, String(items.length));
+                    if (DOM.fabCount) setText(DOM.fabCount, String(items.length));
                 }
 
-function updateFabVisibility() {
+function updateFabVisibility(cart) {
                     if (!DOM.cartFab || !DOM.fabCount) return;
-                    const show = State.serviceRequest.length > 0;
+                    const items = cart || window.__store.getState().cart.serviceRequest;
+                    const show = items.length > 0;
                     DOM.cartFab.style.display = show ? 'flex' : 'none';
-                    setText(DOM.fabCount, String(State.serviceRequest.length));
+                    setText(DOM.fabCount, String(items.length));
                     const manageBtn = q("#manageVisitBtn");
                     if (manageBtn) manageBtn.style.display = show ? 'none' : '';
                 }
@@ -8799,56 +8827,63 @@ function _sqRevertAutoSelect() {
 
 function addToCart(entry) {
                     if (!entry?.id) return;
+
+                    // Get current cart from the store (not State)
+                    const currentCart = window.__store.getState().cart.serviceRequest;
+                    let newCart;
+
+                    // ---- Furniture merge ----
                     if (entry.furnitureItems?.length) {
-                        const existing = State.serviceRequest.find(item => item.name === entry.name && item.category_id === entry.category_id);
-                        if (existing) {
-                            existing.furnitureItems = [...existing.furnitureItems, ...entry.furnitureItems];
-                            const mins = existing.furnitureItems.map(f => f.minutes);
+                        const existingIndex = currentCart.findIndex(
+                            item => item.name === entry.name && item.category_id === entry.category_id
+                        );
+                        if (existingIndex !== -1) {
+                            const existing = currentCart[existingIndex];
+                            const newFurnitureItems = [...existing.furnitureItems, ...entry.furnitureItems];
+                            const mins = newFurnitureItems.map(f => f.minutes);
                             const charge = mathFurnitureAssembly(mins);
-                            existing.estimatedHours = charge.hours;
-                            existing.estimatedPrice = charge.price;
-                            existing.price = `$${charge.price.toFixed(2)}`;
-                            existing.notes = `Furniture Items: ${existing.furnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
+                            const updatedEntry = {
+                                ...existing,
+                                furnitureItems: newFurnitureItems,
+                                estimatedHours: charge.hours,
+                                estimatedPrice: charge.price,
+                                price: `$${charge.price.toFixed(2)}`,
+                                notes: `Furniture Items: ${newFurnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`
+                            };
+                            newCart = currentCart.map((item, i) => i === existingIndex ? updatedEntry : item);
+                            window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
                             renderCart();
                             toast('Merged with existing furniture request', 'success');
                             return;
                         }
                     }
-                    // Duplicate detection: merge qty rather than showing a confirm()
-                    // dialog — but ONLY when the requests are genuine repeats (same
-                    // name/category/price AND same notes/context). Two requests that
-                    // share a name+price but differ in notes (e.g. "Mount TV" in the
-                    // living room vs. "Mount TV" in the bedroom) are NOT the same
-                    // request — merging them silently into qty:2 loses the first
-                    // location entirely (dupe.notes was being overwritten by the
-                    // second entry's notes) and gives the user no visual way to tell
-                    // two distinct, valid bookings apart in the cart. v9.1 fix:
-                    // require notes to match (treating empty/undefined notes on
-                    // both sides as a match) before merging into qty; otherwise
-                    // fall through and add as its own distinct line item.
+
+                    // ---- Duplicate detection (same name, category, price, and notes) ----
                     const notesMatch = (a, b) => (a || '') === (b || '');
-                    const dupe = State.serviceRequest.find(item =>
+                    const dupeIndex = currentCart.findIndex(item =>
                         item.name === entry.name &&
                         item.category_id === entry.category_id &&
                         item.price === entry.price &&
                         notesMatch(item.notes, entry.notes) &&
-                        !item.furnitureItems // furniture has its own merge path above
+                        !item.furnitureItems
                     );
-                    if (dupe) {
-                        dupe.qty = (dupe.qty || 1) + 1;
+                    if (dupeIndex !== -1) {
+                        const dupe = currentCart[dupeIndex];
+                        const newQty = (dupe.qty || 1) + 1;
+                        const updatedEntry = { ...dupe, qty: newQty };
+                        newCart = currentCart.map((item, i) => i === dupeIndex ? updatedEntry : item);
+                        window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
                         renderCart();
-                        toast(`${entry.name} — qty updated to ${dupe.qty}`, 'success');
+                        toast(`${entry.name} — qty updated to ${newQty}`, 'success');
                         return;
                     }
-                    // Same service+price but DIFFERENT notes/context: add as a
-                    // distinct line item. _recomputeInstanceLabels (called via
-                    // renderCart below) tags this and any sibling with a visible
-                    // '#1'/'#2' badge so the cart UI shows they're different,
-                    // instead of letting them look identical with no way to tell
-                    // them apart.
+
+                    // ---- Append new entry ----
                     entry.qty = entry.qty || 1;
-                    State.serviceRequest.push(entry);
-                    _recomputeInstanceLabels();
+                    newCart = [...currentCart, entry];
+                    window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
+
+
                     if (DOM.cartFab) {
                         DOM.cartFab.style.animation = 'none';
                         requestAnimationFrame(() => DOM.cartFab.style.animation = 'cartBounce .4s ease');
@@ -8908,8 +8943,7 @@ function finalizeBooking() {
                     DOM.overlaybookNowBtn.disabled = true;
                     DOM.overlaybookNowBtn.textContent = 'Submitting…';
                     toast('Booking confirmed! (demo)', 'success');
-                    State.serviceRequest = [];
-                    persistCart();
+                    window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: [] } });
                     renderCart();
                     closeCartOverlay();
                     restoreCategoryView();
@@ -9255,8 +9289,9 @@ function prefillSmartQuoteFromService(svc, category_id) {
                 }
 
 function removeServiceFromCart(id) {
-                    State.serviceRequest = State.serviceRequest.filter(s => s.id !== id);
-                    _recomputeInstanceLabels();
+                    const currentCart = window.__store.getState().cart.serviceRequest;
+                    const newCart = currentCart.filter(s => s.id !== id);
+                    window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
                     renderCart();
                 }
 
@@ -10957,20 +10992,35 @@ function _recomputeInstanceLabels() {
                 }
 
 function removeFurnitureEntry(serviceId, idx) {
-                    const svc = State.serviceRequest.find(s => s.id === serviceId);
+                    const currentCart = window.__store.getState().cart.serviceRequest;
+                    const svcIndex = currentCart.findIndex(s => s.id === serviceId);
+                    if (svcIndex === -1) return;
+                    const svc = currentCart[svcIndex];
                     if (!svc?.furnitureItems) return;
-                    svc.furnitureItems.splice(idx, 1);
-                    if (svc.name?.toLowerCase().includes('assembly') && svc.furnitureItems.length === 0) {
-                        removeServiceFromCart(serviceId);
+
+                    const newFurnitureItems = [...svc.furnitureItems];
+                    newFurnitureItems.splice(idx, 1);
+
+                    if (svc.name?.toLowerCase().includes('assembly') && newFurnitureItems.length === 0) {
+                        // Remove the whole service
+                        const newCart = currentCart.filter((_, i) => i !== svcIndex);
+                        window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
+                        renderCart();
                         return;
                     }
-                    const mins = svc.furnitureItems.map(f => f.minutes);
+
+                    const mins = newFurnitureItems.map(f => f.minutes);
                     const charge = mathFurnitureAssembly(mins);
-                    svc.estimatedHours = charge.hours;
-                    svc.estimatedPrice = charge.price;
-                    svc.price = `$${charge.price.toFixed(2)}`;
-                    svc.notes = `Furniture Items: ${svc.furnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`;
-                    persistCart();
+                    const updatedSvc = {
+                        ...svc,
+                        furnitureItems: newFurnitureItems,
+                        estimatedHours: charge.hours,
+                        estimatedPrice: charge.price,
+                        price: `$${charge.price.toFixed(2)}`,
+                        notes: `Furniture Items: ${newFurnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`
+                    };
+                    const newCart = currentCart.map((s, i) => i === svcIndex ? updatedSvc : s);
+                    window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: newCart } });
                     renderCart();
                 }
 
@@ -11003,9 +11053,9 @@ function wireGlobalEvents() {
     // 3. Clear all, add more, book now (unchanged – they call renderCart etc.)
     const clearAllBtn = document.querySelector('#clearAllServicesBtn');
     if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
-        if (State.serviceRequest.length && confirm('Remove all services?')) {
-            State.serviceRequest = [];
-            persistCart();
+        const currentCart = window.__store.getState().cart.serviceRequest;
+        if (currentCart.length && confirm('Remove all services?')) {
+            window.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: [] } });
             renderCart();
             restoreCategoryView();
             toast('Cart cleared');
@@ -11019,11 +11069,13 @@ function wireGlobalEvents() {
     const bookNowBtn = document.querySelector('#bookNowBtn');
     const finalBookBtn = document.querySelector('#finalBookBtn');
     if (bookNowBtn) bookNowBtn.addEventListener('click', () => {
-        if (!State.serviceRequest.length) toast('Add at least one service.', 'error');
+        const items = window.__store.getState().cart.serviceRequest;
+        if (!items.length) toast('Add at least one service.', 'error');
         else openCartOverlay();
     });
     if (finalBookBtn) finalBookBtn.addEventListener('click', () => {
-        if (!State.serviceRequest.length) toast('Add at least one service.', 'error');
+        const items = window.__store.getState().cart.serviceRequest;
+        if (!items.length) toast('Add at least one service.', 'error');
         else openCartOverlay();
     });
     const manageBtn = document.querySelector('#manageVisitBtn');
@@ -11870,26 +11922,25 @@ function wireGlobalEvents() {
      * method (and its subscribe call) once grep confirms zero remaining direct
      * reads of the legacy globals, per Step B of the purge plan.
      */
-    function bindLegacyGlobals(win) {
-      win = win || (typeof window !== 'undefined' ? window : {});
-      const mirror = function (state) {
-        // Mirror the session slice back onto the legacy `S` object in place,
-        // preserving the identity of `S` so existing closures that captured it
-        // keep pointing at live data.
-        if (win.S && typeof win.S === 'object') {
-          Object.assign(win.S, state.session.legacyView);
-        } else {
-          win.S = Object.assign({}, state.session.legacyView);
-        }
-        if (win.State && typeof win.State === 'object') {
-          win.State.serviceRequest = state.cart.serviceRequest;
-          win.State.furnitureItems = state.cart.furnitureItems;
-          win.State.currentStep = state.cart.currentStep;
-        }
-      };
-      mirror(currentState);          // initial sync
-      return subscribe(mirror);      // keep in sync; returns an unsubscribe()
+   function bindLegacyGlobals(win) {
+  win = win || (typeof window !== 'undefined' ? window : {});
+  const mirror = function (state) {
+    // Remove or comment out the S mirroring:
+    // if (win.S && typeof win.S === 'object') {
+    //   Object.assign(win.S, state.session.legacyView);
+    // } else {
+    //   win.S = Object.assign({}, state.session.legacyView);
+    // }
+    // Only mirror the cart:
+    if (win.State && typeof win.State === 'object') {
+      win.State.serviceRequest = state.cart.serviceRequest;
+      win.State.furnitureItems = state.cart.furnitureItems;
+      win.State.currentStep = state.cart.currentStep;
     }
+  };
+  mirror(currentState);
+  return subscribe(mirror);
+}
 
     // Prime subscribers with the initial state via a real @@INIT pass so any
     // listener that renders on first tick has a fully-formed state to read.
@@ -11957,6 +12008,11 @@ function wireGlobalEvents() {
       } catch (_) {
         // ignore storage errors
       }
+    });
+
+    // Auto-render when cart changes
+    store.subscribe(() => {
+        renderCart();
     });
 
     // ─── 8. SET INITIAL CONTAINER STATES ───────────────────────────
