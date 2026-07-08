@@ -6549,7 +6549,7 @@ function showGroupsForCategory(category_id, fromBack = false) {
     if (!fromBack) Breadcrumbs.push({ type: 'categories' });
     if (!fromBack) enterFocusedMode();   // 👈 enter full‑screen glass mode
 
-    const groups = (DB.group || []).filter(g => g.category_id === category_id);
+    const groups = (DB.group || []).filter(g => g.category_id === category_id && !(g.parent_group || g.parent_id));
     const container = DOM.serviceContainer;
     container.replaceChildren();
     container.className = 'group-grid';  // use the grid layout from focused-mode CSS
@@ -10099,15 +10099,22 @@ function sqBuildCuratedIntake(svc) {
                         const suggested = new Set(S._suggestedTagIds || []);
                         const curTids = getCuratedTids();
 
-                        // Compute pricing from intake answers (reads intake_modules.effects via _resolveIntakeChain)
+                        // Compute pricing from intake answers via modifier_ref ->
+                        // global_rules.modifiers, matching computeUnifiedQuote's
+                        // canonical resolution (v9.6 fix -- this was still reading
+                        // the retired effects.fee pattern, which is always
+                        // undefined for any answer migrated to modifier_ref,
+                        // silently showing $0 impact for real fees like urgency's $50).
+                        const _mods = DB.global_rules?.modifiers || {};
                         let intakeFee = 0,
                             intakeMin = 0;
                         realMods.forEach(mod => {
                             if (!_isModVisible(mod, answers, allMods)) return;
                             const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
                             if (!chosen) return;
-                            intakeFee += chosen.effects?.fee || 0;
-                            intakeMin += chosen.effects?.minutes || 0;
+                            const m = chosen.modifier_ref ? (_mods[chosen.modifier_ref] || {}) : {};
+                            intakeFee += m.fee ?? chosen.effects?.fee ?? 0;
+                            intakeMin += m.minutes ?? chosen.effects?.minutes ?? 0;
                         });
 
                         // ── CONFIDENCE CALCULATION ───────────────────────────────────
@@ -10133,7 +10140,7 @@ function sqBuildCuratedIntake(svc) {
                         // provided real, pricing-relevant information that raises confidence.
                         const activeTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
                         const tagBonus = Math.min(15, activeTagIds.reduce((sum, tid) => {
-                            const co = tags[tid]?.effects?.complexity_override;
+                            const co = tags[tid]?.escalate_complexity ?? tags[tid]?.effects?.complexity_override;
                             return sum + (co === 'specialized' ? 10 : co === 'skilled' ? 5 : 0);
                         }, 0));
                         conf += tagBonus;
@@ -10260,9 +10267,10 @@ function sqBuildCuratedIntake(svc) {
             <div class="sq-ic-grid">`;
                                 (mod.client_response || []).forEach(resp => {
                                     const isSel = answers[mod.moduleKey] === resp.label;
-                                    const fee = resp.effects?.fee || 0;
-                                    const mins = resp.effects?.minutes || 0;
-                                    // Show time impact too if significant (from intake_modules.effects.minutes)
+                                    const _m = resp.modifier_ref ? (_mods[resp.modifier_ref] || {}) : {};
+                                    const fee = _m.fee ?? resp.effects?.fee ?? 0;
+                                    const mins = _m.minutes ?? resp.effects?.minutes ?? 0;
+                                    // Show time impact too if significant (from global_rules.modifiers)
                                     const impact = fee > 0 ? `+$${fee}` : (mins > 0 ? `+${mins}min` : '');
                                     qHtml += `<button type="button" class="sq-ic-btn${isSel?' sel':''}"
               data-mod="${mod.moduleKey}" data-label="${resp.label.replace(/"/g,'&quot;')}">
@@ -10370,15 +10378,16 @@ function sqBuildCuratedIntake(svc) {
                                 const mod = realMods.find(m => m.moduleKey === btn.dataset.mod);
                                 const resp = (mod?.client_response || []).find(r => r.label === btn.dataset.label);
                                 // complexity_override: update session if response escalates/de-escalates
-                                if (resp?.effects?.complexity_override && S.intent) {
+                                const _respOverride = resp?.complexity_override ?? resp?.effects?.complexity_override;
+                                if (_respOverride && S.intent) {
                                     const TIER = {
                                         routine: 0,
                                         skilled: 1,
                                         specialized: 2
                                     };
                                     const cur = TIER[S.intent._exactTier || 'skilled'] || 1;
-                                    const nxt = TIER[resp.effects.complexity_override] || 1;
-                                    if (nxt > cur) S.intent._exactTier = resp.effects.complexity_override;
+                                    const nxt = TIER[_respOverride] || 1;
+                                    if (nxt > cur) S.intent._exactTier = _respOverride;
                                 }
                                 // Apply response tags to detTagIds
                                 (resp?.tags || []).forEach(tagRef => {
