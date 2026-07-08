@@ -1055,6 +1055,7 @@
 
 
 <script>
+    
 (function() {
     const JSON_URL = 'https://tommichael88.github.io/booktomnyc/btnyc.json';
 
@@ -1093,89 +1094,217 @@
         </tr>`;
     }
 
-    function generateAnnexContent(data) {
-        const category = data.category;
-        const group = data.group || [];
-        const services = data.services;
+function generateAnnexContent(data) {
+    const category = data.category;
+    const group = data.group || [];
+    const services = data.services;
 
-        const groupToCat = {};
-        group.forEach(g => { groupToCat[g.id] = g.category_id; });
+    const groupToCat = {};
+    group.forEach(g => { groupToCat[g.id] = g.category_id; });
 
-        const servicesByCat = {};
-        category.forEach(cat => { servicesByCat[cat.id] = []; });
+    const servicesByCat = {};
+    category.forEach(cat => { servicesByCat[cat.id] = []; });
 
-        services.forEach(svc => {
-            const catId = groupToCat[svc.ui_taxonomy.group_id];
-            if (catId && servicesByCat[catId]) servicesByCat[catId].push(svc);
-        });
+    services.forEach(svc => {
+        const catId = groupToCat[svc.ui_taxonomy.group_id];
+        if (catId && servicesByCat[catId]) servicesByCat[catId].push(svc);
+    });
 
-        const groupsPerCat = {};
-        group.forEach(g => {
-            if (!groupsPerCat[g.category_id]) groupsPerCat[g.category_id] = [];
-            groupsPerCat[g.category_id].push(g);
-        });
+    const groupsPerCat = {};
+    group.forEach(g => {
+        if (!groupsPerCat[g.category_id]) groupsPerCat[g.category_id] = [];
+        groupsPerCat[g.category_id].push(g);
+    });
 
-        const letterMap = {};
-        category.forEach((cat, idx) => { letterMap[cat.id] = String.fromCharCode(65 + idx); });
+    const letterMap = {};
+    category.forEach((cat, idx) => { letterMap[cat.id] = String.fromCharCode(65 + idx); });
 
-        let html = '';
-        for (const cat of category) {
-            const catServices = servicesByCat[cat.id] || [];
-            if (catServices.length === 0) continue;
+    let html = '';
+    for (const cat of category) {
+        const catServices = servicesByCat[cat.id] || [];
+        if (catServices.length === 0) continue;
 
-            const letter = letterMap[cat.id];
-            let counter = 1;
+        const letter = letterMap[cat.id];
+        let counter = 1;
 
-            html += `<div class="service-category" id="${cat.id}">
-                        <div class="category-header">
-                            <h3>${letter}. ${escapeHtml(cat.display_name)}</h3>
-                            <div class="category-desc">${getCategoryDesc(cat.id)}</div>
-                        </div>`;
+        html += `<div class="service-category" id="${cat.id}">
+                    <div class="category-header">
+                        <h3>${letter}. ${escapeHtml(cat.display_name)}</h3>
+                        <div class="category-desc">${getCategoryDesc(cat.id)}</div>
+                    </div>`;
 
-            const groupsInCat = groupsPerCat[cat.id] || [];
-            for (const grp of groupsInCat) {
-                const servicesInGroup = catServices.filter(s => s.ui_taxonomy.group_id === grp.id);
-                if (servicesInGroup.length === 0) continue;
+        const groupsInCat = groupsPerCat[cat.id] || [];
+        for (const grp of groupsInCat) {
+            const servicesInGroup = catServices.filter(s => s.ui_taxonomy.group_id === grp.id);
+            if (servicesInGroup.length === 0) continue;
 
-                const groupId = `group-${cat.id}-${grp.id}`.replace(/[^a-zA-Z0-9_-]/g, '');
+            const groupId = `group-${cat.id}-${grp.id}`.replace(/[^a-zA-Z0-9_-]/g, '');
 
-                html += `<div class="group-block">
-            <div class="group-header open" data-group-id="${groupId}">
-                <span class="chevron">▸</span>
-                <span class="group-title">${escapeHtml(grp.display_name)}</span>
-            </div>
-            <div class="group-content Showed" id="${groupId}">
-                <div class="service-list">`;
+            html += `<div class="group-block">
+                        <div class="group-header open" data-group-id="${groupId}">
+                            <span class="chevron">▸</span>
+                            <span class="group-title">${escapeHtml(grp.display_name)}</span>
+                        </div>
+                        <div class="group-content Showed" id="${groupId}">
+                            <div class="service-list">`;
 
-                for (const svc of servicesInGroup) {
-                    const idxLabel = `${letter}-${counter++}`;
-                    const isIncluded = svc.financial_engine?.materials_included;
-                    const includesText = isIncluded ? 'Tools, expertise & all necessary materials' : 'Tools and expertise only';
-                    const clientProvides = isIncluded ? 'None' : 'All necessary parts and hardware';
+            for (const svc of servicesInGroup) {
+                const idxLabel = `${letter}-${counter++}`;
+                const isIncluded = svc.financial_engine?.materials_included;
+                const includesText = isIncluded ? 'Tools, expertise & all necessary materials' : 'Tools and expertise only';
+                const clientProvides = isIncluded ? 'None' : 'All necessary parts and hardware';
 
-                    html += `<div class="service-card">
-                                <div class="service-header">
-                                    <span class="service-index">${idxLabel}</span>
-                                    <span class="service-name">${escapeHtml(svc.ui_taxonomy.display_name)}</span>
-                                </div>
-                                <div class="service-desc">${escapeHtml(svc.ui_taxonomy.description || 'No description provided.')}</div>
-                                <div class="service-details">
-                                    <div class="detail-item"><span class="detail-label">Includes:</span> <span class="detail-value">${includesText}</span></div>
-                                    <div class="detail-item"><span class="detail-label">Client provides:</span> <span class="detail-value">${clientProvides}</span></div>
-                                </div>
-                            </div>`;
+                // Extract data
+                const id = svc.id;
+                let minutes = svc.operational_metrics?.expected_minutes;
+                if (!minutes && svc.default_estimates?.total_minutes?.min) {
+                    minutes = svc.default_estimates.total_minutes.min;
                 }
+                if (!minutes) minutes = '—';
+                const materials = svc.required_materials || [];
+                const hasMaterials = materials.length > 0;
+                const matList = hasMaterials ? materials.join(', ') : '';
 
-                html += `           </div>
+                html += `<div class="service-card">
+                            <div class="service-header">
+                                <span class="service-index">${idxLabel}</span>
+                                <span class="service-name">${escapeHtml(svc.ui_taxonomy.display_name)}</span>
+                                <span class="service-id" style="font-size:0.8rem; color:var(--silver-dark); opacity:0.5; margin-left:auto; letter-spacing:0.3px;"><b>ID:</b> ${id}</span>
                             </div>
+                            <!-- Approx. Time (above description) -->
+                            <div class="service-meta" style="margin-bottom:0.4rem;font-size:0.7rem">
+                                <span class="meta-item"><i class="fas fa-clock"></i> Approx. Time: <span class="value">${minutes} min</span></span>
+                            </div>
+                            <div class="service-desc" style="font-size:0.9rem important!">${escapeHtml(svc.ui_taxonomy.description || '')}</div>
+                            <div class="service-details">
+                                <div class="detail-item"><span class="detail-label">Includes:</span> <span class="detail-value">${includesText}</span></div>
+                                <div class="detail-item"><span class="detail-label">Client provides:</span> <span class="detail-value">${clientProvides}</span></div>
+                            </div>
+                            <!-- Materials at the very bottom, only if present -->
+                            ${hasMaterials ? `<div class="service-materials" style="margin-top:0.5rem; font-size:0.75rem; color:var(--silver-dark); opacity:0.7; border-top:1px dashed var(--silver-light); padding-top:0.4rem;">
+                                <i class="fas fa-box"></i> Materials may require : <span style="font-weight:400;">${matList}</span>
+                            </div>` : ''}
                         </div>`;
             }
 
-            html += `</div>`;
+            html += `           </div>
+                            </div>
+                        </div>`;
         }
-        return html;
-    }
 
+        html += `</div>`;
+    }
+    return html;
+}
+
+// ====== RENDER SERVICE CARDS FROM JSON ======
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('serviceCardsContainer');
+
+            fetch('https://tommichael88.github.io/booktomnyc/btnyc.json')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    // Get explicit services (ignore dynamic ones)
+                    const services = data.services || [];
+                    if (!services.length) {
+                        container.innerHTML = '<div class="error">No services found in the catalog.</div>';
+                        return;
+                    }
+
+                    // Build category -> group -> services map
+                    const categoryMap = {};
+                    services.forEach(service => {
+                        const catId = service.ui_taxonomy?.category_id || 'uncategorized';
+                        const groupId = service.ui_taxonomy?.group_id || 'ungrouped';
+                        if (!categoryMap[catId]) {
+                            categoryMap[catId] = {
+                                displayName: catId, // we can fetch category name later if needed
+                                groups: {}
+                            };
+                        }
+                        if (!categoryMap[catId].groups[groupId]) {
+                            categoryMap[catId].groups[groupId] = {
+                                displayName: groupId,
+                                services: []
+                            };
+                        }
+                        categoryMap[catId].groups[groupId].services.push(service);
+                    });
+
+                    // Look up category/group display names from the JSON's category/group arrays
+                    const categoryLookup = {};
+                    (data.category || []).forEach(cat => {
+                        categoryLookup[cat.id] = cat.display_name || cat.id;
+                    });
+                    const groupLookup = {};
+                    (data.group || []).forEach(grp => {
+                        groupLookup[grp.id] = grp.display_name || grp.id;
+                    });
+
+                    // Build HTML
+                    let html = '';
+                    for (const catId in categoryMap) {
+                        const cat = categoryMap[catId];
+                        const catDisplay = categoryLookup[catId] || catId;
+                        html += `<div class="service-category">`;
+                        html += `<div class="category-header"><h3>${catDisplay}</h3></div>`;
+
+                        for (const grpId in cat.groups) {
+                            const grp = cat.groups[grpId];
+                            const grpDisplay = groupLookup[grpId] || grpId;
+                            html += `<div class="group-block">`;
+                            html += `<div class="group-title">${grpDisplay}</div>`;
+                            html += `<div class="service-list">`;
+
+                            grp.services.forEach(service => {
+                                const name = service.ui_taxonomy?.display_name || service.id;
+                                const id = service.id;
+                                // Get expected minutes
+                                let minutes = service.operational_metrics?.expected_minutes;
+                                if (!minutes && service.default_estimates?.total_minutes?.min) {
+                                    minutes = service.default_estimates.total_minutes.min;
+                                }
+                                if (!minutes) minutes = '—';
+
+                                // Required materials
+                                const materials = service.required_materials || [];
+                                const matList = materials.length ? materials.join(', ') : 'none';
+
+                                // Description (if any)
+                                const desc = service.ui_taxonomy?.description || '';
+
+                                html += `<div class="service-card">`;
+                                html += `<div class="service-header">`;
+                                html += `<span class="service-name">${name}</span>`;
+                                html += `<span class="service-id">${id}</span>`;
+                                html += `</div>`;
+                                if (desc) {
+                                    html += `<div class="service-desc">${desc}</div>`;
+                                }
+                                html += `<div class="service-meta">`;
+                                html += `<span class="meta-item"><i class="fas fa-clock"></i><span class="label">&nbsp; Time approx:</span> <span class="value">${minutes} min</span></span>`;
+                                html += `<span class="meta-item"><i class="fas fa-box"></i><span class="label">Materials:</span> <span class="value">${matList}</span></span>`;
+                                html += `</div>`;
+                                html += `</div>`;
+                            });
+
+                            html += `</div>`; // service-list
+                            html += `</div>`; // group-block
+                        }
+
+                        html += `</div>`; // service-category
+                    }
+
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading service catalog:', error);
+                    container.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Failed to load service catalog. Please refresh or try again later.</div>`;
+                });
+        });
     // ---------- Main initialisation ----------
     document.addEventListener('DOMContentLoaded', () => {
         // --- Annex data loading ---
@@ -1303,6 +1432,7 @@
                     e.preventDefault();
                     handlePrint();
                 });
+                
 
                 window.addEventListener('beforeprint', async () => {
                     const c = document.getElementById('printReadyPolicyContainer');
@@ -1325,3 +1455,5 @@
     </body>
 
 </html>
+
+
