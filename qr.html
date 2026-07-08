@@ -5849,41 +5849,171 @@ function exitFocusedMode() {
                     if (srs) srs.style.removeProperty('display');
                 }
 
+/**
+ * adaptV10ToLegacy(v10Data)
+ * Converts v10 domain‐grouped JSON to the flat legacy shape.
+ * Returns an object with all the old top‑level keys (services, group, category,
+ * intake_modules, global_rules, routing_archetypes, etc.).
+ */
+function adaptV10ToLegacy(v10) {
+  const legacy = {};
+
+  // --- Root-level metadata & cross‑cutting ---
+  legacy.$schema = v10.$schema;
+  legacy.$id = v10.$id;
+  legacy.meta = v10.meta;
+  legacy.workflow = v10.workflow;
+  legacy.global_rules = v10.global_rules || {};
+  legacy.invariants = v10.invariants;
+
+  // --- Catalog domain ---
+  const catalog = v10.catalog || {};
+  legacy.services = catalog.services || [];
+  legacy.dynamic_services = catalog.dynamic_services || {};
+  legacy.group = catalog.groups || [];          // old key is "group" (singular)
+  legacy.category = catalog.categories || [];   // old key "category"
+  legacy.materials_catalog = catalog.materials || {};
+  legacy.furniture_catalog = catalog.furniture || [];
+
+  // --- Intake domain ---
+  const intake = v10.intake || {};
+  legacy.intake_modules = intake.modules || {};
+  legacy.smart_tags = intake.smart_tags || {};
+  // forced_modules_by_variability was inside global_rules in old; merge it.
+  if (intake.forced_modules_by_variability) {
+    legacy.global_rules.force_modules_by_variability = intake.forced_modules_by_variability;
+  }
+
+  // --- Pricing domain ---
+  const pricing = v10.pricing || {};
+  legacy.pricing_formulas = pricing.formulas || {};
+  if (pricing.surcharges) legacy.global_rules.surcharges = pricing.surcharges;
+  if (pricing.modifiers) legacy.global_rules.modifiers = pricing.modifiers;
+  if (pricing.complexity_tiers) legacy.global_rules.complexity_tiers = pricing.complexity_tiers;
+  if (pricing.engines) legacy.global_rules.pricing_engines = pricing.engines;
+
+  // --- UI domain ---
+  const ui = v10.ui || {};
+  legacy.checkout_states = ui.checkout_states || {};
+  legacy.ui_config = ui.config || {};
+  // Adlib templates: v10 has ui.adlib_templates and nlp.adlib
+  legacy.adlib_phrase_overrides = legacy.adlib_phrase_overrides || {};
+  if (ui.adlib_templates) {
+    legacy.adlib_phrase_overrides.group_templates = ui.adlib_templates.group_templates || {};
+    legacy.adlib_phrase_overrides.default_template = ui.adlib_templates.default_template || '{label}';
+  }
+  if (v10.nlp && v10.nlp.adlib) {
+    legacy.adlib_phrase_overrides.adlib = v10.nlp.adlib;
+  }
+
+  // --- NLP domain ---
+  const nlp = v10.nlp || {};
+  legacy.intent_mappings = nlp.intent_mappings || {};
+  legacy.negation_library = nlp.negation_library || {};
+
+  // --- Confidence domain ---
+  const confidence = v10.confidence || {};
+  if (confidence.escalation) {
+    legacy.global_rules.confidence_escalation = confidence.escalation;
+  }
+  if (confidence.resolution_thresholds && legacy.workflow) {
+    legacy.workflow.resolution_thresholds = confidence.resolution_thresholds;
+  }
+
+  // --- Build routing_archetypes from groups (for orchestrator) ---
+  const routingArchetypes = {};
+  (legacy.group || []).forEach(g => {
+    routingArchetypes[g.id] = {
+      display_name: g.display_name,
+      category_id: g.category_id,
+      routing_archetype: g.routing_archetype || 'undetermined',
+      real_actions_in_group: g.real_actions_in_group || [],
+      real_components: g.real_components || [],
+      component_to_service_ids: g.component_to_service_ids || {},
+      real_symptoms: g.real_symptoms || [],
+      symptom_to_service_ids: g.symptom_to_service_ids || {},
+      real_gaps: g.real_gaps || [],
+      typical_location: g.typical_location || null,
+      default_qty: g.default_qty || 1,
+    };
+  });
+  legacy.routing_archetypes = routingArchetypes;
+
+  // --- Copy any other root-level keys that may exist ---
+  for (const key of Object.keys(v10)) {
+    if (!(key in legacy)) {
+      legacy[key] = v10[key];
+    }
+  }
+
+  return legacy;
+}
+
 async function init() {
-                    cacheDOM();
-                    // Try local btnyc.json first, then fall back to remote.
-                    // Local-first makes development work without GitHub Pages.
-                    const DATA_URLS = ['./btnyc.json', 'https://tommichael88.github.io/booktomnyc/btnyc.json'];
-                    try {
-                        let loaded = false;
-                        for (const url of DATA_URLS) {
-                            try {
-                                const res = await fetch(url);
-                                if (!res.ok) continue;
-                                SERVICE_DATA = await res.json();
-                                loaded = true;
-                                break;
-                            } catch (e) { /* try next */ }
-                        }
-                        if (!loaded) throw new Error('All data sources failed');
-                        DB = SERVICE_DATA;
-                        window.DB = DB;
-                        initNlpSets();
-                        refreshNlpPreviewBindings();
-                    } catch (err) {
-                        console.error('Service data load error:', err);
-                        toast('Could not load services. Please refresh.', 'error');
-                        SERVICE_DATA = { meta: {}, category: [], group: [], services: [], intake_modules: {} };
-                        DB = SERVICE_DATA;
-                    }
-                    buildDataMaps(SERVICE_DATA);
-                    renderCategoryCards();
-                    initSmartQuote();   // inject text bar immediately on page load
-                    wireGlobalEvents();
-                    renderCart();
-                    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
-                    setViewportHeight();
-                }
+  cacheDOM();
+
+  // Try v10 first (domain‑grouped), fallback to old flat JSON.
+  const DATA_URLS = [
+    './btnyc_v10_final.json',
+    'https://tommichael88.github.io/booktomnyc/btnyc_v10_final.json',
+    './btnyc.json',
+    'https://tommichael88.github.io/booktomnyc/btnyc.json'
+  ];
+
+  try {
+    let loaded = false;
+    let rawData = null;
+
+    for (const url of DATA_URLS) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        rawData = await res.json();
+        loaded = true;
+        break;
+      } catch (e) {
+        // try next URL
+      }
+    }
+
+    if (!loaded) throw new Error('All data sources failed');
+
+    // If the loaded data has a "catalog" top‑level key, it's v10 – adapt it.
+    // Otherwise, assume it's already flat.
+    if (rawData.catalog) {
+      SERVICE_DATA = adaptV10ToLegacy(rawData);
+      console.log('[init] Adapted v10 domain‑grouped JSON to flat shape.');
+    } else {
+      SERVICE_DATA = rawData;
+      console.log('[init] Using flat JSON directly.');
+    }
+
+    DB = SERVICE_DATA;
+    window.DB = DB;
+
+    initNlpSets();
+    refreshNlpPreviewBindings();
+
+  } catch (err) {
+    console.error('Service data load error:', err);
+    toast('Could not load services. Please refresh.', 'error');
+    SERVICE_DATA = { meta: {}, category: [], group: [], services: [], intake_modules: {} };
+    DB = SERVICE_DATA;
+  }
+
+  // Continue with the rest of your initialisation
+  buildDataMaps(SERVICE_DATA);
+  renderCategoryCards();
+  initSmartQuote();
+  wireGlobalEvents();
+  renderCart();
+
+  if (DOM.serviceRequestSummary) {
+    DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
+  }
+  setViewportHeight();
+}
+
 function initSmartQuote() {
                     let sqEl = document.getElementById('smartQuoteEngine');
                     if (!sqEl) {
