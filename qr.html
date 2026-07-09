@@ -169,7 +169,7 @@ body.modal-active{overflow:hidden}
 .focused-mode .main-card-schedule-service-header{display:none!important}
 .focused-mode .new-service-request-grid-topper{display:none!important}
 .focused-mode #sqTextBar{display:none!important}
-.focused-mode #serviceRequestSummary{display:none!important}
+.focused-mode #serviceRequestSummary:not(:has(#sqAffirmCard)){display:none!important}
 /* ── sq-ic card in focused-mode: match the dark glass theme ── */
 .focused-mode .sq-ic{background:rgba(255,255,255,.96);border-color:rgba(255,255,255,.3);box-shadow:0 4px 24px rgba(0,0,0,.2)}
 .focused-mode .sq-ic-hdr{background:rgba(255,255,255,.95)}
@@ -958,6 +958,17 @@ function resolveServiceBadge(fe) {
         || '✅ Fixed price';
 }
 
+function resolveServiceBadgeKey(fe) {
+    // v9.6: wires in checkout_states.*.quote_badge_key -- a real, fully-authored
+    // machine-friendly counterpart to ui_badge_label (standard_flat_rate:"ok",
+    // diagnostic:"diag", project_based:"proj", database_summation:"asm"),
+    // ready to consume but never wired to anything. Used as a stable
+    // data-attribute on the badge element for CSS/analytics hooks that
+    // shouldn't depend on the human-readable label text.
+    const csKey = fe?.checkout_state;
+    return window.DB?.checkout_states?.[csKey]?.quote_badge_key || '';
+}
+
 function resolveBaseConfidenceStrategy(svc, dynDef) {
                     const FALLBACK = {
                         minimum_quote_confidence: 70, maximum_followup_questions: 3,
@@ -1496,6 +1507,8 @@ function resolveCheckoutState(checkoutStateKey, laborTotal) {
                     const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
                     let btnText = cs[btnKey] || cs.button_text || 'Add to Request';
                     btnText = btnText.replace('${labor_total}', '$' + laborTotal);
+                    const btnClassKey = cs.hide_materials ? 'button_class_no_mat' : 'button_class_with_mat';
+                    const btnClass = cs[btnClassKey] || cs.button_class || 'btn-primary';
 
                     // Disclaimer: SSOT is svc.default_estimates.disclaimer (same field
                     // the curated card path reads). Fall through to inferred key only
@@ -1507,6 +1520,7 @@ function resolveCheckoutState(checkoutStateKey, laborTotal) {
 
                     return {
                         btnText,
+                        btnClass,
                         disclaimerText,
                         uiMessage: cs.ui_message || '',
                         hideTime: cs.hide_time || false,
@@ -1641,6 +1655,7 @@ function computeUnifiedQuote(ctx) {
 
                     let extraFee = 0, extraMin = 0;
                     const activeLabels = [];
+                    const feeBreakdown = [];
 
                     // v9.5 FIX: contextual_overrides' own adjustment_fee/
                     // adjustment_minutes (e.g. "toilet" + "flushometer" -> +$75/
@@ -1654,17 +1669,22 @@ function computeUnifiedQuote(ctx) {
                     // free-text path specifically.
                     extraFee += ctxAdjFee;
                     extraMin += ctxAdjMin;
+                    if (ctxAdjFee) feeBreakdown.push({ source: 'contextual_override', label: 'Context-specific adjustment', fee: ctxAdjFee });
 
                     if (formulaResult) {
                         extraFee += formulaResult.extraFee;
                         extraMin += formulaResult.extraMin;
+                        if (formulaResult.extraFee) feeBreakdown.push({ source: 'formula', label: 'Pricing formula adjustment', fee: formulaResult.extraFee });
                     } else {
                         for (const tid of activeTagIds) {
                             const t = smartTags[tid];
                             if (!t) continue;
-                            extraFee += t.effects?.fee ?? 0;
+                            const tagFee = t.effects?.fee ?? 0;
+                            extraFee += tagFee;
                             extraMin += t.effects?.minutes ?? 0;
-                            activeLabels.push(sqTagLabel(t, tid));
+                            const tagLabel = sqTagLabel(t, tid);
+                            activeLabels.push(tagLabel);
+                            if (tagFee) feeBreakdown.push({ source: 'tag', tagId: tid, label: tagLabel, fee: tagFee });
                         }
                     }
 
@@ -1727,6 +1747,7 @@ function computeUnifiedQuote(ctx) {
                             const m = chosen.modifier_ref ? (_mods[chosen.modifier_ref] || {}) : {};
                             extraFee += m.fee || 0;
                             extraMin += m.minutes || 0;
+                            if (m.fee) feeBreakdown.push({ source: 'answer', moduleKey, label: (mod.question ? mod.question + ': ' : '') + answerLabel, fee: m.fee });
                             const ov = chosen.complexity_override;
                             if (ov && (RANK[ov] || 0) > (RANK[answerOverrideTier] || 0)) {
                                 answerOverrideTier = ov;
@@ -1867,6 +1888,8 @@ function computeUnifiedQuote(ctx) {
                     const cs = DB.checkout_states?.[checkoutStateKey] || {};
                     const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
                     let btnText = (cs[btnKey] || cs.button_text || 'Add to Request').replace('${labor_total}', '$' + laborEstimate);
+                    const btnClassKey = cs.hide_materials ? 'button_class_no_mat' : 'button_class_with_mat';
+                    const btnClass = cs[btnClassKey] || cs.button_class || 'btn-primary';
 
                     const escalation = applyLiveConfidenceEscalation(
                         baseStrategy, activeTagIds, smartTags, DB.global_rules?.confidence_escalation
@@ -1880,11 +1903,12 @@ function computeUnifiedQuote(ctx) {
                     return {
                         base, extraFee, extraMin, totalMin,
                         complexityTier, tierRate: effectiveHourlyRate,
-                        laborEstimate, qty, activeLabels, dispatchFee,
+                        laborEstimate, qty, activeLabels, feeBreakdown, dispatchFee,
                         checkoutStateKey,
                         badgeLabel: cs.ui_badge_label || '',
                         badgeIcon: cs.ui_badge_icon || '',
                         btnText,
+                        btnClass,
                         uiMessage: cs.ui_message || '',
                         hideMaterials: !!cs.hide_materials,
                         hideTime: !!cs.hide_time,
@@ -2526,11 +2550,36 @@ function detectIntentNLP(text) {
                                 // never when real, additional distinguishing
                                 // words follow.
                                 if (kwMatched && isInflectionOnly(kw, sl)) return;
-                                if (wordBoundaryIncludes(lower, sl)) score += w * .5;
+                                if (wordBoundaryIncludes(lower, sl)) {
+                                    // v9.6: an explicit, per-entry, verified-safe
+                                    // opt-in list of synonyms that are genuinely
+                                    // as specific/unambiguous as the primary
+                                    // keyword (e.g. "sink" for "faucet" -- same
+                                    // category, no cross-category collision,
+                                    // checked directly) -- these earn the full
+                                    // weight too, not the generic half-weight
+                                    // every other synonym gets.
+                                    const isFullWeight = Array.isArray(m.full_weight_synonyms) && m.full_weight_synonyms.includes(sl);
+                                    score += isFullWeight ? w : w * .5;
+                                }
                             });
                         score = Math.min(score, 100);
-                        if (score > top) {
-                            top = score;
+                        // v9.6: resolver-bearing entries (currently just
+                        // "install", handing off to the object-based
+                        // resolver) win when their OWN keyword explicitly
+                        // matched, even against a competing entry with a
+                        // marginally higher raw score -- an explicit
+                        // "install"/"setup" verb is a stronger signal of
+                        // what the customer wants DONE than which object
+                        // happened to score a few points higher. Without
+                        // this, "install a new faucet" let "faucet" (a
+                        // plain object entry, no resolver) win outright and
+                        // skip the object-based resolver step entirely,
+                        // defaulting to faucet's own "Repair" stype instead
+                        // of correctly resolving to Install.
+                        const resolverShouldWin = m.resolver && kwMatched && !(bestMapping?.resolver);
+                        if (score > top || resolverShouldWin) {
+                            top = resolverShouldWin ? Math.max(score, top) : score;
                             bestMapping = m;
                             best = {
                                 category: m.default_dynamic_category || m.fallback?.category || 'other',
@@ -2918,7 +2967,18 @@ function extractQty(text) {
                     // so a leftover number is more likely to be a genuine count.
                     const stripped = text.replace(_DIMENSION_PATTERN, ' ');
                     const m = stripped.match(/\b(\d+)\b/);
-                    return m ? Math.min(parseInt(m[1]), 99) : 1;
+                    if (m) {
+                        // v9.6 FIX: only treat a bare digit as a real quantity
+                        // signal if it appears alongside actual other content --
+                        // a customer typing literally just a number (e.g. "12345")
+                        // with nothing else has given no real quantity context at
+                        // all, and was previously clamped to qty=99 regardless,
+                        // producing a wildly wrong quote for meaningless input.
+                        const remainder = stripped.replace(m[0], ' ').replace(/[^a-z]/gi, '').trim();
+                        if (remainder.length === 0) return 1;
+                        return Math.min(parseInt(m[1]), 99);
+                    }
+                    return 1;
                 }
 
 function extractLocation(text) {
@@ -5824,10 +5884,27 @@ function enterFocusedMode() {
                     const inner = card.querySelector('.focused-mode-inner');
                     if (inner) inner.scrollTop = 0;
                     // Explicitly hide viewport-wasting elements (CSS covers them too,
-                    // but JS inline display overrides CSS so we set important here)
+                    // but JS inline display overrides CSS so we set important here).
+                    // v9.6 FIX: found TWO separate mechanisms both hiding
+                    // serviceRequestSummary -- this JS force-hide, AND a
+                    // stylesheet rule (.focused-mode #serviceRequestSummary
+                    // {display:none!important}) that also applies whenever
+                    // focused-mode is active, entirely independent of this
+                    // code. Confirmed via real browser automation that the
+                    // affirmation card never actually became visible because
+                    // of this. An inline !important style has higher
+                    // specificity than a stylesheet !important rule, so when
+                    // the card is present, explicitly force it visible
+                    // (not just skip the redundant hide) to correctly win
+                    // against the CSS rule too.
                     ['sqTextBar', 'serviceRequestSummary'].forEach(id => {
                         const el = document.getElementById(id);
-                        if (el) el.style.setProperty('display', 'none', 'important');
+                        if (!el) return;
+                        if (id === 'serviceRequestSummary' && el.querySelector('#sqAffirmCard')) {
+                            el.style.setProperty('display', 'block', 'important');
+                            return;
+                        }
+                        el.style.setProperty('display', 'none', 'important');
                     });
                 }
 
@@ -6288,8 +6365,15 @@ function renderGlobalSearchResults(container, services, currentCategoryId) {
 
 function renderServices(container, services, category_id, group_id) {
                     container.replaceChildren();
+                    // v9.6: sort by the real, curated ui_taxonomy.sort_order (existed
+                    // on every service, never consulted -- services rendered in raw
+                    // JSON-array order instead of the deliberate, already-authored
+                    // display order). "Other" tiles are appended after sorting so they
+                    // correctly stay last regardless of their own irrelevant position.
+                    const sortedServices = [...(services || [])].sort((a, b) =>
+                        (a.ui_taxonomy?.sort_order ?? 999) - (b.ui_taxonomy?.sort_order ?? 999));
                     const otherTiles = buildOtherTilesForGroup(services || [], group_id);
-                    const allTiles = [...(services || []), ...otherTiles];
+                    const allTiles = [...sortedServices, ...otherTiles];
                     if (!allTiles.length) {
                         container.appendChild(create('div', {
                             class: 'empty-message',
@@ -7976,7 +8060,7 @@ function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                     // Build tag chip HTML -- tappable to remove (partial affirmation)
                     const chipHtml = detTagIds.map(tid => {
                         const tag = tagDefs[tid] || {};
-                        const label = sqTagLabel(tid, S.intent?.stype || 'Repair') || tag.display_name || tid;
+                        const label = sqTagLabel(tag, tid);
                         return `<span class="chip-btn sel affirm-chip" data-tid="${tid}" onclick="sqAffirmRemoveTag(this,'${tid}')">${label} ✕</span>`;
                     }).join(' ');
 
@@ -8041,8 +8125,8 @@ function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                                 <button class="affirm-no-btn" onclick="sqAffirmNo()">Let me explain further</button>
                             </div>
                         </div>`;
-                    container.style.display = 'block';
                     enterFocusedMode();
+                    container.style.setProperty('display', 'block', 'important');
                 }
 
                 function sqAffirmYes() {
@@ -8064,6 +8148,7 @@ function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                 function sqAffirmNo() {
                     // Customer wants to revise. Show the text input pre-filled with existing text.
                     S._tagsAffirmed = false;
+                    exitFocusedMode();
                     const container = document.getElementById('serviceRequestSummary');
                     if (container) { container.innerHTML = ''; container.style.display = 'none'; }
                     const sqEl = document.getElementById('smartQuoteEngine');
@@ -8113,6 +8198,7 @@ function sqRenderQuote() {
 
                     // SSOT: badge from checkout_states (single source — see resolveServiceBadge)
                     const badge = resolveServiceBadge({ checkout_state: q.checkoutStateKey, pricing_type: S.intent?._pricingType });
+                    const badgeKey = resolveServiceBadgeKey({ checkout_state: q.checkoutStateKey });
 
                     const svcLabel = S.intent?.label || 'Service';
                     const qtyLabel = S.intent?.qtyLabel || 'item';
@@ -8176,7 +8262,7 @@ function sqRenderQuote() {
                     out.innerHTML = _recBanner +
                         '<div class="qpanel">' +
                         '<div class="qhero">' +
-                        '<div class="qitag">' + badge + '</div>' +
+                        '<div class="qitag" data-badge-key="' + badgeKey + '">' + badge + '</div>' +
                         '<div class="' + (q.isProject ? 'qpranger' : 'qprice') + '">' + q.priceDisplay + '</div>' +
                         '<div class="qpsub">' + q.priceSub + '</div>' +
                         '<div class="qmeta"><i class="ti ti-tool"></i> ' + svcLabel + ' &middot; ' + S.stype + '</div>' +
@@ -8197,10 +8283,11 @@ function sqRenderQuote() {
                         '<div class="disc"><i class="ti ti-info-circle"></i><div>' + q.disclaimerText + '</div></div>' +
                         '</div>' +
                         '<div class="ctarow">' +
-                        '<button class="ctap" onclick="sqAddToCart()"><i class="ti ti-shopping-cart" style="font-size:18px"></i> ' + btnLabel + '</button>' +
+                        '<button class="ctap ' + (q.btnClass || '') + '" onclick="sqAddToCart()"><i class="ti ti-shopping-cart" style="font-size:18px"></i> ' + btnLabel + '</button>' +
                         '<button class="ctag" onclick="sqRestart()"><i class="ti ti-refresh"></i> Start Over</button>' +
                         '</div>' +
                         '</div>';
+                    out.style.display = 'block';
 
                     out.scrollIntoView({
                         behavior: 'smooth',

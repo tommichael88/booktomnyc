@@ -11,7 +11,7 @@
       "hourly": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
       "project_based": "All estimates are preliminary and non‑binding. Your final, binding price will be confirmed after our technician inspects the job site and you approve the exact scope and material selections. You are not committed until you accept the final quote."
     },
-    "enrichment_note": "Dynamic services enriched by refined script (group‑only suggested_tags). Generated on: 2026-07-09T01:49:41.919720"
+    "enrichment_note": "Dynamic services enriched by refined script (group‑only suggested_tags). Generated on: 2026-07-09T01:50:33.515133"
   },
   "workflow": {
     "version": "1.0",
@@ -2751,7 +2751,8 @@
       },
       "verb_natural": "repaired",
       "required_materials": [],
-      "optional_materials": []
+      "optional_materials": [],
+      "_note_checkout_state_investigation": "v9.6: investigated whether any specific symptom answer (Won't spin / Won't drain / Leaking water / Making strange noises) could confidently downgrade from this service's unconditional 'diagnostic' checkout_state via checkout_state_override (the mechanism exists, ready to use -- see computeUnifiedQuote's answerCheckoutOverride ratchet). Found no real evidentiary basis to do so: even the 'routine'-complexity symptoms (Won't spin, Making strange noises) fall within this service's own genuinely wide default_estimates.total_minutes range (70-390 min), and default_estimates.materials.note explicitly states exact part cost cannot be determined before diagnosis -- true regardless of which symptom is selected, since dishwasher internals aren't visible without opening the unit. The complexity_override/modifier_ref minutes already correctly differentiate the LABOR time estimate per symptom (working as intended); checkout_state is a separate, higher-level signal about whether a FINAL total (including parts) can be guaranteed, and for this service the honest answer is no, across all 4 symptoms. Remaining unconditionally 'diagnostic' is the correct, evidence-supported design here, not a content gap."
     },
     {
       "id": "door_lock_or_handle_install",
@@ -16299,7 +16300,24 @@
       "is_logistic": false,
       "ui_phrase": "Heavy Lifting",
       "negation_phrase": "",
-      "_note_scoping": "v9.6: was ['all'] -- scoped to match #heavy_item (same 'Weight & Lifting' display_group, identical concept). Flagged for business-owner review."
+      "_note_scoping": "v9.6: was ['all'] -- scoped to match #heavy_item (same 'Weight & Lifting' display_group, identical concept). Flagged for business-owner review. Further narrowed to specific groups (v9.6): excludes electric_lighting's Bulbs/Outlets/Switches/Thermostats (inherently small hardware) and minor_home_repairs' Cabinets&Drawers/Floors&Trim/Walls/Windows (typical services in these groups -- knob swaps, baseboard patches, drywall holes, screen repairs -- don't involve heavy components). Included groups where SOME real services plausibly could (e.g. a large chandelier in Light Fixtures), even if not every service in that group needs it -- this is an opt-in chip, not a forced default.",
+      "applicable_group_ids": [
+        "electric_lighting_fans",
+        "electric_lighting_light_fixtures",
+        "furniture_fixes_assembly_assembly",
+        "furniture_fixes_assembly_disassembly",
+        "furniture_fixes_assembly_repair",
+        "minor_home_repairs_appliances_washer",
+        "minor_home_repairs_appliances_dryer",
+        "minor_home_repairs_appliances_stove_range",
+        "minor_home_repairs_appliances_refrigerator",
+        "minor_home_repairs_appliances_dishwasher",
+        "minor_home_repairs_appliances_microwave",
+        "minor_home_repairs_appliances_window_ac",
+        "minor_home_repairs_appliances_other",
+        "minor_home_repairs_doors",
+        "minor_home_repairs_furniture"
+      ]
     },
     "#high_ceiling": {
       "synonyms": [
@@ -16464,7 +16482,33 @@
       "is_logistic": false,
       "ui_phrase": "Part Order Likely",
       "negation_phrase": "",
-      "_note_scoping": "v9.6: was ['all'] -- scoped to repair/component categories where a specific part might need special ordering (the likely reason a second trip would be needed). Excludes wall_mounting/furniture_fixes_assembly (pure hanging/assembly, not component sourcing). Flagged for business-owner review."
+      "_note_scoping": "v9.6: was ['all'] -- scoped to repair/component categories where a specific part might need special ordering (the likely reason a second trip would be needed). Excludes wall_mounting/furniture_fixes_assembly (pure hanging/assembly, not component sourcing). Flagged for business-owner review. Further narrowed to specific groups (v9.6): excludes minor_home_repairs' Walls (generic, universally-stocked patch materials), electric_lighting's Bulbs/Outlets/Switches (standardized, always-stocked components), and tech_trouble's Cable Management (generic cable ties/raceways, no special-order parts). Included groups matching the same reasoning dishwasher_repair's own SSOT note documents: appliance/plumbing/fixture repairs where the exact replacement part often can't be predicted or stocked in advance.",
+      "applicable_group_ids": [
+        "minor_home_repairs_appliances_washer",
+        "minor_home_repairs_appliances_dryer",
+        "minor_home_repairs_appliances_stove_range",
+        "minor_home_repairs_appliances_refrigerator",
+        "minor_home_repairs_appliances_dishwasher",
+        "minor_home_repairs_appliances_microwave",
+        "minor_home_repairs_appliances_window_ac",
+        "minor_home_repairs_appliances_other",
+        "minor_home_repairs_cabinets_drawers",
+        "minor_home_repairs_doors",
+        "minor_home_repairs_floors_trim",
+        "minor_home_repairs_furniture",
+        "minor_home_repairs_windows",
+        "plumbing_help_garbage_disposals",
+        "plumbing_help_sinks",
+        "plumbing_help_showers_tubs",
+        "plumbing_help_toilets",
+        "plumbing_help_water_lines",
+        "electric_lighting_fans",
+        "electric_lighting_light_fixtures",
+        "electric_lighting_thermostats",
+        "tech_trouble_computer_repair",
+        "tech_trouble_networking",
+        "tech_trouble_smart_home"
+      ]
     },
     "#pets_on_site": {
       "synonyms": [
@@ -16654,7 +16698,33 @@
       "is_logistic": false,
       "ui_phrase": "Two Trip Minimum",
       "negation_phrase": "",
-      "_note_scoping": "v9.6: was ['all'] -- scoped to repair/component categories where a specific part might need special ordering (the likely reason a second trip would be needed). Excludes wall_mounting/furniture_fixes_assembly (pure hanging/assembly, not component sourcing). Flagged for business-owner review."
+      "_note_scoping": "v9.6: was ['all'] -- scoped to repair/component categories where a specific part might need special ordering (the likely reason a second trip would be needed). Excludes wall_mounting/furniture_fixes_assembly (pure hanging/assembly, not component sourcing). Flagged for business-owner review. Further narrowed to specific groups (v9.6): excludes minor_home_repairs' Walls (generic, universally-stocked patch materials), electric_lighting's Bulbs/Outlets/Switches (standardized, always-stocked components), and tech_trouble's Cable Management (generic cable ties/raceways, no special-order parts). Included groups matching the same reasoning dishwasher_repair's own SSOT note documents: appliance/plumbing/fixture repairs where the exact replacement part often can't be predicted or stocked in advance.",
+      "applicable_group_ids": [
+        "minor_home_repairs_appliances_washer",
+        "minor_home_repairs_appliances_dryer",
+        "minor_home_repairs_appliances_stove_range",
+        "minor_home_repairs_appliances_refrigerator",
+        "minor_home_repairs_appliances_dishwasher",
+        "minor_home_repairs_appliances_microwave",
+        "minor_home_repairs_appliances_window_ac",
+        "minor_home_repairs_appliances_other",
+        "minor_home_repairs_cabinets_drawers",
+        "minor_home_repairs_doors",
+        "minor_home_repairs_floors_trim",
+        "minor_home_repairs_furniture",
+        "minor_home_repairs_windows",
+        "plumbing_help_garbage_disposals",
+        "plumbing_help_sinks",
+        "plumbing_help_showers_tubs",
+        "plumbing_help_toilets",
+        "plumbing_help_water_lines",
+        "electric_lighting_fans",
+        "electric_lighting_light_fixtures",
+        "electric_lighting_thermostats",
+        "tech_trouble_computer_repair",
+        "tech_trouble_networking",
+        "tech_trouble_smart_home"
+      ]
     },
     "#very_heavy": {
       "synonyms": [
@@ -16903,7 +16973,10 @@
       "hide_time": false,
       "ui_badge_label": "✅ Fixed price",
       "ui_badge_icon": "ti-puzzle",
-      "quote_badge_key": "asm"
+      "quote_badge_key": "asm",
+      "button_class_no_mat": "btn-success",
+      "button_class_with_mat": "btn-success",
+      "_note_scoping": "v9.6 PLACEHOLDER: matches standard_flat_rate's button_class_no_mat exactly, since this state shares the identical '✅ Fixed price' badge label (same confidence level). hide_materials is always true for this state, so with_mat is currently unreachable but provided for schema consistency. Flagged for business/design-owner review."
     },
     "diagnostic": {
       "ui_message": "This issue requires on-site diagnostics to provide a precise quote.",
@@ -16914,12 +16987,18 @@
       "ui_badge_label": "🔍 On-site quote",
       "ui_badge_icon": "ti-search",
       "quote_badge_key": "diag",
-      "button_text_labor_only": "Request On-Site Quote"
+      "button_text_labor_only": "Request On-Site Quote",
+      "button_class_no_mat": "btn-warning",
+      "button_class_with_mat": "btn-warning",
+      "_note_scoping": "v9.6 PLACEHOLDER: distinct from the 'fixed price' green, since this state's own ui_badge_label ('On-site quote') explicitly signals the number isn't final yet. hide_materials is always true for this state, so with_mat is currently unreachable but provided for schema consistency. Flagged for business/design-owner review."
     },
     "project_based": {
       "ui_badge_label": "Project estimate",
       "ui_badge_icon": "ti-ruler",
-      "quote_badge_key": "proj"
+      "quote_badge_key": "proj",
+      "button_class_no_mat": "btn-info",
+      "button_class_with_mat": "btn-info",
+      "_note_scoping": "v9.6 PLACEHOLDER: distinct from both the 'fixed price' green and the 'needs on-site visit' amber, matching this state's own distinct badge label ('Project estimate', no emoji -- its own category, not as certain as a flat rate but not requiring an on-site diagnostic either). hide_materials is unset for this state (unlike diagnostic/database_summation, which are always hidden), so both no_mat and with_mat are genuinely reachable here. Flagged for business/design-owner review."
     },
     "standard_flat_rate": {
       "ui_message": "Standardized labor estimate. Materials are extra and estimated below.",
@@ -17830,7 +17909,7 @@
         "confidence_weight": 55
       },
       {
-        "keyword": "drywall / wall",
+        "keyword": "drywall",
         "synonyms": [
           "drywall",
           "wall",
@@ -17840,31 +17919,37 @@
         "default_dynamic_category": "minor_home_repairs",
         "default_service_type": "Repair",
         "dynamic_rule": "drywall_repair_formula",
-        "confidence_weight": 60
+        "confidence_weight": 60,
+        "_note_keyword_fix": "v9.6 FIX: was 'drywall / wall' -- a compound display-label string that never appeared literally in real customer phrasing, so this entry's full, authored confidence_weight silently never applied (confirmed via direct trace: always fell back to the half-weight synonym path). Renamed to the single, most specific, least cross-category-ambiguous term; the other term remains exactly where it already was, as an existing synonym (unchanged, already correctly half-weight)."
       },
-    {
-      "keyword": "faucet / sink",
-      "synonyms": [
-        "faucet", "sink", "tap", "basin",
-        "dripping faucet", "leaky faucet", "kitchen faucet", "bathroom faucet",
-        "pipe", "water pipe", "pipe leak"
-      ],
-      "default_service_sku": "faucet_repair_drip",
-      "contextual_overrides": [
-        {
-          "keywords": ["leak under sink", "pipe leak", "water under sink"],
-          "override_sku": "leak_under_sink_repair",
-          "override_base_price": 75
-        },
-        {
-          "keywords": ["cartridge", "replace cartridge", "faucet cartridge"],
-          "override_sku": "faucet_repair_drip",
-          "note": "Cartridge replacement is handled by the same service."
-        }
-      ],
-      "confidence_weight": 80,
-      "default_dynamic_category": "plumbing_help"
-    },
+      {
+        "keyword": "faucet",
+        "synonyms": [
+          "faucet",
+          "sink",
+          "tap",
+          "basin"
+        ],
+        "default_service_sku": "faucet_repair_drip",
+        "contextual_overrides": [
+          {
+            "keywords": [
+              "leak under sink",
+              "pipe leak",
+              "water under sink"
+            ],
+            "override_sku": "leak_under_sink_repair",
+            "override_base_price": 75
+          }
+        ],
+        "confidence_weight": 80,
+        "default_dynamic_category": "plumbing_help",
+        "_note_keyword_fix": "v9.6 FIX: was 'faucet / sink' -- a compound display-label string that never appeared literally in real customer phrasing, so this entry's full, authored confidence_weight silently never applied (confirmed via direct trace: always fell back to the half-weight synonym path). Renamed to the single, most specific, least cross-category-ambiguous term; the other term remains exactly where it already was, as an existing synonym (unchanged, already correctly half-weight).",
+        "full_weight_synonyms": [
+          "sink"
+        ],
+        "_note_full_weight_synonyms": "v9.6: these specific synonyms are genuinely as specific/unambiguous as the primary keyword (same category, no cross-category collision -- checked directly against every other intent_mappings entry), so they earn the same full confidence_weight instead of the generic half-weight every other synonym gets."
+      },
       {
         "keyword": "furniture",
         "synonyms": [
@@ -18003,7 +18088,7 @@
         "confidence_weight": 0
       },
       {
-        "keyword": "tile / floor",
+        "keyword": "tile",
         "synonyms": [
           "tile",
           "floor",
@@ -18015,7 +18100,12 @@
         "default_dynamic_category": "minor_home_repairs",
         "default_service_type": "Repair",
         "dynamic_rule": "tile_repair_formula",
-        "confidence_weight": 65
+        "confidence_weight": 65,
+        "_note_keyword_fix": "v9.6 FIX: was 'tile / floor' -- a compound display-label string that never appeared literally in real customer phrasing, so this entry's full, authored confidence_weight silently never applied (confirmed via direct trace: always fell back to the half-weight synonym path). Renamed to the single, most specific, least cross-category-ambiguous term; the other term remains exactly where it already was, as an existing synonym (unchanged, already correctly half-weight).",
+        "full_weight_synonyms": [
+          "floor"
+        ],
+        "_note_full_weight_synonyms": "v9.6: these specific synonyms are genuinely as specific/unambiguous as the primary keyword (same category, no cross-category collision -- checked directly against every other intent_mappings entry), so they earn the same full confidence_weight instead of the generic half-weight every other synonym gets."
       },
       {
         "keyword": "toilet",
@@ -18075,7 +18165,7 @@
         "default_dynamic_category": "plumbing_help"
       },
       {
-        "keyword": "cabinet / drawer",
+        "keyword": "cabinet",
         "synonyms": [
           "cabinet",
           "cupboard",
@@ -18116,7 +18206,8 @@
             "override_sku": "cabinet_knob_or_pull_install",
             "note": "Hardware installation on cabinet/drawer"
           }
-        ]
+        ],
+        "_note_keyword_fix": "v9.6 FIX: was 'cabinet / drawer' -- a compound display-label string that never appeared literally in real customer phrasing, so this entry's full, authored confidence_weight silently never applied (confirmed via direct trace: always fell back to the half-weight synonym path). Renamed to the single, most specific, least cross-category-ambiguous term; the other term remains exactly where it already was, as an existing synonym (unchanged, already correctly half-weight)."
       },
       {
         "keyword": "fridge",
