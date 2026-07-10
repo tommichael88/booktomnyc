@@ -1531,7 +1531,34 @@ function resolveCheckoutState(checkoutStateKey, laborTotal) {
                 }
 
 function computeUnifiedQuote(ctx) {
-                    const { svc, dynDef, activeTagIds = [], answers = {}, qty = 1, intentKeyword = null, formulaId = null, ctxAdjFee = 0, ctxAdjMin = 0, enrichment = null } = ctx;
+                    const { svc, dynDef, activeTagIds: _rawActiveTagIds = [], answers = {}, qty = 1, intentKeyword = null, formulaId = null, ctxAdjFee = 0, ctxAdjMin = 0, enrichment = null } = ctx;
+                    // v9.6 FIX: an explicit intake answer should supersede an earlier,
+                    // NLP-detected tag that contradicts it (e.g. NLP detecting
+                    // #emergency from free-text like "urgent, need this asap", then
+                    // the customer explicitly answering the urgency question with
+                    // "Whenever works -- no rush"). Confirmed via direct trace: the
+                    // contradictory "urgent / same-day" label kept showing to the
+                    // customer even after they explicitly said no rush -- the tag
+                    // was never cleared, just silently accumulated. For every
+                    // answered module, remove any currently-active tag that belongs
+                    // to that module's own concept space (i.e. some OTHER answer of
+                    // this same module could have produced it) but isn't part of the
+                    // answer actually chosen. A pure computation, not a mutation of S.
+                    const activeTagIds = (() => {
+                        const mods = DB.intake_modules || {};
+                        let cleaned = _rawActiveTagIds;
+                        for (const [moduleKey, answerLabel] of Object.entries(answers)) {
+                            const mod = mods[moduleKey];
+                            if (!mod || !Array.isArray(mod.client_response)) continue;
+                            const moduleOwnedTags = new Set();
+                            mod.client_response.forEach(r => (r.tags || []).forEach(t => moduleOwnedTags.add(t)));
+                            if (moduleOwnedTags.size === 0) continue;
+                            const chosen = mod.client_response.find(r => r.label === answerLabel);
+                            const chosenTags = new Set(chosen?.tags || []);
+                            cleaned = cleaned.filter(tid => !moduleOwnedTags.has(tid) || chosenTags.has(tid));
+                        }
+                        return cleaned;
+                    })();
                     const smartTags = DB.smart_tags || {};
                     const surcharges = DB.global_rules?.surcharges || {};
                     // v9.5: dispatch_fee_enabled toggle in global_rules.surcharges.
@@ -7252,6 +7279,24 @@ function sqBuilderChoose(stepId, choice) {
                     }
 
                     BLD.step++;
+                    // v9.6 FIX: skip forward past any step whose field is already
+                    // answered (e.g. "object" pre-seeded from a catalog "Other" tile
+                    // tap, which already knows the group) -- matches the same
+                    // skip-forward logic sqOpenBuilderPreseeded already applies once
+                    // at initial open, which this naive `step++` alone never
+                    // re-checked on every subsequent chip tap. Confirmed via real
+                    // browser trace: without this, tapping an action chip after
+                    // entering from a group's "Other" tile re-asked "What is it?"
+                    // with an unrelated, unscoped list of groups from entirely
+                    // different categories, the already-known group not even
+                    // among them.
+                    const stepsAfterChoice = sqBuilderGetSteps();
+                    while (BLD.step < stepsAfterChoice.length &&
+                           BLD[stepsAfterChoice[BLD.step]] !== null &&
+                           BLD[stepsAfterChoice[BLD.step]] !== undefined) {
+                        BLD.step++;
+                    }
+
                     sqBuilderRender();
                 }
 
@@ -7355,7 +7400,7 @@ function sqBuilderChoose(stepId, choice) {
                         label: 'Hang / Mount',
                         icon: DB?.service_types?.Mount?.icon || 'ti-wall',
                         value: 'mount',
-                        stype: 'Install',
+                        stype: 'Mount',
                         verbLabel: 'mounted'
                     },
                     {
