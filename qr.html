@@ -512,6 +512,18 @@ body.modal-active{overflow:hidden}
 #sqAdlibBox { background: rgba(255,255,255,.92); border:1.5px solid rgba(222,0,0,.2); border-left:4px solid var(--clr-red,#de0000); border-radius:0 12px 12px 0; padding:16px 18px; margin-top:18px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
 #sqAdlibBox .adlib-label { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--clr-red-dark,#8a0615); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
 
+/* ── Divergence Resolution ("Fork in the Road") ──────────────────── */
+#sqQuoteOut .divergence-options { display:flex; flex-direction:column; gap:12px; }
+#sqQuoteOut .divergence-option { display:flex; align-items:center; gap:14px; width:100%; text-align:left; background:#fff; border:1.5px solid rgba(0,0,0,.1); border-radius:14px; padding:14px 16px; cursor:pointer; transition:var(--transition); touch-action:manipulation; font-family:inherit; }
+#sqQuoteOut .divergence-option:hover { border-color:var(--clr-red,#de0000); box-shadow:0 4px 14px rgba(222,0,0,.12); transform:translateY(-1px); }
+#sqQuoteOut .divergence-option .do-icon { flex-shrink:0; width:38px; height:38px; border-radius:10px; background:rgba(222,0,0,.08); color:var(--clr-red-dark,#8a0615); display:flex; align-items:center; justify-content:center; font-size:17px; }
+#sqQuoteOut .divergence-option .do-body { flex:1; min-width:0; }
+#sqQuoteOut .divergence-option .do-title { font-size:14.5px; font-weight:700; color:#1a1a1a; }
+#sqQuoteOut .divergence-option .do-desc { font-size:12.5px; color:#666; margin-top:2px; line-height:1.4; }
+#sqQuoteOut .divergence-option .do-meta { font-size:11.5px; color:var(--clr-red-dark,#8a0615); font-weight:700; margin-top:6px; }
+#sqQuoteOut .divergence-option .do-chev { color:#bbb; font-size:16px; flex-shrink:0; }
+#sqQuoteOut .divergence-back { margin-top:14px; background:none; border:none; color:#888; font-size:12.5px; text-decoration:underline; cursor:pointer; padding:4px 0; }
+
 /* ── Curated Intake Card ─────────────────────────────────────── */
 .sq-ic{background:#fff;border-radius:14px;border:1px solid #e5e7eb;box-shadow:0 2px 16px rgba(0,0,0,.08);overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
 .sq-ic-hdr{padding:14px 16px;border-bottom:1px solid #f0f0f0;display:flex;gap:12px;align-items:flex-start;}
@@ -1376,10 +1388,10 @@ function _isModVisible(mod, answers, allMods) {
                     return true;
                 }
 
-function tagValidForCategory(tid, cat, groupId) {
+function tagValidForCategory(tid, cat, groupId, serviceId = null) {
                     // SSOT: reads applicable_categories + applicable_group_ids from btnyc.json
                     //
-                    // Two-tier scoping, both read from the tag's own data:
+                    // Three-tier scoping, all read from the tag's own data:
                     //   1. applicable_categories — the coarse boundary ("could this
                     //      ever apply in this category at all"). Empty/missing or
                     //      ['all'] means universal (parking, pets, disposal, urgency —
@@ -1391,6 +1403,18 @@ function tagValidForCategory(tid, cat, groupId) {
                     //      makes sense for the Walls group, not Cabinets or Appliances
                     //      that happen to share the same broad category. Most tags
                     //      don't set this and behave exactly as before (category-only).
+                    //   3. excluded_service_ids — the most specific, optional layer:
+                    //      an EXCLUSION (not an inclusion) list of individual service
+                    //      IDs this tag should never match, even though the service's
+                    //      own category/group would otherwise make it eligible. Real
+                    //      groups often mix services that genuinely differ in scale
+                    //      (a group's Other tile or a specific named service like a
+                    //      simple under-cabinet light install vs. a large chandelier,
+                    //      both in the same Light Fixtures group) -- most services in
+                    //      a matching group should still naturally inherit that
+                    //      group's applicability, so this is deliberately an
+                    //      exclusion list, not a per-service inclusion list that would
+                    //      require enumerating every service that should match.
                     //
                     // This replaces an earlier version where applicable_group_ids only
                     // acted as an OR-fallback when the category check failed — which
@@ -1410,11 +1434,15 @@ function tagValidForCategory(tid, cat, groupId) {
                     if (gids && gids.length > 0) {
                         // Group list present: it is now the deciding factor for this
                         // category match, not an optional bonus path.
-                        return !!groupId && gids.includes(groupId);
+                        if (!groupId || !gids.includes(groupId)) return false;
                     }
-                    // No group narrowing declared: category match alone is sufficient,
-                    // same as every tag's existing behavior before this change.
-                    return categoryMatches;
+                    // Most specific layer: a real, individually-verified exclusion
+                    // for this exact service, regardless of category/group match.
+                    const excluded = tag.excluded_service_ids;
+                    if (excluded && excluded.length > 0 && serviceId && excluded.includes(serviceId)) {
+                        return false;
+                    }
+                    return true;
                 }
 
 function isDiagnosticService(fe) {
@@ -1749,12 +1777,20 @@ function computeUnifiedQuote(ctx) {
                     // checkoutStateKey to 'diagnostic' independently of the service's
                     // static financial_engine.checkout_state — instead of today's
                     // all-or-nothing service-level flag that applies regardless of
-                    // which answer was actually chosen (16 of 69 named services are
-                    // currently unconditionally 'diagnostic' this way). No
-                    // client_response anywhere sets this field yet — authoring real
-                    // per-answer overrides for those 16 services, and giving them
-                    // appliance-specific (not generically shared) symptom options in
-                    // the first place, is the deferred detailed work.
+                    // which answer was actually chosen. v9.5.4 CORRECTION: the "16 of
+                    // 69 named services" figure above was stale and has been for some
+                    // time -- confirmed directly against computeUnifiedQuote (not
+                    // just the raw financial_engine.checkout_state field) that only 1
+                    // named service (dishwasher_repair) plus 24 dynamic_services
+                    // "Diagnostic" entries are currently unconditionally 'diagnostic'
+                    // as of v9.5 (25 total, not 16 -- see CHANGELOG_v9_5 for the
+                    // verified count). No client_response anywhere sets this field
+                    // yet — authoring real per-answer overrides for those 25 entities,
+                    // and giving the appliance/plumbing/tech-specific ones
+                    // category-appropriate (not generically shared) symptom options
+                    // in the first place, remains the deferred detailed work -- see
+                    // CHANGELOG_v9_5's "checkout_state_override" section for why this
+                    // is deliberately not done blind.
                     let answerCheckoutOverride = null;
                     const CS_RESTRICTIVENESS = { standard_flat_rate: 0, project_based: 1, database_summation: 1, diagnostic: 2 };
                     if (!formulaResult) {
@@ -1927,6 +1963,31 @@ function computeUnifiedQuote(ctx) {
                     const meetsConfidenceBar = totalConfidence >= liveStrategy.minimum_quote_confidence;
                     const forceModules = resolveForceModules(variabilityTier);
 
+                    // Divergence Resolution ("Fork in the Road" -- PROJECT_GOALS §9/10):
+                    // when a route has genuinely hit the diagnostic dead end
+                    // (checkoutStateKey === 'diagnostic') AND the resolved entity carries
+                    // real, authored remote_deep_dive_modules, the customer gets a real
+                    // choice -- answer more, specific questions remotely to try to unlock
+                    // a real price (Path A), or book the on-site diagnostic visit now,
+                    // with its fee credited back if they proceed with the repair (Path B)
+                    // -- instead of today's single, dead-end "on-site only" outcome.
+                    // Reads global_rules.divergence_resolution for the shared business
+                    // terms (fee, credit policy) and the resolved entity's own
+                    // remote_deep_dive_modules for which questions Path A actually asks.
+                    // Additive only: any entity without remote_deep_dive_modules authored
+                    // keeps today's exact, unchanged single-path diagnostic behavior --
+                    // confirmed today this is every real entity except dishwasher_repair.
+                    // Deliberately NOT gated on meetsConfidenceBar: checkoutStateKey===
+                    // 'diagnostic' is already the system's real, existing "no firm price
+                    // is possible" signal (a structural property of the entity, not a
+                    // confidence shortfall) -- see global_rules.diagnostic_governance.
+                    const divergenceCfg = DB.global_rules?.divergence_resolution || {};
+                    const remoteDeepDiveModules = (_entity?.remote_deep_dive_modules || [])
+                        .filter(mk => !!DB.intake_modules?.[mk]);
+                    const divergenceEligible = checkoutStateKey === 'diagnostic'
+                        && divergenceCfg.enabled !== false
+                        && remoteDeepDiveModules.length > 0;
+
                     return {
                         base, extraFee, extraMin, totalMin,
                         complexityTier, tierRate: effectiveHourlyRate,
@@ -1946,6 +2007,21 @@ function computeUnifiedQuote(ctx) {
                         escalatedBy: escalation.escalatedBy,
                         keywordConfidence, totalConfidence, meetsConfidenceBar,
                         forceModules,
+                        divergenceEligible, remoteDeepDiveModules,
+                        divergenceFee: divergenceCfg.diagnostic_fee || 0,
+                        // v9.5.1 FIX: was `divergenceCfg.credit_policy_note || ''` only.
+                        // credit_policy_note was this field's original, dedicated
+                        // customer-copy field; the real, current authored data
+                        // instead puts that same customer-facing sentence directly
+                        // on credit_policy itself (credit_policy_note isn't present
+                        // at all anymore). Falls back through both so this works
+                        // with either shape rather than silently returning '' the
+                        // moment one specific field name isn't the one in use --
+                        // confirmed via direct trace: this was returning '' against
+                        // the current real btnyc.json, not because the feature was
+                        // unimplemented (it was, and was fully tested), but because
+                        // of exactly this single-field-name assumption.
+                        divergenceCreditNote: divergenceCfg.credit_policy_note || divergenceCfg.credit_policy || '',
                     };
                 }
 
@@ -7213,6 +7289,7 @@ function computeQuoteFromState() {
                         dispatchFee: u.dispatchFee,
                         checkoutStateKey: u.checkoutStateKey,
                         activeLabels: u.activeLabels || [],
+                        feeBreakdown: u.feeBreakdown || [],
                         isDiagnostic: u.isDiagnostic,
                         activeTagIds,
                         allTagIds,
@@ -7221,6 +7298,27 @@ function computeQuoteFromState() {
                         detTagsChargeable,
                         // Full-set price for affirmation card preview ("price with these tags")
                         laborWithTags: fullQuote.laborEstimate,
+                        // v9.6 FIX: these were never forwarded at all, even though
+                        // computeUnifiedQuote always correctly computed them --
+                        // sqRenderQuote reads them directly and was showing literal
+                        // "$undefined"/"undefined min" in the real, customer-facing
+                        // quote. Confirmed via real browser trace before fixing.
+                        base: u.base,
+                        totalMin: u.totalMin,
+                        tierKey: u.complexityTier,
+                        tierRate: u.tierRate,
+                        hideTime: u.hideTime,
+                        isProject: u.isProject,
+                        // Divergence Resolution: same class of bug as the v9.6 FIX
+                        // immediately above (computeUnifiedQuote computes it, this
+                        // function's own narrow return contract has to explicitly
+                        // forward it or every caller silently sees undefined) --
+                        // caught by verify_divergence_resolution.js's real,
+                        // end-to-end scenario check, not by static inspection alone.
+                        divergenceEligible: u.divergenceEligible,
+                        remoteDeepDiveModules: u.remoteDeepDiveModules || [],
+                        divergenceFee: u.divergenceFee || 0,
+                        divergenceCreditNote: u.divergenceCreditNote || '',
                     };
                 }
 
@@ -7230,6 +7328,22 @@ function sqAddToCart() {
                         return;
                     }
                     const q = computeQuoteFromState();
+                    // Divergence Resolution: when the customer booked via the
+                    // On-Site Pro path (sqChooseDivergencePath('onsite')), record
+                    // the real credit policy + fee on the cart entry itself -- this
+                    // is currently disclosure/ops record-keeping, not an automated
+                    // credit-at-invoicing mechanism (see global_rules.
+                    // divergence_resolution.credit_policy's own schema
+                    // description), but it's a real, genuine consumer of the
+                    // field, not just business copy nobody reads. v9.5.1: credit_policy
+                    // is now authored as a full, real sentence rather than a short
+                    // machine key -- appended as its own sentence rather than after
+                    // a "credit policy: " label, so this reads correctly either way.
+                    const _dr = DB.global_rules?.divergence_resolution || {};
+                    const _divergenceNote = (S._divergencePath === 'onsite' && q.isDiagnostic)
+                        ? '\nOn-site diagnostic booked via Fork-in-the-Road: $' + (q.divergenceFee || _dr.diagnostic_fee || 0) +
+                          ' diagnostic fee. ' + (_dr.credit_policy || 'No credit policy on file.')
+                        : '';
                     addToCart({
                         id: 'sq-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
                         serviceId: S.intent?.key || 'smartquote',
@@ -7239,7 +7353,8 @@ function sqAddToCart() {
                         icon: '⚡',
                         detail: S.desc?.substring(0, 80) || 'SmartQuote estimate',
                         notes: 'SmartQuote · ' + (S.desc || '') + (q.activeLabels.length ? '\nConditions: ' + q.activeLabels.join(', ') : '') +
-                            (S._location ? '\nLocation: ' + S._location : '') + (S._objectNoun ? '\nItem: ' + S._objectNoun : ''),
+                            (S._location ? '\nLocation: ' + S._location : '') + (S._objectNoun ? '\nItem: ' + S._objectNoun : '') +
+                            _divergenceNote,
                         materialsNotIncluded: true,
                         materialsEstimateRange: [0, 0]
                     });
@@ -8236,10 +8351,133 @@ function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                     }
                 }
 
+                function sqChooseDivergencePath(path) {
+                    // Divergence Resolution ("Fork in the Road" -- PROJECT_GOALS §9/10):
+                    // the customer just chose between Path A (answer more, deeper
+                    // questions remotely, hidden until now to keep the default intake
+                    // short) and Path B (book the on-site diagnostic visit now, fee
+                    // credited back if they proceed with the repair). See
+                    // buildDivergenceResolutionHtml / global_rules.divergence_resolution.
+                    if (path !== 'remote' && path !== 'onsite') return; // defensive: unknown path, no-op
+                    S._divergencePath = path;
+                    if (path === 'remote' && S._svc) {
+                        // Re-render the curated intake card -- sqBuildCuratedIntake
+                        // itself reads S._divergencePath to decide whether to append
+                        // this service's remote_deep_dive_modules onto the normal
+                        // chain. Clear the (now-stale) fork panel from the quote-out
+                        // container while the customer answers the new question(s);
+                        // the existing "Review Estimate" -> sqConfirmAdlib ->
+                        // sqRenderQuote flow naturally re-renders it once they do.
+                        sqBuildCuratedIntake(S._svc);
+                        const out = document.getElementById('sqQuoteOut');
+                        if (out) { out.innerHTML = ''; out.style.display = 'none'; }
+                        return;
+                    }
+                    // Path B (On-Site Pro): nothing new to build -- fall through to
+                    // the normal, existing, already-correct diagnostic quote panel
+                    // (today's exact single-path behavior, now reached by explicit
+                    // choice rather than being the only option).
+                    sqRenderQuote();
+                }
+
+function buildDivergenceResolutionHtml(q) {
+                    // Pure: takes the already-computed quote object (q, from
+                    // computeQuoteFromState -> computeUnifiedQuote) and returns an
+                    // HTML string. Reads only its q argument and DB (config/copy),
+                    // never S/State directly, never mutates anything, never touches
+                    // the DOM itself -- matches this file's own "pure render"
+                    // convention (UIRenderer.js: reads app state, never mutates it).
+                    // See PROJECT_GOALS §9/10 ("Diagnostic Divergence: The Fork in
+                    // the Road") and global_rules.divergence_resolution for the
+                    // business terms this renders.
+                    const dr = DB.global_rules?.divergence_resolution || {};
+                    const n = (q.remoteDeepDiveModules || []).length;
+                    const qWord = n === 1 ? 'question' : 'questions';
+                    const fee = q.divergenceFee || 0;
+                    return (
+                        '<div class="qpanel divergence-hub">' +
+                        '<div class="qhero">' +
+                        '<div class="qitag"><i class="ti ti-search"></i> On-site quote</div>' +
+                        '<div class="qpsub" style="font-size:15.5px;font-weight:600;line-height:1.45;margin-top:2px;color:#fff">' +
+                        escapeHtml(dr.hub_heading || "We can't quote this one sight-unseen \u2014 here's how you'd like to proceed:") +
+                        '</div>' +
+                        '</div>' +
+                        '<div class="qbody">' +
+                        '<div class="divergence-options">' +
+                        '<button type="button" class="divergence-option" onclick="sqChooseDivergencePath(\'remote\')">' +
+                        '<div class="do-icon"><i class="ti ti-message-2-question"></i></div>' +
+                        '<div class="do-body">' +
+                        '<div class="do-title">' + escapeHtml(dr.remote_option_label || 'Answer a few more questions') + '</div>' +
+                        '<div class="do-desc">' + escapeHtml(dr.remote_option_description || 'Save money by telling us more \u2014 if we can pin down the cause, you get a real price right now.') + '</div>' +
+                        '<div class="do-meta">' + n + ' more ' + qWord + '</div>' +
+                        '</div>' +
+                        '<i class="ti ti-chevron-right do-chev"></i>' +
+                        '</button>' +
+                        '<button type="button" class="divergence-option" onclick="sqChooseDivergencePath(\'onsite\')">' +
+                        '<div class="do-icon"><i class="ti ti-tool"></i></div>' +
+                        '<div class="do-body">' +
+                        '<div class="do-title">' + escapeHtml(dr.onsite_option_label || 'Book an on-site diagnostic') + '</div>' +
+                        '<div class="do-desc">' + escapeHtml(dr.onsite_option_description || 'A pro examines it in person for a flat fee, credited back if you go ahead with the repair.') + '</div>' +
+                        '<div class="do-meta">$' + fee + ' \u00b7 ' + escapeHtml(dr.credit_policy_note || dr.credit_policy || 'Credited toward the repair if you proceed.') + '</div>' +
+                        '</div>' +
+                        '<i class="ti ti-chevron-right do-chev"></i>' +
+                        '</button>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>'
+                    );
+                }
+
 function sqRenderQuote() {
                     const q = computeQuoteFromState();
                     const out = document.getElementById('sqQuoteOut');
                     if (!out) return;
+
+                    // Divergence Resolution ("Fork in the Road"): when the route has
+                    // genuinely hit the diagnostic dead end AND the entity has real,
+                    // authored remote_deep_dive_modules, show the two-path choice
+                    // INSTEAD of the normal price panel -- there is no real price
+                    // to show yet, on either path, until the customer picks one.
+                    // Once S._divergencePath is set (by sqChooseDivergencePath),
+                    // this branch is skipped and rendering falls through to the
+                    // normal panel below -- unchanged, existing behavior for the
+                    // On-Site path, and a normal re-render (now possibly with a
+                    // real price, if the deep-dive answers raised confidence
+                    // enough) for the Remote path.
+                    //
+                    // v9.5.4: additionally requires S._svc. Path A (Remote Deep
+                    // Dive) only actually works today for the curated-card intake
+                    // path (sqBuildCuratedIntake, used when S._svc is a real named
+                    // service) -- traced directly: dynamic-service / builder-
+                    // originated routes (S._svc unset, resolved via dynDef instead)
+                    // render their intake through sqBuildStep3, a structurally
+                    // different tag-chip grid, not intake_modules questions at all,
+                    // and sqChooseDivergencePath has no integration with it yet.
+                    // Without this guard the fork would offer a "Remote Deep Dive"
+                    // button that silently did nothing for those routes. The 24
+                    // dynamic_services entries' remote_deep_dive_modules data is
+                    // real, authored, and schema-valid regardless -- this is a UI
+                    // reach limitation, not a data gap -- and computeUnifiedQuote
+                    // still correctly reports divergenceEligible for them, so this
+                    // is the one place, not the pure layer, that needs the extra
+                    // condition. Dynamic-service diagnostic routes keep today's
+                    // exact, existing, correct single-path (On-Site Pro only)
+                    // behavior until sqBuildStep3 gets the same treatment.
+                    if (q.isDiagnostic && q.divergenceEligible && !S._divergencePath && S._svc) {
+                        out.innerHTML = buildDivergenceResolutionHtml(q);
+                        out.style.display = 'block';
+                        out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                    }
+
+                    // v9.6 FIX: resolveCheckoutState is the real, existing, correct
+                    // source for disclaimerText/isDiag/btnText/btnClass/hideTime --
+                    // sqRenderQuote read all of these directly off q (which never
+                    // had them; computeQuoteFromState doesn't call this function)
+                    // and had been showing them as literal "undefined" in the real,
+                    // customer-facing quote. Confirmed via direct browser trace.
+                    const cs = resolveCheckoutState(q.checkoutStateKey, q.laborCalc);
+                    Object.assign(q, cs);
 
                     // SSOT: badge from checkout_states (single source — see resolveServiceBadge)
                     const badge = resolveServiceBadge({ checkout_state: q.checkoutStateKey, pricing_type: S.intent?._pricingType });
@@ -8247,6 +8485,17 @@ function sqRenderQuote() {
 
                     const svcLabel = S.intent?.label || 'Service';
                     const qtyLabel = S.intent?.qtyLabel || 'item';
+
+                    // v9.6 FIX: priceDisplay/priceSub were read (q.priceDisplay,
+                    // q.priceSub) but never computed anywhere in the whole file --
+                    // confirmed via exhaustive search. Matches the same "From $X"
+                    // convention already used elsewhere (e.g. the affirmation
+                    // card's own priceDisplay) for the not-yet-fully-confident
+                    // case, and a plain "$X" once confident.
+                    q.priceDisplay = (q.isDiag || q.isProject) ? ('From $' + q.laborCalc) : ('$' + q.laborCalc);
+                    q.priceSub = q.isDiag ? 'Final price confirmed on-site' :
+                        q.isProject ? 'Estimate — final price may vary with scope' :
+                        (q.hideMaterials ? 'Fixed price' : 'Materials estimated separately');
 
                     const timeLine = q.hideTime ? '' :
                         '<div class="ql"><span class="qll"><i class="ti ti-clock"></i> Est. labor time</span>' +
@@ -8293,10 +8542,15 @@ function sqRenderQuote() {
                             '';
                     }
 
-                    const extraFeeRow = q.extraFee ?
-                        '<div class="ql"><span class="qll"><i class="ti ti-adjustments-alt"></i> Condition adjustments</span>' +
-                        '<span class="qlv ' + (q.extraFee < 0 ? 'g' : '') + '">' + (q.extraFee >= 0 ? '+' : '') + '$' + q.extraFee + '</span></div>' :
-                        '';
+                    const extraFeeRow = (q.feeBreakdown && q.feeBreakdown.length) ?
+                        q.feeBreakdown.map(f =>
+                            '<div class="ql"><span class="qll"><i class="ti ti-adjustments-alt"></i> ' + escapeHtml(f.label) + '</span>' +
+                            '<span class="qlv ' + (f.fee < 0 ? 'g' : '') + '">' + (f.fee >= 0 ? '+' : '') + '$' + f.fee + '</span></div>'
+                        ).join('') :
+                        (q.extraFee ?
+                            '<div class="ql"><span class="qll"><i class="ti ti-adjustments-alt"></i> Condition adjustments</span>' +
+                            '<span class="qlv ' + (q.extraFee < 0 ? 'g' : '') + '">' + (q.extraFee >= 0 ? '+' : '') + '$' + q.extraFee + '</span></div>' :
+                            '');
 
                     const tagsRow = q.activeLabels.length ?
                         '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px">' +
@@ -8318,7 +8572,7 @@ function sqRenderQuote() {
                         extraFeeRow +
                         timeLine +
                         '<div class="ql"><span class="qll"><i class="ti ti-stack-2"></i> Quantity</span><span class="qlv">' + S.qty + ' ' + qtyLabel + '</span></div>' +
-                        '<div class="ql"><span class="qll"><i class="ti ti-car"></i> ' + (DB.global_rules?.surcharges?.dispatch_label||'Dispatch fee') + '</span><span class="qlv m">+$' + q.dispatch + ' &middot; ' + (DB.global_rules?.surcharges?.dispatch_scope_note||'once per visit') + '</span></div>' +
+                        '<div class="ql"><span class="qll"><i class="ti ti-car"></i> ' + (DB.global_rules?.surcharges?.dispatch_label||'Dispatch fee') + '</span><span class="qlv m">+$' + q.dispatchFee + ' &middot; ' + (DB.global_rules?.surcharges?.dispatch_scope_note||'once per visit') + '</span></div>' +
                         '<div class="ql" style="margin-top:8px;border-bottom:none">' +
                         '<span class="qll" style="font-weight:600;font-size:15px">Total labor</span>' +
                         '<span class="qlv" style="font-size:20px;font-weight:700;color:var(--clr-red-dark,#8a0615)">$' + q.laborCalc + (q.isDiag || q.isProject ? ' (est.)' : '') + '</span>' +
@@ -8365,6 +8619,7 @@ function sqRestart() {
                         _curatedMode: false,
                         _tagsAffirmed: false,
                         _affirmedTagSet: null,
+                        _divergencePath: null,
                         _negationPivotAccepted: false,
                         _pendingPivotInfo: null,
                         _jobNotes: '',
@@ -10128,6 +10383,23 @@ function sqBuildCuratedIntake(svc) {
                     // orch_compose_intake_chain does both in one authoritative call.
                     const allMods = orch_compose_intake_chain({}, { entity: svc }, DB);
 
+                    // Divergence Resolution, Path A ("Remote Deep Dive"): once the
+                    // customer has explicitly chosen to answer more, deeper questions
+                    // instead of booking an on-site visit (sqChooseDivergencePath),
+                    // append this service's real, authored remote_deep_dive_modules
+                    // onto the normal chain -- these were deliberately hidden until
+                    // now to keep the default intake short (PROJECT_GOALS §9's
+                    // "Path A" framing). Additive + deduped: a module already in the
+                    // normal chain is never added twice.
+                    if (S._divergencePath === 'remote' && Array.isArray(svc.remote_deep_dive_modules)) {
+                        const existingKeys = new Set(allMods.map(m => m.moduleKey || m.module));
+                        svc.remote_deep_dive_modules.forEach(mk => {
+                            if (existingKeys.has(mk) || !DB.intake_modules?.[mk]) return;
+                            allMods.push({ moduleKey: mk, module: mk, then: {}, ...DB.intake_modules[mk], _deepDive: true });
+                            existingKeys.add(mk);
+                        });
+                    }
+
                     // ── JSON-sourced constants ────────────────────────────────────
                     const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
 
@@ -10203,7 +10475,7 @@ function sqBuildCuratedIntake(svc) {
                         const suggested = new Set(S._suggestedTagIds || []);
                         return Object.keys(tags).filter(tid => {
                             if (NOISE.has(tid)) return false;
-                            return tagValidForCategory(tid, catId, groupId);
+                            return tagValidForCategory(tid, catId, groupId, svc?.id);
                         }).sort((a, b) => (suggested.has(a) ? 0 : 1) - (suggested.has(b) ? 0 : 1));
                     };
 
@@ -10593,7 +10865,7 @@ function sqBuildCuratedIntake(svc) {
                                 if (ta.value.length > 5) {
                                     const nlp = detectTagsNLP(ta.value);
                                     nlp.found.forEach(tid => {
-                                        if (tagValidForCategory(tid, catId, groupId) &&
+                                        if (tagValidForCategory(tid, catId, groupId, svc?.id) &&
                                             !S.detTagIds.includes(tid) &&
                                             !S.manTagIds.includes(tid) &&
                                             !S.negatedTagIds.includes(tid) &&

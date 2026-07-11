@@ -2,10 +2,10 @@
   "$schema": "https://tommichael88.github.io/booktomnyc/schema/btnyc_schema.json",
   "$id": "https://tommichael88.github.io/booktomnyc/btnyc.json",
   "meta": {
-    "version": "9.4",
+    "version": "9.5.4",
     "schema_version": "2.0",
     "last_updated": "2026-07-04T21:54:40.302357+00:00",
-    "note": "v9.4 (2026-07-04): Major restructuring: all fee/minute surcharges moved to global_rules.modifiers; intake_modules now use modifier_ref; financial_engine simplified to {type, base_price, checkout_state, formula_ref?}; removed meta.global_rates and pricing_archetypes; stripped effects from smart_tags. schema_version bumped to 2.0. v9.3 (2026-06-21): meta.version and meta.schema_version are now tracked separately. version is the content/release counter (bumps on any meaningful edit: new services, retagged smart_tags, new modules, etc). schema_version is the STRUCTURAL compatibility counter — it only bumps when the shape of the JSON changes in a way that would make old code misread the file (renamed/removed keys, new required fields, changed nesting). schema_version 1.0 represents the v9.1-and-later shape (intake_modules consolidation + params field on intake_chain steps was the last breaking structural change). v9.2 was pure qr.html engine fixes with no JSON shape change. v9.3 added checkout_state_override to the shared effects definition — additive and optional, so backward-compatible with schema_version 1.0 (old code ignoring an unrecognized field still reads the file correctly) — does not bump schema_version. See CHANGELOG_v9.1.md / v9.2.md / v9.3.md for full per-version detail; this note only tracks the version/schema_version split itself.",
+    "note": "v9.5.4 (2026-07-10): Authored real remote_deep_dive_modules for all 24 'Diagnostic' dynamic_services entries (previously only dishwasher_repair had any), using only existing, real intake_modules -- attempted_fix universally, plus one category-appropriate second module where a real, non-redundant fit exists (appliance_type for the two generic appliance catch-alls, floor_type for floors_trim, standing_water for four fixture-proximate plumbing entries, device_type for computer_repair, internet_active for networking/smart_home). Deliberately did not force a second module onto entries without a genuinely confident fit (cabinets_drawers, doors, furniture, walls, windows, water_lines, cable_management) rather than pad the list -- see CHANGELOG for the full per-entry reasoning and the ones flagged for a domain sanity-check. Also corrected a stale '16 of 69 named services' code comment (verified real count: 1 named + 24 dynamic = 25) in computeUnifiedQuote. v9.4 (2026-07-04): Major restructuring: all fee/minute surcharges moved to global_rules.modifiers; intake_modules now use modifier_ref; financial_engine simplified to {type, base_price, checkout_state, formula_ref?}; removed meta.global_rates and pricing_archetypes; stripped effects from smart_tags. schema_version bumped to 2.0. v9.3 (2026-06-21): meta.version and meta.schema_version are now tracked separately. version is the content/release counter (bumps on any meaningful edit: new services, retagged smart_tags, new modules, etc). schema_version is the STRUCTURAL compatibility counter — it only bumps when the shape of the JSON changes in a way that would make old code misread the file (renamed/removed keys, new required fields, changed nesting). schema_version 1.0 represents the v9.1-and-later shape (intake_modules consolidation + params field on intake_chain steps was the last breaking structural change). v9.2 was pure qr.html engine fixes with no JSON shape change. v9.3 added checkout_state_override to the shared effects definition — additive and optional, so backward-compatible with schema_version 1.0 (old code ignoring an unrecognized field still reads the file correctly) — does not bump schema_version. See CHANGELOG_v9.1.md / v9.2.md / v9.3.md for full per-version detail; this note only tracks the version/schema_version split itself.",
     "estimate_disclaimers": {
       "flat_fee": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
       "hourly": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
@@ -391,6 +391,11 @@
       "_rule": "checkout_state == 'diagnostic' IF AND ONLY IF confidence_strategy._variability_tier == 'diagnostic'. variability_tier is the single source of truth for this — checkout_state should be treated as DERIVED from it, not independently authored. This was previously an unenforced coincidence (verified true for all services at time of writing, but nothing prevented a future edit from breaking it).",
       "_verified_zero_exceptions_across_n_services": 69,
       "_consuming_code_should": "derive checkout_state from variability_tier when both are absent/ambiguous, and treat a stored checkout_state that contradicts variability_tier as a data error to flag, not silently trust."
+    },
+    "divergence_resolution": {
+      "enabled": true,
+      "diagnostic_fee": 85,
+      "credit_policy": "If you book the on‑site diagnostic, the $85 fee is fully credited toward any subsequent repair work."
     },
     "force_modules_by_variability": {
       "low": [
@@ -926,64 +931,6 @@
         "minutes": 12,
         "note": "PLACEHOLDER, no own signal. Borrowed from the electrical/small-device group's established rate ($15/12min), the closest real analog for a small networked device."
       }
-    }
-  },
-  "service_types": {
-    "Assembly": {
-      "base_price": 55,
-      "default_complexity": "routine",
-      "required_intake_modules": [],
-      "icon": "ti-armchair",
-      "verb_natural": "assembled",
-      "ui_badge_label": "✅ Fixed price"
-    },
-    "Diagnostic": {
-      "base_price": 85,
-      "default_complexity": "specialized",
-      "required_intake_modules": [
-        "symptom"
-      ],
-      "icon": "ti-stethoscope",
-      "verb_natural": "assessed",
-      "ui_badge_label": "🔍 On-site quote"
-    },
-    "Install": {
-      "base_price": 65,
-      "default_complexity": "skilled",
-      "required_intake_modules": [
-        "item_quantity"
-      ],
-      "icon": "ti-wall",
-      "verb_natural": "installed",
-      "ui_badge_label": "✅ Fixed price"
-    },
-    "Mount": {
-      "base_price": 65,
-      "default_complexity": "skilled",
-      "required_intake_modules": [],
-      "icon": "ti-wall",
-      "verb_natural": "installed",
-      "ui_badge_label": "✅ Fixed price"
-    },
-    "Repair": {
-      "base_price": 70,
-      "default_complexity": "specialized",
-      "required_intake_modules": [
-        "damage_areas"
-      ],
-      "icon": "ti-tool",
-      "verb_natural": "repaired",
-      "ui_badge_label": "✅ Fixed price"
-    },
-    "Setup": {
-      "base_price": 45,
-      "default_complexity": "routine",
-      "required_intake_modules": [
-        "Setup"
-      ],
-      "icon": "ti-package",
-      "verb_natural": "set up",
-      "ui_badge_label": "✅ Fixed price"
     }
   },
   "category": [
@@ -2738,6 +2685,9 @@
           "module": "access",
           "then": {}
         }
+      ],
+      "remote_deep_dive_modules": [
+        "attempted_fix"
       ],
       "default_tags": [],
       "override_root": true,
@@ -7103,6 +7053,64 @@
       "verb_natural": "assembled"
     }
   ],
+  "service_types": {
+    "Assembly": {
+      "base_price": 55,
+      "default_complexity": "routine",
+      "required_intake_modules": [],
+      "icon": "ti-armchair",
+      "verb_natural": "assembled",
+      "ui_badge_label": "✅ Fixed price"
+    },
+    "Diagnostic": {
+      "base_price": 85,
+      "default_complexity": "specialized",
+      "required_intake_modules": [
+        "symptom"
+      ],
+      "icon": "ti-stethoscope",
+      "verb_natural": "assessed",
+      "ui_badge_label": "🔍 On-site quote"
+    },
+    "Install": {
+      "base_price": 65,
+      "default_complexity": "skilled",
+      "required_intake_modules": [
+        "item_quantity"
+      ],
+      "icon": "ti-wall",
+      "verb_natural": "installed",
+      "ui_badge_label": "✅ Fixed price"
+    },
+    "Mount": {
+      "base_price": 65,
+      "default_complexity": "skilled",
+      "required_intake_modules": [],
+      "icon": "ti-wall",
+      "verb_natural": "installed",
+      "ui_badge_label": "✅ Fixed price"
+    },
+    "Repair": {
+      "base_price": 70,
+      "default_complexity": "specialized",
+      "required_intake_modules": [
+        "damage_areas"
+      ],
+      "icon": "ti-tool",
+      "verb_natural": "repaired",
+      "ui_badge_label": "✅ Fixed price"
+    },
+    "Setup": {
+      "base_price": 45,
+      "default_complexity": "routine",
+      "required_intake_modules": [
+        "Setup"
+      ],
+      "icon": "ti-package",
+      "verb_natural": "set up",
+      "ui_badge_label": "✅ Fixed price"
+    }
+  },
   "dynamic_services": {
     "minor_home_repairs+Install": {
       "financial_engine": {
@@ -7960,7 +7968,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "appliance_type"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances+Mount": {
       "financial_engine": {
@@ -8084,7 +8096,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances_washer+Mount": {
       "financial_engine": {
@@ -8222,7 +8237,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances_dryer+Mount": {
       "financial_engine": {
@@ -8360,7 +8378,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances_stove_range+Mount": {
       "financial_engine": {
@@ -8498,7 +8519,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances_refrigerator+Mount": {
       "financial_engine": {
@@ -8636,7 +8660,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances_dishwasher+Mount": {
       "financial_engine": {
@@ -8771,7 +8798,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances_microwave+Mount": {
       "financial_engine": {
@@ -8903,7 +8933,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances_window_ac+Mount": {
       "financial_engine": {
@@ -9034,7 +9067,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "appliance_type"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_appliances_other+Mount": {
       "financial_engine": {
@@ -9161,7 +9198,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_cabinets_drawers+Mount": {
       "financial_engine": {
@@ -9256,7 +9296,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_doors+Mount": {
       "financial_engine": {
@@ -9394,7 +9437,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "floor_type"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_floors_trim+Mount": {
       "financial_engine": {
@@ -9535,7 +9582,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_furniture+Mount": {
       "financial_engine": {
@@ -9633,7 +9683,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_walls+Mount": {
       "financial_engine": {
@@ -9777,7 +9830,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "minor_home_repairs+minor_home_repairs_windows+Mount": {
       "financial_engine": {
@@ -10757,7 +10813,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "standing_water"
+      ]
     },
     "plumbing_help+plumbing_help_garbage_disposals+Mount": {
       "financial_engine": {
@@ -10855,7 +10915,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "standing_water"
+      ]
     },
     "plumbing_help+plumbing_help_sinks+Install": {
       "financial_engine": {
@@ -10953,7 +11017,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "standing_water"
+      ]
     },
     "plumbing_help+plumbing_help_showers_tubs+Install": {
       "financial_engine": {
@@ -11054,7 +11122,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "standing_water"
+      ]
     },
     "plumbing_help+plumbing_help_toilets+Install": {
       "financial_engine": {
@@ -11152,7 +11224,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "plumbing_help+plumbing_help_water_lines+Install": {
       "financial_engine": {
@@ -11244,7 +11319,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "device_type"
+      ]
     },
     "tech_trouble+tech_trouble_computer_repair+Install": {
       "financial_engine": {
@@ -11375,7 +11454,10 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     "tech_trouble+tech_trouble_cable_management+Install": {
       "financial_engine": {
@@ -11496,7 +11578,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "internet_active"
+      ]
     },
     "tech_trouble+tech_trouble_networking+Install": {
       "financial_engine": {
@@ -11621,7 +11707,11 @@
         "base_confidence": 30,
         "_variability_tier": "diagnostic"
       },
-      "merge_strategy": "extend"
+      "merge_strategy": "extend",
+      "remote_deep_dive_modules": [
+        "attempted_fix",
+        "internet_active"
+      ]
     },
     "tech_trouble+tech_trouble_smart_home+Install": {
       "financial_engine": {
@@ -11700,6 +11790,1063 @@
         "_variability_tier": "low"
       },
       "merge_strategy": "extend"
+    }
+  },
+  "routing_archetypes": {
+    "minor_home_repairs_appliances": {
+      "display_name": "Appliances",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "parent",
+      "real_action_ids": [],
+      "real_component_ids": [],
+      "component_id_to_service_ids": {},
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "Parent group — delegates to children (washer, dryer, etc.)."
+      ]
+    },
+    "minor_home_repairs_appliances_washer": {
+      "display_name": "Washer",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "symptom_first",
+      "real_action_ids": [
+        "Install",
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.washer"
+      ],
+      "component_id_to_service_ids": {
+        "comp.washer": [
+          "washer_install"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.leaking_water",
+        "sym.strange_noises",
+        "sym.wont_drain",
+        "sym.wont_spin"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.wont_spin": [
+          "washer_repair"
+        ],
+        "sym.wont_drain": [
+          "washer_repair"
+        ],
+        "sym.leaking_water": [
+          "washer_repair"
+        ],
+        "sym.strange_noises": [
+          "washer_repair"
+        ]
+      },
+      "real_gaps": []
+    },
+    "minor_home_repairs_appliances_dryer": {
+      "display_name": "Dryer",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "undetermined",
+      "real_action_ids": [],
+      "real_component_ids": [],
+      "component_id_to_service_ids": {},
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "No explicit install or repair service defined — only dynamic fallback."
+      ]
+    },
+    "minor_home_repairs_appliances_stove_range": {
+      "display_name": "Stove/Range",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "undetermined",
+      "real_action_ids": [],
+      "real_component_ids": [],
+      "component_id_to_service_ids": {},
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "No explicit install or repair service — only dynamic fallback."
+      ]
+    },
+    "minor_home_repairs_appliances_refrigerator": {
+      "display_name": "Refrigerator",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "symptom_first",
+      "real_action_ids": [
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.refrigerator"
+      ],
+      "component_id_to_service_ids": {},
+      "real_symptom_ids": [
+        "sym.leaking_water",
+        "sym.strange_noises",
+        "sym.wont_drain",
+        "sym.wont_spin"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.wont_spin": [
+          "repair_appliances"
+        ],
+        "sym.wont_drain": [
+          "repair_appliances"
+        ],
+        "sym.leaking_water": [
+          "repair_appliances"
+        ],
+        "sym.strange_noises": [
+          "repair_appliances"
+        ]
+      },
+      "real_gaps": [
+        "No explicit install service — only repair via catch-all."
+      ]
+    },
+    "minor_home_repairs_appliances_dishwasher": {
+      "display_name": "Dishwasher",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "symptom_first",
+      "real_action_ids": [
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.dishwasher"
+      ],
+      "component_id_to_service_ids": {},
+      "real_symptom_ids": [
+        "sym.leaking_water",
+        "sym.strange_noises",
+        "sym.wont_drain",
+        "sym.wont_spin"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.wont_spin": [
+          "dishwasher_repair"
+        ],
+        "sym.wont_drain": [
+          "dishwasher_repair"
+        ],
+        "sym.leaking_water": [
+          "dishwasher_repair"
+        ],
+        "sym.strange_noises": [
+          "dishwasher_repair"
+        ]
+      },
+      "real_gaps": [
+        "No explicit install service — only repair."
+      ]
+    },
+    "minor_home_repairs_appliances_microwave": {
+      "display_name": "Microwave",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "symptom_first",
+      "real_action_ids": [
+        "Install",
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.microwave"
+      ],
+      "component_id_to_service_ids": {
+        "comp.microwave": [
+          "microwave_setup"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.leaking_water",
+        "sym.strange_noises",
+        "sym.wont_drain",
+        "sym.wont_spin"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.wont_spin": [
+          "microwave_repair"
+        ],
+        "sym.wont_drain": [
+          "microwave_repair"
+        ],
+        "sym.leaking_water": [
+          "microwave_repair"
+        ],
+        "sym.strange_noises": [
+          "microwave_repair"
+        ]
+      },
+      "real_gaps": [
+        "Built-in microwave installation not explicitly supported."
+      ]
+    },
+    "minor_home_repairs_appliances_window_ac": {
+      "display_name": "Window AC",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.window_ac"
+      ],
+      "component_id_to_service_ids": {
+        "comp.window_ac": [
+          "window_ac_setup"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "No explicit repair service for window AC units."
+      ]
+    },
+    "minor_home_repairs_appliances_other": {
+      "display_name": "Other",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "undetermined",
+      "real_action_ids": [],
+      "real_component_ids": [],
+      "component_id_to_service_ids": {},
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "Catch-all group with no explicit services — relies on dynamic fallback."
+      ]
+    },
+    "minor_home_repairs_cabinets_drawers": {
+      "display_name": "Cabinets & Drawers",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.cabinet_door",
+        "comp.drawer",
+        "comp.knob",
+        "comp.pull"
+      ],
+      "component_id_to_service_ids": {
+        "comp.cabinet_door": [
+          "cabinet_door_or_drawer_adjustment"
+        ],
+        "comp.drawer": [
+          "cabinet_door_or_drawer_adjustment"
+        ],
+        "comp.knob": [
+          "cabinet_knob_or_pull_install"
+        ],
+        "comp.pull": [
+          "cabinet_knob_or_pull_install"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "minor_home_repairs_doors": {
+      "display_name": "Doors",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install",
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.prehung_door",
+        "comp.door_lock",
+        "comp.door_handle",
+        "comp.deadbolt"
+      ],
+      "component_id_to_service_ids": {
+        "comp.prehung_door": [
+          "prehung_interior_door_install"
+        ],
+        "comp.door_lock": [
+          "door_lock_or_handle_install"
+        ],
+        "comp.door_handle": [
+          "door_lock_or_handle_install"
+        ],
+        "comp.deadbolt": [
+          "door_lock_or_handle_install"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "minor_home_repairs_floors_trim": {
+      "display_name": "Floors & Trim",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install",
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.baseboard",
+        "comp.tile"
+      ],
+      "component_id_to_service_ids": {
+        "comp.baseboard": [
+          "baseboard_install"
+        ],
+        "comp.tile": [
+          "loose_tile_replacement"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "minor_home_repairs_furniture": {
+      "display_name": "Furniture",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "symptom_first",
+      "real_action_ids": [
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.furniture"
+      ],
+      "component_id_to_service_ids": {
+        "comp.furniture": [
+          "furniture_repair_hourly"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.broken_piece",
+        "sym.stuck_drawer",
+        "sym.wobbly",
+        "sym.surface_damage",
+        "sym.water_ring"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.wobbly": [
+          "furniture_repair_hourly"
+        ],
+        "sym.broken_piece": [
+          "furniture_repair_hourly"
+        ],
+        "sym.stuck_drawer": [
+          "furniture_repair_hourly"
+        ],
+        "sym.surface_damage": [
+          "furniture_repair_hourly"
+        ],
+        "sym.water_ring": [
+          "scratch_or_water_ring_removal"
+        ]
+      },
+      "real_gaps": []
+    },
+    "minor_home_repairs_walls": {
+      "display_name": "Walls",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.drywall",
+        "comp.plaster",
+        "comp.brick",
+        "comp.concrete"
+      ],
+      "component_id_to_service_ids": {
+        "comp.drywall": [
+          "wall_hole_or_crack_repair"
+        ],
+        "comp.plaster": [
+          "plaster_wall_repair"
+        ],
+        "comp.brick": [
+          "brick_or_concrete_crack_repair"
+        ],
+        "comp.concrete": [
+          "brick_or_concrete_crack_repair"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "minor_home_repairs_windows": {
+      "display_name": "Windows",
+      "category_id": "minor_home_repairs",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install",
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.window_hardware",
+        "comp.window_screen"
+      ],
+      "component_id_to_service_ids": {
+        "comp.window_hardware": [
+          "window_hardware_repair"
+        ],
+        "comp.window_screen": [
+          "window_screen_repair"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "No full window replacement or glass-only repair."
+      ]
+    },
+    "furniture_fixes_assembly_assembly": {
+      "display_name": "Assembly",
+      "category_id": "furniture_fixes_assembly",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Assembly"
+      ],
+      "real_component_ids": [
+        "comp.flat_pack",
+        "comp.ikea",
+        "comp.pax"
+      ],
+      "component_id_to_service_ids": {
+        "comp.flat_pack": [
+          "furniture_assembly_flat_pack"
+        ],
+        "comp.ikea": [
+          "furniture_assembly_flat_pack"
+        ],
+        "comp.pax": [
+          "pax_wardrobe_assembly"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "furniture_fixes_assembly_disassembly": {
+      "display_name": "Disassembly",
+      "category_id": "furniture_fixes_assembly",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Assembly"
+      ],
+      "real_component_ids": [
+        "comp.furniture"
+      ],
+      "component_id_to_service_ids": {
+        "comp.furniture": [
+          "furniture_disassembly_for_moving"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "furniture_fixes_assembly_repair": {
+      "display_name": "Repair",
+      "category_id": "furniture_fixes_assembly",
+      "routing_archetype": "symptom_first",
+      "real_action_ids": [
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.furniture"
+      ],
+      "component_id_to_service_ids": {
+        "comp.furniture": [
+          "furniture_repair_hourly"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.broken_piece",
+        "sym.stuck_drawer",
+        "sym.wobbly",
+        "sym.surface_damage"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.wobbly": [
+          "furniture_repair_hourly"
+        ],
+        "sym.broken_piece": [
+          "furniture_repair_hourly"
+        ],
+        "sym.stuck_drawer": [
+          "furniture_repair_hourly"
+        ],
+        "sym.surface_damage": [
+          "furniture_repair_hourly"
+        ]
+      },
+      "real_gaps": []
+    },
+    "wall_mounting_drywall_or_plaster": {
+      "display_name": "Drywall or Plaster",
+      "category_id": "wall_mounting",
+      "routing_archetype": "parent",
+      "real_action_ids": [],
+      "real_component_ids": [],
+      "component_id_to_service_ids": {},
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "Parent group — delegates to children."
+      ]
+    },
+    "wall_mounting_blinds_curtain": {
+      "display_name": "Blinds | Curtains | Shades Mounting ⏰ Buy-the-Hour",
+      "category_id": "wall_mounting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.blinds"
+      ],
+      "component_id_to_service_ids": {
+        "comp.blinds": [
+          "blinds_shades_curtains_buy_the_hour"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "No flat-rate option — only buy-the-hour."
+      ]
+    },
+    "wall_mounting_frames_shelves": {
+      "display_name": "Frames | Shelves | Misc",
+      "category_id": "wall_mounting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.shelf",
+        "comp.frame",
+        "comp.mirror"
+      ],
+      "component_id_to_service_ids": {
+        "comp.shelf": [
+          "shelf_mounting_standard_buy_the_hour"
+        ],
+        "comp.frame": [
+          "shelf_mounting_standard_buy_the_hour"
+        ],
+        "comp.mirror": [
+          "shelf_mounting_standard_buy_the_hour"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "wall_mounting_tv_flatscreen": {
+      "display_name": "TV Flatscreen",
+      "category_id": "wall_mounting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.tv",
+        "comp.monitor",
+        "comp.cables"
+      ],
+      "component_id_to_service_ids": {
+        "comp.tv": [
+          "flatscreen_mounting_standard",
+          "flatscreen_mounting_with_hidden_cables"
+        ],
+        "comp.monitor": [
+          "flatscreen_mounting_standard"
+        ],
+        "comp.cables": [
+          "cable_management"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "wall_mounting_brick_or_concrete": {
+      "display_name": "Brick or Concrete",
+      "category_id": "wall_mounting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.shelf",
+        "comp.frame",
+        "comp.mirror"
+      ],
+      "component_id_to_service_ids": {
+        "comp.shelf": [
+          "shelf_mortar_mounting_buy_the_hour"
+        ],
+        "comp.frame": [
+          "shelf_mortar_mounting_buy_the_hour"
+        ],
+        "comp.mirror": [
+          "shelf_mortar_mounting_buy_the_hour"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "electric_lighting_bulbs": {
+      "display_name": "Bulbs",
+      "category_id": "electric_lighting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.bulb"
+      ],
+      "component_id_to_service_ids": {
+        "comp.bulb": [
+          "high_ceiling_bulb_replacement"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "Only replacement — no upgrade/consultation service."
+      ]
+    },
+    "electric_lighting_fans": {
+      "display_name": "Fans",
+      "category_id": "electric_lighting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.ceiling_fan",
+        "comp.exhaust_fan"
+      ],
+      "component_id_to_service_ids": {
+        "comp.ceiling_fan": [
+          "ceiling_fan_install"
+        ],
+        "comp.exhaust_fan": [
+          "bathroom_exhaust_fan_replacement"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "electric_lighting_light_fixtures": {
+      "display_name": "Light Fixtures",
+      "category_id": "electric_lighting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.chandelier",
+        "comp.pendant",
+        "comp.ceiling_light",
+        "comp.under_cabinet_light"
+      ],
+      "component_id_to_service_ids": {
+        "comp.chandelier": [
+          "chandelier_or_pendant_install"
+        ],
+        "comp.pendant": [
+          "chandelier_or_pendant_install",
+          "light_fixture_replacement"
+        ],
+        "comp.ceiling_light": [
+          "light_fixture_replacement"
+        ],
+        "comp.under_cabinet_light": [
+          "under_cabinet_light_install"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "electric_lighting_outlets": {
+      "display_name": "Outlets",
+      "category_id": "electric_lighting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.gfci_outlet",
+        "comp.usb_outlet"
+      ],
+      "component_id_to_service_ids": {
+        "comp.gfci_outlet": [
+          "gfci_outlet_replacement"
+        ],
+        "comp.usb_outlet": [
+          "usb_outlet_install"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "No diagnostic or repair — only replacement/install."
+      ]
+    },
+    "electric_lighting_switches": {
+      "display_name": "Switches",
+      "category_id": "electric_lighting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.dimmer_switch",
+        "comp.smart_switch"
+      ],
+      "component_id_to_service_ids": {
+        "comp.dimmer_switch": [
+          "dimmer_switch_install"
+        ],
+        "comp.smart_switch": [
+          "smart_switch_install"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "electric_lighting_thermostats": {
+      "display_name": "Thermostats",
+      "category_id": "electric_lighting",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.thermostat"
+      ],
+      "component_id_to_service_ids": {
+        "comp.thermostat": [
+          "thermostat_replacement"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "plumbing_help_garbage_disposals": {
+      "display_name": "Garbage Disposals",
+      "category_id": "plumbing_help",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.garbage_disposal"
+      ],
+      "component_id_to_service_ids": {
+        "comp.garbage_disposal": [
+          "garbage_disposal_replacement"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "No diagnostic or repair — only replacement."
+      ]
+    },
+    "plumbing_help_sinks": {
+      "display_name": "Sinks",
+      "category_id": "plumbing_help",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install",
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.faucet",
+        "comp.p_trap"
+      ],
+      "component_id_to_service_ids": {
+        "comp.faucet": [
+          "faucet_repair_drip"
+        ],
+        "comp.p_trap": [
+          "p_trap_cleaning"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.leaking_water",
+        "sym.bad_smell"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.leaking_water": [
+          "leak_under_sink_repair"
+        ],
+        "sym.bad_smell": [
+          "leak_under_sink_repair"
+        ]
+      },
+      "real_gaps": []
+    },
+    "plumbing_help_showers_tubs": {
+      "display_name": "Showers & Tubs",
+      "category_id": "plumbing_help",
+      "routing_archetype": "symptom_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.shower_head",
+        "comp.tub_spout"
+      ],
+      "component_id_to_service_ids": {
+        "comp.shower_head": [
+          "shower_head_replacement"
+        ],
+        "comp.tub_spout": [
+          "tub_spout_replacement"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.slow_drain",
+        "sym.standing_water"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.slow_drain": [
+          "slow_drain_clearing"
+        ],
+        "sym.standing_water": [
+          "slow_drain_clearing"
+        ]
+      },
+      "real_gaps": []
+    },
+    "plumbing_help_toilets": {
+      "display_name": "Toilets",
+      "category_id": "plumbing_help",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install",
+        "Repair"
+      ],
+      "real_component_ids": [
+        "comp.toilet",
+        "comp.wax_ring",
+        "comp.bidet",
+        "comp.fill_valve",
+        "comp.flapper"
+      ],
+      "component_id_to_service_ids": {
+        "comp.toilet": [
+          "toilet_install"
+        ],
+        "comp.wax_ring": [
+          "toilet_wax_ring_replacement"
+        ],
+        "comp.bidet": [
+          "bidet_attachment_install_or_removal"
+        ],
+        "comp.fill_valve": [
+          "toilet_flapper_or_fill_valve_replacement"
+        ],
+        "comp.flapper": [
+          "toilet_flapper_or_fill_valve_replacement"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.runs_constantly",
+        "sym.weak_flush",
+        "sym.toilet_leak"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.runs_constantly": [
+          "toilet_flapper_or_fill_valve_replacement"
+        ],
+        "sym.weak_flush": [
+          "toilet_flapper_or_fill_valve_replacement"
+        ],
+        "sym.toilet_leak": [
+          "toilet_wax_ring_replacement"
+        ]
+      },
+      "real_gaps": []
+    },
+    "plumbing_help_water_lines": {
+      "display_name": "Water Lines",
+      "category_id": "plumbing_help",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.water_line"
+      ],
+      "component_id_to_service_ids": {
+        "comp.water_line": [
+          "refrigerator_water_line_install"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
+    },
+    "tech_trouble_computer_repair": {
+      "display_name": "Computer Repair",
+      "category_id": "tech_trouble",
+      "routing_archetype": "symptom_first",
+      "real_action_ids": [
+        "Diagnostic",
+        "Repair",
+        "Setup"
+      ],
+      "real_component_ids": [
+        "comp.laptop",
+        "comp.desktop",
+        "comp.hard_drive",
+        "comp.ram",
+        "comp.battery",
+        "comp.os"
+      ],
+      "component_id_to_service_ids": {
+        "comp.laptop": [
+          "internal_hardware_replacement"
+        ],
+        "comp.desktop": [
+          "internal_hardware_replacement"
+        ],
+        "comp.hard_drive": [
+          "internal_hardware_replacement",
+          "data_backup_or_transfer"
+        ],
+        "comp.ram": [
+          "internal_hardware_replacement"
+        ],
+        "comp.battery": [
+          "internal_hardware_replacement"
+        ],
+        "comp.os": [
+          "software_or_driver_install",
+          "system_restore_or_reset"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.virus_malware",
+        "sym.lost_files",
+        "sym.wont_power_on",
+        "sym.slow_laggy",
+        "sym.overheating"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.virus_malware": [
+          "virus_or_malware_removal"
+        ],
+        "sym.lost_files": [
+          "data_backup_or_transfer"
+        ],
+        "sym.wont_power_on": [
+          "computer_diagnostic",
+          "system_restore_or_reset"
+        ],
+        "sym.slow_laggy": [
+          "computer_diagnostic",
+          "system_restore_or_reset"
+        ],
+        "sym.overheating": [
+          "computer_diagnostic",
+          "internal_hardware_replacement"
+        ]
+      },
+      "real_gaps": []
+    },
+    "tech_trouble_cable_management": {
+      "display_name": "Cable Management",
+      "category_id": "tech_trouble",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.cables"
+      ],
+      "component_id_to_service_ids": {
+        "comp.cables": [
+          "cable_management"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": [
+        "No diagnostic for signal issues — purely physical organization."
+      ]
+    },
+    "tech_trouble_networking": {
+      "display_name": "Networking",
+      "category_id": "tech_trouble",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.router",
+        "comp.mesh_network",
+        "comp.wifi_extender"
+      ],
+      "component_id_to_service_ids": {
+        "comp.router": [
+          "router_configuration"
+        ],
+        "comp.mesh_network": [
+          "router_configuration"
+        ],
+        "comp.wifi_extender": [
+          "wi_fi_extender_setup"
+        ]
+      },
+      "real_symptom_ids": [
+        "sym.wifi_dead",
+        "sym.slow_internet"
+      ],
+      "symptom_id_to_service_ids": {
+        "sym.wifi_dead": [
+          "wi_fi_extender_setup",
+          "router_configuration"
+        ],
+        "sym.slow_internet": [
+          "router_configuration"
+        ]
+      },
+      "real_gaps": []
+    },
+    "tech_trouble_smart_home": {
+      "display_name": "Smart Home",
+      "category_id": "tech_trouble",
+      "routing_archetype": "component_first",
+      "real_action_ids": [
+        "Install"
+      ],
+      "real_component_ids": [
+        "comp.smart_speaker",
+        "comp.smart_plug"
+      ],
+      "component_id_to_service_ids": {
+        "comp.smart_speaker": [
+          "smart_speaker_setup"
+        ],
+        "comp.smart_plug": [
+          "smart_plug_configuration"
+        ]
+      },
+      "real_symptom_ids": [],
+      "symptom_id_to_service_ids": {},
+      "real_gaps": []
     }
   },
   "intake_modules": {
@@ -16177,7 +17324,13 @@
       "is_logistic": true,
       "ui_phrase": "fan box missing",
       "negation_phrase": "",
-      "note": "v9.5: fee/minutes retired — now applied via existing_box's real answer effects. See CHANGELOG_v9.5.md."
+      "note": "v9.5: fee/minutes retired — now applied via existing_box's real answer effects. See CHANGELOG_v9.5.md.",
+      "applicable_group_ids": [
+        ""
+      ],
+      "excluded_service_ids": [
+        "under_cabinet_light_install"
+      ]
     },
     "#flushometer": {
       "synonyms": [
@@ -16304,9 +17457,11 @@
       "applicable_group_ids": [
         "electric_lighting_fans",
         "electric_lighting_light_fixtures",
+        "electric_lighting_thermostats",
         "furniture_fixes_assembly_assembly",
         "furniture_fixes_assembly_disassembly",
         "furniture_fixes_assembly_repair",
+        "minor_home_repairs_appliances",
         "minor_home_repairs_appliances_washer",
         "minor_home_repairs_appliances_dryer",
         "minor_home_repairs_appliances_stove_range",
@@ -16315,8 +17470,18 @@
         "minor_home_repairs_appliances_microwave",
         "minor_home_repairs_appliances_window_ac",
         "minor_home_repairs_appliances_other",
+        "minor_home_repairs_cabinets_drawers",
         "minor_home_repairs_doors",
-        "minor_home_repairs_furniture"
+        "minor_home_repairs_floors_trim",
+        "minor_home_repairs_furniture",
+        "minor_home_repairs_windows",
+        "wall_mounting_brick_or_concrete",
+        "wall_mounting_frames_shelves",
+        "wall_mounting_tv_flatscreen",
+        "wall_mounting_blinds_curtain"
+      ],
+      "excluded_service_ids": [
+        "under_cabinet_light_install"
       ]
     },
     "#high_ceiling": {
@@ -16354,6 +17519,9 @@
         "wall_mounting_brick_or_concrete",
         "wall_mounting_frames_shelves",
         "wall_mounting_tv_flatscreen"
+      ],
+      "excluded_service_ids": [
+        "under_cabinet_light_install"
       ]
     },
     "#high_volume": {
@@ -16484,6 +17652,7 @@
       "negation_phrase": "",
       "_note_scoping": "v9.6: was ['all'] -- scoped to repair/component categories where a specific part might need special ordering (the likely reason a second trip would be needed). Excludes wall_mounting/furniture_fixes_assembly (pure hanging/assembly, not component sourcing). Flagged for business-owner review. Further narrowed to specific groups (v9.6): excludes minor_home_repairs' Walls (generic, universally-stocked patch materials), electric_lighting's Bulbs/Outlets/Switches (standardized, always-stocked components), and tech_trouble's Cable Management (generic cable ties/raceways, no special-order parts). Included groups matching the same reasoning dishwasher_repair's own SSOT note documents: appliance/plumbing/fixture repairs where the exact replacement part often can't be predicted or stocked in advance.",
       "applicable_group_ids": [
+        "minor_home_repairs_appliances",
         "minor_home_repairs_appliances_washer",
         "minor_home_repairs_appliances_dryer",
         "minor_home_repairs_appliances_stove_range",
@@ -16508,6 +17677,9 @@
         "tech_trouble_computer_repair",
         "tech_trouble_networking",
         "tech_trouble_smart_home"
+      ],
+      "excluded_service_ids": [
+        "under_cabinet_light_install"
       ]
     },
     "#pets_on_site": {
@@ -16681,7 +17853,10 @@
       "is_logistic": false,
       "ui_phrase": "two-person job",
       "negation_phrase": "",
-      "note": "v9.5: fee retired — now applied via the weight module's 'Over 50 lbs' answer (a $60 surcharge added on top of that tier's existing fee, since needing two people is the direct, self-evident consequence of an item being very heavy — the customer answers ONE real, knowable question about weight, not a separate, redundant 'does this need two people' question they couldn't actually answer themselves). See CHANGELOG_v9.5.md."
+      "note": "v9.5: fee retired — now applied via the weight module's 'Over 50 lbs' answer (a $60 surcharge added on top of that tier's existing fee, since needing two people is the direct, self-evident consequence of an item being very heavy — the customer answers ONE real, knowable question about weight, not a separate, redundant 'does this need two people' question they couldn't actually answer themselves). See CHANGELOG_v9.5.md.",
+      "excluded_service_ids": [
+        "under_cabinet_light_install"
+      ]
     },
     "#two_trip_minimum": {
       "synonyms": [],
@@ -16700,6 +17875,7 @@
       "negation_phrase": "",
       "_note_scoping": "v9.6: was ['all'] -- scoped to repair/component categories where a specific part might need special ordering (the likely reason a second trip would be needed). Excludes wall_mounting/furniture_fixes_assembly (pure hanging/assembly, not component sourcing). Flagged for business-owner review. Further narrowed to specific groups (v9.6): excludes minor_home_repairs' Walls (generic, universally-stocked patch materials), electric_lighting's Bulbs/Outlets/Switches (standardized, always-stocked components), and tech_trouble's Cable Management (generic cable ties/raceways, no special-order parts). Included groups matching the same reasoning dishwasher_repair's own SSOT note documents: appliance/plumbing/fixture repairs where the exact replacement part often can't be predicted or stocked in advance.",
       "applicable_group_ids": [
+        "minor_home_repairs_appliances",
         "minor_home_repairs_appliances_washer",
         "minor_home_repairs_appliances_dryer",
         "minor_home_repairs_appliances_stove_range",
@@ -16720,10 +17896,15 @@
         "plumbing_help_water_lines",
         "electric_lighting_fans",
         "electric_lighting_light_fixtures",
+        "electric_lighting_switches",
+        "electric_lighting_outlets",
         "electric_lighting_thermostats",
         "tech_trouble_computer_repair",
         "tech_trouble_networking",
         "tech_trouble_smart_home"
+      ],
+      "excluded_service_ids": [
+        "under_cabinet_light_install"
       ]
     },
     "#very_heavy": {
@@ -16755,7 +17936,10 @@
       "is_logistic": false,
       "ui_phrase": "very heavy item",
       "negation_phrase": "not very heavy",
-      "note": "v9.5: fee/minutes retired from this tag — now applied via the weight intake module's own answer effects (the real, working pricing mechanism), so this tag is a pure descriptive flag, never an independent price source. See CHANGELOG_v9.5.md."
+      "note": "v9.5: fee/minutes retired from this tag — now applied via the weight intake module's own answer effects (the real, working pricing mechanism), so this tag is a pure descriptive flag, never an independent price source. See CHANGELOG_v9.5.md.",
+      "excluded_service_ids": [
+        "under_cabinet_light_install"
+      ]
     },
     "#very_high_ceiling": {
       "synonyms": [
@@ -16792,6 +17976,9 @@
         "wall_mounting_brick_or_concrete",
         "wall_mounting_frames_shelves",
         "wall_mounting_tv_flatscreen"
+      ],
+      "excluded_service_ids": [
+        "under_cabinet_light_install"
       ]
     },
     "#virus": {
@@ -19123,1785 +20310,6 @@
         "confidence_weight": 80
       }
     ]
-  },
-  "routing_archetypes": {
-    "minor_home_repairs_appliances": {
-      "display_name": "Appliances",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_appliances_washer": {
-      "display_name": "Washer",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "Delivery",
-        "Hookup",
-        "Install",
-        "New washer"
-      ],
-      "component_to_service_ids": {
-        "Install": [
-          "washer_install"
-        ],
-        "New washer": [
-          "washer_install"
-        ],
-        "Delivery": [
-          "washer_install"
-        ],
-        "Hookup": [
-          "washer_install"
-        ]
-      },
-      "real_symptoms": [
-        "Leaking water",
-        "Making strange noises",
-        "Won’t drain",
-        "Won’t spin / no movement"
-      ],
-      "symptom_to_service_ids": {
-        "Won’t spin / no movement": [
-          "washer_repair"
-        ],
-        "Won’t drain": [
-          "washer_repair"
-        ],
-        "Leaking water": [
-          "washer_repair"
-        ],
-        "Making strange noises": [
-          "washer_repair"
-        ]
-      },
-      "real_gaps": []
-    },
-    "minor_home_repairs_appliances_dryer": {
-      "display_name": "Dryer",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_appliances_stove_range": {
-      "display_name": "Stove/Range",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_appliances_refrigerator": {
-      "display_name": "Refrigerator",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [
-        "Leaking water",
-        "Making strange noises",
-        "Won’t drain",
-        "Won’t spin / no movement"
-      ],
-      "symptom_to_service_ids": {
-        "Won’t spin / no movement": [
-          "repair_appliances"
-        ],
-        "Won’t drain": [
-          "repair_appliances"
-        ],
-        "Leaking water": [
-          "repair_appliances"
-        ],
-        "Making strange noises": [
-          "repair_appliances"
-        ]
-      },
-      "real_gaps": []
-    },
-    "minor_home_repairs_appliances_dishwasher": {
-      "display_name": "Dishwasher",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [
-        "Leaking water",
-        "Making strange noises",
-        "Won’t drain",
-        "Won’t spin / no movement"
-      ],
-      "symptom_to_service_ids": {
-        "Won’t spin / no movement": [
-          "dishwasher_repair"
-        ],
-        "Won’t drain": [
-          "dishwasher_repair"
-        ],
-        "Leaking water": [
-          "dishwasher_repair"
-        ],
-        "Making strange noises": [
-          "dishwasher_repair"
-        ]
-      },
-      "real_gaps": []
-    },
-    "minor_home_repairs_appliances_microwave": {
-      "display_name": "Microwave",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "Install",
-        "New microwave",
-        "Set up",
-        "Setup",
-        "Unbox"
-      ],
-      "component_to_service_ids": {
-        "Install": [
-          "microwave_setup"
-        ],
-        "Setup": [
-          "microwave_setup"
-        ],
-        "Set up": [
-          "microwave_setup"
-        ],
-        "New microwave": [
-          "microwave_setup"
-        ],
-        "Unbox": [
-          "microwave_setup"
-        ]
-      },
-      "real_symptoms": [
-        "Leaking water",
-        "Making strange noises",
-        "Won’t drain",
-        "Won’t spin / no movement"
-      ],
-      "symptom_to_service_ids": {
-        "Won’t spin / no movement": [
-          "microwave_repair"
-        ],
-        "Won’t drain": [
-          "microwave_repair"
-        ],
-        "Leaking water": [
-          "microwave_repair"
-        ],
-        "Making strange noises": [
-          "microwave_repair"
-        ]
-      },
-      "real_gaps": []
-    },
-    "minor_home_repairs_appliances_window_ac": {
-      "display_name": "Window AC",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_appliances_other": {
-      "display_name": "Other",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_cabinets_drawers": {
-      "display_name": "Cabinets & Drawers",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "Adjust",
-        "Adjustment",
-        "Alignment",
-        "Broken",
-        "Fix",
-        "Handle",
-        "Hardware",
-        "Install",
-        "Jammed",
-        "Knob",
-        "Loose",
-        "New holes needed",
-        "Off track",
-        "Pull",
-        "Repair",
-        "Sagging",
-        "Stuck",
-        "Swapping existing hardware",
-        "Won't close",
-        "Won't open",
-        "Wont close",
-        "Wont open"
-      ],
-      "component_to_service_ids": {
-        "Broken": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Fix": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Stuck": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Wont close": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Won't close": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Repair": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Off track": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Sagging": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Alignment": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Adjust": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Adjustment": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Knob": [
-          "cabinet_knob_or_pull_install"
-        ],
-        "Pull": [
-          "cabinet_knob_or_pull_install"
-        ],
-        "Handle": [
-          "cabinet_knob_or_pull_install"
-        ],
-        "Hardware": [
-          "cabinet_knob_or_pull_install"
-        ],
-        "Jammed": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Loose": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Wont open": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Won't open": [
-          "cabinet_door_or_drawer_adjustment"
-        ],
-        "Install": [
-          "cabinet_knob_or_pull_install"
-        ],
-        "Swapping existing hardware": [
-          "cabinet_knob_or_pull_install"
-        ],
-        "New holes needed": [
-          "cabinet_knob_or_pull_install"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_doors": {
-      "display_name": "Doors",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "Crack",
-        "Damage",
-        "Deadbolt",
-        "Dent",
-        "Exterior door",
-        "Front door",
-        "Handle",
-        "Hole",
-        "Install",
-        "Lock",
-        "New",
-        "New door",
-        "No",
-        "No, I need you to procure it",
-        "Patio door",
-        "Replace",
-        "Replacement",
-        "Swap",
-        "Yes",
-        "Yes, I have it"
-      ],
-      "component_to_service_ids": {
-        "Lock": [
-          "door_lock_or_handle_install"
-        ],
-        "Handle": [
-          "door_lock_or_handle_install"
-        ],
-        "Deadbolt": [
-          "door_lock_or_handle_install"
-        ],
-        "Install": [
-          "prehung_interior_door_install"
-        ],
-        "Replacement": [
-          "prehung_interior_door_install"
-        ],
-        "New door": [
-          "prehung_interior_door_install"
-        ],
-        "Exterior door": [
-          "door_repair_impact_damage",
-          "door_weatherstripping",
-          "prehung_interior_door_install"
-        ],
-        "Front door": [
-          "prehung_interior_door_install"
-        ],
-        "New": [
-          "prehung_interior_door_install"
-        ],
-        "Patio door": [
-          "door_repair_impact_damage",
-          "door_weatherstripping",
-          "prehung_interior_door_install"
-        ],
-        "Replace": [
-          "prehung_interior_door_install"
-        ],
-        "Swap": [
-          "prehung_interior_door_install"
-        ],
-        "Damage": [
-          "door_repair_impact_damage"
-        ],
-        "Hole": [
-          "door_repair_impact_damage"
-        ],
-        "Crack": [
-          "door_repair_impact_damage"
-        ],
-        "Dent": [
-          "door_repair_impact_damage"
-        ],
-        "Yes": [
-          "prehung_interior_door_install"
-        ],
-        "No": [
-          "prehung_interior_door_install"
-        ],
-        "Yes, I have it": [
-          "prehung_interior_door_install"
-        ],
-        "No, I need you to procure it": [
-          "prehung_interior_door_install"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_floors_trim": {
-      "display_name": "Floors & Trim",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "20 to 50 feet",
-        "50 to 100 feet",
-        "Cracked or chipped",
-        "Less than 20 feet",
-        "Loose but not cracked",
-        "No",
-        "Yes"
-      ],
-      "component_to_service_ids": {
-        "Less than 20 feet": [
-          "baseboard_install"
-        ],
-        "20 to 50 feet": [
-          "baseboard_install"
-        ],
-        "50 to 100 feet": [
-          "baseboard_install"
-        ],
-        "Yes": [
-          "loose_tile_replacement"
-        ],
-        "No": [
-          "loose_tile_replacement"
-        ],
-        "Loose but not cracked": [
-          "loose_tile_replacement"
-        ],
-        "Cracked or chipped": [
-          "loose_tile_replacement"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_furniture": {
-      "display_name": "Furniture",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "Cabinet / dresser",
-        "Chair",
-        "Other",
-        "Sofa / couch",
-        "Table"
-      ],
-      "component_to_service_ids": {
-        "Chair": [
-          "furniture_repair_hourly"
-        ],
-        "Table": [
-          "furniture_repair_hourly"
-        ],
-        "Sofa / couch": [
-          "furniture_repair_hourly"
-        ],
-        "Cabinet / dresser": [
-          "furniture_repair_hourly"
-        ],
-        "Other": [
-          "furniture_repair_hourly"
-        ]
-      },
-      "real_symptoms": [
-        "Broken piece",
-        "Drawer that sticks or falls out",
-        "Loose joints or wobbling",
-        "Piece detached or fell off",
-        "Scratch or scuff",
-        "Surface damage",
-        "Veneer peeling or bubbling",
-        "Water ring / moisture stain"
-      ],
-      "symptom_to_service_ids": {
-        "Loose joints or wobbling": [
-          "furniture_repair_hourly"
-        ],
-        "Broken piece": [
-          "furniture_repair_hourly"
-        ],
-        "Drawer that sticks or falls out": [
-          "furniture_repair_hourly"
-        ],
-        "Surface damage": [
-          "furniture_repair_hourly"
-        ],
-        "Piece detached or fell off": [
-          "furniture_repair_hourly"
-        ],
-        "Scratch or scuff": [
-          "scratch_or_water_ring_removal"
-        ],
-        "Water ring / moisture stain": [
-          "scratch_or_water_ring_removal"
-        ],
-        "Veneer peeling or bubbling": [
-          "scratch_or_water_ring_removal"
-        ]
-      },
-      "real_gaps": []
-    },
-    "minor_home_repairs_walls": {
-      "display_name": "Walls",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "Brick or concrete",
-        "Drywall",
-        "High",
-        "Plaster",
-        "Standard reach",
-        "Very high"
-      ],
-      "component_to_service_ids": {
-        "Standard reach": [
-          "brick_or_concrete_crack_repair",
-          "plaster_wall_repair",
-          "wall_hole_or_crack_repair",
-          "wood_paneling_repair"
-        ],
-        "High": [
-          "brick_or_concrete_crack_repair",
-          "plaster_wall_repair",
-          "wall_hole_or_crack_repair",
-          "wood_paneling_repair"
-        ],
-        "Very high": [
-          "brick_or_concrete_crack_repair",
-          "plaster_wall_repair",
-          "wall_hole_or_crack_repair",
-          "wood_paneling_repair"
-        ],
-        "Drywall": [
-          "wall_hole_or_crack_repair"
-        ],
-        "Plaster": [
-          "wall_hole_or_crack_repair"
-        ],
-        "Brick or concrete": [
-          "wall_hole_or_crack_repair"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "minor_home_repairs_windows": {
-      "display_name": "Windows",
-      "category_id": "minor_home_repairs",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "Awning",
-        "Casement",
-        "Double‑hung",
-        "Slider"
-      ],
-      "component_to_service_ids": {
-        "Casement": [
-          "window_hardware_repair"
-        ],
-        "Double‑hung": [
-          "window_hardware_repair"
-        ],
-        "Slider": [
-          "window_hardware_repair"
-        ],
-        "Awning": [
-          "window_hardware_repair"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "furniture_fixes_assembly_assembly": {
-      "display_name": "Assembly",
-      "category_id": "furniture_fixes_assembly",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Assembly",
-        "Repair"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "furniture_fixes_assembly_disassembly": {
-      "display_name": "Disassembly",
-      "category_id": "furniture_fixes_assembly",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Assembly",
-        "Repair"
-      ],
-      "real_components": [
-        "Bed",
-        "Desk",
-        "Shelving unit",
-        "Table",
-        "Wardrobe / armoire"
-      ],
-      "component_to_service_ids": {
-        "Bed": [
-          "furniture_disassembly_for_moving"
-        ],
-        "Desk": [
-          "furniture_disassembly_for_moving"
-        ],
-        "Shelving unit": [
-          "furniture_disassembly_for_moving"
-        ],
-        "Wardrobe / armoire": [
-          "furniture_disassembly_for_moving"
-        ],
-        "Table": [
-          "furniture_disassembly_for_moving"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "furniture_fixes_assembly_repair": {
-      "display_name": "Repair",
-      "category_id": "furniture_fixes_assembly",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Assembly",
-        "Repair"
-      ],
-      "real_components": [
-        "Cabinet / dresser",
-        "Chair",
-        "Other",
-        "Sofa / couch",
-        "Table"
-      ],
-      "component_to_service_ids": {
-        "Chair": [
-          "furniture_repair_hourly"
-        ],
-        "Table": [
-          "furniture_repair_hourly"
-        ],
-        "Sofa / couch": [
-          "furniture_repair_hourly"
-        ],
-        "Cabinet / dresser": [
-          "furniture_repair_hourly"
-        ],
-        "Other": [
-          "furniture_repair_hourly"
-        ]
-      },
-      "real_symptoms": [
-        "Broken piece",
-        "Drawer that sticks or falls out",
-        "Loose joints or wobbling",
-        "Piece detached or fell off",
-        "Surface damage"
-      ],
-      "symptom_to_service_ids": {
-        "Loose joints or wobbling": [
-          "furniture_repair_hourly"
-        ],
-        "Broken piece": [
-          "furniture_repair_hourly"
-        ],
-        "Drawer that sticks or falls out": [
-          "furniture_repair_hourly"
-        ],
-        "Surface damage": [
-          "furniture_repair_hourly"
-        ],
-        "Piece detached or fell off": [
-          "furniture_repair_hourly"
-        ]
-      },
-      "real_gaps": []
-    },
-    "wall_mounting_drywall_or_plaster": {
-      "display_name": "Drywall or Plaster",
-      "category_id": "wall_mounting",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Mount"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "wall_mounting_blinds_curtain": {
-      "display_name": "Blinds | Curtains | Shades Mounting ⏰ Buy-the-Hour",
-      "category_id": "wall_mounting",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Install",
-        "Mount"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "wall_mounting_frames_shelves": {
-      "display_name": "Frames | Shelves | Misc",
-      "category_id": "wall_mounting",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Install",
-        "Mount"
-      ],
-      "real_components": [
-        "Art",
-        "Artwork",
-        "Banner",
-        "Canvas",
-        "Frame",
-        "Heavy frame",
-        "High",
-        "Large frame",
-        "Mirror",
-        "Neon",
-        "Painting",
-        "Picture",
-        "Shelf",
-        "Shelves",
-        "Sign",
-        "Standard reach",
-        "Very high"
-      ],
-      "component_to_service_ids": {
-        "Shelf": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Shelves": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Mirror": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Frame": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Picture": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Art": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Sign": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Neon": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Banner": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Artwork": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Canvas": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Painting": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Large frame": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Heavy frame": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Standard reach": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "High": [
-          "shelf_mounting_standard_buy_the_hour"
-        ],
-        "Very high": [
-          "shelf_mounting_standard_buy_the_hour"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "wall_mounting_tv_flatscreen": {
-      "display_name": "TV Flatscreen",
-      "category_id": "wall_mounting",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Install",
-        "Mount"
-      ],
-      "real_components": [
-        "20 to 50 lbs",
-        "Brick or concrete",
-        "Display",
-        "Drywall",
-        "Flat screen",
-        "Flat-screen",
-        "Flatscreen",
-        "High",
-        "Less than 20 lbs",
-        "Monitor",
-        "Over 50 lbs",
-        "Plaster",
-        "Screen",
-        "Standard reach",
-        "Television",
-        "Tv",
-        "Very high"
-      ],
-      "component_to_service_ids": {
-        "Tv": [
-          "flatscreen_mounting_standard"
-        ],
-        "Television": [
-          "flatscreen_mounting_standard"
-        ],
-        "Flatscreen": [
-          "flatscreen_mounting_standard"
-        ],
-        "Flat screen": [
-          "flatscreen_mounting_standard"
-        ],
-        "Flat-screen": [
-          "flatscreen_mounting_standard"
-        ],
-        "Monitor": [
-          "flatscreen_mounting_standard"
-        ],
-        "Screen": [
-          "flatscreen_mounting_standard"
-        ],
-        "Display": [
-          "flatscreen_mounting_standard"
-        ],
-        "Standard reach": [
-          "cable_management",
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ],
-        "High": [
-          "cable_management",
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ],
-        "Very high": [
-          "cable_management",
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ],
-        "Less than 20 lbs": [
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ],
-        "20 to 50 lbs": [
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ],
-        "Over 50 lbs": [
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ],
-        "Drywall": [
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ],
-        "Plaster": [
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ],
-        "Brick or concrete": [
-          "flatscreen_mounting_standard",
-          "flatscreen_mounting_with_hidden_cables"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "wall_mounting_brick_or_concrete": {
-      "display_name": "Brick or Concrete",
-      "category_id": "wall_mounting",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Install",
-        "Mount"
-      ],
-      "real_components": [
-        "Heavy mirror",
-        "High",
-        "Mixed items",
-        "Multiple shelves",
-        "Picture frames or art",
-        "Single shelf",
-        "Standard reach",
-        "Very high"
-      ],
-      "component_to_service_ids": {
-        "Single shelf": [
-          "shelf_mortar_mounting_buy_the_hour"
-        ],
-        "Multiple shelves": [
-          "shelf_mortar_mounting_buy_the_hour"
-        ],
-        "Picture frames or art": [
-          "shelf_mortar_mounting_buy_the_hour"
-        ],
-        "Heavy mirror": [
-          "shelf_mortar_mounting_buy_the_hour"
-        ],
-        "Mixed items": [
-          "shelf_mortar_mounting_buy_the_hour"
-        ],
-        "Standard reach": [
-          "shelf_mortar_mounting_buy_the_hour"
-        ],
-        "High": [
-          "shelf_mortar_mounting_buy_the_hour"
-        ],
-        "Very high": [
-          "shelf_mortar_mounting_buy_the_hour"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "electric_lighting_bulbs": {
-      "display_name": "Bulbs",
-      "category_id": "electric_lighting",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Install"
-      ],
-      "real_components": [
-        "High",
-        "Standard reach",
-        "Very high"
-      ],
-      "component_to_service_ids": {
-        "Standard reach": [
-          "high_ceiling_bulb_replacement"
-        ],
-        "High": [
-          "high_ceiling_bulb_replacement"
-        ],
-        "Very high": [
-          "high_ceiling_bulb_replacement"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "electric_lighting_fans": {
-      "display_name": "Fans",
-      "category_id": "electric_lighting",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Install"
-      ],
-      "real_components": [
-        "High",
-        "No / I’m not sure",
-        "No – it’s recirculating",
-        "Not sure – I’ll describe in notes",
-        "Standard reach",
-        "Very high",
-        "Yes – it vents outside",
-        "Yes, a fan box is already there"
-      ],
-      "component_to_service_ids": {
-        "Standard reach": [
-          "bathroom_exhaust_fan_replacement",
-          "ceiling_fan_install"
-        ],
-        "High": [
-          "bathroom_exhaust_fan_replacement",
-          "ceiling_fan_install"
-        ],
-        "Very high": [
-          "bathroom_exhaust_fan_replacement",
-          "ceiling_fan_install"
-        ],
-        "Yes – it vents outside": [
-          "bathroom_exhaust_fan_replacement"
-        ],
-        "No – it’s recirculating": [
-          "bathroom_exhaust_fan_replacement"
-        ],
-        "Not sure – I’ll describe in notes": [
-          "bathroom_exhaust_fan_replacement"
-        ],
-        "Yes, a fan box is already there": [
-          "ceiling_fan_install"
-        ],
-        "No / I’m not sure": [
-          "ceiling_fan_install"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "electric_lighting_light_fixtures": {
-      "display_name": "Light Fixtures",
-      "category_id": "electric_lighting",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Install"
-      ],
-      "real_components": [
-        "10 to 25 feet",
-        "20 to 50 feet",
-        "20 to 50 lbs",
-        "50 to 100 feet",
-        "Ceiling light",
-        "Chandelier",
-        "Flush mount",
-        "Heavy light",
-        "High",
-        "Less than 10 feet",
-        "Less than 20 feet",
-        "Less than 20 lbs",
-        "More than 25 feet",
-        "Over 50 lbs",
-        "Pendant",
-        "Standard reach",
-        "Under cabinet",
-        "Under-cabinet",
-        "Very high",
-        "Wall sconce"
-      ],
-      "component_to_service_ids": {
-        "Chandelier": [
-          "chandelier_or_pendant_install"
-        ],
-        "Pendant": [
-          "chandelier_or_pendant_install",
-          "light_fixture_replacement"
-        ],
-        "Heavy light": [
-          "chandelier_or_pendant_install"
-        ],
-        "Under cabinet": [
-          "under_cabinet_light_install"
-        ],
-        "Under-cabinet": [
-          "under_cabinet_light_install"
-        ],
-        "Standard reach": [
-          "chandelier_or_pendant_install"
-        ],
-        "High": [
-          "chandelier_or_pendant_install"
-        ],
-        "Very high": [
-          "chandelier_or_pendant_install"
-        ],
-        "Less than 20 lbs": [
-          "chandelier_or_pendant_install"
-        ],
-        "20 to 50 lbs": [
-          "chandelier_or_pendant_install"
-        ],
-        "Over 50 lbs": [
-          "chandelier_or_pendant_install"
-        ],
-        "Less than 10 feet": [
-          "light_fixture_replacement"
-        ],
-        "10 to 25 feet": [
-          "light_fixture_replacement"
-        ],
-        "More than 25 feet": [
-          "light_fixture_replacement"
-        ],
-        "Ceiling light": [
-          "light_fixture_replacement"
-        ],
-        "Wall sconce": [
-          "light_fixture_replacement"
-        ],
-        "Flush mount": [
-          "light_fixture_replacement"
-        ],
-        "Less than 20 feet": [
-          "under_cabinet_light_install"
-        ],
-        "20 to 50 feet": [
-          "under_cabinet_light_install"
-        ],
-        "50 to 100 feet": [
-          "under_cabinet_light_install"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "electric_lighting_outlets": {
-      "display_name": "Outlets",
-      "category_id": "electric_lighting",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Install"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "electric_lighting_switches": {
-      "display_name": "Switches",
-      "category_id": "electric_lighting",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Install"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "electric_lighting_thermostats": {
-      "display_name": "Thermostats",
-      "category_id": "electric_lighting",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Install"
-      ],
-      "real_components": [
-        "Programmable",
-        "Smart thermostat",
-        "Standard"
-      ],
-      "component_to_service_ids": {
-        "Standard": [
-          "thermostat_replacement"
-        ],
-        "Smart thermostat": [
-          "thermostat_replacement"
-        ],
-        "Programmable": [
-          "thermostat_replacement"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "plumbing_help_garbage_disposals": {
-      "display_name": "Garbage Disposals",
-      "category_id": "plumbing_help",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "plumbing_help_sinks": {
-      "display_name": "Sinks",
-      "category_id": "plumbing_help",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair"
-      ],
-      "real_components": [
-        "Bathroom sink",
-        "Ceramic disc",
-        "Kitchen sink",
-        "Leak under sink",
-        "Pipe leak",
-        "Single lever",
-        "Two‑handle",
-        "Utility / laundry sink",
-        "Water under sink"
-      ],
-      "component_to_service_ids": {
-        "Leak under sink": [
-          "leak_under_sink_repair"
-        ],
-        "Pipe leak": [
-          "leak_under_sink_repair"
-        ],
-        "Water under sink": [
-          "leak_under_sink_repair"
-        ],
-        "Kitchen sink": [
-          "faucet_repair_drip",
-          "p_trap_cleaning"
-        ],
-        "Bathroom sink": [
-          "faucet_repair_drip",
-          "p_trap_cleaning"
-        ],
-        "Utility / laundry sink": [
-          "faucet_repair_drip",
-          "p_trap_cleaning"
-        ],
-        "Two‑handle": [
-          "faucet_repair_drip"
-        ],
-        "Single lever": [
-          "faucet_repair_drip"
-        ],
-        "Ceramic disc": [
-          "faucet_repair_drip"
-        ]
-      },
-      "real_symptoms": [
-        "Bad smell",
-        "Movement / shifting of the fixture",
-        "Water leak"
-      ],
-      "symptom_to_service_ids": {
-        "Water leak": [
-          "leak_under_sink_repair"
-        ],
-        "Bad smell": [
-          "leak_under_sink_repair"
-        ],
-        "Movement / shifting of the fixture": [
-          "leak_under_sink_repair"
-        ]
-      },
-      "real_gaps": []
-    },
-    "plumbing_help_showers_tubs": {
-      "display_name": "Showers & Tubs",
-      "category_id": "plumbing_help",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install"
-      ],
-      "real_components": [
-        "Not sure – the tech can check",
-        "Slip‑on",
-        "Threaded"
-      ],
-      "component_to_service_ids": {
-        "Slip‑on": [
-          "shower_head_replacement",
-          "tub_spout_replacement"
-        ],
-        "Threaded": [
-          "shower_head_replacement",
-          "tub_spout_replacement"
-        ],
-        "Not sure – the tech can check": [
-          "shower_head_replacement",
-          "tub_spout_replacement"
-        ]
-      },
-      "real_symptoms": [
-        "Slow – takes a few minutes to empty",
-        "Standing water – completely blocked",
-        "Very slow – water pools for over 10 minutes"
-      ],
-      "symptom_to_service_ids": {
-        "Slow – takes a few minutes to empty": [
-          "slow_drain_clearing"
-        ],
-        "Very slow – water pools for over 10 minutes": [
-          "slow_drain_clearing"
-        ],
-        "Standing water – completely blocked": [
-          "slow_drain_clearing"
-        ]
-      },
-      "real_gaps": []
-    },
-    "plumbing_help_toilets": {
-      "display_name": "Toilets",
-      "category_id": "plumbing_help",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install"
-      ],
-      "real_components": [
-        "Already removed",
-        "Bidet",
-        "Bidet attachment",
-        "Bidet seat",
-        "Comfort height / elongated bowl",
-        "Commercial flushometer",
-        "Designer or premium finish",
-        "High‑efficiency / dual‑flush",
-        "I already have the toilet – just install it",
-        "Install",
-        "New toilet",
-        "Not sure",
-        "Replace toilet",
-        "Replacement toilet",
-        "Standard residential",
-        "Standard two‑piece",
-        "Toilet seal",
-        "Washlet",
-        "Wax ring",
-        "Wax seal",
-        "Yes, remove and haul away",
-        "Yes, remove but leave it for me"
-      ],
-      "component_to_service_ids": {
-        "Wax ring": [
-          "toilet_wax_ring_replacement"
-        ],
-        "Wax seal": [
-          "toilet_wax_ring_replacement"
-        ],
-        "Toilet seal": [
-          "toilet_wax_ring_replacement"
-        ],
-        "Install": [
-          "toilet_install"
-        ],
-        "New toilet": [
-          "toilet_install"
-        ],
-        "Replace toilet": [
-          "toilet_install"
-        ],
-        "Replacement toilet": [
-          "toilet_install"
-        ],
-        "Bidet": [
-          "bidet_attachment_install_or_removal"
-        ],
-        "Bidet attachment": [
-          "bidet_attachment_install_or_removal"
-        ],
-        "Bidet seat": [
-          "bidet_attachment_install_or_removal"
-        ],
-        "Washlet": [
-          "bidet_attachment_install_or_removal"
-        ],
-        "Standard residential": [
-          "bidet_attachment_install_or_removal"
-        ],
-        "Commercial flushometer": [
-          "bidet_attachment_install_or_removal"
-        ],
-        "Not sure": [
-          "bidet_attachment_install_or_removal"
-        ],
-        "Yes, remove and haul away": [
-          "toilet_install"
-        ],
-        "Yes, remove but leave it for me": [
-          "toilet_install"
-        ],
-        "Already removed": [
-          "toilet_install"
-        ],
-        "Standard two‑piece": [
-          "toilet_install"
-        ],
-        "Comfort height / elongated bowl": [
-          "toilet_install"
-        ],
-        "High‑efficiency / dual‑flush": [
-          "toilet_install"
-        ],
-        "Designer or premium finish": [
-          "toilet_install"
-        ],
-        "I already have the toilet – just install it": [
-          "toilet_install"
-        ]
-      },
-      "real_symptoms": [
-        "Bad smell",
-        "Handle feels loose or doesn't catch",
-        "Movement / shifting of the fixture",
-        "Not sure — just want it checked",
-        "Runs constantly / won't stop",
-        "Water leak",
-        "Weak flush"
-      ],
-      "symptom_to_service_ids": {
-        "Runs constantly / won't stop": [
-          "toilet_flapper_or_fill_valve_replacement"
-        ],
-        "Weak flush": [
-          "toilet_flapper_or_fill_valve_replacement"
-        ],
-        "Handle feels loose or doesn't catch": [
-          "toilet_flapper_or_fill_valve_replacement"
-        ],
-        "Not sure — just want it checked": [
-          "toilet_flapper_or_fill_valve_replacement"
-        ],
-        "Water leak": [
-          "toilet_wax_ring_replacement"
-        ],
-        "Bad smell": [
-          "toilet_wax_ring_replacement"
-        ],
-        "Movement / shifting of the fixture": [
-          "toilet_wax_ring_replacement"
-        ]
-      },
-      "real_gaps": [
-        "seat",
-        "toilet seat"
-      ]
-    },
-    "plumbing_help_water_lines": {
-      "display_name": "Water Lines",
-      "category_id": "plumbing_help",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install"
-      ],
-      "real_components": [
-        "10 to 25 feet",
-        "Less than 10 feet",
-        "More than 25 feet"
-      ],
-      "component_to_service_ids": {
-        "Less than 10 feet": [
-          "refrigerator_water_line_install"
-        ],
-        "10 to 25 feet": [
-          "refrigerator_water_line_install"
-        ],
-        "More than 25 feet": [
-          "refrigerator_water_line_install"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "tech_trouble_computer_repair": {
-      "display_name": "Computer Repair",
-      "category_id": "tech_trouble",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Repair",
-        "Setup"
-      ],
-      "real_components": [
-        "All-in-one",
-        "Back up",
-        "Backup",
-        "Battery",
-        "Data backup",
-        "Desktop",
-        "Fan",
-        "Hardware driver",
-        "Laptop",
-        "No – I need you to source it",
-        "Not sure — describe in notes",
-        "Operating system",
-        "RAM",
-        "SSD",
-        "Something else",
-        "Specific application or program",
-        "Yes – I have it"
-      ],
-      "component_to_service_ids": {
-        "Back up": [
-          "data_backup_or_transfer"
-        ],
-        "Backup": [
-          "data_backup_or_transfer"
-        ],
-        "Data backup": [
-          "data_backup_or_transfer"
-        ],
-        "Laptop": [
-          "internal_hardware_replacement"
-        ],
-        "Desktop": [
-          "internal_hardware_replacement"
-        ],
-        "All-in-one": [
-          "internal_hardware_replacement"
-        ],
-        "Yes – I have it": [
-          "internal_hardware_replacement"
-        ],
-        "No – I need you to source it": [
-          "internal_hardware_replacement"
-        ],
-        "RAM": [
-          "internal_hardware_replacement"
-        ],
-        "SSD": [
-          "internal_hardware_replacement"
-        ],
-        "Battery": [
-          "internal_hardware_replacement"
-        ],
-        "Fan": [
-          "internal_hardware_replacement"
-        ],
-        "Something else": [
-          "internal_hardware_replacement"
-        ],
-        "Operating system": [
-          "software_or_driver_install"
-        ],
-        "Specific application or program": [
-          "software_or_driver_install"
-        ],
-        "Hardware driver": [
-          "software_or_driver_install"
-        ],
-        "Not sure — describe in notes": [
-          "software_or_driver_install"
-        ]
-      },
-      "real_symptoms": [
-        "Dead / won’t power on",
-        "Hard drive",
-        "It’s broken / not working",
-        "It’s working but needs setup",
-        "Leaking water",
-        "Lost or corrupted files",
-        "Making strange noises",
-        "Overheating",
-        "Phone / mobile device",
-        "Running slow, not sure why",
-        "Showing error messages",
-        "Very slow or laggy",
-        "Virus or pop-ups",
-        "Won’t drain",
-        "Won’t spin / no movement"
-      ],
-      "symptom_to_service_ids": {
-        "Won’t spin / no movement": [
-          "computer_diagnostic"
-        ],
-        "Won’t drain": [
-          "computer_diagnostic"
-        ],
-        "Leaking water": [
-          "computer_diagnostic"
-        ],
-        "Making strange noises": [
-          "computer_diagnostic"
-        ],
-        "It’s working but needs setup": [
-          "data_backup_or_transfer"
-        ],
-        "It’s broken / not working": [
-          "data_backup_or_transfer"
-        ],
-        "Hard drive": [
-          "data_backup_or_transfer"
-        ],
-        "Phone / mobile device": [
-          "data_backup_or_transfer"
-        ],
-        "Virus or pop-ups": [
-          "data_backup_or_transfer",
-          "virus_or_malware_removal"
-        ],
-        "Lost or corrupted files": [
-          "data_backup_or_transfer",
-          "virus_or_malware_removal"
-        ],
-        "Running slow, not sure why": [
-          "data_backup_or_transfer",
-          "virus_or_malware_removal"
-        ],
-        "Dead / won’t power on": [
-          "system_restore_or_reset"
-        ],
-        "Very slow or laggy": [
-          "system_restore_or_reset"
-        ],
-        "Showing error messages": [
-          "system_restore_or_reset"
-        ],
-        "Overheating": [
-          "system_restore_or_reset"
-        ]
-      },
-      "real_gaps": []
-    },
-    "tech_trouble_cable_management": {
-      "display_name": "Cable Management",
-      "category_id": "tech_trouble",
-      "routing_archetype": "undetermined",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Setup"
-      ],
-      "real_components": [],
-      "component_to_service_ids": {},
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    },
-    "tech_trouble_networking": {
-      "display_name": "Networking",
-      "category_id": "tech_trouble",
-      "routing_archetype": "symptom_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Setup"
-      ],
-      "real_components": [
-        "Mesh network",
-        "No – I need help buying one",
-        "Single router",
-        "Yes – I have it here"
-      ],
-      "component_to_service_ids": {
-        "Single router": [
-          "router_configuration"
-        ],
-        "Mesh network": [
-          "router_configuration"
-        ],
-        "Yes – I have it here": [
-          "router_configuration"
-        ],
-        "No – I need help buying one": [
-          "router_configuration"
-        ]
-      },
-      "real_symptoms": [
-        "I'm not sure – might be a provider issue",
-        "No – but I have an active account",
-        "Yes – internet is on"
-      ],
-      "symptom_to_service_ids": {
-        "Yes – internet is on": [
-          "router_configuration"
-        ],
-        "No – but I have an active account": [
-          "router_configuration"
-        ],
-        "I'm not sure – might be a provider issue": [
-          "router_configuration"
-        ]
-      },
-      "real_gaps": []
-    },
-    "tech_trouble_smart_home": {
-      "display_name": "Smart Home",
-      "category_id": "tech_trouble",
-      "routing_archetype": "component_first",
-      "real_actions_in_group": [
-        "Diagnostic",
-        "Install",
-        "Setup"
-      ],
-      "real_components": [
-        "Amazon Echo",
-        "Apple HomePod",
-        "Google Nest"
-      ],
-      "component_to_service_ids": {
-        "Amazon Echo": [
-          "smart_speaker_setup"
-        ],
-        "Google Nest": [
-          "smart_speaker_setup"
-        ],
-        "Apple HomePod": [
-          "smart_speaker_setup"
-        ]
-      },
-      "real_symptoms": [],
-      "symptom_to_service_ids": {},
-      "real_gaps": []
-    }
   },
   "compiled": {
     "pricing_index": {
