@@ -4664,13 +4664,34 @@ function _buildNavCrumbs(catId) {
 // ───────────────────────── UIRenderer (read-only on State/S) ─────────────
 
 function _afterAdd(container) {
-                    exitFocusedMode();
+                    // v9.5.9 FIX (real bug, reported with a screenshot): this used to
+                    // only call exitFocusedMode(), which explicitly does NOT touch
+                    // categoriesGrid -- its own comment says so: "serviceRequestSummary
+                    // visibility is managed by cart state -- handled by
+                    // restoreCategoryView". categoriesGrid was never set back to
+                    // display:grid anywhere in this path, so after adding an item the
+                    // category tiles weren't just scrolled out of view -- they were
+                    // never shown in the DOM again at all. Second, independent problem
+                    // found while fixing the first: #category-card sits ABOVE
+                    // #serviceRequestSummary in the real page order (confirmed: line
+                    // 756 vs 785), so scrolling straight to the summary with
+                    // block:'start' would always push the tiles above the viewport
+                    // regardless of the first fix. Fixed by calling the same, real,
+                    // already-correct restoreCategoryView() (used everywhere else
+                    // "return to home" needs to happen) instead of half-reimplementing
+                    // it here a second time, then scrolling to categoriesGrid instead
+                    // of serviceRequestSummary -- tiles land at the top of the
+                    // viewport, and the summary (right below them in normal flow)
+                    // stays visible too, so the user still gets confirmation of what
+                    // they just added without losing access to browse for more.
+                    restoreCategoryView();
                     container.style.display = 'none';
-                    if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
-                    DOM.serviceRequestSummary.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
+                    if (DOM.categoriesGrid) {
+                        DOM.categoriesGrid.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
                     renderCart();
                 }
 
