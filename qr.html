@@ -10559,7 +10559,33 @@ function sqBuildCuratedIntake(svc) {
                             const t = tags[tid];
                             return sum + (t?.fee ?? t?.effects?.fee ?? 0);
                         }, 0);
-                        const livePrice = basePrice + intakeFee + tagFeeTotal;
+                        // v9.5.8 FIX (real, severe, customer-facing bug, reported with
+                        // screenshots): was `basePrice + intakeFee + tagFeeTotal` -- a
+                        // hand-rolled, partial formula that never included the hourly
+                        // labor-time component (complexity tier x hourly rate), the
+                        // ONE piece of the real price that usually dominates the
+                        // total for anything above "routine". intakeMin (directly
+                        // above) was already being correctly computed via the real
+                        // modifier_ref mechanism and then silently discarded --
+                        // computed, never consumed, the same class of bug this
+                        // project has found and fixed repeatedly elsewhere.
+                        // Confirmed real and reproducible: computer_diagnostic +
+                        // "Lost or corrupted files" showed "$105" here, during
+                        // intake, then $307 at the real Add to Cart step -- nearly
+                        // tripling between the number a customer sees while
+                        // answering questions and the number they're actually
+                        // charged. Rather than hand-patch this formula to also
+                        // account for complexity tier / hourly rate / archetype
+                        // formulas / etc. (re-deriving computeUnifiedQuote's own
+                        // logic a second time, which is how it drifted out of sync
+                        // in the first place), call the real, same,
+                        // already-loaded, already-authoritative computeUnifiedQuote
+                        // directly -- the exact function the real Add to Cart step
+                        // uses -- so this preview is now structurally guaranteed to
+                        // match the final price, not just currently consistent
+                        // with it.
+                        const _liveQuote = computeUnifiedQuote({ svc, activeTagIds: detAndManEarly, answers, qty: S.qty || 1 });
+                        const livePrice = _liveQuote.laborEstimate;
                         const visibleMods = realMods.filter(m => _isModVisible(m, answers, allMods));
                         const answered = visibleMods.filter(m => answers[m.moduleKey]).length;
                         const total = visibleMods.length;
@@ -10761,7 +10787,15 @@ function sqBuildCuratedIntake(svc) {
         <div class="sq-ic-cta">
           <button class="sq-ic-est ${ready?'ready':'locked'}" id="sqCurEstBtn" ${ready?'':'disabled'}>
             ${ready
-              ? `<i class="ti ti-calculator"></i> Review Estimate — $${livePrice * S.qty}`
+              // v9.5.8 FIX: was `livePrice * S.qty`. livePrice is now
+              // computeUnifiedQuote's own laborEstimate, which already
+              // applies qty internally (qtyMultiplier) -- multiplying by
+              // S.qty again here would double-apply it (qty=2 would 4x
+              // the price instead of 2x). Found while fixing the price
+              // this button's own live-preview mismatched -- same root
+              // cause, same fix (use the real function's real qty
+              // handling instead of a second, separate one).
+              ? `<i class="ti ti-calculator"></i> Review Estimate — $${livePrice}`
               : remaining > 0
                 ? `<span style="font-size:.82rem">Answer ${remaining} more question${remaining!==1?'s':''} to continue</span>`
                 : `<span style="font-size:.82rem">Add more detail in the notes to continue</span>`}
