@@ -280,6 +280,44 @@
             "dispatch_label",
             "dispatch_scope_note"
           ]
+        },
+        "divergence_resolution": {
+          "type": "object",
+          "description": "v9.5: 'Fork in the Road' -- PROJECT_GOALS §9/10 (the Confidence-Friction Seesaw's Diagnostic Divergence). Shared, global business terms for the choice offered when a route hits the diagnostic dead end (checkout_state resolves to 'diagnostic') AND the resolved entity has real, authored remote_deep_dive_modules (see services[].remote_deep_dive_modules / dynamic_services[*].remote_deep_dive_modules). Optional and additive: entities without remote_deep_dive_modules are completely unaffected and keep today's existing single-path diagnostic behavior.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Global kill switch, matching the surcharges.dispatch_fee_enabled convention. Defaults to true (treated as enabled unless explicitly set false)."
+            },
+            "diagnostic_fee": {
+              "type": "number",
+              "description": "Flat fee for Path B (On-Site Pro). Sourced directly from PROJECT_GOALS' own worked example ($85) -- not an independently-derived business figure. Business decision on final value pending, same status as surcharges.dispatch_fee_apply_min_labor."
+            },
+            "credit_policy": {
+              "type": "string",
+              "description": "v9.5.1: originally specified as a short, machine-readable key (e.g. 'full_credit_if_repair_accepted'); the real, current authored data instead puts a full, real, customer-facing sentence directly here (e.g. 'If you book the on-site diagnostic, the $85 fee is fully credited toward any subsequent repair work.') and does not populate credit_policy_note separately. Both computeUnifiedQuote's divergenceCreditNote and buildDivergenceResolutionHtml's rendered card read credit_policy_note first, falling back to this field -- so either a short-key style (paired with credit_policy_note for the real customer copy) or this single-field prose style works correctly. sqAddToCart also records this value on the cart entry when a customer books via the On-Site Pro path (disclosure/record-keeping; there is no automated credit-at-invoicing mechanism yet)."
+            },
+            "credit_policy_note": {
+              "type": "string",
+              "description": "Optional, dedicated customer-facing copy explaining the credit policy, shown on the On-Site Pro option card and used as computeUnifiedQuote's divergenceCreditNote -- checked BEFORE credit_policy (see that field's description) so a short machine-readable credit_policy key can still be paired with real customer prose here if that two-field shape is preferred going forward. Not populated in the current real data (credit_policy carries the full sentence directly instead); kept as the preferred field when present for exactly that reason."
+            },
+            "remote_option_label": {
+              "type": "string"
+            },
+            "remote_option_description": {
+              "type": "string"
+            },
+            "onsite_option_label": {
+              "type": "string"
+            },
+            "onsite_option_description": {
+              "type": "string"
+            },
+            "hub_heading": {
+              "type": "string",
+              "description": "Heading text for the two-option 'Information Resolution Hub' card."
+            }
+          }
         }
       }
     },
@@ -1403,6 +1441,13 @@
               "type": "string"
             }
           },
+          "remote_deep_dive_modules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "v9.5: real intake_modules keys (must exist in intake_modules) that Path A ('Remote Deep Dive') of the divergence_resolution Fork appends to this service's normal intake_chain when the customer opts into answering more, deeper questions instead of booking an on-site diagnostic visit (Path B). Only meaningful when this service's checkout_state resolves to 'diagnostic' -- see global_rules.divergence_resolution. Deliberately NOT authored for most diagnostic-natured services yet (writing a genuinely correct, non-fabricated deep-dive question set per service/appliance type needs real domain input) -- absent or empty means this service keeps today's existing single-path diagnostic behavior unchanged, exactly like a service with no divergence_resolution config at all."
+          },
           "behavior": {
             "type": "object",
             "properties": {
@@ -1546,6 +1591,13 @@
             },
             "merge_strategy": {
               "type": "string"
+            },
+            "remote_deep_dive_modules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "v9.5: same real mechanism as services[].remote_deep_dive_modules (see that field's description) -- included here so the 24 real 'Diagnostic' dynamic_services entries can eventually carry their own, correctly-authored deep-dive question sets. Deliberately unauthored on all of them today -- a genuinely real, per-category (appliances/plumbing/tech) content-authoring task, not a mechanism gap."
             }
           },
           "required": [
