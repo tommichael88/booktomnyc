@@ -2,10 +2,10 @@
   "$schema": "https://tommichael88.github.io/booktomnyc/schema/btnyc_schema.json",
   "$id": "https://tommichael88.github.io/booktomnyc/btnyc.json",
   "meta": {
-    "version": "9.5.4",
+    "version": "9.5.6",
     "schema_version": "2.0",
     "last_updated": "2026-07-04T21:54:40.302357+00:00",
-    "note": "v9.5.4 (2026-07-10): Authored real remote_deep_dive_modules for all 24 'Diagnostic' dynamic_services entries (previously only dishwasher_repair had any), using only existing, real intake_modules -- attempted_fix universally, plus one category-appropriate second module where a real, non-redundant fit exists (appliance_type for the two generic appliance catch-alls, floor_type for floors_trim, standing_water for four fixture-proximate plumbing entries, device_type for computer_repair, internet_active for networking/smart_home). Deliberately did not force a second module onto entries without a genuinely confident fit (cabinets_drawers, doors, furniture, walls, windows, water_lines, cable_management) rather than pad the list -- see CHANGELOG for the full per-entry reasoning and the ones flagged for a domain sanity-check. Also corrected a stale '16 of 69 named services' code comment (verified real count: 1 named + 24 dynamic = 25) in computeUnifiedQuote. v9.4 (2026-07-04): Major restructuring: all fee/minute surcharges moved to global_rules.modifiers; intake_modules now use modifier_ref; financial_engine simplified to {type, base_price, checkout_state, formula_ref?}; removed meta.global_rates and pricing_archetypes; stripped effects from smart_tags. schema_version bumped to 2.0. v9.3 (2026-06-21): meta.version and meta.schema_version are now tracked separately. version is the content/release counter (bumps on any meaningful edit: new services, retagged smart_tags, new modules, etc). schema_version is the STRUCTURAL compatibility counter — it only bumps when the shape of the JSON changes in a way that would make old code misread the file (renamed/removed keys, new required fields, changed nesting). schema_version 1.0 represents the v9.1-and-later shape (intake_modules consolidation + params field on intake_chain steps was the last breaking structural change). v9.2 was pure qr.html engine fixes with no JSON shape change. v9.3 added checkout_state_override to the shared effects definition — additive and optional, so backward-compatible with schema_version 1.0 (old code ignoring an unrecognized field still reads the file correctly) — does not bump schema_version. See CHANGELOG_v9.1.md / v9.2.md / v9.3.md for full per-version detail; this note only tracks the version/schema_version split itself.",
+    "note": "v9.5.6 addendum: extended remote_deep_dive_modules (attempted_fix) to the 5 named services newly reachable via checkout_state_override (washer_repair, microwave_repair, repair_appliances, toilet_flapper_or_fill_valve_replacement, furniture_repair_hourly) -- completes the loop so the Fork-in-the-Road mechanism activates for them too, not just dishwasher_repair. v9.5.6 (2026-07-10): First real content for checkout_state_override -- 5 existing client_response entries across symptom/toilet_symptom/issue marked diagnostic (Won't drain, Leaking water, 'Not sure -- just want it checked', Broken piece), plus 3 new symptom options added (Burning smell, Works intermittently, Trips breaker immediately), all using the correct top-level field shape (effects.{checkout_state_override} is deprecated/retired, not the live shape). Real, verified reach: washer_repair, microwave_repair, repair_appliances, toilet_flapper_or_fill_valve_replacement, and furniture_repair_hourly are all normally-quotable (standard_flat_rate) named services that share these exact modules -- this is not inert data. See CHANGELOG for the full mapping from the original guidance table (which referenced symptom labels that, on direct check, don't exist verbatim in the real data) onto what's actually there. v9.5.4 (2026-07-10): Authored real remote_deep_dive_modules for all 24 'Diagnostic' dynamic_services entries (previously only dishwasher_repair had any), using only existing, real intake_modules -- attempted_fix universally, plus one category-appropriate second module where a real, non-redundant fit exists (appliance_type for the two generic appliance catch-alls, floor_type for floors_trim, standing_water for four fixture-proximate plumbing entries, device_type for computer_repair, internet_active for networking/smart_home). Deliberately did not force a second module onto entries without a genuinely confident fit (cabinets_drawers, doors, furniture, walls, windows, water_lines, cable_management) rather than pad the list -- see CHANGELOG for the full per-entry reasoning and the ones flagged for a domain sanity-check. Also corrected a stale '16 of 69 named services' code comment (verified real count: 1 named + 24 dynamic = 25) in computeUnifiedQuote. v9.4 (2026-07-04): Major restructuring: all fee/minute surcharges moved to global_rules.modifiers; intake_modules now use modifier_ref; financial_engine simplified to {type, base_price, checkout_state, formula_ref?}; removed meta.global_rates and pricing_archetypes; stripped effects from smart_tags. schema_version bumped to 2.0. v9.3 (2026-06-21): meta.version and meta.schema_version are now tracked separately. version is the content/release counter (bumps on any meaningful edit: new services, retagged smart_tags, new modules, etc). schema_version is the STRUCTURAL compatibility counter — it only bumps when the shape of the JSON changes in a way that would make old code misread the file (renamed/removed keys, new required fields, changed nesting). schema_version 1.0 represents the v9.1-and-later shape (intake_modules consolidation + params field on intake_chain steps was the last breaking structural change). v9.2 was pure qr.html engine fixes with no JSON shape change. v9.3 added checkout_state_override to the shared effects definition — additive and optional, so backward-compatible with schema_version 1.0 (old code ignoring an unrecognized field still reads the file correctly) — does not bump schema_version. See CHANGELOG_v9.1.md / v9.2.md / v9.3.md for full per-version detail; this note only tracks the version/schema_version split itself.",
     "estimate_disclaimers": {
       "flat_fee": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
       "hourly": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
@@ -930,6 +930,18 @@
         "fee": 15,
         "minutes": 12,
         "note": "PLACEHOLDER, no own signal. Borrowed from the electrical/small-device group's established rate ($15/12min), the closest real analog for a small networked device."
+      },
+      "symptom_burning_smell": {
+        "fee": 0,
+        "minutes": 120
+      },
+      "symptom_works_intermittently": {
+        "fee": 0,
+        "minutes": 120
+      },
+      "symptom_trips_breaker_immediately": {
+        "fee": 0,
+        "minutes": 120
       }
     }
   },
@@ -3507,6 +3519,9 @@
       ],
       "optional_materials": [
         "MAT-MHR-FLR-SqueakKit"
+      ],
+      "remote_deep_dive_modules": [
+        "attempted_fix"
       ]
     },
     {
@@ -4245,6 +4260,9 @@
       "required_materials": [],
       "optional_materials": [
         "MAT-ELC-Outlet-Standard"
+      ],
+      "remote_deep_dive_modules": [
+        "attempted_fix"
       ]
     },
     {
@@ -4634,7 +4652,10 @@
         "_variability_tier": "high",
         "_variability_score": null
       },
-      "verb_natural": "repaired"
+      "verb_natural": "repaired",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     {
       "id": "refrigerator_water_line_install",
@@ -5754,7 +5775,10 @@
         "MAT-PLM-TLT-Flapper",
         "MAT-PLM-TLT-FillValve"
       ],
-      "optional_materials": []
+      "optional_materials": [],
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     {
       "id": "toilet_install",
@@ -6517,7 +6541,10 @@
         "_variability_tier": "high",
         "_variability_score": null
       },
-      "verb_natural": "repaired"
+      "verb_natural": "repaired",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     },
     {
       "id": "window_draft_sealing",
@@ -13643,7 +13670,8 @@
             "#broken_leg"
           ],
           "complexity_override": "routine",
-          "modifier_ref": "issue_broken_piece_leg_frame_etc"
+          "modifier_ref": "issue_broken_piece_leg_frame_etc",
+          "checkout_state_override": "diagnostic"
         },
         {
           "label": "Drawer that sticks or falls out",
@@ -14193,7 +14221,8 @@
             "water_hazard"
           ],
           "complexity_override": "specialized",
-          "modifier_ref": "symptom_won_t_drain_water_stays_inside"
+          "modifier_ref": "symptom_won_t_drain_water_stays_inside",
+          "checkout_state_override": "diagnostic"
         },
         {
           "label": "Leaking water",
@@ -14202,13 +14231,36 @@
             "part_order_likely"
           ],
           "complexity_override": "specialized",
-          "modifier_ref": "symptom_leaking_water"
+          "modifier_ref": "symptom_leaking_water",
+          "checkout_state_override": "diagnostic"
         },
         {
           "label": "Making strange noises",
           "tags": [],
           "complexity_override": "routine",
           "modifier_ref": "symptom_making_strange_noises"
+        },
+        {
+          "label": "Burning smell",
+          "tags": [
+            "#emergency"
+          ],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_burning_smell"
+        },
+        {
+          "label": "Works intermittently",
+          "tags": [],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_works_intermittently"
+        },
+        {
+          "label": "Trips breaker immediately",
+          "tags": [
+            "#emergency"
+          ],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_trips_breaker_immediately"
         }
       ],
       "purpose": "pricing",
@@ -14894,7 +14946,8 @@
         {
           "label": "Not sure — just want it checked",
           "tags": [],
-          "complexity_override": "routine"
+          "complexity_override": "routine",
+          "checkout_state_override": "diagnostic"
         }
       ],
       "purpose": "pricing",
