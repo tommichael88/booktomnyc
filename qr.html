@@ -2768,6 +2768,27 @@ function detectIntentNLP(text) {
                                 // mechanism re-override an already-correct
                                 // answer.
                                 best._hadContextualOverride = true;
+                                // v9.5.11 FIX: a real, specific, secondary
+                                // phrase match (e.g. "flushometer", "back up")
+                                // is genuine, explicit evidence of correct
+                                // resolution -- confirmed via direct trace
+                                // this was previously invisible to
+                                // orch_compute_confidence entirely, which
+                                // only ever reads the raw, pre-override
+                                // _matchConfidence. A resolver that
+                                // successfully narrows via an explicit,
+                                // named phrase should be at least as
+                                // confident as the strongest plain-keyword
+                                // case, not stuck at whatever the ORIGINAL,
+                                // less-specific keyword alone scored.
+                                // Math.max (a floor, not an overwrite) so a
+                                // genuinely higher raw keyword score is
+                                // never reduced by this. Flagged for
+                                // business/product review, same as every
+                                // other judgment-based threshold this
+                                // project has authored (T20/T67/T69/v9.5.10)
+                                // -- not claimed as a precisely-tuned number.
+                                best._matchConfidence = Math.max(best._matchConfidence || 0, 90);
                             }
                             // Override base price
                             if (ctx.override_base_price) best.base = ctx.override_base_price;
@@ -2886,6 +2907,20 @@ function detectIntentNLP(text) {
                                 if (bestSibling) {
                                     best.recommendedSku = bestSibling.id;
                                     best._descriptionOverride = true;
+                                    // v9.5.11 FIX: same real gap as
+                                    // _hadContextualOverride above -- this
+                                    // mechanism's own design (see its
+                                    // header comment) is intentionally
+                                    // WEAKER than a contextual_override: it
+                                    // only ever breaks a tie against a
+                                    // sibling's real description, never
+                                    // wins standalone. Floor is
+                                    // correspondingly more modest (75, not
+                                    // 90) -- real, positive evidence the
+                                    // resolution is correct, but not
+                                    // treated as strong as an explicit,
+                                    // named secondary phrase match.
+                                    best._matchConfidence = Math.max(best._matchConfidence || 0, 75);
                                 }
                             }
                         }
@@ -3217,7 +3252,26 @@ function computeNegatedGroupHints(negatedTagIds, smartTags) {
                     return { groups, categories };
                 }
 
-function resolveGroupFromIntent(category, objectNoun, stype, fullText, negatedGroupHints = null) {
+function resolveGroupFromIntent(category, objectNoun, stype, fullText, negatedGroupHints = null, matchMeta = null) {
+                    // v9.5.12: matchMeta is a real, additive, optional signal
+                    // channel -- raised directly: this function's own rule
+                    // data already distinguishes a specific keyword match
+                    // from a catchAll:true fallback (confirmed: the data
+                    // has carried this distinction since it was authored),
+                    // but the function's return value has always discarded
+                    // it -- a bare group-ID string either way. Changing the
+                    // RETURN TYPE itself would touch all 7 real call sites
+                    // across qr.html/orchestrator_engine.js/AppController.js,
+                    // several of which use the result directly as a string
+                    // (e.g. comparing against a real group's .id) -- a
+                    // return-shape change risks a silent type mismatch at
+                    // any site not updated to match. This is the safer,
+                    // fully backward-compatible alternative: an optional
+                    // object a caller can pass in and read back afterward;
+                    // every existing call site needs zero changes, since
+                    // the parameter defaults to null and nothing is written
+                    // unless a caller actually asks for it.
+                    if (matchMeta) { matchMeta.isCatchAll = false; matchMeta.isDeferredNegationFallback = false; }
                     if (!category || !DB?.group) return null;
                     const obj = (objectNoun || '').toLowerCase();
                     const groups = (DB.group || []).filter(g => g.category_id === category);                    if (!groups.length) return null;
@@ -3411,6 +3465,7 @@ function resolveGroupFromIntent(category, objectNoun, stype, fullText, negatedGr
                     for (const rule of catRules) {
                         if (rule.catchAll && groups.find(g => g.id === rule.group)) {
                             if (isNegated(rule.group)) { deferredMatch = deferredMatch || rule.group; continue; }
+                            if (matchMeta) matchMeta.isCatchAll = true;
                             return rule.group;
                         }
                     }
@@ -3418,7 +3473,10 @@ function resolveGroupFromIntent(category, objectNoun, stype, fullText, negatedGr
                     // Last resort: a negated group that matched is still better
                     // than no group at all -- the negation deprioritizes, it
                     // never permanently forbids.
-                    if (deferredMatch) return deferredMatch;
+                    if (deferredMatch) {
+                        if (matchMeta) matchMeta.isDeferredNegationFallback = true;
+                        return deferredMatch;
+                    }
 
                     // SSOT: honor the documented contract above — "Returns null if
                     // no clear group can be determined" — rather than silently
@@ -3661,6 +3719,28 @@ function orch_resolve_entity(context, db) {
                             selectedServiceId: resolvedIntent.default_service_sku || context.selectedServiceId,
                         })
                         : context;
+                    // v9.5.12 FIX: orch_apply_object_based_resolution's
+                    // _matchConfidence boost (v9.5.11) landed on
+                    // resolvedIntent -- a local copy used to build
+                    // effectiveContext above, itself also local to this
+                    // function. executeWorkflow's confidence step
+                    // (step.id === 'compute_confidence') reads
+                    // context.nlpIntent._matchConfidence directly from the
+                    // OUTER context object passed into this function, which
+                    // never saw either local copy -- confirmed directly by
+                    // tracing the real call, not assumed: a genuine trigger
+                    // phrase for this resolver produced no change at all in
+                    // the final confidence score before this fix. Bridge
+                    // just the one field the confidence step actually
+                    // needs back onto the real, outer, shared object,
+                    // without changing orch_apply_object_based_resolution's
+                    // own "return a new object, don't mutate the input"
+                    // contract -- this is the one, minimal mutation needed
+                    // to make the boost actually reach where it's read.
+                    if (resolvedIntent !== context.nlpIntent && context.nlpIntent
+                        && resolvedIntent._matchConfidence > (context.nlpIntent._matchConfidence || 0)) {
+                        context.nlpIntent._matchConfidence = resolvedIntent._matchConfidence;
+                    }
 
                     if (effectiveContext.selectedServiceId) {
                         const svc = (db.services || []).find(s => s.id === effectiveContext.selectedServiceId);
@@ -3801,6 +3881,26 @@ function orch_apply_object_based_resolution(context, db) {
                         const newDynDef = resolveDynamicService(objectMap.default_dynamic_category, newNormSt, intent._groupId);
                         if (newDynDef?.financial_engine?.base_price) resolved.base = newDynDef.financial_engine.base_price;
                     }
+                    // v9.5.11 FIX: same real gap as detectIntentNLP's
+                    // _hadContextualOverride/_descriptionOverride boosts --
+                    // a genuinely mapped, specific object (objectMap found
+                    // above) is real, explicit evidence of correct
+                    // resolution, arguably even more specific than a
+                    // secondary contextual phrase (it resolves the literal
+                    // object of the request, not just a qualifying detail)
+                    // -- yet this success path set no confidence signal at
+                    // all. The two FAILURE branches above already,
+                    // correctly, set confidence_weight to 10/30 -- but that
+                    // field, confirmed via direct trace, is never read by
+                    // anything (a real, separate, same-named-but-unrelated
+                    // static per-keyword field shadows it at every actual
+                    // consumer). Boost the real, live field instead
+                    // (_matchConfidence), floored at the same 90 as
+                    // _hadContextualOverride -- both represent an explicit,
+                    // specific, successfully-matched secondary signal, not
+                    // just a marginally-higher keyword score. Math.max so
+                    // an already-strong raw score is never reduced.
+                    resolved._matchConfidence = Math.max(resolved._matchConfidence || 0, 90);
                     return resolved;
                 }
 
@@ -4234,11 +4334,19 @@ function collectBookingContext_freeText(rawText) {
                     let selectedGroupId = null;
                     const hasCategory = nlpIntent?.category && nlpIntent.category !== 'other';
                     const hasMatchConf = (nlpIntent?._matchConfidence || 0) >= thresholds.route_to_group_other_tile;
+                    // v9.5.12: a single, shared matchMeta object reused across
+                    // both resolution passes below -- resolveGroupFromIntent
+                    // resets it at the top of every call, so whichever pass
+                    // actually determines the FINAL selectedGroupId (pass 2
+                    // only overwrites pass 1's result when negation genuinely
+                    // changes the outcome) is correctly what this reflects,
+                    // not stale metadata from a superseded earlier pass.
+                    const groupMatchMeta = {};
                     // T36 pass 1: preliminary group resolution (no negation hints yet --
                     // needed only to validate which tags apply before we know what's negated).
                     if (hasCategory && hasMatchConf) {
                         selectedGroupId = resolveGroupFromIntent(
-                            nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText
+                            nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText, null, groupMatchMeta
                         );
                     }
                     const preliminaryGroupId = selectedGroupId;
@@ -4326,13 +4434,36 @@ function collectBookingContext_freeText(rawText) {
                         const negatedGroupHints = computeNegatedGroupHints(negatedTagIds, DB.smart_tags || {});
                         if (negatedGroupHints.groups.size > 0 || negatedGroupHints.categories.size > 0) {
                             const reResolved = resolveGroupFromIntent(
-                                nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText, negatedGroupHints
+                                nlpIntent.category, extractedObject || '', nlpIntent.stype || 'Repair', rawText, negatedGroupHints, groupMatchMeta
                             );
                             if (reResolved && reResolved !== preliminaryGroupId) {
                                 selectedGroupId = reResolved;
                                 negationOverride = { from: preliminaryGroupId, to: reResolved, negatedTagIds: [...negatedTagIds] };
                             }
                         }
+                    }
+
+                    // v9.5.12 FIX: raised directly -- resolveGroupFromIntent
+                    // may unambiguously place the request in a specific,
+                    // narrow group (not a catchAll, not a deferred-negation
+                    // fallback), which is genuine, positive evidence the
+                    // resolution is correct -- confirmed via direct trace
+                    // this was previously invisible to confidence entirely,
+                    // the same real gap as the two override mechanisms
+                    // fixed in v9.5.11. A more modest floor than the 90
+                    // used there (category+group precision is real
+                    // evidence, but less specific than an explicit,
+                    // named secondary phrase or a directly-matched object)
+                    // -- anchored at the existing auto_select threshold
+                    // itself (confidence a clean group match should clear
+                    // the same bar a strong plain keyword would). Math.max,
+                    // never lowers an already-higher raw score. Genuinely
+                    // NOT boosted (left exactly as the raw keyword score
+                    // computed it) when the match came from a catchAll or
+                    // deferred-negation fallback -- that's real, remaining
+                    // ambiguity, not evidence to reward.
+                    if (selectedGroupId && !groupMatchMeta.isCatchAll && !groupMatchMeta.isDeferredNegationFallback && nlpIntent) {
+                        nlpIntent._matchConfidence = Math.max(nlpIntent._matchConfidence || 0, thresholds.auto_select_named_service || 70);
                     }
 
                     return makeBookingContext('free_text', {
