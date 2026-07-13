@@ -975,9 +975,7 @@
               "description": "Deprecated v9.4 -- smart_tags no longer carry independent fee/complexity effects directly. Use escalate_complexity for complexity-tier effects; per-answer fees now live on the intake_module's own client_response via modifier_ref."
             },
             "escalate_complexity": {
-              "type": "string",
-              "enum": ["routine", "skilled", "specialized"],
-              "description": "v9.4: replaces effects.complexity_override. Ratchets the resolved complexity tier up (never down) when this tag is active and there is real time-based headroom to escalate into."
+              "type": "string"
             },
             "answers": {
               "type": "object",
@@ -1040,9 +1038,6 @@
               "type": "string"
             },
             "negation_phrase": {
-              "type": "string"
-            },
-            "escalate_complexity": {
               "type": "string"
             },
             "derived_from": {
@@ -1644,7 +1639,11 @@
                   },
                   "complexity_override": {
                     "type": "string",
-                    "enum": ["routine", "skilled", "specialized"],
+                    "enum": [
+                      "routine",
+                      "skilled",
+                      "specialized"
+                    ],
                     "description": "v9.4: top-level on the response, not nested under effects."
                   },
                   "checkout_state_override": {
@@ -2061,6 +2060,62 @@
     "_schema_validation": {
       "type": "object",
       "description": "v8: real, new, self-referential schema-validation result -- the compiler's own check of whether ITS OWN complete output (including this very key) validates against this schema. Added directly in response to a real, confirmed gap: every prior version's reference checks never actually ran a real JSON Schema validator. Additive output of btnyc_v8_compiler.py."
+    },
+    "archetypes": {
+      "type": "object",
+      "description": "Track A (Entity -> Archetype -> Capability -> Strategy -> Action hierarchy, per DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md Phase 1). Additive, informational defaults -- nothing currently reads this to alter behavior. Each archetype declares real, evidence-derived DEFAULTS (routing strategy, confidence_strategy shape, typical action set), not requirements. Individual services/groups may differ from their nearest archetype's default; that's expected, not an error -- see each archetype's own real, cross-referenced group data.",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "display_name",
+          "default_routing_strategy",
+          "default_confidence_strategy",
+          "typical_actions",
+          "member_group_ids"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "default_routing_strategy": {
+            "type": "string",
+            "enum": [
+              "component_first",
+              "symptom_first",
+              "action_first"
+            ]
+          },
+          "default_confidence_strategy": {
+            "type": "object",
+            "properties": {
+              "minimum_quote_confidence": {
+                "type": "integer"
+              },
+              "maximum_followup_questions": {
+                "type": "integer"
+              }
+            }
+          },
+          "typical_actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "member_group_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "_note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "_archetype_mismatch_report": {
+      "type": "object"
     }
   },
   "$defs": {
@@ -2175,7 +2230,11 @@
                   },
                   "complexity_override": {
                     "type": "string",
-                    "enum": ["routine", "skilled", "specialized"]
+                    "enum": [
+                      "routine",
+                      "skilled",
+                      "specialized"
+                    ]
                   },
                   "checkout_state_override": {
                     "type": "string"
