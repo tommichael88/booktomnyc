@@ -220,40 +220,40 @@
                 this.stack = [];
             },
             // In the Breadcrumbs object, extend the goBack method:
-            goBack() {
-                if (this.stack.length === 0) {
-                    restoreCategoryView();
-                    return;
-                }
-                const prev = this.stack.pop();
-                if (prev.type === 'categories') restoreCategoryView();
-                else if (prev.type === 'group') showGroupsForCategory(prev.category_id, true);
-                else if (prev.type === 'subgroup' || prev.type === 'subgroups') {
-                    const grp = typeof prev.group === 'object' ? prev.group : {
-                        id: prev.group
-                    };
-                    showSubGroups(grp, prev.category_id, true);
-                } else if (prev.type === 'serviceType') {
-                    // Go back to subgroup
-                    const grp = {
-                        id: prev.group
-                    };
-                    showSubGroups(grp, prev.category_id, true);
-                } else if (prev.type === 'component' || prev.type === 'symptom' || prev.type === 'serviceList') {
-                    // Go back to service type selection
-                    const grp = {
-                        id: prev.group
-                    };
-                    showServiceTypesForGroup(grp, prev.category_id);
-                } else if (prev.type === 'serviceDetail') {
-                    // Existing: go back to group or category
-                    if (prev.category_id) showGroupsForCategory(prev.category_id, true);
-                    else restoreCategoryView();
-                    if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
-                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'block';
-                } else restoreCategoryView();
-            }
-        };
+goBack() {
+    if (this.stack.length === 0) { restoreCategoryView(); return; }
+    const prev = this.stack.pop();
+    if (prev.type === 'categories') restoreCategoryView();
+    else if (prev.type === 'group') showGroupsForCategory(prev.category_id, true);
+    else if (prev.type === 'subgroup' || prev.type === 'subgroups') {
+        const grp = typeof prev.group === 'object' ? prev.group : { id: prev.group };
+        showSubGroups(grp, prev.category_id, true);
+    }
+    else if (prev.type === 'serviceType' || prev.type === 'serviceTypeInferred') {
+        // Go back to the subgroup
+        const grp = { id: prev.group };
+        showSubGroups(grp, prev.category_id, true);
+    }
+    else if (prev.type === 'component' || prev.type === 'symptom' || prev.type === 'serviceList') {
+        // Go back to service type selection (or inferred step)
+        const grp = { id: prev.group };
+        // Check if we should show types or skip them (re‑infer)
+        const defaultType = inferDefaultServiceType(grp);
+        if (defaultType) {
+            // If we had skipped, we must go back to the subgroup
+            showSubGroups(grp, prev.category_id, true);
+        } else {
+            showServiceTypesForGroup(grp, prev.category_id);
+        }
+    }
+    else if (prev.type === 'serviceDetail') {
+        if (prev.category_id) showGroupsForCategory(prev.category_id, true);
+        else restoreCategoryView();
+        if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
+        if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'block';
+    } else restoreCategoryView();
+}
+};
 
         const categoryMap = new Map();
         const groupMap = new Map();
@@ -4762,7 +4762,25 @@
             });
             return parts;
         }
+function inferDefaultServiceType(group) {
+    const cat = group.category_id || '';
+    const name = (group.display_name || group.name || '').toLowerCase();
 
+    if (cat === 'furniture_fixes_assembly' && name.includes('assembly')) return 'Assembly';
+    if (cat === 'wall_mounting') return 'Mount';
+    if (cat === 'electric_lighting') return 'Install';
+    if (cat === 'plumbing_help') return null; // ambiguous
+
+    if (cat === 'minor_home_repairs') {
+        if (/door|window|cabinet|drawer|floor|tile|wall|furniture|appliance/.test(name)) {
+            return 'Repair';
+        }
+        return 'Repair';
+    }
+
+    if (cat === 'tech_trouble') return 'Diagnostic';
+
+    return null;
         // ───────────────────────── UIRenderer (read-only on State/S) ─────────────
 
         function _afterAdd(container) {
@@ -4988,6 +5006,11 @@
             container.appendChild(panel);
         }
 
+/**
+ * inferDefaultServiceType(group)
+ * Returns a service type (e.g., "Repair") if the group's category or name
+ * clearly implies one, otherwise null (meaning the user must choose).
+ */
         function _renderOtherFlow(svc, category_id, container, prof) {
             const basePrice = svc.financial_engine?.base_price || 85;
             const groupName = (() => {
@@ -6718,80 +6741,98 @@
          * When the user taps a type, we move to component/symptom selection or directly
          * to services depending on the routing_archetype.
          */
-        function showServiceTypesForGroup(group, category_id) {
-            const container = DOM.serviceContainer;
-            container.replaceChildren();
-            container.className = 'group-grid'; // reuse grid style
+function showServiceTypesForGroup(group, category_id) {
+    const container = DOM.serviceContainer;
+    container.replaceChildren();
+    container.className = 'group-grid';
 
-            const types = group.dynamic_service_types || [];
-            if (!types.length) {
-                // fallback: show services directly
-                const services = servicesByGroup.get(group.id) || [];
-                renderServices(container, services, category_id, group.id);
-                return;
+    const types = group.dynamic_service_types || [];
+    if (!types.length) {
+        // Fallback: show services directly
+        const services = servicesByGroup.get(group.id) || [];
+        renderServices(container, services, category_id, group.id);
+        return;
+    }
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'grid-column: 1 / -1; text-align: center; font-size: 0.9rem; color: #fff; margin-bottom: 8px;';
+    header.textContent = `What type of service do you need for ${group.display_name || group.name}?`;
+    container.appendChild(header);
+
+    types.forEach(type => {
+        const tile = document.createElement('div');
+        tile.className = 'group-tile';
+        tile.tabIndex = 0;
+        tile.role = 'button';
+        tile.style.background = 'rgba(255,255,255,0.08)';
+        tile.style.border = '1px solid rgba(255,255,255,0.15)';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'tile-icon';
+        const typeDef = DB.service_types?.[type];
+        const iconClass = typeDef?.icon || 'ti-tool';
+        // Render as an <i> tag so Tabler icons show properly
+        iconSpan.innerHTML = `<i class="${iconClass}"></i>`;
+        tile.appendChild(iconSpan);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'tile-name';
+        nameSpan.textContent = type;
+        tile.appendChild(nameSpan);
+
+        tile.addEventListener('click', () => {
+            showNextStepForGroup(group, category_id, type);
+        });
+        tile.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                showNextStepForGroup(group, category_id, type);
             }
+        });
+        container.appendChild(tile);
+    });
 
-            // Header
-            const header = document.createElement('div');
-            header.style.cssText = 'grid-column: 1 / -1; text-align: center; font-size: 0.9rem; color: #fff; margin-bottom: 8px;';
-            header.textContent = `What type of service do you need for ${group.display_name || group.name}?`;
-            container.appendChild(header);
+    // Back button
+    addBackButton(container, () => {
+        Breadcrumbs.goBack();
+    });
 
-            types.forEach(type => {
-                const tile = document.createElement('div');
-                tile.className = 'group-tile';
-                tile.tabIndex = 0;
-                tile.role = 'button';
-                tile.style.background = 'rgba(255,255,255,0.08)';
-                tile.style.border = '1px solid rgba(255,255,255,0.15)';
-
-                const icon = document.createElement('span');
-                icon.className = 'tile-icon';
-                const typeDef = DB.service_types?.[type];
-                icon.textContent = typeDef?.icon || '🔧';
-                tile.appendChild(icon);
-
-                const name = document.createElement('span');
-                name.className = 'tile-name';
-                name.textContent = type;
-                tile.appendChild(name);
-
-                tile.addEventListener('click', () => {
-                    // Navigate to the next step: component/symptom or direct services
-                    showNextStepForGroup(group, category_id, type);
-                });
-                tile.addEventListener('keydown', e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        showNextStepForGroup(group, category_id, type);
-                    }
-                });
-                container.appendChild(tile);
-            });
-
-            // Back button
-            addBackButton(container, () => {
-                Breadcrumbs.goBack();
-                // re-show groups (or previous)
-            });
-
-            container.style.display = 'block';
-            DOM.categoriesGrid.style.display = 'none';
-            setStep(2);
-            // Push to breadcrumbs (service type selection)
-            Breadcrumbs.push({
-                type: 'serviceType',
-                group: group.id,
-                category_id
-            });
-        }
-
+    container.style.display = 'block';
+    DOM.categoriesGrid.style.display = 'none';
+    setStep(2);
+    Breadcrumbs.push({ type: 'serviceType', group: group.id, category_id });
+}
         /**
          * showNextStepForGroup(group, category_id, serviceType)
          * Determines the routing_archetype of the group and shows either
          * component/symptom chips or directly the services.
          */
         function showNextStepForGroup(group, category_id, serviceType) {
+    const archetype = DB.routing_archetypes?.[group.id]?.routing_archetype;
+    const container = DOM.serviceContainer;
+
+    if (archetype === 'component_first' || archetype === 'symptom_first') {
+        showComponentOrSymptomForGroup(group, category_id, serviceType, archetype);
+    } else {
+        // 'undetermined' or missing: show all services of this type
+        const allServices = servicesByGroup.get(group.id) || [];
+        const filtered = allServices.filter(s => s.service_type === serviceType);
+        if (filtered.length === 0) {
+            toast('No services available for this type.', 'error');
+            return;
+        }
+        if (filtered.length === 1) {
+            showIntakeQuestions(filtered[0], category_id);
+            return;
+        }
+        renderServices(container, filtered, category_id, group.id);
+        container.style.display = 'block';
+        DOM.categoriesGrid.style.display = 'none';
+        setStep(3);
+        Breadcrumbs.push({ type: 'serviceList', group: group.id, category_id, serviceType });
+    }
+}
             const archetype = DB.routing_archetypes?.[group.id]?.routing_archetype;
             const container = DOM.serviceContainer;
 
@@ -6832,6 +6873,93 @@
          * On selection, goes directly to the matching service's intake.
          */
         function showComponentOrSymptomForGroup(group, category_id, serviceType, archetype) {
+    const container = DOM.serviceContainer;
+    container.replaceChildren();
+    container.className = 'group-grid';
+
+    const archetypeData = DB.routing_archetypes?.[group.id] || {};
+    let map = {};
+    let label = '';
+
+    if (archetype === 'component_first') {
+        map = archetypeData.component_to_service_ids || {};
+        label = 'Choose the component';
+    } else if (archetype === 'symptom_first') {
+        map = archetypeData.symptom_to_service_ids || {};
+        label = 'What’s the issue?';
+    }
+
+    const entries = Object.entries(map);
+    const filteredEntries = entries.filter(([id, svcIds]) => {
+        return svcIds.some(sid => {
+            const svc = (DB.services || []).find(s => s.id === sid);
+            return svc && svc.service_type === serviceType;
+        });
+    });
+
+    if (filteredEntries.length === 0) {
+        // Fallback: show all services of this type
+        const allServices = servicesByGroup.get(group.id) || [];
+        const filtered = allServices.filter(s => s.service_type === serviceType);
+        if (filtered.length === 0) {
+            toast('No services available.', 'error');
+            return;
+        }
+        renderServices(container, filtered, category_id, group.id);
+        container.style.display = 'block';
+        DOM.categoriesGrid.style.display = 'none';
+        setStep(3);
+        Breadcrumbs.push({ type: 'serviceList', group: group.id, category_id, serviceType });
+        return;
+    }
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'grid-column: 1 / -1; text-align: center; font-size: 0.9rem; color: #fff; margin-bottom: 8px;';
+    header.textContent = label;
+    container.appendChild(header);
+
+    filteredEntries.forEach(([id, svcIds]) => {
+        const displayName = id.replace('comp.', '').replace('sym.', '').replace(/_/g, ' ');
+        const tile = document.createElement('div');
+        tile.className = 'group-tile';
+        tile.tabIndex = 0;
+        tile.role = 'button';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'tile-icon';
+        const firstSvc = (DB.services || []).find(s => s.id === svcIds[0]);
+        iconSpan.textContent = firstSvc?.ui_taxonomy?.icon || '🔍';
+        tile.appendChild(iconSpan);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'tile-name';
+        nameSpan.textContent = displayName;
+        tile.appendChild(nameSpan);
+
+        tile.addEventListener('click', () => {
+            const matchedService = (DB.services || []).find(s =>
+                svcIds.includes(s.id) && s.service_type === serviceType
+            );
+            if (matchedService) {
+                showIntakeQuestions(matchedService, category_id);
+            } else {
+                toast('No matching service found.', 'error');
+            }
+        });
+        container.appendChild(tile);
+    });
+
+    addBackButton(container, () => {
+        Breadcrumbs.goBack();
+        showServiceTypesForGroup(group, category_id);
+    });
+
+    container.style.display = 'block';
+    DOM.categoriesGrid.style.display = 'none';
+    setStep(3);
+    Breadcrumbs.push({ type: archetype === 'component_first' ? 'component' : 'symptom', group: group.id, category_id, serviceType });
+}
             const container = DOM.serviceContainer;
             container.replaceChildren();
             container.className = 'group-grid';
@@ -7189,50 +7317,47 @@
             setStep(2);
         }
 
-        function showSubGroups(group, category_id, fromBack = false) {
-            if (!fromBack) enterFocusedMode();
-            const container = DOM.serviceContainer;
-            container.replaceChildren();
-            container.className = 'group-grid'; // grid layout -- matches showGroupsForCategory
+function showSubGroups(group, category_id, fromBack = false) {
+    if (!fromBack) enterFocusedMode();
+    const container = DOM.serviceContainer;
+    container.replaceChildren();
+    container.className = 'group-grid';
 
-            const subGroups = window.groupChildrenMap.get(group.id) || [];
+    const subGroups = window.groupChildrenMap.get(group.id) || [];
 
-            if (subGroups.length > 0) {
-                // Render sub-groups if they exist
-                subGroups.forEach(sg => {
-                    const tile = document.createElement('div');
-                    tile.className = 'group-tile';
-                    tile.tabIndex = 0;
-                    tile.role = 'button';
-                    tile.innerHTML = `<span class="tile-icon">${sg.icon || '📂'}</span><span class="tile-name">${sg.display_name || sg.name}</span>`;
-                    tile.addEventListener('click', () => showSubGroups(sg, category_id));
-                    tile.addEventListener('keydown', e => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            showSubGroups(sg, category_id);
-                        }
-                    });
-                    container.appendChild(tile);
-                });
-            } else {
-                // Leaf node: render actual services
-                //const services = servicesByGroup.get(group.id) || [];
-                //rederServices(container, services, category_id, group.id);
-                const services = showServiceTypesForGroup(group, category_id);
-                showServiceTypesForGroup(group, category_id);
-
-            }
-
-            container.style.display = 'block';
-            DOM.categoriesGrid.style.display = 'none';
-            setStep(3);
-            if (!fromBack) Breadcrumbs.push({
-                type: 'subgroup',
-                group: group.id,
-                category_id
+    if (subGroups.length > 0) {
+        // Render sub-groups if they exist
+        subGroups.forEach(sg => {
+            const tile = document.createElement('div');
+            tile.className = 'group-tile';
+            tile.tabIndex = 0;
+            tile.role = 'button';
+            tile.innerHTML = `<span class="tile-icon">${sg.icon || '📂'}</span><span class="tile-name">${sg.display_name || sg.name}</span>`;
+            tile.addEventListener('click', () => showSubGroups(sg, category_id));
+            tile.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSubGroups(sg, category_id); }
             });
+            container.appendChild(tile);
+        });
+    } else {
+        // Leaf node: decide whether to show service types
+        const defaultType = inferDefaultServiceType(group);
+        if (defaultType) {
+            // Skip the type selection step – go directly to component/symptom or services
+            showNextStepForGroup(group, category_id, defaultType);
+            // Push a breadcrumb so the back button works correctly
+            Breadcrumbs.push({ type: 'serviceTypeInferred', group: group.id, category_id, serviceType: defaultType });
+        } else {
+            showServiceTypesForGroup(group, category_id);
         }
+    }
 
+    container.style.display = 'block';
+    DOM.categoriesGrid.style.display = 'none';
+    setStep(3);
+    // Only push a regular subgroup breadcrumb if we didn't already push an inferred one
+    if (!fromBack && !defaultType) Breadcrumbs.push({ type: 'subgroup', group: group.id, category_id });
+}
         function selectGroupForCategory(group, category_id) {
             showSubGroups(group, category_id, true);
         }
@@ -12031,7 +12156,6 @@
 
             box.style.display = 'block';
             const sent = document.getElementById('sqAdlibSentence');
-            if (!sent) return;
             sent.innerHTML = '';
 
             const w = txt => {
