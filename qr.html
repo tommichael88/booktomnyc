@@ -780,9 +780,42 @@ body.modal-active{overflow:hidden}
                                     </div>
                                 </div>
                             </div>
+                            <!-- Step 2: Service Action Selection -->
+<div id="serviceActionStep" class="main-card-schedule-service focused-mode" style="display: none;">
+    <div class="booking-step-bar">
+        <div class="step-node">
+            <div class="step-dot done" onclick="goBackToGroup()"></div>
+            <span class="step-label">Group</span>
+        </div>
+        <div class="step-connector done"></div>
+        <div class="step-node">
+            <div class="step-dot active">2</div>
+            <span class="step-label">Action</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-node">
+            <div class="step-dot">3</div>
+            <span class="step-label">Details</span>
+        </div>
+    </div>
+    
+    <div class="focused-mode-inner">
+        <!-- Chip to allow quick pivot back to group selection -->
+        <div class="selected-group-chip" onclick="goBackToGroup()">
+            <span class="chip-label" id="selectedGroupLabel">Doors</span>
+            <span class="chip-change">Change</span>
+        </div>
+        
+        <h3>What type of service do you need?</h3>
+        <!-- Reusing the group-grid class for the Action tiles -->
+        <div class="group-grid" id="actionGrid">
+            <!-- Action Tiles (Install, Repair, Replace) injected here -->
+        </div>
+    </div>
+</div>
                              <div id="serviceContainer"></div>
                             <div id="intakeQuestionsContainer"></div>
-                            <div class="summaryMainContainer" id="serviceRequestSummary" style="display:none">
+                                                    <div class="summaryMainContainer" id="serviceRequestSummary" style="display:none">
                                 <div id="summary-header"><h3>New Service Request Summary</h3></div>
                                 <div id="serviceRequestList"></div>
                                 <div id="estimateTotalSummary" class="summary-estimate" style="display:none"><span>Due Today:</span> <span id="totalAmount">$0</span></div>
@@ -986,29 +1019,9 @@ function resolveBaseConfidenceStrategy(svc, dynDef) {
                         minimum_quote_confidence: 70, maximum_followup_questions: 3,
                         diagnostic_threshold: 35, base_confidence: 40, _variability_tier: 'medium'
                     };
-                    // v9.6 Track A Phase 2: archetype-aware resolution, field-by-field
-                    // merge instead of all-or-nothing. Real, existing per-service data
-                    // always wins for any field it explicitly sets; unset fields now
-                    // fall through to the entity's real archetype default (found via
-                    // its real group_id, matching Phase 1's already-verified
-                    // archetypes.*.member_group_ids data) before ever reaching the
-                    // generic, non-archetype-aware FALLBACK, which is now a true last
-                    // resort rather than the only fallback that existed before this.
-                    // This function's OWN contract is unchanged for any entity whose
-                    // confidence_strategy already sets every field (confirmed: true for
-                    // all 70 real services today) -- this is a real, verified no-op
-                    // until real data is migrated to omit archetype-matching fields.
-                    const groupId = svc?.ui_taxonomy?.group_id;
-                    let archetypeDefault = null;
-                    if (groupId && window.DB?.archetypes) {
-                        for (const arch of Object.values(window.DB.archetypes)) {
-                            if (arch.member_group_ids?.includes(groupId)) { archetypeDefault = arch.default_confidence_strategy; break; }
-                        }
-                    }
-                    const base = archetypeDefault ? { ...FALLBACK, ...archetypeDefault } : FALLBACK;
-                    if (svc && svc.confidence_strategy) return { ...base, ...svc.confidence_strategy };
-                    if (dynDef && dynDef.confidence_strategy) return { ...base, ...dynDef.confidence_strategy };
-                    return base;
+                    if (svc && svc.confidence_strategy) return svc.confidence_strategy;
+                    if (dynDef && dynDef.confidence_strategy) return dynDef.confidence_strategy;
+                    return FALLBACK;
                 }
 
 function resolveForceModules(variabilityTier) {
@@ -4024,24 +4037,7 @@ function orch_apply_location_hints(context, composedChain, answers) {
 
 function orch_compute_confidence(resolution, activeTagIds, matchConfidence, db, entryType) {
                     const entity = resolution.entity;
-                    // v9.6 FIX: was `entity?.confidence_strategy || {}` -- a direct,
-                    // raw field read that completely bypassed
-                    // resolveBaseConfidenceStrategy (and therefore Track A's real,
-                    // archetype-aware inheritance). Found via direct, comprehensive
-                    // testing, not assumed clean: toilet_flapper_or_fill_valve_replacement
-                    // (migrated to genuinely inherit minimum_quote_confidence:50 from
-                    // plumbing_fixture) resolved minConf as 80 through this exact path
-                    // -- the field's real absence fell through to this function's OWN,
-                    // separate, non-archetype-aware `|| 80` fallback below instead of
-                    // the correct, resolved value. This was a real, second, parallel
-                    // path to the same concept, not previously covered by the "one
-                    // central function" assumption -- exactly the bug class this
-                    // session has repeatedly found elsewhere. Passing entity as both
-                    // possible argument shapes is safe: resolveBaseConfidenceStrategy's
-                    // own logic already checks .confidence_strategy on whichever one
-                    // has it, and a dynamic-service entity (no real ui_taxonomy.group_id)
-                    // correctly falls through to the same generic FALLBACK it always did.
-                    const baseStrategy = resolveBaseConfidenceStrategy(entity, null);
+                    const baseStrategy = entity?.confidence_strategy || {};
                     const smartTags = db.smart_tags || {};
                     const escalation = (typeof applyLiveConfidenceEscalation === 'function')
                         ? applyLiveConfidenceEscalation(baseStrategy, activeTagIds || [], smartTags, db.global_rules?.confidence_escalation)
@@ -6230,54 +6226,82 @@ function adaptV10ToLegacy(v10) {
   // --- Root-level metadata & cross‑cutting ---
   legacy.$schema = v10.$schema;
   legacy.$id = v10.$id;
-  legacy.meta = v10.meta || {};
-  legacy.workflow = v10.workflow || {};
+  legacy.meta = v10.meta;
+  legacy.workflow = v10.workflow;
   legacy.global_rules = v10.global_rules || {};
-  legacy.invariants = v10.invariants || [];
+  legacy.invariants = v10.invariants;
 
   // --- Catalog domain ---
-  legacy.services = v10.services_specified || [];
-  legacy.dynamic_services = v10.dynamic_service_templates || {};
-  legacy.group = v10.entity_groups || [];
-  legacy.category = v10.category || [];
-  legacy.materials_catalog = v10.materials_catalog || {};
-  legacy.furniture_catalog = v10.furniture_catalog || [];
+  const catalog = v10.catalog || {};
+  legacy.services = catalog.services || [];
+  legacy.dynamic_services = catalog.dynamic_services || {};
+  legacy.group = catalog.groups || [];          // old key is "group" (singular)
+  legacy.category = catalog.categories || [];   // old key "category"
+  legacy.materials_catalog = catalog.materials || {};
+  legacy.furniture_catalog = catalog.furniture || [];
 
   // --- Intake domain ---
-  legacy.intake_modules = Object.assign({}, v10.intake_modules || {}, v10.orphan_modules || {});
-  legacy.smart_tags = v10.smart_tags || {};
+  const intake = v10.intake || {};
+  legacy.intake_modules = intake.modules || {};
+  legacy.smart_tags = intake.smart_tags || {};
+  // forced_modules_by_variability was inside global_rules in old; merge it.
+  if (intake.forced_modules_by_variability) {
+    legacy.global_rules.force_modules_by_variability = intake.forced_modules_by_variability;
+  }
 
   // --- Pricing domain ---
-  legacy.pricing_formulas = v10.pricing_formulas || {};
+  const pricing = v10.pricing || {};
+  legacy.pricing_formulas = pricing.formulas || {};
+  if (pricing.surcharges) legacy.global_rules.surcharges = pricing.surcharges;
+  if (pricing.modifiers) legacy.global_rules.modifiers = pricing.modifiers;
+  if (pricing.complexity_tiers) legacy.global_rules.complexity_tiers = pricing.complexity_tiers;
+  if (pricing.engines) legacy.global_rules.pricing_engines = pricing.engines;
 
   // --- UI domain ---
-  legacy.checkout_states = v10.checkout_states || {};
-  legacy.ui_config = v10.ui_config || {};
-  legacy.adlib_phrase_overrides = v10.adlib_phrase_overrides || {};
+  const ui = v10.ui || {};
+  legacy.checkout_states = ui.checkout_states || {};
+  legacy.ui_config = ui.config || {};
+  // Adlib templates: v10 has ui.adlib_templates and nlp.adlib
+  legacy.adlib_phrase_overrides = legacy.adlib_phrase_overrides || {};
+  if (ui.adlib_templates) {
+    legacy.adlib_phrase_overrides.group_templates = ui.adlib_templates.group_templates || {};
+    legacy.adlib_phrase_overrides.default_template = ui.adlib_templates.default_template || '{label}';
+  }
+  if (v10.nlp && v10.nlp.adlib) {
+    legacy.adlib_phrase_overrides.adlib = v10.nlp.adlib;
+  }
 
   // --- NLP domain ---
-  legacy.intent_mappings = v10.intent_mappings || {};
-  legacy.negation_library = v10.negation_library || {};
+  const nlp = v10.nlp || {};
+  legacy.intent_mappings = nlp.intent_mappings || {};
+  legacy.negation_library = nlp.negation_library || {};
 
-  // --- Build routing_archetypes from group_routing_taxonomies (for orchestrator) ---
-  const routingArchetypes = {};
-  if (v10.group_routing_taxonomies) {
-    for (const [gid, tax] of Object.entries(v10.group_routing_taxonomies)) {
-      routingArchetypes[gid] = {
-        display_name: tax.display_name,
-        category_id: tax.category_id,
-        routing_archetype: tax.routing_strategy || 'undetermined',
-        component_to_service_ids: tax.entity_to_service_map || {},
-        symptom_to_service_ids: tax.symptom_to_service_map || {},
-        typical_location: tax.typical_location || null,
-        default_qty: tax.default_qty || 1,
-        real_actions_in_group: tax.associated_actions || [],
-        real_components: tax.associated_entities || [],
-        real_symptoms: tax.associated_symptoms || [],
-        real_gaps: tax.unmapped_capabilities || []
-      };
-    }
+  // --- Confidence domain ---
+  const confidence = v10.confidence || {};
+  if (confidence.escalation) {
+    legacy.global_rules.confidence_escalation = confidence.escalation;
   }
+  if (confidence.resolution_thresholds && legacy.workflow) {
+    legacy.workflow.resolution_thresholds = confidence.resolution_thresholds;
+  }
+
+  // --- Build routing_archetypes from groups (for orchestrator) ---
+  const routingArchetypes = {};
+  (legacy.group || []).forEach(g => {
+    routingArchetypes[g.id] = {
+      display_name: g.display_name,
+      category_id: g.category_id,
+      routing_archetype: g.routing_archetype || 'undetermined',
+      real_actions_in_group: g.real_actions_in_group || [],
+      real_components: g.real_components || [],
+      component_to_service_ids: g.component_to_service_ids || {},
+      real_symptoms: g.real_symptoms || [],
+      symptom_to_service_ids: g.symptom_to_service_ids || {},
+      real_gaps: g.real_gaps || [],
+      typical_location: g.typical_location || null,
+      default_qty: g.default_qty || 1,
+    };
+  });
   legacy.routing_archetypes = routingArchetypes;
 
   // --- Copy any other root-level keys that may exist ---
@@ -6290,73 +6314,88 @@ function adaptV10ToLegacy(v10) {
   return legacy;
 }
 
-async function init() {
-  cacheDOM();
+let SERVICE_DATA = null;
+let bookingState = { group: null, action: null, detail: null };
 
-  // Try v10 first (domain‑grouped), fallback to old flat JSON.
-  const DATA_URLS = [
-    './btnyc_v10b.json',
-    './btnyc_compiled.json',
-    './btnyc_v10_final.json',
-    'https://tommichael88.github.io/booktomnyc/btnyc_v10_final.json',
-    './btnyc.json',
-    'https://tommichael88.github.io/booktomnyc/btnyc.json'
-  ];
-
-  try {
-    let loaded = false;
-    let rawData = null;
-
-    for (const url of DATA_URLS) {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) continue;
-        rawData = await res.json();
-        loaded = true;
-        break;
-      } catch (e) {
-        // try next URL
-      }
+// 1. Initialize SSOT Data
+async function initBookingEngine() {
+    try {
+        const response = await fetch('https://tommichael88.github.io/booktomnyc/btnyc.json');
+        SERVICE_DATA = await response.json();
+    } catch (e) {
+        console.error("SSOT Schema failed to load. Check JSON endpoint.", e);
     }
-
-    if (!loaded) throw new Error('All data sources failed');
-
-    // If the loaded data has a "catalog" top‑level key, it's v10 – adapt it.
-    // Otherwise, assume it's already flat.
-    if (rawData.services_specified || rawData.catalog) {
-      SERVICE_DATA = adaptV10ToLegacy(rawData);
-      console.log('[init] Adapted v10 domain‑grouped JSON to flat shape.');
-    } else {
-      SERVICE_DATA = rawData;
-      console.log('[init] Using flat JSON directly.');
-    }
-
-    DB = SERVICE_DATA;
-    window.DB = DB;
-
-    initNlpSets();
-    refreshNlpPreviewBindings();
-
-  } catch (err) {
-    console.error('Service data load error:', err);
-    toast('Could not load services. Please refresh.', 'error');
-    SERVICE_DATA = { meta: {}, category: [], group: [], services: [], intake_modules: {} };
-    DB = SERVICE_DATA;
-  }
-
-  // Continue with the rest of your initialisation
-  buildDataMaps(SERVICE_DATA);
-  renderCategoryCards();
-  initSmartQuote();
-  wireGlobalEvents();
-  renderCart();
-
-  if (DOM.serviceRequestSummary) {
-    DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
-  }
-  setViewportHeight();
 }
 
+// 2. Handle Group Selection (e.g., "Doors")
+function selectGroup(groupName) {
+    if (!SERVICE_DATA) return; // Guard clause 
+    
+    bookingState.group = groupName;
+    document.getElementById('selectedGroupLabel').innerText = groupName;
+    
+    // Filter SSOT for the selected group and map unique actions/types
+    const groupItems = SERVICE_DATA.filter(item => item.group === groupName);
+    const uniqueActions = [...new Set(groupItems.map(item => item.service_type || item.service_action))];
+    
+    renderActionTiles(uniqueActions);
+    
+    // UI Transitions
+    document.getElementById('serviceGroupStep').style.display = 'none';
+    document.getElementById('serviceActionStep').style.display = 'flex';
+}
+
+// 3. Render the Action Tiles
+function renderActionTiles(actions) {
+    const grid = document.getElementById('actionGrid');
+    grid.innerHTML = '';
+    
+    actions.forEach(action => {
+        // Reusing the group-tile class styling
+        const tile = document.createElement('div');
+        tile.className = 'group-tile';
+        tile.onclick = () => selectAction(action);
+        
+        tile.innerHTML = `
+            <div class="tile-name">${action}</div>
+        `;
+        grid.appendChild(tile);
+    });
+}
+
+// 4. Handle Action Selection (e.g., "Install")
+function selectAction(actionName) {
+    bookingState.action = actionName;
+    
+    // Filter down to the specific components/symptoms for this Group + Action
+    const specificItems = SERVICE_DATA.filter(item => 
+        item.group === bookingState.group && 
+        (item.service_type === actionName || item.service_action === actionName)
+    );
+    
+    renderDetails(specificItems);
+    
+    // UI Transitions
+    document.getElementById('serviceActionStep').style.display = 'none';
+    document.getElementById('serviceDetailStep').style.display = 'flex';
+}
+
+// 5. Build Targeted Intake Questions
+function buildIntakeStrategy(selectedItem) {
+    const container = document.getElementById('intakeQuestionsContainer');
+    container.innerHTML = ''; 
+    
+    const strategy = selectedItem.intake_strategy; 
+    
+    if (strategy === 'Component') {
+        // e.g., Group: Doors -> Action: Install -> Detail: Hardware
+        // Only ask component-specific questions, bypassing irrelevant structural frame questions
+        renderComponentQuestions(selectedItem.components);
+    } else if (strategy === 'Symptom') {
+        // e.g., Group: Tech Troubles -> Action: Repair -> Detail: Computer
+        renderSymptomQuestions(selectedItem.symptoms);
+    }
+}
 function initSmartQuote() {
                     let sqEl = document.getElementById('smartQuoteEngine');
                     if (!sqEl) {
@@ -10570,13 +10609,8 @@ function sqBuildCuratedIntake(svc) {
 
                     const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
 
-                    // v9.6 FIX: was a direct, raw `svc.confidence_strategy || {}` read
-                    // with its own separate fallbacks (80/5) -- bypassed
-                    // resolveBaseConfidenceStrategy entirely, the same real bug class
-                    // just fixed in orch_compute_confidence. Confirmed via direct test
-                    // this fed maxQs (the live question-cap logic) with the wrong
-                    // value for any archetype-inheriting service.
-                    const confStrat = resolveBaseConfidenceStrategy(svc, null);
+                    // confidence_strategy from service JSON (or defaults)
+                    const confStrat = svc.confidence_strategy || {};
                     const minConf = confStrat.minimum_quote_confidence || 80;
                     const maxQs = confStrat.maximum_followup_questions || 5;
 
@@ -10845,20 +10879,7 @@ function sqBuildCuratedIntake(svc) {
             Job specifics
           </div>`;
                             let shown = 0;
-                            // v9.5.15 FIX: real, severe, reported bug -- the ${shown} variable
-                            // above is purely an internal counter for maxQs capping (how many
-                            // MORE unanswered questions to reveal) and was never meant to be a
-                            // customer-facing question number. It only increments for
-                            // unanswered modules, so an answered module displays whatever
-                            // `shown` happened to be at that moment, without ever advancing --
-                            // producing exactly the reported "0, 1, 1, 2, 2, 2" pattern instead
-                            // of a real 1-6 sequence. questionIndex is a separate, dedicated
-                            // counter that advances for every visible module regardless of
-                            // answered status, used only for display -- shown's own, real,
-                            // correct capping behavior is completely untouched.
-                            let questionIndex = 0;
                             visibleMods.forEach(mod => {
-                                questionIndex++;
                                 const isDone = !!answers[mod.moduleKey];
                                 // FIXED: cap counts only UNANSWERED questions, not total
                                 // visible modules. An answered module doesn't consume a cap
@@ -10872,7 +10893,7 @@ function sqBuildCuratedIntake(svc) {
                                 qHtml += `
           <div class="sq-ic-q">
             <div class="sq-ic-q-lbl">
-              <span><span class="sq-ic-q-num ${isDone?'done':''}">${questionIndex}</span>${mod.question}</span>
+              <span><span class="sq-ic-q-num ${isDone?'done':''}">${shown}</span>${mod.question}</span>
               ${mod.affects_price ? `<span class="sq-ic-price-tag"><i class="ti ${DB.ui_config?.affects_price_icon||'ti-currency-dollar'}"></i></span>` : ''}
             </div>
             <div class="sq-ic-grid">`;
@@ -10881,21 +10902,8 @@ function sqBuildCuratedIntake(svc) {
                                     const _m = resp.modifier_ref ? (_mods[resp.modifier_ref] || {}) : {};
                                     const fee = _m.fee ?? resp.effects?.fee ?? 0;
                                     const mins = _m.minutes ?? resp.effects?.minutes ?? 0;
-                                    // v9.5.15 FIX: real, severe, reported bug -- "+Xmin" was shown
-                                    // for ANY mins > 0, regardless of whether minutes actually
-                                    // translate to price for this service. For flat_simple/
-                                    // diagnostic_open archetypes (confirmed via direct test:
-                                    // laborEstimate is completely unaffected by minutes-only
-                                    // modifiers), this told the customer "+45min" on a button
-                                    // that had zero real effect on the price they'd be charged --
-                                    // a customer reasonably reads "+Xmin" as implying "+some $",
-                                    // which was false. hourly_timed (and formula/tiered_per_unit,
-                                    // where a real formula may genuinely use minutes) keep
-                                    // showing it, since minutes are real, meaningful signal there.
-                                    const _archetype = svc?.financial_engine?.pricing_archetype;
-                                    const minsAffectPrice = _archetype === 'hourly_timed' || _archetype === 'formula' || _archetype === 'tiered_per_unit';
                                     // Show time impact too if significant (from global_rules.modifiers)
-                                    const impact = fee > 0 ? `+$${fee}` : (mins > 0 && minsAffectPrice ? `+${mins}min` : '');
+                                    const impact = fee > 0 ? `+$${fee}` : (mins > 0 ? `+${mins}min` : '');
                                     qHtml += `<button type="button" class="sq-ic-btn${isSel?' sel':''}"
               data-mod="${mod.moduleKey}" data-label="${resp.label.replace(/"/g,'&quot;')}">
               <span>${resp.label}</span>${impact ? `<span class="sq-ic-fee">${impact}</span>` : ''}
@@ -11441,17 +11449,9 @@ function sqPrepareFlow(skipStep2) {
                     // e.g. #brick_wall tightens up for THIS session specifically.
                     const svcForStrategy = S._svc || null;
                     const dynDefForStrategy = resolveDynamicService(S.intent?.category, S.stype, S.intent?._groupId);
-                    // v9.6 FIX: was an inline, hand-duplicated reimplementation of
-                    // resolveBaseConfidenceStrategy's own precedence logic
-                    // (svc -> dynDef -> hardcoded fallback), not a call to the real
-                    // function -- the exact "duplicate logic instead of calling the
-                    // canonical one" pattern this project has repeatedly found
-                    // elsewhere (T40, T42). Meant this legacy path never picked up
-                    // Track A's archetype-aware inheritance at all. Replaced with a
-                    // real call; behavior is identical for every non-archetype-
-                    // inheriting entity (confirmed via the full, comprehensive
-                    // catalog re-verification after this fix).
-                    const baseStrategy = resolveBaseConfidenceStrategy(svcForStrategy, dynDefForStrategy);
+                    const baseStrategy = svcForStrategy?.confidence_strategy
+                        || dynDefForStrategy?.confidence_strategy
+                        || { minimum_quote_confidence: 70, maximum_followup_questions: 3, base_confidence: 40, _variability_tier: 'medium' };
 
                     const allActiveTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])];
                     const escDef = DB.global_rules?.confidence_escalation;
@@ -12762,13 +12762,7 @@ function wireGlobalEvents() {
     // pricing, or content without touching application code.
     const _r = await fetch('./btnyc.json');
     if (!_r.ok) throw new Error('Failed to load btnyc.json: HTTP ' + _r.status);
-    const rawData = await _r.json();
-    if (rawData.services_specified || rawData.catalog) {
-      SERVICE_DATA = adaptV10ToLegacy(rawData);
-      console.log('✅ [init-bottom] Adapted v10/v10b JSON to legacy shape.');
-    } else {
-      SERVICE_DATA = rawData;
-    }
+    SERVICE_DATA = await _r.json();
     DB = SERVICE_DATA;
     window.DB = DB;
 
