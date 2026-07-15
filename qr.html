@@ -5494,123 +5494,6 @@
         </div>
     </div>
 
-    <script>
-        let SERVICE_DATA = null;
-        let DB = null;
-        let smartQuoteReady = false;
-        let smartQuoteCallbacks = [];
-        let __sqActive = false;
-        let cartCurrentPage = 1;
-        const ITEMS_PER_PAGE = 4;
-        const STORAGE_KEY = "booktom_cart_v2";
-
-        const State = {
-            serviceRequest: [],
-            furnitureItems: [],
-            currentStep: 1
-        };
-
-        const Breadcrumbs = {
-            stack: [],
-            push(state) {
-                this.stack.push(state);
-            },
-            pop() {
-                return this.stack.pop();
-            },
-            clear() {
-                this.stack = [];
-            },
-
-            goBack() {
-                if (this.stack.length === 0) {
-                    restoreCategoryView();
-                    return;
-                }
-                const prev = this.stack.pop();
-                if (prev.type === 'categories') restoreCategoryView();
-                else if (prev.type === 'group') showGroupsForCategory(prev.category_id, true);
-                else if (prev.type === 'subgroup' || prev.type === 'subgroups') {
-                    const grp = typeof prev.group === 'object' ? prev.group : {
-                        id: prev.group
-                    };
-                    showSubGroups(grp, prev.category_id, true);
-                } else if (prev.type === 'serviceType' || prev.type === 'serviceTypeInferred') {
-
-                    const grp = {
-                        id: prev.group
-                    };
-                    showSubGroups(grp, prev.category_id, true);
-                } else if (prev.type === 'component' || prev.type === 'symptom' || prev.type === 'serviceList') {
-
-                    const grp = {
-                        id: prev.group
-                    };
-
-                    const defaultType = inferDefaultServiceType(grp);
-                    if (defaultType) {
-
-                        showSubGroups(grp, prev.category_id, true);
-                    } else {
-                        showServiceTypesForGroup(grp, prev.category_id);
-                    }
-                } else if (prev.type === 'serviceDetail') {
-                    if (prev.category_id) showGroupsForCategory(prev.category_id, true);
-                    else restoreCategoryView();
-                    if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
-                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'block';
-                } else restoreCategoryView();
-            }
-        };
-
-        const categoryMap = new Map();
-        const groupMap = new Map();
-        const servicesByGroup = new Map();
-        const furnitureMap = new Map();
-        window.groupChildrenMap = new Map();
-        class RateLimiter {
-            constructor(max = 3, windowMs = 60000) {
-                this.max = max;
-                this.windowMs = windowMs;
-                this.requests = new Map();
-            }
-            isAllowed(key) {
-                const now = Date.now();
-                const ts = (this.requests.get(key) || []).filter(t => now - t < this.windowMs);
-                if (ts.length >= this.max) return false;
-                ts.push(now);
-                this.requests.set(key, ts);
-                return true;
-            }
-        }
-        const contactLimiter = new RateLimiter(3, 60000);
-        const cartLimiter = new RateLimiter(5, 2000);
-
-        const decodeB64 = (s) => {
-            try {
-                return atob(s);
-            } catch (_) {
-                return '';
-            }
-        };
-        const safePhone = (s) => (s || '').replace(/[^+\d\s\-()]/g, '').trim();
-        const safeEmail = (s) => (s || '').replace(/[^A-Za-z0-9@._+\-]/g, '').trim();
-        const debounce = (fn, ms = 220) => {
-            let t, raf;
-            return function(...args) {
-                const ctx = this;
-                if (t) clearTimeout(t);
-                if (raf) cancelAnimationFrame(raf);
-                if (ms <= 16) raf = requestAnimationFrame(() => fn.apply(ctx, args));
-                else t = setTimeout(() => fn.apply(ctx, args), ms);
-            };
-        };
-        const PAX_COEFF_B64 = "eyJwcmljZVBlckhvdXIiOjg1LCJzdGFydEZlZSI6MCwiY29lZmZpY2llbnRzIjp7ImNhYmluZXQiOjEuMywic3RhbmRhcmREb29yIjowLjYsInNsaWRpbmdEb29yIjowLjksImluc2lkZUl0ZW0iOjAuMzV9fQ==";
-        const PAX_CONFIG = JSON.parse(atob(PAX_COEFF_B64));
-        const PRICE_PER_HOUR = PAX_CONFIG.pricePerHour;
-        const START_FEE = PAX_CONFIG.startFee;
-        const COEFF = PAX_CONFIG.coefficients;
-    </script>
 
     <!-- pricing_engine.js -->
     <script>
@@ -9900,8 +9783,8 @@
         async function init() {
             cacheDOM();
             const DATA_URLS = [
-                './btnyc_v10_final.json',
-                'https://tommichael88.github.io/booktomnyc/btnyc_v10_final.json',
+                './btnyc.json',
+                'https://tommichael88.github.io/booktomnyc/btnyc.json',
                 './btnyc.json',
                 'https://tommichael88.github.io/booktomnyc/btnyc.json'
             ];
@@ -9983,7 +9866,7 @@
                 <
                 i class = "ti ti-wand"
             style = "font-size:15px;" > < /i> Instant Estimate — just start typing < /
-                div > <
+            div > <
                 !--LIVE PREVIEW ROW - now above the text input-- >
                 <
                 div id = "sqLivePreview"
@@ -9992,13 +9875,13 @@
             i class = "ti ti-sparkles" > < /i> <
             span class = "preview-empty" > ✨Describe your job— we’ ll build a clear request
             for you < /span> < /
-                div > <
+            div > <
                 div class = "sq-inline-row" >
                 <
                 textarea id = "sqDescIn"
             rows = "2"
             placeholder = "e.g. mount a large neon sign on a drywall wall in the bedroom…" > < /textarea> < /
-                div > <
+            div > <
                 !--ONE unified action button— label / behavior driven entirely by live
             confidence(see renderUnifiedSqButton).Low confidence: "Build it
             step by step " (opens the guided builder). High confidence: "
@@ -10024,18 +9907,18 @@
                     Not quite—
                     let me adjust it <
                         /button> < /
-                        div > <
-                        !--Guided builder: shown when user taps "Write it for me"-- >
-                        <
-                        div id = "sqBuilder" >
-                        <
-                        div class = "sq-builder-header" >
-                        <
-                        div class = "sq-builder-title" >
-                        <
-                        i class = "ti ti-sparkles" > < /i> Build your request < /
-                        div > <
-                        button class = "sq-b-back"
+                    div > <
+                    !--Guided builder: shown when user taps "Write it for me"-- >
+                    <
+                    div id = "sqBuilder" >
+                    <
+                    div class = "sq-builder-header" >
+                    <
+                    div class = "sq-builder-title" >
+                    <
+                    i class = "ti ti-sparkles" > < /i> Build your request < /
+                    div > <
+                    button class = "sq-b-back"
                     onclick = "sqToggleBuilder()"
                     style = "font-size:11px;color:var(--clr-red-dark,#8a0615);" >
                     <
@@ -15976,129 +15859,7 @@ function showServiceTypesForGroup(group, category_id) {
         });
     </script>
 
-    <script>
-        (async function init() {
-                try {
-                    const _r = await fetch('./btnyc.json');
-                    if (!_r.ok) throw new Error('Failed to load btnyc.json: HTTP ' + _r.status);
-                    SERVICE_DATA = await _r.json();
-                    DB = SERVICE_DATA;
-                    window.DB = DB;
-                    initNlpSets();
-                    refreshNlpPreviewBindings();
-                    cacheDOM();
-                    buildDataMaps(SERVICE_DATA);
-                    renderCategoryCards();
-                    initSmartQuote(); // inject text bar on page load
-                    wireGlobalEvents();
 
-                    const loadedCart = loadCart();
-                    State.serviceRequest = loadedCart; // legacy state (still used by renderers)
-
-                    const store = window.createStore(); // uses global appReducer
-                    window.__store = store; // make it globally accessible                const {
-                    setCart
-                } = window.actions; // or fallback to raw object if not available
-                if (typeof setCart === 'function') {
-                    store.dispatch(setCart(loadedCart));
-                } else {
-
-                    store.dispatch({
-                        type: 'cart/SET',
-                        payload: {
-                            serviceRequest: loadedCart
-                        }
-                    });
-                }
-                const unsubscribeLegacy = store.bindLegacyGlobals(window);
-                renderCart();
-                store.subscribe((state) => {
-                    try {
-                        sessionStorage.setItem('booktom_cart_v2', JSON.stringify(state.cart.serviceRequest));
-                    } catch (_) {
-
-                    }
-                });
-                store.subscribe(() => {
-                    renderCart();
-                });
-                ['intakeQuestionsContainer', 'serviceRequestSummary', 'quoteOut'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = 'none';
-                });
-                const catGrid = document.getElementById('category-card');
-                if (catGrid) catGrid.style.display = 'grid';
-                setViewportHeight();
-                window.sqAnalyze = sqAnalyze;
-                window.sqAffirmYes = sqAffirmYes;
-                window.sqAffirmNo = sqAffirmNo;
-                window.sqAffirmRemoveTag = sqAffirmRemoveTag;
-                window.sqAffirmSelectService = sqAffirmSelectService;
-                window.renderTagAffirmationCard = renderTagAffirmationCard;
-                window.sqToggleBuilder = sqToggleBuilder;
-                window.sqBuilderBack = sqBuilderBack;
-                window.sqPickType = sqPickType;
-                window.sqHandleStep2 = sqHandleStep2;
-                window.sqOpenStep = sqOpenStep;
-                window.sqToggleTag = sqToggleTag;
-                window.sqAdjQty = sqAdjQty;
-                window.sqBuildAdlib = sqBuildAdlib;
-                window.sqEditAdlib = sqEditAdlib;
-                window.sqConfirmAdlib = sqConfirmAdlib;
-                window.sqAddToCart = sqAddToCart;
-                window.sqRestart = sqRestart;
-                window._sqSwitchToRecommended = _sqSwitchToRecommended;
-                window._sqRevertAutoSelect = _sqRevertAutoSelect;
-                window.prefillSmartQuoteFromService = prefillSmartQuoteFromService;
-                window.renderRoute = function(route) {
-                    window._currentRoute = route;
-                    const catGrid = document.getElementById('category-card');
-                    const intakeContainer = document.getElementById('intakeQuestionsContainer');
-                    const summaryContainer = document.getElementById('serviceRequestSummary');
-                    const quoteOut = document.getElementById('sqQuoteOut');
-
-                    if (catGrid) catGrid.style.display = 'none';
-                    if (intakeContainer) intakeContainer.style.display = 'none';
-                    if (summaryContainer) summaryContainer.style.display = 'none';
-                    if (quoteOut) quoteOut.style.display = 'none';
-
-                    switch (route.uiTemplate) {
-                        case 'self_quote':
-                            renderSelfQuoteFromRoute(route);
-                            break;
-                        case 'curated_card':
-                            renderCuratedCardFromRoute(route);
-                            if (summaryContainer) summaryContainer.style.display = 'block';
-                            break;
-                        case 'legacy_flow':
-                            if (intakeContainer) {
-                                intakeContainer.style.display = 'block';
-                                intakeContainer.innerHTML = '<div class="repair-hint">Legacy flow – please use the new UI.</div>';
-                            }
-                            break;
-                        default:
-                            if (catGrid) catGrid.style.display = 'grid';
-                    }
-                };
-
-                console.log('✅ BookTOM initialized successfully.');
-
-            } catch (err) {
-                console.error('❌ BookTOM failed to initialize:', err);
-                toast('Could not load services. Please refresh.', 'error');
-            }
-        })();
-    </script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registered:', reg.scope))
-                    .catch(err => console.log('Service Worker registration failed:', err));
-            });
-        }
-    </script>
 
 </body>
 
