@@ -146,8 +146,9 @@
                                         <h2>Tech Trouble</h2>
                                     </div>
                                 </div>
-<div id="serviceContainer"></div>
 <div id="intakeQuestionsContainer"></div>
+<div id="intakeWrapper"></div>
+<div id="serviceContainer"></div>
 <div class="summaryMainContainer" id="serviceRequestSummary" style="display:none">
     <div id="summary-header">
         <h3>New Service Request Summary</h3>
@@ -6550,9 +6551,9 @@ function showSubGroups(group, category_id, fromBack = false) {
     container.className = 'group-grid';
 
     const subGroups = window.groupChildrenMap.get(group.id) || [];
+    let defaultType = null; // ⬅️ DECLARED ONCE, at the top
 
     if (subGroups.length > 0) {
-        // Render sub-groups if they exist
         subGroups.forEach(sg => {
             const tile = document.createElement('div');
             tile.className = 'group-tile';
@@ -6567,11 +6568,9 @@ function showSubGroups(group, category_id, fromBack = false) {
         });
     } else {
         // Leaf node: decide whether to show service types
-        const defaultType = inferDefaultServiceType(group);
+        defaultType = inferDefaultServiceType(group); // ⬅️ ASSIGN, don't redeclare
         if (defaultType) {
-            // Skip the type selection step – go directly to component/symptom or services
             showNextStepForGroup(group, category_id, defaultType);
-            // Push a breadcrumb so the back button works correctly
             Breadcrumbs.push({ type: 'serviceTypeInferred', group: group.id, category_id, serviceType: defaultType });
         } else {
             showServiceTypesForGroup(group, category_id);
@@ -6581,10 +6580,11 @@ function showSubGroups(group, category_id, fromBack = false) {
     container.style.display = 'block';
     DOM.categoriesGrid.style.display = 'none';
     setStep(3);
-    // Only push a regular subgroup breadcrumb if we didn't already push an inferred one
-    if (!fromBack && !defaultType) Breadcrumbs.push({ type: 'subgroup', group: group.id, category_id });
+    // Now defaultType is always defined – no ReferenceError
+    if (!fromBack && !defaultType) {
+        Breadcrumbs.push({ type: 'subgroup', group: group.id, category_id });
+    }
 }
-
         
 function selectGroupForCategory(group, category_id) {
     showSubGroups(group, category_id, true);
