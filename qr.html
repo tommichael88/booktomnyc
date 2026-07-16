@@ -6544,14 +6544,55 @@ function showComponentOrSymptomForGroup(group, category_id, serviceType, archety
     Breadcrumbs.push({ type: archetype === 'component_first' ? 'component' : 'symptom', group: group.id, category_id, serviceType });
 }
 
+// function showSubGroups(group, category_id, fromBack = false) {
+  //  if (!fromBack) enterFocusedMode();
+//    const container = DOM.serviceContainer;
+ //   container.replaceChildren();
+  //  container.className = 'group-grid';
+//
+//    const subGroups = window.groupChildrenMap.get(group.id) || [];
+  //  let defaultType = null; 
+//
+//    if (subGroups.length > 0) {
+    //    subGroups.forEach(sg => {
+    //        const tile = document.createElement('div');
+          //  tile.className = 'group-tile';
+         //   tile.tabIndex = 0;
+        //    tile.role = 'button';
+            //tile.innerHTML = `<span class="tile-icon">${sg.icon || '📂'}</span><span class="tile-name">${sg//.display_name || sg.name}</span>`;
+//            tile.addEventListener('click', () => showSubGroups(sg, category_id));
+      //      tile.addEventListener('keydown', e => {
+     //           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSubGroups(sg, category_id); }
+    //        });
+   //         container.appendChild(tile);
+ //       });
+//    } else {
+        // Leaf node: decide whether to show service types
+  //      defaultType = inferDefaultServiceType(group); // ⬅️ ASSIGN, don't redeclare
+//        if (defaultType) {
+        //    showNextStepForGroup(group, category_id, defaultType);
+        //      Breadcrumbs.push({ type: 'serviceTypeInferred', group: group.id, category_id, serviceType: defaultType // });
+  //      } else {
+     //       showServiceTypesForGroup(group, category_id);
+     //   }
+    // }
+//
+  //  container.style.display = 'block';
+ //   DOM.categoriesGrid.style.display = 'none';
+//    setStep(3);
+    // Now defaultType is always defined – no ReferenceError
+  //  if (!fromBack && !defaultType) {
+ //       Breadcrumbs.push({ type: 'subgroup', group: group.id, category_id });
+ //   }
+// }
+
 function showSubGroups(group, category_id, fromBack = false) {
     if (!fromBack) enterFocusedMode();
     const container = DOM.serviceContainer;
     container.replaceChildren();
     container.className = 'group-grid';
 
-    const subGroups = window.groupChildrenMap.get(group.id) || [];
-    let defaultType = null; // ⬅️ DECLARED ONCE, at the top
+     let subGroups = window.groupChildrenMap.get(group.id) || [];
 
     if (subGroups.length > 0) {
         subGroups.forEach(sg => {
@@ -6582,7 +6623,7 @@ function showSubGroups(group, category_id, fromBack = false) {
     setStep(3);
     // Now defaultType is always defined – no ReferenceError
     if (!fromBack && !defaultType) {
-        Breadcrumbs.push({ type: 'subgroup', group: group.id, category_id });
+        Breadcrumbs.push({ type: 'subgroup', group: group.id,group_id,showSubGroups, category_id });
     }
 }
         
