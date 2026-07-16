@@ -6351,6 +6351,198 @@ function showGroupsForCategory(category_id, fromBack = false) {
     setStep(2);
 }
 
+// ─── NEW: Service type selection ──────────────────────────────────────
+
+/**
+ * showServiceTypesForGroup(group, category_id)
+ * Displays the service types (Install, Repair, Diagnostic, etc.) that are
+ * applicable for this group (from group.dynamic_service_types).
+ * When the user taps a type, we move to component/symptom selection or directly
+ * to services depending on the routing_archetype.
+ */
+function showServiceTypesForGroup(group, category_id) {
+    const container = DOM.serviceContainer;
+    container.replaceChildren();
+    container.className = 'group-grid';
+
+    const types = group.dynamic_service_types || [];
+    if (!types.length) {
+        // Fallback: show services directly
+        const services = servicesByGroup.get(group.id) || [];
+        renderServices(container, services, category_id, group.id);
+        return;
+    }
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'grid-column: 1 / -1; text-align: center; font-size: 0.9rem; color: #fff; margin-bottom: 8px;';
+    header.textContent = `What type of service do you need for ${group.display_name || group.name}?`;
+    container.appendChild(header);
+
+    types.forEach(type => {
+        const tile = document.createElement('div');
+        tile.className = 'group-tile';
+        tile.tabIndex = 0;
+        tile.role = 'button';
+        tile.style.background = 'rgba(255,255,255,0.08)';
+        tile.style.border = '1px solid rgba(255,255,255,0.15)';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'tile-icon';
+        const typeDef = DB.service_types?.[type];
+        const iconClass = typeDef?.icon || 'ti-tool';
+        iconSpan.innerHTML = `<i class="${iconClass}"></i>`;
+        tile.appendChild(iconSpan);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'tile-name';
+        nameSpan.textContent = type;
+        tile.appendChild(nameSpan);
+
+        tile.addEventListener('click', () => {
+            showNextStepForGroup(group, category_id, type);
+        });
+        tile.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                showNextStepForGroup(group, category_id, type);
+            }
+        });
+        container.appendChild(tile);
+    });
+
+    // Back button
+    addBackButton(container, () => {
+        Breadcrumbs.goBack();
+    });
+
+    container.style.display = 'block';
+    DOM.categoriesGrid.style.display = 'none';
+    setStep(2);
+    Breadcrumbs.push({ type: 'serviceType', group: group.id, category_id });
+}
+
+/**
+ * showNextStepForGroup – routes to component/symptom or direct services.
+ */
+function showNextStepForGroup(group, category_id, serviceType) {
+    const archetype = DB.routing_archetypes?.[group.id]?.routing_archetype;
+    const container = DOM.serviceContainer;
+
+    if (archetype === 'component_first' || archetype === 'symptom_first') {
+        showComponentOrSymptomForGroup(group, category_id, serviceType, archetype);
+    } else {
+        // 'undetermined' or missing: show all services of this type
+        const allServices = servicesByGroup.get(group.id) || [];
+        const filtered = allServices.filter(s => s.service_type === serviceType);
+        if (filtered.length === 0) {
+            toast('No services available for this type.', 'error');
+            return;
+        }
+        if (filtered.length === 1) {
+            showIntakeQuestions(filtered[0], category_id);
+            return;
+        }
+        renderServices(container, filtered, category_id, group.id);
+        container.style.display = 'block';
+        DOM.categoriesGrid.style.display = 'none';
+        setStep(3);
+        Breadcrumbs.push({ type: 'serviceList', group: group.id, category_id, serviceType });
+    }
+}
+
+/**
+ * showComponentOrSymptomForGroup – renders chips for component or symptom selection.
+ */
+function showComponentOrSymptomForGroup(group, category_id, serviceType, archetype) {
+    const container = DOM.serviceContainer;
+    container.replaceChildren();
+    container.className = 'group-grid';
+
+    const archetypeData = DB.routing_archetypes?.[group.id] || {};
+    let map = {};
+    let label = '';
+
+    if (archetype === 'component_first') {
+        map = archetypeData.component_to_service_ids || {};
+        label = 'Choose the component';
+    } else if (archetype === 'symptom_first') {
+        map = archetypeData.symptom_to_service_ids || {};
+        label = 'What’s the issue?';
+    }
+
+    const entries = Object.entries(map);
+    const filteredEntries = entries.filter(([id, svcIds]) => {
+        return svcIds.some(sid => {
+            const svc = (DB.services || []).find(s => s.id === sid);
+            return svc && svc.service_type === serviceType;
+        });
+    });
+
+    if (filteredEntries.length === 0) {
+        // Fallback: show all services of this type
+        const allServices = servicesByGroup.get(group.id) || [];
+        const filtered = allServices.filter(s => s.service_type === serviceType);
+        if (filtered.length === 0) {
+            toast('No services available.', 'error');
+            return;
+        }
+        renderServices(container, filtered, category_id, group.id);
+        container.style.display = 'block';
+        DOM.categoriesGrid.style.display = 'none';
+        setStep(3);
+        Breadcrumbs.push({ type: 'serviceList', group: group.id, category_id, serviceType });
+        return;
+    }
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'grid-column: 1 / -1; text-align: center; font-size: 0.9rem; color: #fff; margin-bottom: 8px;';
+    header.textContent = label;
+    container.appendChild(header);
+
+    filteredEntries.forEach(([id, svcIds]) => {
+        const displayName = id.replace('comp.', '').replace('sym.', '').replace(/_/g, ' ');
+        const tile = document.createElement('div');
+        tile.className = 'group-tile';
+        tile.tabIndex = 0;
+        tile.role = 'button';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'tile-icon';
+        const firstSvc = (DB.services || []).find(s => s.id === svcIds[0]);
+        iconSpan.textContent = firstSvc?.ui_taxonomy?.icon || '🔍';
+        tile.appendChild(iconSpan);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'tile-name';
+        nameSpan.textContent = displayName;
+        tile.appendChild(nameSpan);
+
+        tile.addEventListener('click', () => {
+            const matchedService = (DB.services || []).find(s =>
+                svcIds.includes(s.id) && s.service_type === serviceType
+            );
+            if (matchedService) {
+                showIntakeQuestions(matchedService, category_id);
+            } else {
+                toast('No matching service found.', 'error');
+            }
+        });
+        container.appendChild(tile);
+    });
+
+    addBackButton(container, () => {
+        Breadcrumbs.goBack();
+        showServiceTypesForGroup(group, category_id);
+    });
+
+    container.style.display = 'block';
+    DOM.categoriesGrid.style.display = 'none';
+    setStep(3);
+    Breadcrumbs.push({ type: archetype === 'component_first' ? 'component' : 'symptom', group: group.id, category_id, serviceType });
+}
+
 function showSubGroups(group, category_id, fromBack = false) {
     if (!fromBack) enterFocusedMode();
     const container = DOM.serviceContainer;
