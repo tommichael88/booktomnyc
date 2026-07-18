@@ -1,4 +1,5 @@
-<!doctype html><html lang=en>
+<!doctype html>
+<html lang=en>
 
 <head>
     <meta charset=UTF-8>
@@ -7103,6 +7104,7 @@ function showSubGroups(group, category_id, fromBack = false) {
     const subGroups = window.groupChildrenMap.get(group.id) || [];
 
     if (subGroups.length > 0) {
+        // Has children – render them as tiles
         subGroups.forEach(sg => {
             const tile = document.createElement('div');
             tile.className = 'group-tile';
@@ -7119,13 +7121,33 @@ function showSubGroups(group, category_id, fromBack = false) {
             container.appendChild(tile);
         });
     } else {
-        // Leaf node – always show action selection (no default inference)
-        Breadcrumbs.push({
-            type: 'subgroup',
-            group: group.id,
-            category_id
-        });
-        showServiceTypesForGroup(group, category_id);
+        // Leaf node – decide whether to show service type selection
+        // Compute all possible service types for this group
+        const explicitServices = servicesByGroup.get(group.id) || [];
+        const explicitTypes = new Set(explicitServices.map(s => s.service_type));
+        const dynamicTypes = group.dynamic_service_types || [];
+        const allTypes = new Set([...explicitTypes, ...dynamicTypes]);
+        const typesArray = Array.from(allTypes);
+
+        if (typesArray.length === 1) {
+            // Only one type – auto-select and skip the type selection screen
+            const serviceType = typesArray[0];
+            Breadcrumbs.push({
+                type: 'serviceType',
+                group: group.id,
+                category_id,
+                serviceType: serviceType
+            });
+            showNextStepForGroup(group, category_id, serviceType);
+        } else {
+            // Multiple types – show the type selection screen
+            Breadcrumbs.push({
+                type: 'subgroup',
+                group: group.id,
+                category_id
+            });
+            showServiceTypesForGroup(group, category_id);
+        }
     }
 
     container.style.display = 'block';
