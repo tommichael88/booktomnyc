@@ -10556,7 +10556,6 @@
             };
         });
     </script>
-  </script>
 <script>
 (function() {
   'use strict';
@@ -10662,6 +10661,149 @@
   }
 })();
 </script>
+     <script>
+        async function init() {
+            try {
+                console.log('🔄 Starting BookTOM initialization...');
+
+                cacheDOM();
+
+                const DATA_URLS = [
+                    './btnyc.json',
+                    'https://tommichael88.github.io/booktomnyc/btnyc.json',
+                    './btnyc.json',
+                    'https://tommichael88.github.io/booktomnyc/btnyc.json'
+                ];
+
+                let loaded = false;
+                let rawData = null;
+
+                for (const url of DATA_URLS) {
+                    try {
+                        const res = await fetch(url);
+                        if (!res.ok) continue;
+                        rawData = await res.json();
+                        loaded = true;
+                        break;
+                    } catch (e) {}
+                }
+
+                if (!loaded) throw new Error('All data sources failed');
+
+                if (rawData.catalog) {
+                    SERVICE_DATA = adaptV10ToLegacy(rawData);
+                } else {
+                    SERVICE_DATA = rawData;
+                }
+
+                DB = SERVICE_DATA;
+                window.DB = DB;
+
+                initNlpSets();
+                refreshNlpPreviewBindings();
+                buildDataMaps(SERVICE_DATA);
+                renderCategoryCards();
+                initSmartQuote();
+                wireGlobalEvents();
+
+                const loadedCart = typeof loadCart === 'function' ? loadCart() : [];
+                State.serviceRequest = loadedCart;
+
+                const store = window.createStore();
+                window.__store = store;
+
+                const { setCart } = window.actions || {};
+                if (typeof setCart === 'function') {
+                    store.dispatch(setCart(loadedCart));
+                } else {
+                    store.dispatch({
+                        type: 'cart/SET',
+                        payload: { serviceRequest: loadedCart }
+                    });
+                }
+
+                if (typeof store.bindLegacyGlobals === 'function') {
+                    store.bindLegacyGlobals(window);
+                }
+
+                store.subscribe((state) => {
+                    try {
+                        sessionStorage.setItem('booktom_cart_v2', JSON.stringify(state.cart.serviceRequest));
+                    } catch (_) {}
+                });
+
+                store.subscribe(() => { renderCart(); });
+                renderCart();
+
+                ['intakeQuestionsContainer', 'serviceRequestSummary', 'quoteOut'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+
+                const catGrid = document.getElementById('category-card');
+                if (catGrid) catGrid.style.display = 'grid';
+
+                if (DOM.serviceRequestSummary) {
+                    DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
+                }
+
+                setViewportHeight();
+
+                Object.assign(window, {
+                    sqAnalyze, sqAffirmYes, sqAffirmNo, sqAffirmRemoveTag,
+                    sqAffirmSelectService, renderTagAffirmationCard, sqToggleBuilder,
+                    sqBuilderBack, sqPickType, sqHandleStep2, sqOpenStep, sqToggleTag,
+                    sqAdjQty, sqBuildAdlib, sqEditAdlib, sqConfirmAdlib, sqAddToCart,
+                    sqRestart, _sqSwitchToRecommended, _sqRevertAutoSelect,
+                    prefillSmartQuoteFromService
+                });
+
+                window.renderRoute = function(route) {
+                    window._currentRoute = route;
+                    const elements = {
+                        catGrid: document.getElementById('category-card'),
+                        intakeContainer: document.getElementById('intakeQuestionsContainer'),
+                        summaryContainer: document.getElementById('serviceRequestSummary'),
+                        quoteOut: document.getElementById('sqQuoteOut')
+                    };
+
+                    Object.values(elements).forEach(el => {
+                        if (el) el.style.display = 'none';
+                    });
+
+                    switch (route.uiTemplate) {
+                        case 'self_quote':
+                            if (typeof renderSelfQuoteFromRoute === 'function') renderSelfQuoteFromRoute(route);
+                            break;
+                        case 'curated_card':
+                            if (typeof renderCuratedCardFromRoute === 'function') renderCuratedCardFromRoute(route);
+                            if (elements.summaryContainer) elements.summaryContainer.style.display = 'block';
+                            break;
+                        case 'legacy_flow':
+                            if (elements.intakeContainer) {
+                                elements.intakeContainer.style.display = 'block';
+                                elements.intakeContainer.innerHTML =
+                                    '<div class="repair-hint">Legacy flow – please use the new UI.</div>';
+                            }
+                            break;
+                        default:
+                            if (elements.catGrid) elements.catGrid.style.display = 'grid';
+                    }
+                };
+
+                console.log('✅ BookTOM initialized successfully.');
+
+            } catch (err) {
+                console.error('❌ BookTOM failed to initialize:', err);
+                if (typeof toast === 'function') toast('Could not load services. Please refresh.', 'error');
+                SERVICE_DATA = { meta: {}, category: [], group: [], services: [], intake_modules: {} };
+                DB = SERVICE_DATA;
+            }
+        }
+
+        // Call the single init function
+        init();
+    </script>
 
     <script>
         if ('serviceWorker' in navigator) {
