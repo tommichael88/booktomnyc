@@ -7139,6 +7139,77 @@
         "MAT-FUR-PAX-Interior"
       ],
       "verb_natural": "assembled"
+    },
+    {
+      "id": "toilet_seat_replacement",
+      "operational_metrics": {
+        "expected_minutes": 25,
+        "high_case_minutes": 45,
+        "complexity_tier": "skilled"
+      },
+      "pricing_engine": "algorithmic_flat_rate",
+      "default_estimates": {
+        "materials": {
+          "min": 0,
+          "max": 0,
+          "note": ""
+        },
+        "total_minutes": {
+          "min": 20,
+          "max": 30,
+          "note": ""
+        },
+        "disclaimer": "flat_fee"
+      },
+      "ui_taxonomy": {
+        "category_id": "plumbing_help",
+        "group_id": "plumbing_help_toilets",
+        "display_name": "Toilet Seat Replacement",
+        "icon": "🚽",
+        "description": "Remove old toilet seat and install a new one.",
+        "sort_order": 405,
+        "presentation_strategy": {
+          "display_enabled": true,
+          "buffer_label": "Average",
+          "calculation_basis": "base_plus_tags"
+        }
+      },
+      "financial_engine": {
+        "type": "flat_rate",
+        "base_price": 35,
+        "pricing_archetype": "flat_simple",
+        "_inherits_checkout_state_from_archetype": "plumbing_fixture",
+        "_note": "v9.6: real, new service authored to close a real, confirmed navigation gap (no comp.toilet_seat mapping existed anywhere in plumbing_help_toilets -- a common, predictable request the picker's fallback tile was masking rather than actually resolving). base_price ($35) reasoned directly against the group's 3 other real services: below the $45 floor (flapper/fill_valve) since a seat swap is purely mechanical (two bolts), no water shutoff or plumbing work at all -- genuinely the simplest real task in this group. Flagged for business-owner review, same discipline as every other authored price this session, not treated as final."
+      },
+      "aliases": [
+        "toilet seat",
+        "replace toilet seat",
+        "new toilet seat"
+      ],
+      "service_type": "Install",
+      "intake_chain": [
+        {
+          "module": "existing_toilet_type",
+          "then": {}
+        }
+      ],
+      "default_tags": [
+        {
+          "$ref": "#plumbing"
+        }
+      ],
+      "confidence_strategy": {
+        "diagnostic_threshold": 30,
+        "base_confidence": 40,
+        "_variability_tier": "low",
+        "_variability_score": 6.3,
+        "_inherits_from_archetype": "plumbing_fixture"
+      },
+      "verb_natural": "replaced",
+      "required_materials": [
+        "MAT-PLM-TLT-Seat"
+      ],
+      "optional_materials": []
     }
   ],
   "service_types": {
@@ -12730,7 +12801,8 @@
         "comp.wax_ring",
         "comp.bidet",
         "comp.fill_valve",
-        "comp.flapper"
+        "comp.flapper",
+        "comp.toilet_seat"
       ],
       "component_id_to_service_ids": {
         "comp.toilet": [
@@ -12747,6 +12819,9 @@
         ],
         "comp.flapper": [
           "toilet_flapper_or_fill_valve_replacement"
+        ],
+        "comp.toilet_seat": [
+          "toilet_seat_replacement"
         ]
       },
       "real_symptom_ids": [
@@ -15987,6 +16062,16 @@
       "category": "misc",
       "sub_category": "removal",
       "description": "Large 42-gallon contractor bag for debris removal."
+    },
+    "MAT-PLM-TLT-Seat": {
+      "sku": "MAT-PLM-TLT-Seat",
+      "name": "Toilet Seat",
+      "price": 18.0,
+      "markup_percent": 20,
+      "unit": "unit",
+      "category": "plumbing",
+      "sub_category": "toilet",
+      "description": "Standard round or elongated toilet seat with hinges."
     }
   },
   "furniture_catalog": [
@@ -20432,6 +20517,19 @@
         "default_service_sku": "door_lock_or_handle_install",
         "default_service_type": "Install",
         "confidence_weight": 80
+      },
+      {
+        "keyword": "toilet seat",
+        "synonyms": [
+          "toilet seat",
+          "new toilet seat",
+          "replace toilet seat",
+          "seat"
+        ],
+        "default_dynamic_category": "plumbing_help",
+        "default_service_sku": "toilet_seat_replacement",
+        "confidence_weight": 95,
+        "default_service_type": "Install"
       }
     ]
   },
