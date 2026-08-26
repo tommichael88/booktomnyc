@@ -30,7 +30,7 @@
 *,::after,::before{box-sizing:border-box}
 body{font-family:Roboto,Ubuntu,-apple-system,BlinkMacSystemFont,sans-serif;padding:10px;min-height:100vh;height:calc(var(--vh, 1vh) * 100);overflow-x:hidden;position:relative;background:#fff;touch-action:manipulation;-webkit-tap-highlight-color:#fff;margin:0}
 body.modal-active{overflow:hidden}
-.pg_background{position:fixed;inset:0;z-index:0;height:100vh;background-size:cover;background-attachment:fixed;background-position:center top;background-image:url(https://github.com/tommichael88/booktomnyc/blob/main/images/pg_background_b5.png?raw=true);backdrop-filter:#fff;-webkit-backdrop-filter:#fff}
+.pg_background{position:fixed;inset:0;z-index:0;height:100vh;background-size:cover;background-attachment:fixed;background-position:center top;background-image:url(https://github.com/tommichael88/booktomnyc/blob/main/images/pg_background7.png?raw=true);backdrop-filter:#fff;-webkit-backdrop-filter:#fff}
 .qrc_page_inner{max-width:700px;margin:auto;padding:4px 4px 80px;position:relative;z-index:9}
 .profile-portrait-image{display:block;width:100%;height:auto;border-radius:10px;margin:2px auto;transition:transform .4s cubic-bezier(.34,1.56,.64,1); box-shadow:15px 15px 30px #bebebe,-15px -15px 30px #fff;}
 .highlight-box{display:flex;width:100%;justify-content:space-between;align-items:center;padding:12px 15px;gap:2%;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:inset 0 1px 2px #ffffff26 0 2px 12px #0006;border:var(--glass-border);border-radius:var(--radius-sm);transition:var(--transition)}
@@ -7033,7 +7033,24 @@ function humanizeComponentSymptomId(rawId) {
     return humanized.charAt(0).toUpperCase() + humanized.slice(1);
 }
 
-function resolveComponentSymptomTap(serviceIds, group, category_id) {
+function resolveComponentSymptomTap(serviceIds, group, category_id, chosenAction) {
+    // v9.6 FIX: now tries a real, exact service_type match against
+    // chosenAction FIRST, when more than one real service maps to this
+    // component/symptom -- confirmed via direct data check this genuinely
+    // matters for real cases (tech_trouble_computer_repair's comp.hard_drive
+    // maps to internal_hardware_replacement (Repair) vs
+    // data_backup_or_transfer (Setup) -- meaningfully different real
+    // requests an action-first tap correctly disambiguates). Falls back to
+    // the original, component-only resolution when no match exists (every
+    // current case in Doors/Toilets, where all real services happen to
+    // share service_type Install regardless of what they actually do) --
+    // never a dead end just because the exact type wasn't authored.
+    if (serviceIds.length > 1 && chosenAction) {
+        const typedMatch = serviceIds
+            .map(id => (DB.services || []).find(s => s.id === id))
+            .find(s => s && s.service_type === chosenAction);
+        if (typedMatch) { prefillSmartQuoteFromService(typedMatch, category_id); return; }
+    }
     // Exactly one real service maps to this component/symptom -- the common
     // case (e.g. Doors: every one of its 4 real components maps to exactly
     // one service). Resolve directly through the same, real, proven path a
@@ -7046,8 +7063,9 @@ function resolveComponentSymptomTap(serviceIds, group, category_id) {
         // A real, confirmed case (8 instances catalog-wide, e.g. comp.tv ->
         // both flatscreen_mounting_standard and _with_hidden_cables) --
         // genuinely more than one distinct service for this one component/
-        // symptom. Show just these matched services via the existing,
-        // proven tile renderer rather than guessing which one is meant.
+        // symptom, and no exact action match was found above. Show just
+        // these matched services via the existing, proven tile renderer
+        // rather than guessing which one is meant.
         const matched = serviceIds.map(id => (DB.services || []).find(s => s.id === id)).filter(Boolean);
         if (matched.length) {
             renderServices(DOM.serviceContainer, matched, category_id, group.id);
@@ -7055,26 +7073,24 @@ function resolveComponentSymptomTap(serviceIds, group, category_id) {
         }
     }
     // Zero real services map to this component/symptom -- a real, honest
-    // gap (e.g. "toilet seat" under Toilets, confirmed via direct check
-    // there's no comp.toilet_seat entry anywhere in the real catalog).
-    // Falls through to the existing, proven, pre-seeded builder flow
+    // gap. Falls through to the existing, proven, pre-seeded builder flow
     // (T76) rather than a dead end -- the group is already known, so the
     // builder correctly skips re-asking it.
     sqOpenBuilderPreseeded({
-        action: null,
+        action: chosenAction ? stDefaultAction(chosenAction) : null,
         groupId: group.id,
         categoryLabel: group.display_name || group.name || category_id,
         allowedTypes: null
     });
 }
 
-function renderComponentSymptomPicker(container, group, category_id) {
+function renderComponentSymptomPicker(container, group, category_id, chosenAction) {
     // v9.6 Track A / Phase 8: the real navigation picker, built on top of
-    // the archetype/routing_archetypes data foundation. Genuinely new UI,
-    // not a data-layer change -- this is the first group wired to it
-    // (Doors, per PHASE8_COMPONENT_ACTION_SYMPTOM_NAVIGATION_DESIGN.md's
-    // own choice: zero real gaps, fully mapped, both real components
-    // resolving to exactly one service each).
+    // the archetype/routing_archetypes data foundation. chosenAction (the
+    // real service_type picked in the new showServiceTypesForGroup step
+    // above this in the flow) is threaded through to resolution -- see
+    // resolveComponentSymptomTap for why this matters for real, multi-
+    // service components even though it's a no-op for Doors/Toilets today.
     const ra = DB.routing_archetypes?.[group.id];
     const archetype = ra?.routing_archetype;
     const isComponentFirst = archetype === 'component_first' && (ra?.real_component_ids || []).length > 0;
@@ -7110,7 +7126,7 @@ function renderComponentSymptomPicker(container, group, category_id) {
         tile.tabIndex = 0;
         tile.role = 'button';
         tile.innerHTML = `<span class="tile-name">${escapeHtml(label)}</span>`;
-        const handler = () => resolveComponentSymptomTap(mapping?.[rawId] || [], group, category_id);
+        const handler = () => resolveComponentSymptomTap(mapping?.[rawId] || [], group, category_id, chosenAction);
         tile.addEventListener('click', handler);
         tile.addEventListener('keydown', e => {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
@@ -7134,12 +7150,57 @@ function renderComponentSymptomPicker(container, group, category_id) {
     fallbackTile.tabIndex = 0;
     fallbackTile.role = 'button';
     fallbackTile.innerHTML = `<span class="tile-name">Something else</span>`;
-    const fallbackHandler = () => resolveComponentSymptomTap([], group, category_id);
+    const fallbackHandler = () => resolveComponentSymptomTap([], group, category_id, chosenAction);
     fallbackTile.addEventListener('click', fallbackHandler);
     fallbackTile.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fallbackHandler(); }
     });
     container.appendChild(fallbackTile);
+}
+
+function showServiceTypesForGroup(container, group, category_id) {
+    // v9.6 Track A / Phase 8, directly requested: the real Action step,
+    // shown between the group and the component/symptom picker -- matches
+    // the group's real, authored dynamic_service_types (e.g. Doors:
+    // Diagnostic/Mount/Repair), using the exact, already-established
+    // BLD_ACTION_MAP for real, consistent labels/icons rather than
+    // inventing a second labeling scheme.
+    const types = (group.dynamic_service_types || []).filter(Boolean);
+
+    if (types.length <= 1) {
+        // Real, established "skip when unambiguous" pattern (matches
+        // prefillSmartQuoteFromOtherTile's own singleType handling) --
+        // asking a question with only one possible answer is pure
+        // friction, not a real choice.
+        renderComponentSymptomPicker(container, group, category_id, types[0] || null);
+        return;
+    }
+
+    container.replaceChildren();
+    container.className = 'group-grid';
+
+    const prompt = create('div', {
+        class: 'picker-prompt',
+        text: 'What do you need done?',
+        style: 'grid-column:1/-1;font-weight:600;font-size:.95rem;margin-bottom:6px;color:#374151;'
+    });
+    container.appendChild(prompt);
+
+    types.forEach(stype => {
+        const actionInfo = (typeof BLD_ACTION_MAP !== 'undefined' ? BLD_ACTION_MAP : []).find(a => a.stype === stype);
+        const label = actionInfo?.label || stype;
+        const tile = document.createElement('div');
+        tile.className = 'group-tile';
+        tile.tabIndex = 0;
+        tile.role = 'button';
+        tile.innerHTML = `<span class="tile-name">${escapeHtml(label)}</span>`;
+        const handler = () => renderComponentSymptomPicker(container, group, category_id, stype);
+        tile.addEventListener('click', handler);
+        tile.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+        });
+        container.appendChild(tile);
+    });
 }
 
 function showSubGroups(group, category_id, fromBack = false) {
@@ -7166,22 +7227,28 @@ function showSubGroups(group, category_id, fromBack = false) {
         });
     } else {
         // Leaf node: render actual services -- or, for groups with real,
-        // verified component/symptom data, the new picker instead.
+        // verified component/symptom data, the new Action -> Component/
+        // Symptom flow instead.
         // v9.6 Track A / Phase 8: gated to an explicit allowlist, starting
         // with Doors (PHASE8_..._DESIGN.md's own chosen pilot -- zero real
         // gaps, both real components resolve to exactly one service each).
-        // Not a permanent restriction: renderComponentSymptomPicker already
-        // gracefully falls back to renderServices for any group without
-        // real, usable data, so expanding this list is just adding a real
+        // Not a permanent restriction: showServiceTypesForGroup and
+        // renderComponentSymptomPicker already gracefully fall back to
+        // renderServices/skip-when-unambiguous for any group without real,
+        // usable data, so expanding this list is just adding a real
         // group_id once it's been verified the same way Doors was --
         // nothing structural changes. Kept explicit rather than
         // unconditional-for-all-33-groups so each group's real component/
         // symptom mapping gets checked before customers see it, not
         // discovered by them.
-        const PICKER_ENABLED_GROUPS = new Set(['minor_home_repairs_doors', 'plumbing_help_toilets']);
+        // v9.6: now enters through showServiceTypesForGroup (real Action
+        // step, directly requested) rather than the component/symptom
+        // picker directly -- see resolveComponentSymptomTap for why the
+        // chosen action matters for real, multi-service components.
+        const PICKER_ENABLED_GROUPS = new Set(['minor_home_repairs_doors', 'plumbing_help_toilets', 'tech_trouble_computer_repair']);
         const services = servicesByGroup.get(group.id) || [];
         if (PICKER_ENABLED_GROUPS.has(group.id)) {
-            renderComponentSymptomPicker(container, group, category_id);
+            showServiceTypesForGroup(container, group, category_id);
         } else {
             renderServices(container, services, category_id, group.id);
         }
