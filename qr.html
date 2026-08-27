@@ -7082,11 +7082,23 @@ function resolveComponentSymptomTap(serviceIds, group, category_id, chosenAction
     // current case in Doors/Toilets, where all real services happen to
     // share service_type Install regardless of what they actually do) --
     // never a dead end just because the exact type wasn't authored.
+    //
+    // Real bug found and fixed while adding the electric_lighting cluster,
+    // before it shipped: this used .find(), which returns the FIRST
+    // matching service without checking whether more than one shares that
+    // same service_type -- fine when chosenAction disambiguates cleanly
+    // (Repair vs Setup), but silently, wrongly resolved directly for
+    // comp.bulb (high_ceiling_bulb_replacement vs led_bulb_upgrade, BOTH
+    // "Install") without ever giving the customer the real choice between
+    // them. Filter first, then only resolve directly when the filtered set
+    // has exactly one member; otherwise fall through to the same
+    // multi-match sub-picker used below, since chosenAction didn't
+    // actually disambiguate anything here.
     if (serviceIds.length > 1 && chosenAction) {
-        const typedMatch = serviceIds
+        const typedMatches = serviceIds
             .map(id => (DB.services || []).find(s => s.id === id))
-            .find(s => s && s.service_type === chosenAction);
-        if (typedMatch) { prefillSmartQuoteFromService(typedMatch, category_id); return; }
+            .filter(s => s && s.service_type === chosenAction);
+        if (typedMatches.length === 1) { prefillSmartQuoteFromService(typedMatches[0], category_id); return; }
     }
     // Exactly one real service maps to this component/symptom -- the common
     // case (e.g. Doors: every one of its 4 real components maps to exactly
@@ -7327,7 +7339,7 @@ function showSubGroups(group, category_id, fromBack = false) {
         // step, directly requested) rather than the component/symptom
         // picker directly -- see resolveComponentSymptomTap for why the
         // chosen action matters for real, multi-service components.
-        const PICKER_ENABLED_GROUPS = new Set(['minor_home_repairs_doors', 'plumbing_help_toilets', 'tech_trouble_computer_repair', 'minor_home_repairs_cabinets_drawers', 'minor_home_repairs_appliances_washer', 'minor_home_repairs_appliances_dishwasher', 'minor_home_repairs_appliances_refrigerator', 'minor_home_repairs_appliances_window_ac']);
+        const PICKER_ENABLED_GROUPS = new Set(['minor_home_repairs_doors', 'plumbing_help_toilets', 'tech_trouble_computer_repair', 'minor_home_repairs_cabinets_drawers', 'minor_home_repairs_appliances_washer', 'minor_home_repairs_appliances_dishwasher', 'minor_home_repairs_appliances_refrigerator', 'minor_home_repairs_appliances_window_ac', 'electric_lighting_bulbs', 'electric_lighting_fans', 'electric_lighting_light_fixtures', 'electric_lighting_outlets', 'electric_lighting_switches', 'electric_lighting_thermostats']);
         const services = servicesByGroup.get(group.id) || [];
         if (PICKER_ENABLED_GROUPS.has(group.id)) {
             showServiceTypesForGroup(container, group, category_id);
