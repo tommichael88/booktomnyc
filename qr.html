@@ -7133,6 +7133,51 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
     const isComponentFirst = archetype === 'component_first' && (ra?.real_component_ids || []).length > 0;
     const isSymptomFirst = archetype === 'symptom_first' && (ra?.real_symptom_ids || []).length > 0;
 
+    // v9.6 FIX: real, distinct gap found while adding the appliances
+    // groups -- washer/dishwasher/refrigerator are symptom_first (their
+    // only real signal is 4 repair-oriented symptoms), but each also has
+    // a real, direct, unambiguous Install service that no symptom could
+    // ever surface (installing a new unit isn't a symptom). Without this,
+    // tapping "Install" still only ever shows the same 4 repair symptoms,
+    // none of which lead anywhere useful, even though the exact service
+    // being asked for already, unambiguously exists.
+    //
+    // Real bug caught in the first version of this fix, before shipping:
+    // checking for "exactly one unique service across all mappings"
+    // isn't the right test -- washer's 4 real Repair symptoms all
+    // happen to share the same washer_repair service, so that naive
+    // check also (wrongly) skipped the symptom picker for Repair, even
+    // though tapping a specific symptom still has real value (it
+    // pre-answers washer_repair's own "symptom" intake question,
+    // reducing friction later). The correct test: only skip when the
+    // tiles this archetype would NORMALLY display are entirely
+    // irrelevant to the chosen action -- i.e. none of them lead to a
+    // service of that type at all -- not merely when they converge on
+    // one shared destination.
+    if (chosenAction) {
+        const normalIds = isComponentFirst ? (ra?.real_component_ids || []) : (ra?.real_symptom_ids || []);
+        const normalMapping = isComponentFirst ? (ra?.component_id_to_service_ids || {}) : (ra?.symptom_id_to_service_ids || {});
+        const normalTilesHaveThisAction = normalIds.some(id =>
+            (normalMapping[id] || []).some(svcId => {
+                const svc = (DB.services || []).find(s => s.id === svcId);
+                return svc && svc.service_type === chosenAction;
+            })
+        );
+        if (!normalTilesHaveThisAction) {
+            const allMapped = new Set([
+                ...Object.values(ra?.component_id_to_service_ids || {}).flat(),
+                ...Object.values(ra?.symptom_id_to_service_ids || {}).flat(),
+            ]);
+            const matchingAction = [...allMapped]
+                .map(id => (DB.services || []).find(s => s.id === id))
+                .filter(s => s && s.service_type === chosenAction);
+            if (matchingAction.length === 1) {
+                prefillSmartQuoteFromService(matchingAction[0], category_id);
+                return;
+            }
+        }
+    }
+
     if (!isComponentFirst && !isSymptomFirst) {
         // No real, usable component/symptom signal for this group (undetermined,
         // or component_first/symptom_first but the real data is empty) --
@@ -7282,7 +7327,7 @@ function showSubGroups(group, category_id, fromBack = false) {
         // step, directly requested) rather than the component/symptom
         // picker directly -- see resolveComponentSymptomTap for why the
         // chosen action matters for real, multi-service components.
-        const PICKER_ENABLED_GROUPS = new Set(['minor_home_repairs_doors', 'plumbing_help_toilets', 'tech_trouble_computer_repair', 'minor_home_repairs_cabinets_drawers']);
+        const PICKER_ENABLED_GROUPS = new Set(['minor_home_repairs_doors', 'plumbing_help_toilets', 'tech_trouble_computer_repair', 'minor_home_repairs_cabinets_drawers', 'minor_home_repairs_appliances_washer', 'minor_home_repairs_appliances_dishwasher', 'minor_home_repairs_appliances_refrigerator', 'minor_home_repairs_appliances_window_ac']);
         const services = servicesByGroup.get(group.id) || [];
         if (PICKER_ENABLED_GROUPS.has(group.id)) {
             showServiceTypesForGroup(container, group, category_id);

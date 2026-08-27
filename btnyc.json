@@ -1053,7 +1053,8 @@
       "dynamic_service_types": [
         "Diagnostic",
         "Mount",
-        "Repair"
+        "Repair",
+        "Install"
       ]
     },
     {
@@ -1090,12 +1091,14 @@
       "display_name": "Refrigerator",
       "icon": "🧊",
       "explicit_services": [
+        "refrigerator_install",
         "repair_appliances"
       ],
       "dynamic_service_types": [
         "Diagnostic",
         "Mount",
-        "Repair"
+        "Repair",
+        "Install"
       ],
       "typical_location": "kitchen"
     },
@@ -1106,12 +1109,14 @@
       "display_name": "Dishwasher",
       "icon": "🍽️",
       "explicit_services": [
+        "dishwasher_install",
         "dishwasher_repair"
       ],
       "dynamic_service_types": [
         "Diagnostic",
         "Mount",
-        "Repair"
+        "Repair",
+        "Install"
       ],
       "typical_location": "kitchen"
     },
@@ -1139,12 +1144,14 @@
       "display_name": "Window AC",
       "icon": "❄️",
       "explicit_services": [
-        "window_ac_setup"
+        "window_ac_setup",
+        "window_ac_repair"
       ],
       "dynamic_service_types": [
         "Diagnostic",
         "Mount",
-        "Repair"
+        "Repair",
+        "Install"
       ],
       "default_qty": 1
     },
@@ -7211,6 +7218,205 @@
         "MAT-PLM-TLT-Seat"
       ],
       "optional_materials": []
+    },
+    {
+      "id": "dishwasher_install",
+      "operational_metrics": {
+        "expected_minutes": 60,
+        "high_case_minutes": 120,
+        "complexity_tier": "skilled"
+      },
+      "pricing_engine": "algorithmic_flat_rate",
+      "default_estimates": {
+        "materials": {
+          "min": 0,
+          "max": 0,
+          "note": ""
+        },
+        "total_minutes": {
+          "min": 70,
+          "max": 90,
+          "note": ""
+        },
+        "disclaimer": "flat_fee"
+      },
+      "ui_taxonomy": {
+        "category_id": "minor_home_repairs",
+        "group_id": "minor_home_repairs_appliances_dishwasher",
+        "display_name": "Dishwasher Install",
+        "icon": "🍽️",
+        "description": "Standard unboxing, setup and basic testing of the unit.",
+        "sort_order": 175,
+        "presentation_strategy": {
+          "display_enabled": true,
+          "buffer_label": "Average",
+          "calculation_basis": "base_plus_tags"
+        }
+      },
+      "financial_engine": {
+        "type": "flat_rate",
+        "base_price": 70,
+        "pricing_archetype": "flat_simple",
+        "_inherits_checkout_state_from_archetype": "major_appliance",
+        "_note": "v9.6: authored to close a real, confirmed navigation gap -- this group had a real component/symptom presence but no install service at all, while its repair counterpart already existed. Priced and shaped identically to washer_install/microwave_setup/window_ac_setup (same real description, same $70, same space_ready-only intake) -- a consistent, established pattern for basic appliance setup, not an invented, bespoke number."
+      },
+      "aliases": [],
+      "service_type": "Install",
+      "intake_chain": [
+        {
+          "module": "space_ready",
+          "then": {}
+        }
+      ],
+      "default_tags": [],
+      "confidence_strategy": {
+        "minimum_quote_confidence": 50,
+        "maximum_followup_questions": 2,
+        "diagnostic_threshold": 30,
+        "base_confidence": 40,
+        "_variability_tier": "low",
+        "_variability_score": 6.3
+      },
+      "verb_natural": "installed",
+      "required_materials": [],
+      "optional_materials": [],
+      "suggested_tags": []
+    },
+    {
+      "id": "refrigerator_install",
+      "operational_metrics": {
+        "expected_minutes": 60,
+        "high_case_minutes": 120,
+        "complexity_tier": "skilled"
+      },
+      "pricing_engine": "algorithmic_flat_rate",
+      "default_estimates": {
+        "materials": {
+          "min": 0,
+          "max": 0,
+          "note": ""
+        },
+        "total_minutes": {
+          "min": 70,
+          "max": 90,
+          "note": ""
+        },
+        "disclaimer": "flat_fee"
+      },
+      "ui_taxonomy": {
+        "category_id": "minor_home_repairs",
+        "group_id": "minor_home_repairs_appliances_refrigerator",
+        "display_name": "Refrigerator Install",
+        "icon": "🧊",
+        "description": "Standard unboxing, setup and basic testing of the unit.",
+        "sort_order": 175,
+        "presentation_strategy": {
+          "display_enabled": true,
+          "buffer_label": "Average",
+          "calculation_basis": "base_plus_tags"
+        }
+      },
+      "financial_engine": {
+        "type": "flat_rate",
+        "base_price": 70,
+        "pricing_archetype": "flat_simple",
+        "_inherits_checkout_state_from_archetype": "major_appliance",
+        "_note": "v9.6: authored to close a real, confirmed navigation gap -- this group had a real component/symptom presence but no install service at all, while its repair counterpart already existed. Priced and shaped identically to washer_install/microwave_setup/window_ac_setup (same real description, same $70, same space_ready-only intake) -- a consistent, established pattern for basic appliance setup, not an invented, bespoke number."
+      },
+      "aliases": [],
+      "service_type": "Install",
+      "intake_chain": [
+        {
+          "module": "space_ready",
+          "then": {}
+        }
+      ],
+      "default_tags": [],
+      "confidence_strategy": {
+        "minimum_quote_confidence": 50,
+        "maximum_followup_questions": 2,
+        "diagnostic_threshold": 30,
+        "base_confidence": 40,
+        "_variability_tier": "low",
+        "_variability_score": 6.3
+      },
+      "verb_natural": "installed",
+      "required_materials": [],
+      "optional_materials": [],
+      "suggested_tags": []
+    },
+    {
+      "id": "window_ac_repair",
+      "operational_metrics": {
+        "expected_minutes": 60,
+        "high_case_minutes": 120,
+        "complexity_tier": "specialized"
+      },
+      "pricing_engine": "hourly_estimate",
+      "default_estimates": {
+        "materials": {
+          "min": 0,
+          "max": 0,
+          "note": ""
+        },
+        "total_minutes": {
+          "min": 70,
+          "max": 90,
+          "note": ""
+        },
+        "disclaimer": "flat_fee"
+      },
+      "ui_taxonomy": {
+        "category_id": "minor_home_repairs",
+        "group_id": "minor_home_repairs_appliances_window_ac",
+        "display_name": "Window AC Repair",
+        "icon": "❄️",
+        "description": "Diagnostic and repair.",
+        "sort_order": 185,
+        "presentation_strategy": {
+          "display_enabled": true,
+          "buffer_label": "Average",
+          "calculation_basis": "base_plus_tags"
+        }
+      },
+      "financial_engine": {
+        "type": "hourly",
+        "base_price": 70,
+        "pricing_archetype": "hourly_timed",
+        "_inherits_checkout_state_from_archetype": "major_appliance",
+        "_note": "v9.6: authored to close a real, confirmed navigation gap -- this group had an install service but no repair path. Priced and shaped identically to washer_repair (same real description, same $70/hr, same location/symptom/access intake, same specialized-tier confidence reasoning) -- a consistent, established pattern, not an invented number."
+      },
+      "aliases": [],
+      "service_type": "Repair",
+      "intake_chain": [
+        {
+          "module": "location",
+          "then": {}
+        },
+        {
+          "module": "symptom",
+          "then": {}
+        },
+        {
+          "module": "access",
+          "then": {}
+        }
+      ],
+      "default_tags": [],
+      "override_root": true,
+      "confidence_strategy": {
+        "minimum_quote_confidence": 65,
+        "maximum_followup_questions": 2,
+        "diagnostic_threshold": 0,
+        "base_confidence": 40,
+        "_variability_tier": "high",
+        "_variability_score": null,
+        "_note": "Matches washer_repair's own v9.5.10 Phase 4 reasoning exactly -- specialized-tier repair services are raised to 65, not left at the tier default of 40, per that fix's own, already-reviewed rationale. Not re-derived independently; applied consistently to a newly-authored service of the identical real shape."
+      },
+      "verb_natural": "repaired",
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ]
     }
   ],
   "service_types": {
@@ -12040,7 +12246,11 @@
       "real_component_ids": [
         "comp.refrigerator"
       ],
-      "component_id_to_service_ids": {},
+      "component_id_to_service_ids": {
+        "comp.refrigerator": [
+          "refrigerator_install"
+        ]
+      },
       "real_symptom_ids": [
         "sym.leaking_water",
         "sym.strange_noises",
@@ -12061,9 +12271,7 @@
           "repair_appliances"
         ]
       },
-      "real_gaps": [
-        "No explicit install service — only repair via catch-all."
-      ]
+      "real_gaps": []
     },
     "minor_home_repairs_appliances_dishwasher": {
       "display_name": "Dishwasher",
@@ -12075,7 +12283,11 @@
       "real_component_ids": [
         "comp.dishwasher"
       ],
-      "component_id_to_service_ids": {},
+      "component_id_to_service_ids": {
+        "comp.dishwasher": [
+          "dishwasher_install"
+        ]
+      },
       "real_symptom_ids": [
         "sym.leaking_water",
         "sym.strange_noises",
@@ -12096,9 +12308,7 @@
           "dishwasher_repair"
         ]
       },
-      "real_gaps": [
-        "No explicit install service — only repair."
-      ]
+      "real_gaps": []
     },
     "minor_home_repairs_appliances_microwave": {
       "display_name": "Microwave",
@@ -12152,14 +12362,13 @@
       ],
       "component_id_to_service_ids": {
         "comp.window_ac": [
-          "window_ac_setup"
+          "window_ac_setup",
+          "window_ac_repair"
         ]
       },
       "real_symptom_ids": [],
       "symptom_id_to_service_ids": {},
-      "real_gaps": [
-        "No explicit repair service for window AC units."
-      ]
+      "real_gaps": []
     },
     "minor_home_repairs_appliances_other": {
       "display_name": "Other",
@@ -19629,7 +19838,20 @@
         "default_service_sku": "repair_appliances",
         "confidence_weight": 90,
         "default_dynamic_category": "minor_home_repairs",
-        "default_service_type": "Repair"
+        "default_service_type": "Repair",
+        "contextual_overrides": [
+          {
+            "keywords": [
+              "install",
+              "new fridge",
+              "new refrigerator",
+              "delivery",
+              "hookup"
+            ],
+            "override_sku": "refrigerator_install",
+            "note": "Installing a new refrigerator, not repairing an existing one -- matches washer's own, identical, established pattern."
+          }
+        ]
       },
       {
         "keyword": "washer",
@@ -19675,7 +19897,19 @@
         "default_service_sku": "dishwasher_repair",
         "confidence_weight": 90,
         "default_dynamic_category": "minor_home_repairs",
-        "default_service_type": "Repair"
+        "default_service_type": "Repair",
+        "contextual_overrides": [
+          {
+            "keywords": [
+              "install",
+              "new dishwasher",
+              "delivery",
+              "hookup"
+            ],
+            "override_sku": "dishwasher_install",
+            "note": "Installing a new dishwasher, not repairing an existing one -- matches washer's own, identical, established pattern."
+          }
+        ]
       },
       {
         "keyword": "microwave",
@@ -20138,7 +20372,23 @@
         "default_dynamic_category": "minor_home_repairs",
         "default_service_sku": "window_ac_setup",
         "confidence_weight": 80,
-        "default_service_type": "Install"
+        "default_service_type": "Install",
+        "contextual_overrides": [
+          {
+            "keywords": [
+              "repair",
+              "broken",
+              "not cooling",
+              "wont turn on",
+              "won't turn on",
+              "leaking",
+              "loud",
+              "noisy"
+            ],
+            "override_sku": "window_ac_repair",
+            "note": "Repairing an existing window AC unit, not installing a new one -- the inverse of washer's own pattern, since this keyword's own default is Install rather than Repair."
+          }
+        ]
       },
       {
         "keyword": "angle stop",
