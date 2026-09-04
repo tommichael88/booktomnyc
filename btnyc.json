@@ -142,6 +142,24 @@
         },
         {
           "if": {
+            "has_unconfirmed_negation_pivot": true
+          },
+          "then": {
+            "ui_template": "tag_affirmation"
+          },
+          "_note": "T64 follow-up: real port of sqAnalyze's T36 negation-pivot gate. Checked BEFORE the plain tag-affirmation rule below, exactly matching sqAnalyze's own real ordering -- a pending pivot takes priority over a plain, non-pivot affirmation. Reuses the same tag_affirmation template per the original design's own explicit recommendation (renderTagAffirmationCard's own comment: 'same component, different framing, per the design doc's own explicit recommendation rather than a separate, third UI surface') -- renderTagAffirmationFromRoute checks route.negationOverride to pick which framing to show. has_unconfirmed_negation_pivot is computed in executeWorkflow directly from context._negationOverride/context.negationPivotAccepted, itself already computed by collectBookingContext_freeText."
+        },
+        {
+          "if": {
+            "has_unaffirmed_detected_tags": true
+          },
+          "then": {
+            "ui_template": "tag_affirmation"
+          },
+          "_note": "T64: real, direct port of sqAnalyze's own tag-affirmation gate (the Phase 7 confidence-gated tag affirmation design) into the orchestrator's decision path -- placed after the structural legacy_flow overrides (a furniture-selection or adhoc service has its own, separate flow regardless of tags) but before every chain-shape rule below, exactly matching sqAnalyze's own real ordering (it checks tag affirmation before ever reaching template-shape logic). has_unaffirmed_detected_tags is computed in executeWorkflow directly from context.detectedTagIds/context.tagsAffirmed, not duplicated here. The negation-pivot case (ctx._negationOverride in sqAnalyze) is now also ported -- see the has_unconfirmed_negation_pivot rule immediately above, checked first per sqAnalyze's own real ordering."
+        },
+        {
+          "if": {
             "chain_is_pure_quantity": true
           },
           "then": {
@@ -293,10 +311,11 @@
           "self_quote",
           "curated_card",
           "chip_grid",
-          "legacy_flow"
+          "legacy_flow",
+          "tag_affirmation"
         ]
       },
-      "_note": "Catches a broken or stale ui_template_matrix rule producing a typo'd or removed template name -- exactly the failure mode this was first built to catch (a deliberately broken matrix.fallback during Phase 4 development)."
+      "_note": "Catches a broken or stale ui_template_matrix rule producing a typo'd or removed template name -- exactly the failure mode this was first built to catch (a deliberately broken matrix.fallback during Phase 4 development). tag_affirmation added for T64 (the real port of sqAnalyze's tag-affirmation gate into the orchestrator's own decision path)."
     },
     {
       "id": "legacy_flow_requires_entity",
@@ -1642,7 +1661,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 45,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -1707,7 +1726,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -1927,7 +1946,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -2030,7 +2049,7 @@
       ],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -2125,7 +2144,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -2197,7 +2216,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -2495,7 +2514,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -2563,7 +2582,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -2726,7 +2745,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -2790,7 +2809,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -2902,7 +2921,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -3036,7 +3055,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -3112,7 +3131,7 @@
       ],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -3389,7 +3408,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -3461,7 +3480,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -3538,7 +3557,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -3881,7 +3900,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -3957,7 +3976,7 @@
       ],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -4129,7 +4148,7 @@
       ],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -4208,7 +4227,7 @@
       ],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -4288,7 +4307,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -4359,7 +4378,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -4458,7 +4477,7 @@
       ],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -4539,7 +4558,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 95,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 4,
         "diagnostic_threshold": 40,
         "base_confidence": 40,
@@ -4690,7 +4709,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -4858,7 +4877,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -4921,7 +4940,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -5070,7 +5089,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -5323,7 +5342,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -5386,7 +5405,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -5533,7 +5552,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -5619,7 +5638,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -5683,7 +5702,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -6271,7 +6290,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -6380,7 +6399,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -6524,7 +6543,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -6595,7 +6614,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -6790,7 +6809,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -6879,7 +6898,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -6969,7 +6988,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -7063,7 +7082,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -7133,7 +7152,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 4,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -7272,7 +7291,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -7335,7 +7354,7 @@
       ],
       "default_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 40,
@@ -7407,7 +7426,7 @@
       "default_tags": [],
       "override_root": true,
       "confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
@@ -7527,7 +7546,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -7606,7 +7625,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -7618,7 +7637,7 @@
       "financial_engine": {
         "type": "diagnostic",
         "base_price": 70,
-        "checkout_state": "standard_flat_rate"
+        "checkout_state": "diagnostic"
       },
       "operational_metrics": {
         "complexity_tier": "specialized",
@@ -7645,7 +7664,7 @@
       ],
       "smart_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 30,
@@ -7702,7 +7721,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -7754,7 +7773,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -7834,7 +7853,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -7896,7 +7915,7 @@
       ],
       "smart_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -7908,7 +7927,7 @@
       "financial_engine": {
         "type": "diagnostic",
         "base_price": 62.5,
-        "checkout_state": "standard_flat_rate"
+        "checkout_state": "diagnostic"
       },
       "operational_metrics": {
         "complexity_tier": "specialized",
@@ -7964,7 +7983,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 30,
@@ -7976,7 +7995,7 @@
       "financial_engine": {
         "type": "diagnostic",
         "base_price": 100,
-        "checkout_state": "standard_flat_rate"
+        "checkout_state": "diagnostic"
       },
       "operational_metrics": {
         "complexity_tier": "specialized",
@@ -8018,7 +8037,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 0,
         "base_confidence": 30,
@@ -8057,7 +8076,7 @@
       ],
       "smart_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8114,7 +8133,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8163,7 +8182,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8242,7 +8261,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8291,7 +8310,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8330,7 +8349,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8373,7 +8392,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8412,7 +8431,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8458,7 +8477,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8507,7 +8526,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8553,7 +8572,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8599,7 +8618,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8648,7 +8667,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8694,7 +8713,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8740,7 +8759,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8789,7 +8808,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8835,7 +8854,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8881,7 +8900,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8930,7 +8949,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -8976,7 +8995,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9022,7 +9041,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9071,7 +9090,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9117,7 +9136,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9160,7 +9179,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9206,7 +9225,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9249,7 +9268,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9295,7 +9314,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9344,7 +9363,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9390,7 +9409,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9429,7 +9448,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9472,7 +9491,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9511,7 +9530,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9560,7 +9579,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9612,7 +9631,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9658,7 +9677,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9707,7 +9726,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9753,7 +9772,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9799,7 +9818,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9849,7 +9868,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9895,7 +9914,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9944,7 +9963,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -9996,7 +10015,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10045,7 +10064,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10097,7 +10116,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10146,7 +10165,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10192,7 +10211,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10241,7 +10260,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10287,7 +10306,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10339,7 +10358,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10391,7 +10410,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10440,7 +10459,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10489,7 +10508,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10541,7 +10560,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10593,7 +10612,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10645,7 +10664,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10691,7 +10710,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10743,7 +10762,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10798,7 +10817,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10853,7 +10872,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10899,7 +10918,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10948,7 +10967,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -10997,7 +11016,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11040,7 +11059,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11083,7 +11102,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11126,7 +11145,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11175,7 +11194,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11228,7 +11247,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11277,7 +11296,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11330,7 +11349,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11379,7 +11398,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11432,7 +11451,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11484,7 +11503,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11540,7 +11559,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11586,7 +11605,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11635,7 +11654,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11681,7 +11700,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11731,7 +11750,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11777,7 +11796,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11816,7 +11835,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11858,7 +11877,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11897,7 +11916,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11940,7 +11959,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -11987,7 +12006,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -12030,7 +12049,7 @@
         }
       ],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -12069,7 +12088,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 90,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -12112,7 +12131,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -12151,7 +12170,7 @@
       ],
       "suggested_tags": [],
       "confidence_strategy": {
-        "minimum_quote_confidence": 40,
+        "minimum_quote_confidence": 70,
         "maximum_followup_questions": 2,
         "diagnostic_threshold": 30,
         "base_confidence": 30,
@@ -29413,7 +29432,7 @@
       "display_name": "Major Appliance",
       "default_routing_strategy": "symptom_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29434,7 +29453,7 @@
       "display_name": "Door Hardware",
       "default_routing_strategy": "component_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29452,7 +29471,7 @@
       "display_name": "Window Hardware",
       "default_routing_strategy": "component_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29469,7 +29488,7 @@
       "display_name": "Plumbing Fixture",
       "default_routing_strategy": "component_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29490,7 +29509,7 @@
       "display_name": "Electronic Device",
       "default_routing_strategy": "component_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29510,7 +29529,7 @@
       "display_name": "Wall-Mounted Object",
       "default_routing_strategy": "component_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29529,7 +29548,7 @@
       "display_name": "Electrical Fixture",
       "default_routing_strategy": "component_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 50,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29550,7 +29569,7 @@
       "display_name": "Furniture Item",
       "default_routing_strategy": "component_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29569,7 +29588,7 @@
       "display_name": "Surface Repair",
       "default_routing_strategy": "component_first",
       "default_confidence_strategy": {
-        "minimum_quote_confidence": 65,
+        "minimum_quote_confidence": 80,
         "maximum_followup_questions": 2
       },
       "typical_actions": [
@@ -29584,5 +29603,201 @@
       "_note": "v9.6 Phase 1: 2/3 real member groups are component_first. minor_home_repairs_furniture (scratch/water-ring removal) is the real, expected exception -- a cosmetic symptom, not a named part. CORRECTED (same pass, before this was ever relied on downstream): maximum_followup_questions was 4, borrowed from the checklist's own generic suggestion rather than derived from this catalog. Checked against the real, live distribution across every member service before starting the inheritance migration: the real, overwhelming value across ALL 9 archetypes is uniformly 2 (65 of 70 real services), with only 3 real, genuine outliers catalog-wide. Corrected to 2 to match reality, not the illustrative guess. default_checkout_state added: checked directly against every real member service before setting -- standard_flat_rate is the real, overwhelming majority for all 9 archetypes without exception (the few real project_based/diagnostic services are already documented, deliberate exceptions from the v9.5.10/v9.5.13 work, kept fully explicit, not collapsed).",
       "default_checkout_state": "standard_flat_rate"
     }
+  },
+  "pricing_archetypes": {
+    "flat_simple": {
+      "definition": "A single, fixed base_price with no real, separate labor-time calculation -- the simplest real archetype.",
+      "currently_assigned_to": [
+        "angle_stop_replacement",
+        "baseboard_install",
+        "bathroom_exhaust_fan_replacement",
+        "bidet_attachment_install_or_removal",
+        "brick_or_concrete_crack_repair",
+        "cabinet_door_or_drawer_adjustment",
+        "cable_management",
+        "ceiling_fan_install",
+        "chandelier_or_pendant_install",
+        "data_backup_or_transfer",
+        "dimmer_switch_install",
+        "dishwasher_install",
+        "door_lock_or_handle_install",
+        "door_repair_impact_damage",
+        "door_weatherstripping",
+        "electric_lighting+Install",
+        "electric_lighting+electric_lighting_bulbs+Install",
+        "electric_lighting+electric_lighting_fans+Install",
+        "electric_lighting+electric_lighting_light_fixtures+Install",
+        "electric_lighting+electric_lighting_outlets+Install",
+        "electric_lighting+electric_lighting_switches+Install",
+        "electric_lighting+electric_lighting_thermostats+Install",
+        "faucet_repair_drip",
+        "flatscreen_mounting_standard",
+        "flatscreen_mounting_with_hidden_cables",
+        "furniture_fixes_assembly+furniture_fixes_assembly_assembly+Assembly",
+        "furniture_fixes_assembly+furniture_fixes_assembly_disassembly+Assembly",
+        "furniture_fixes_assembly+furniture_fixes_assembly_repair+Assembly",
+        "garbage_disposal_replacement",
+        "generic_mounting_service",
+        "gfci_outlet_replacement",
+        "high_ceiling_bulb_replacement",
+        "internal_hardware_replacement",
+        "leak_under_sink_repair",
+        "led_bulb_upgrade",
+        "light_fixture_replacement",
+        "loose_tile_replacement",
+        "microwave_setup",
+        "minor_home_repairs+Install",
+        "minor_home_repairs+minor_home_repairs_appliances+Mount",
+        "minor_home_repairs+minor_home_repairs_appliances_dishwasher+Mount",
+        "minor_home_repairs+minor_home_repairs_appliances_dryer+Mount",
+        "minor_home_repairs+minor_home_repairs_appliances_microwave+Mount",
+        "minor_home_repairs+minor_home_repairs_appliances_other+Mount",
+        "minor_home_repairs+minor_home_repairs_appliances_refrigerator+Mount",
+        "minor_home_repairs+minor_home_repairs_appliances_stove_range+Mount",
+        "minor_home_repairs+minor_home_repairs_appliances_washer+Mount",
+        "minor_home_repairs+minor_home_repairs_appliances_window_ac+Mount",
+        "minor_home_repairs+minor_home_repairs_cabinets_drawers+Mount",
+        "minor_home_repairs+minor_home_repairs_doors+Mount",
+        "minor_home_repairs+minor_home_repairs_floors_trim+Mount",
+        "minor_home_repairs+minor_home_repairs_furniture+Mount",
+        "minor_home_repairs+minor_home_repairs_walls+Mount",
+        "minor_home_repairs+minor_home_repairs_windows+Mount",
+        "p_trap_cleaning",
+        "plaster_wall_repair",
+        "plumbing_help+Install",
+        "plumbing_help+plumbing_help_garbage_disposals+Mount",
+        "plumbing_help+plumbing_help_showers_tubs+Install",
+        "plumbing_help+plumbing_help_sinks+Install",
+        "plumbing_help+plumbing_help_toilets+Install",
+        "plumbing_help+plumbing_help_water_lines+Install",
+        "prehung_interior_door_install",
+        "refrigerator_install",
+        "refrigerator_water_line_install",
+        "router_configuration",
+        "scratch_or_water_ring_removal",
+        "shower_head_replacement",
+        "slow_drain_clearing",
+        "smart_plug_configuration",
+        "smart_speaker_setup",
+        "smart_switch_install",
+        "software_or_driver_install",
+        "squeaky_floor_repair",
+        "system_restore_or_reset",
+        "tech_trouble+Install",
+        "tech_trouble+Setup",
+        "tech_trouble+tech_trouble_cable_management+Install",
+        "tech_trouble+tech_trouble_cable_management+Setup",
+        "tech_trouble+tech_trouble_computer_repair+Install",
+        "tech_trouble+tech_trouble_computer_repair+Setup",
+        "tech_trouble+tech_trouble_networking+Install",
+        "tech_trouble+tech_trouble_networking+Setup",
+        "tech_trouble+tech_trouble_smart_home+Install",
+        "tech_trouble+tech_trouble_smart_home+Setup",
+        "thermostat_replacement",
+        "toilet_flapper_or_fill_valve_replacement",
+        "toilet_install",
+        "toilet_seat_replacement",
+        "toilet_wax_ring_replacement",
+        "tub_spout_replacement",
+        "under_cabinet_light_install",
+        "usb_outlet_install",
+        "virus_or_malware_removal",
+        "wall_hole_or_crack_repair",
+        "wall_mounting+wall_mounting_blinds_curtain+Mount",
+        "wall_mounting+wall_mounting_brick_or_concrete+Mount",
+        "wall_mounting+wall_mounting_drywall_or_plaster+Mount",
+        "wall_mounting+wall_mounting_frames_shelves+Mount",
+        "wall_mounting+wall_mounting_tv_flatscreen+Mount",
+        "washer_install",
+        "wi_fi_extender_setup",
+        "window_ac_setup",
+        "window_draft_sealing",
+        "window_hardware_repair",
+        "window_screen_repair",
+        "wood_paneling_repair"
+      ]
+    },
+    "hourly_timed": {
+      "definition": "base_price plus a real, computed labor-time estimate (operational_metrics.expected_minutes) at the entity's complexity-tier hourly rate.",
+      "currently_assigned_to": [
+        "blinds_shades_curtains_buy_the_hour",
+        "cabinet_knob_or_pull_install",
+        "computer_diagnostic",
+        "furniture_assembly_flat_pack",
+        "furniture_disassembly_for_moving",
+        "furniture_fixes_assembly+Assembly",
+        "furniture_fixes_assembly+Repair",
+        "furniture_fixes_assembly+furniture_fixes_assembly_assembly+Repair",
+        "furniture_fixes_assembly+furniture_fixes_assembly_disassembly+Repair",
+        "furniture_fixes_assembly+furniture_fixes_assembly_repair+Repair",
+        "furniture_repair_hourly",
+        "microwave_repair",
+        "minor_home_repairs+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances_dishwasher+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances_dryer+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances_microwave+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances_other+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances_refrigerator+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances_stove_range+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances_washer+Repair",
+        "minor_home_repairs+minor_home_repairs_appliances_window_ac+Repair",
+        "minor_home_repairs+minor_home_repairs_cabinets_drawers+Repair",
+        "minor_home_repairs+minor_home_repairs_doors+Repair",
+        "minor_home_repairs+minor_home_repairs_floors_trim+Repair",
+        "minor_home_repairs+minor_home_repairs_furniture+Repair",
+        "minor_home_repairs+minor_home_repairs_walls+Repair",
+        "minor_home_repairs+minor_home_repairs_windows+Repair",
+        "pax_wardrobe_assembly",
+        "repair_appliances",
+        "shelf_mortar_mounting_buy_the_hour",
+        "shelf_mounting_standard_buy_the_hour",
+        "wall_mounting+Mount",
+        "washer_repair",
+        "window_ac_repair"
+      ]
+    },
+    "diagnostic_open": {
+      "definition": "Real, deliberate non-commitment -- the honest price is the diagnostic/dispatch fee alone; the actual repair cost is genuinely unknown until a technician is on-site.",
+      "currently_assigned_to": [
+        "dishwasher_repair",
+        "minor_home_repairs+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances_dishwasher+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances_dryer+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances_microwave+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances_other+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances_refrigerator+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances_stove_range+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances_washer+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_appliances_window_ac+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_cabinets_drawers+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_doors+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_floors_trim+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_furniture+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_walls+Diagnostic",
+        "minor_home_repairs+minor_home_repairs_windows+Diagnostic",
+        "plumbing_help+Diagnostic",
+        "plumbing_help+plumbing_help_garbage_disposals+Diagnostic",
+        "plumbing_help+plumbing_help_showers_tubs+Diagnostic",
+        "plumbing_help+plumbing_help_sinks+Diagnostic",
+        "plumbing_help+plumbing_help_toilets+Diagnostic",
+        "plumbing_help+plumbing_help_water_lines+Diagnostic",
+        "tech_trouble+Diagnostic",
+        "tech_trouble+tech_trouble_cable_management+Diagnostic",
+        "tech_trouble+tech_trouble_computer_repair+Diagnostic",
+        "tech_trouble+tech_trouble_networking+Diagnostic",
+        "tech_trouble+tech_trouble_smart_home+Diagnostic"
+      ]
+    },
+    "tiered_per_unit": {
+      "definition": "A real, two-tier model: a flat price for the realistic, common quantity range, falling through to genuine, continuous per-unit math only once true bulk volume exceeds it -- guaranteed never to charge less for ordering more.",
+      "currently_assigned_to": []
+    },
+    "formula": {
+      "definition": "Delegates to a real, named, registered entry in pricing_formulas for its complete calculation -- the archetype itself defines no fixed shape beyond 'look up and run this formula'.",
+      "currently_assigned_to": []
+    },
+    "_note": "v9.6 (T67): additive output of btnyc_v8_compiler.py's own build_pricing_archetypes, populated after comprehensive verification following T55's exact methodology for routing_archetypes -- a fresh compile, checked for field-name mismatches against real, live data (none found: pricing_engine, financial_engine.pricing_archetype, checkout_state, and financial_engine.type/pricing_type all read correctly), and an independent, separately-reimplemented classification cross-check against all 170 real entities (74 named services + 96 dynamic_services), not just the compiler re-run against itself: 0 mismatches. Nothing hand-curated existed here before this (the field was entirely absent, not populated-then-at-risk like routing_archetypes was), so this is a genuinely additive, zero-risk population, not a content-preservation fix. See TIMELINE.md T67 for the full verification record."
   }
 }
