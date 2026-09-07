@@ -1480,7 +1480,20 @@ function syncTagSynthesizedAnswers() {
     S.answers = S.answers || {};
     S._tagSynthesizedModules = S._tagSynthesizedModules || {};
     const smartTags = DB.smart_tags || {};
-    const active = [...new Set([...(S.detTagIds || []), ...(S.manTagIds || [])])]
+    // v9.6 FIX: real, confirmed, money-affecting bug -- this previously
+    // omitted S.inherentTagIds (a service's own default_tags, seeded as
+    // "service facts" per this file's own design comment at
+    // S.inherentTagIds's seeding site: "pricing still applies them").
+    // Confirmed directly: brick_or_concrete_crack_repair's inherent
+    // #brick_wall tag carries a real $25 wall_type_brick_or_concrete
+    // modifier fee via its own answers field, but since this service's
+    // intake_chain never asks wall_type directly, and this function
+    // never considered inherentTagIds, that fee silently never applied
+    // -- every real booking of this service was undercharged by $25.
+    // Included unconditionally (not gated), matching how
+    // computeQuoteFromState already, correctly treats inherentTagIds
+    // as always-chargeable, never negatable the way detTagIds are.
+    const active = [...new Set([...(S.detTagIds || []), ...(S.manTagIds || []), ...(S.inherentTagIds || [])])]
         .filter(tid => !(S.negatedTagIds || []).includes(tid));
 
     // What every currently-active tag wants to synthesize this pass.
