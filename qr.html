@@ -1445,6 +1445,89 @@ function _resolveIntakeChain(svc) {
                     return resolved;
                 }
 
+// v9.6: passive tag -> intake answer merge/skip. Confirmed via direct
+// design intent from the project owner: smart_tags are a passive,
+// real-time NLP confirmation layer (the "adlib" sentence) that were
+// never meant to require interaction -- but leaving the corresponding
+// intake question to be asked anyway, when a tag has already, clearly
+// identified the answer, is needless friction. This closes that gap.
+//
+// Mutates S.answers DIRECTLY (not a local, temporary merged view):
+// confirmed directly that computeQuoteFromState -- which feeds the
+// real, charged sqAddToCart price -- reads S.answers directly, bypassing
+// any merge kept local to the preview-only render() function. A
+// local-only merge would create exactly the "preview shows one price,
+// real charge shows another" class of bug this file has a documented
+// history of finding and fixing (see the v9.5.8 FIX comment above
+// computeUnifiedQuote's call site in the intake card's render()).
+//
+// Tracks exactly which S.answers[moduleKey] entries it set, in
+// S._tagSynthesizedModules ({moduleKey: tagId}), so:
+//   - a real, explicit customer answer is NEVER overwritten (only a
+//     module key that is either unset, or was itself tag-synthesized,
+//     is touched)
+//   - removing or negating the responsible tag cleanly REVERSES the
+//     synthesis (deletes the answer, so the question reappears,
+//     un-answered) -- since every tag-removal handler in this file
+//     already calls render() right after mutating the tag arrays,
+//     this reversal happens automatically on the next call, with zero
+//     new bookkeeping needed in those handlers
+//   - two different active tags conflicting on the same module (e.g.
+//     one implying "Drywall", another "Brick or concrete") is resolved
+//     safely: neither wins, the module falls back to being asked
+//     normally, rather than guessing which tag is "more right"
+function syncTagSynthesizedAnswers() {
+    S.answers = S.answers || {};
+    S._tagSynthesizedModules = S._tagSynthesizedModules || {};
+    const smartTags = DB.smart_tags || {};
+    const active = [...new Set([...(S.detTagIds || []), ...(S.manTagIds || [])])]
+        .filter(tid => !(S.negatedTagIds || []).includes(tid));
+
+    // What every currently-active tag wants to synthesize this pass.
+    const wants = {}; // moduleKey -> [{tid, label}, ...]
+    active.forEach(tid => {
+        const t = smartTags[tid];
+        const answers = t?.answers;
+        if (!answers) return;
+        for (const [moduleKey, label] of Object.entries(answers)) {
+            if (!DB.intake_modules?.[moduleKey]) continue; // no real module -- skip silently, not a guess
+            (wants[moduleKey] = wants[moduleKey] || []).push({ tid, label });
+        }
+    });
+
+    // Reverse synthesis for any module this function previously set,
+    // where the responsible tag is no longer active, or no longer
+    // wants that same module at all.
+    for (const moduleKey of Object.keys(S._tagSynthesizedModules)) {
+        const tid = S._tagSynthesizedModules[moduleKey];
+        const stillWanted = (wants[moduleKey] || []).some(w => w.tid === tid);
+        if (!stillWanted) {
+            delete S.answers[moduleKey];
+            delete S._tagSynthesizedModules[moduleKey];
+        }
+    }
+
+    // Apply new/updated synthesis.
+    for (const [moduleKey, wanters] of Object.entries(wants)) {
+        const uniqueLabels = new Set(wanters.map(w => w.label));
+        const currentlySynthesizedBy = S._tagSynthesizedModules[moduleKey];
+        const alreadyExplicit = moduleKey in S.answers && !currentlySynthesizedBy;
+        if (alreadyExplicit) continue; // real customer answer -- never touch it
+
+        if (uniqueLabels.size > 1) {
+            // Conflict between active tags -- don't guess, fall back to asking.
+            if (currentlySynthesizedBy) {
+                delete S.answers[moduleKey];
+                delete S._tagSynthesizedModules[moduleKey];
+            }
+            continue;
+        }
+        const { tid, label } = wanters[0];
+        S.answers[moduleKey] = label;
+        S._tagSynthesizedModules[moduleKey] = tid;
+    }
+}
+
 function _isModVisible(mod, answers, allMods) {
                     if (mod.depends_on) {
                         for (const [k, v] of Object.entries(mod.depends_on)) {
@@ -7394,6 +7477,59 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
     // any specific gap being known in advance -- the honest answer to
     // "what if none of these are it" for every real group, not just the
     // ones with a currently-tracked gap.
+    // v9.6 FIX (T74): a real, confirmed gap found scoping a customer-
+    // reported dual-intent situation (Tech Trouble's Computer Repair, but
+    // NOT unique to it -- confirmed the identical shape in 4 other real
+    // groups: Washer, Refrigerator, Dishwasher, Microwave). Each of these
+    // groups was deliberately, correctly authored with BOTH a component
+    // mapping AND a symptom mapping -- but routing_archetype can only
+    // select one as "live" per group, silently orphaning any service that
+    // ONLY exists in the other one. In every one of these 5 cases the
+    // orphaned service is the Install/Setup-type one, for exactly the
+    // reason checkRoutingArchetypeConsistency's own, separate validation
+    // already articulates for internal_hardware_replacement: a customer
+    // who wants a new washer/router/etc installed already knows what they
+    // want -- there is no real "symptom" to ask about. These services
+    // already have their own correct, authored intake_chain (confirmed,
+    // not assumed, by that same existing check) -- the gap was purely
+    // that this picker never offered a path to them, not that they lacked
+    // one. Surfaced as explicit, named tiles (not folded into the
+    // ambiguous component/symptom resolution below) precisely because a
+    // customer choosing one of these has stated an exact fact, the same
+    // certainty level as a direct catalog tap -- resolved accordingly via
+    // prefillSmartQuoteFromService, which correctly scores it via the
+    // existing, proven entryType==='catalog' path (confidence 100), not
+    // the group-level 'other_tile' formula this whole picker otherwise
+    // uses. Deliberately does not touch the 5 other real groups sharing
+    // the same dual-mapping shape (Toilets, Sinks, Showers/Tubs,
+    // Furniture, Networking) -- confirmed directly, not assumed, that
+    // their "dead" mapping is fully redundant with the live one, so
+    // nothing there is actually orphaned.
+    const otherMapping = isComponentFirst ? ra.symptom_id_to_service_ids : ra.component_id_to_service_ids;
+    if (otherMapping) {
+        const liveServiceIds = new Set();
+        for (const svcIds of Object.values(mapping || {})) for (const id of svcIds) liveServiceIds.add(id);
+        const orphanedServiceIds = new Set();
+        for (const svcIds of Object.values(otherMapping)) {
+            for (const id of svcIds) if (!liveServiceIds.has(id)) orphanedServiceIds.add(id);
+        }
+        orphanedServiceIds.forEach(svcId => {
+            const svc = (DB.services || []).find(s => s.id === svcId);
+            if (!svc) return;
+            const tile = document.createElement('div');
+            tile.className = 'group-tile';
+            tile.tabIndex = 0;
+            tile.role = 'button';
+            tile.innerHTML = `<span class="tile-name">${escapeHtml(svc.ui_taxonomy?.display_name || svc.id)}</span>`;
+            const handler = () => prefillSmartQuoteFromService(svc, category_id);
+            tile.addEventListener('click', handler);
+            tile.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+            });
+            container.appendChild(tile);
+        });
+    }
+
     const fallbackTile = document.createElement('div');
     fallbackTile.className = 'group-tile';
     fallbackTile.tabIndex = 0;
@@ -7950,6 +8086,12 @@ function showIntakeQuestions(svc, category_id, fromBack = false) {
                 }
 
 function computeQuoteFromState() {
+                    // Safety net: ensures S.answers reflects currently-active tags
+                    // even if this is called without render() having just run
+                    // (e.g. called directly). render() already calls this too,
+                    // but the real, charged price computed here must not depend
+                    // on that incidental ordering.
+                    syncTagSynthesizedAnswers();
                     // Full display set -- every tag the customer sees (chips etc.)
                     const allTagIds = [...new Set([...(S.detTagIds||[]), ...(S.manTagIds||[]), ...(S.inherentTagIds||[])])].filter(t => !(S.negatedTagIds||[]).includes(t));
 
@@ -11086,6 +11228,7 @@ function sqBuildCuratedIntake(svc) {
 
                     // ── RENDER ────────────────────────────────────────────────────
                     const render = () => {
+                        syncTagSynthesizedAnswers();
                         const answers = S.answers;
                         const exist = new Set([...S.manTagIds, ...S.detTagIds]);
                         const suggested = new Set(S._suggestedTagIds || []);
@@ -11174,7 +11317,8 @@ function sqBuildCuratedIntake(svc) {
                         // with it.
                         const _liveQuote = computeUnifiedQuote({ svc, activeTagIds: detAndManEarly, answers, qty: S.qty || 1 });
                         const livePrice = _liveQuote.laborEstimate;
-                        const visibleMods = realMods.filter(m => _isModVisible(m, answers, allMods));
+                        const visibleMods = realMods.filter(m =>
+                            _isModVisible(m, answers, allMods) && !S._tagSynthesizedModules?.[m.moduleKey]);
                         const answered = visibleMods.filter(m => answers[m.moduleKey]).length;
                         const total = visibleMods.length;
                         const remaining = total - answered;

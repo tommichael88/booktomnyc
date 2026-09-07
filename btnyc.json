@@ -2,10 +2,10 @@
   "$schema": "https://tommichael88.github.io/booktomnyc/schema/btnyc_schema.json",
   "$id": "https://tommichael88.github.io/booktomnyc/btnyc.json",
   "meta": {
-    "version": "9.5.14",
+    "version": "9.6.0",
     "schema_version": "2.0",
-    "last_updated": "2026-07-04T21:54:40.302357+00:00",
-    "note": "v9.5.14 (2026-07-11): populated financial_engine.pricing_archetype on all 70 real services (was 0/70). Empirically tested the 5 formula/assembly_formula-typed services directly against computeArchetypeQuote before classifying any of them -- confirmed furniture_assembly_flat_pack/furniture_disassembly_for_moving/furniture_repair_hourly give exactly $0 under 'formula'/'tiered_per_unit' (the exact regression a prior, separate session's history describes finding and fixing) and must stay hourly_timed; cabinet_knob_or_pull_install and pax_wardrobe_assembly compute real, correct, non-zero results and are safely tiered_per_unit/formula respectively. All other services classified by direct, existing fields (checkout_state=diagnostic -> diagnostic_open; type=hourly -> hourly_timed; type=flat_rate -> flat_simple). Confirmed the existing dispatch guard in computeUnifiedQuote (only overrides price for tiered_per_unit/formula) was already correct before touching any data -- this is purely a data change, zero code changes needed. v9.5.10 (2026-07-11): Phase 4 (Confidence Model Reconciliation) addressed -- raised minimum_quote_confidence from 40 to 65 for the 16 real specialized-tier services that were still at the tier's original, lowest-in-the-system value (confirmed the contradiction was real and substantive: 15/16 give firm, non-diagnostic quotes at baseline). Judgment-based, evidence-informed, flagged for business-owner review -- see each service's own confidence_strategy._note for the full reasoning. v9.5.6 addendum: extended remote_deep_dive_modules (attempted_fix) to the 5 named services newly reachable via checkout_state_override (washer_repair, microwave_repair, repair_appliances, toilet_flapper_or_fill_valve_replacement, furniture_repair_hourly) -- completes the loop so the Fork-in-the-Road mechanism activates for them too, not just dishwasher_repair. v9.5.6 (2026-07-10): First real content for checkout_state_override -- 5 existing client_response entries across symptom/toilet_symptom/issue marked diagnostic (Won't drain, Leaking water, 'Not sure -- just want it checked', Broken piece), plus 3 new symptom options added (Burning smell, Works intermittently, Trips breaker immediately), all using the correct top-level field shape (effects.{checkout_state_override} is deprecated/retired, not the live shape). Real, verified reach: washer_repair, microwave_repair, repair_appliances, toilet_flapper_or_fill_valve_replacement, and furniture_repair_hourly are all normally-quotable (standard_flat_rate) named services that share these exact modules -- this is not inert data. See CHANGELOG for the full mapping from the original guidance table (which referenced symptom labels that, on direct check, don't exist verbatim in the real data) onto what's actually there. v9.5.4 (2026-07-10): Authored real remote_deep_dive_modules for all 24 'Diagnostic' dynamic_services entries (previously only dishwasher_repair had any), using only existing, real intake_modules -- attempted_fix universally, plus one category-appropriate second module where a real, non-redundant fit exists (appliance_type for the two generic appliance catch-alls, floor_type for floors_trim, standing_water for four fixture-proximate plumbing entries, device_type for computer_repair, internet_active for networking/smart_home). Deliberately did not force a second module onto entries without a genuinely confident fit (cabinets_drawers, doors, furniture, walls, windows, water_lines, cable_management) rather than pad the list -- see CHANGELOG for the full per-entry reasoning and the ones flagged for a domain sanity-check. Also corrected a stale '16 of 69 named services' code comment (verified real count: 1 named + 24 dynamic = 25) in computeUnifiedQuote. v9.4 (2026-07-04): Major restructuring: all fee/minute surcharges moved to global_rules.modifiers; intake_modules now use modifier_ref; financial_engine simplified to {type, base_price, checkout_state, formula_ref?}; removed meta.global_rates and pricing_archetypes; stripped effects from smart_tags. schema_version bumped to 2.0. v9.3 (2026-06-21): meta.version and meta.schema_version are now tracked separately. version is the content/release counter (bumps on any meaningful edit: new services, retagged smart_tags, new modules, etc). schema_version is the STRUCTURAL compatibility counter — it only bumps when the shape of the JSON changes in a way that would make old code misread the file (renamed/removed keys, new required fields, changed nesting). schema_version 1.0 represents the v9.1-and-later shape (intake_modules consolidation + params field on intake_chain steps was the last breaking structural change). v9.2 was pure qr.html engine fixes with no JSON shape change. v9.3 added checkout_state_override to the shared effects definition — additive and optional, so backward-compatible with schema_version 1.0 (old code ignoring an unrecognized field still reads the file correctly) — does not bump schema_version. See CHANGELOG_v9.1.md / v9.2.md / v9.3.md for full per-version detail; this note only tracks the version/schema_version split itself.",
+    "last_updated": "2026-09-04T19:30:00.000000+00:00",
+    "note": "v9.6.0 (2026-09-04): Major session (T55-T70; see TIMELINE.md for the complete, detailed account -- this is a summary, not a replacement). Architectural: the primary free-text entry point (sqAnalyze) is retired from a large, self-contained implementation into a real, thin dispatcher into the orchestrator pipeline (T70) -- every real capability it had (confidence-tiered auto-select, category-matched fallback, negation-pivot, tag-affirmation, sibling recommendations, per-tag removal) ported and verified via a permanent, 100%-agreement equivalence sweep, closing the dual-pipeline race T56 first found. Data: 3 dynamic_services diagnostic-fallback entries had checkout_state contradicting their own variability_tier, showing customers a false fixed-price guarantee (T61, fixed); pricing_archetypes populated for the first time, 170/170 entities cross-checked (T67); minimum_quote_confidence tier-standardized (routine=70/skilled=80/specialized=90) and the confidence formula unified at the source across both pipelines (T65) -- free text alone can no longer clear any service's confidence bar unassisted, by deliberate design. Pricing: a ~10x cabinet-hardware overcharge found and fixed, 3 distinct root causes (T57). Safety-net: orch_resolve_entity could confidently commit to a wrong named service from a weak, coincidental object-keyword match; fixed at the source with a group-consistency check and corrected object-keyword matching priority (T69). v9.5.14 (2026-07-11): populated financial_engine.pricing_archetype on all 70 real services (was 0/70). Empirically tested the 5 formula/assembly_formula-typed services directly against computeArchetypeQuote before classifying any of them -- confirmed furniture_assembly_flat_pack/furniture_disassembly_for_moving/furniture_repair_hourly give exactly $0 under 'formula'/'tiered_per_unit' (the exact regression a prior, separate session's history describes finding and fixing) and must stay hourly_timed; cabinet_knob_or_pull_install and pax_wardrobe_assembly compute real, correct, non-zero results and are safely tiered_per_unit/formula respectively. All other services classified by direct, existing fields (checkout_state=diagnostic -> diagnostic_open; type=hourly -> hourly_timed; type=flat_rate -> flat_simple). Confirmed the existing dispatch guard in computeUnifiedQuote (only overrides price for tiered_per_unit/formula) was already correct before touching any data -- this is purely a data change, zero code changes needed. v9.5.10 (2026-07-11): Phase 4 (Confidence Model Reconciliation) addressed -- raised minimum_quote_confidence from 40 to 65 for the 16 real specialized-tier services that were still at the tier's original, lowest-in-the-system value (confirmed the contradiction was real and substantive: 15/16 give firm, non-diagnostic quotes at baseline). Judgment-based, evidence-informed, flagged for business-owner review -- see each service's own confidence_strategy._note for the full reasoning. v9.5.6 addendum: extended remote_deep_dive_modules (attempted_fix) to the 5 named services newly reachable via checkout_state_override (washer_repair, microwave_repair, repair_appliances, toilet_flapper_or_fill_valve_replacement, furniture_repair_hourly) -- completes the loop so the Fork-in-the-Road mechanism activates for them too, not just dishwasher_repair. v9.5.6 (2026-07-10): First real content for checkout_state_override -- 5 existing client_response entries across symptom/toilet_symptom/issue marked diagnostic (Won't drain, Leaking water, 'Not sure -- just want it checked', Broken piece), plus 3 new symptom options added (Burning smell, Works intermittently, Trips breaker immediately), all using the correct top-level field shape (effects.{checkout_state_override} is deprecated/retired, not the live shape). Real, verified reach: washer_repair, microwave_repair, repair_appliances, toilet_flapper_or_fill_valve_replacement, and furniture_repair_hourly are all normally-quotable (standard_flat_rate) named services that share these exact modules -- this is not inert data. See CHANGELOG for the full mapping from the original guidance table (which referenced symptom labels that, on direct check, don't exist verbatim in the real data) onto what's actually there. v9.5.4 (2026-07-10): Authored real remote_deep_dive_modules for all 24 'Diagnostic' dynamic_services entries (previously only dishwasher_repair had any), using only existing, real intake_modules -- attempted_fix universally, plus one category-appropriate second module where a real, non-redundant fit exists (appliance_type for the two generic appliance catch-alls, floor_type for floors_trim, standing_water for four fixture-proximate plumbing entries, device_type for computer_repair, internet_active for networking/smart_home). Deliberately did not force a second module onto entries without a genuinely confident fit (cabinets_drawers, doors, furniture, walls, windows, water_lines, cable_management) rather than pad the list -- see CHANGELOG for the full per-entry reasoning and the ones flagged for a domain sanity-check. Also corrected a stale '16 of 69 named services' code comment (verified real count: 1 named + 24 dynamic = 25) in computeUnifiedQuote. v9.4 (2026-07-04): Major restructuring: all fee/minute surcharges moved to global_rules.modifiers; intake_modules now use modifier_ref; financial_engine simplified to {type, base_price, checkout_state, formula_ref?}; removed meta.global_rates and pricing_archetypes; stripped effects from smart_tags. schema_version bumped to 2.0. v9.3 (2026-06-21): meta.version and meta.schema_version are now tracked separately. version is the content/release counter (bumps on any meaningful edit: new services, retagged smart_tags, new modules, etc). schema_version is the STRUCTURAL compatibility counter — it only bumps when the shape of the JSON changes in a way that would make old code misread the file (renamed/removed keys, new required fields, changed nesting). schema_version 1.0 represents the v9.1-and-later shape (intake_modules consolidation + params field on intake_chain steps was the last breaking structural change). v9.2 was pure qr.html engine fixes with no JSON shape change. v9.3 added checkout_state_override to the shared effects definition — additive and optional, so backward-compatible with schema_version 1.0 (old code ignoring an unrecognized field still reads the file correctly) — does not bump schema_version. See CHANGELOG_v9.1.md / v9.2.md / v9.3.md for full per-version detail; this note only tracks the version/schema_version split itself.",
     "estimate_disclaimers": {
       "flat_fee": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
       "hourly": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
@@ -1070,8 +1070,6 @@
         "washer_repair"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
         "Repair",
         "Install"
       ]
@@ -1114,8 +1112,6 @@
         "repair_appliances"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
         "Repair",
         "Install"
       ],
@@ -1132,8 +1128,6 @@
         "dishwasher_repair"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
         "Repair",
         "Install"
       ],
@@ -1150,9 +1144,8 @@
         "microwave_setup"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
-        "Repair"
+        "Repair",
+        "Install"
       ],
       "typical_location": "kitchen"
     },
@@ -1167,8 +1160,6 @@
         "window_ac_repair"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
         "Repair",
         "Install"
       ],
@@ -1197,9 +1188,7 @@
         "cabinet_knob_or_pull_install"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
-        "Repair"
+        "Install"
       ]
     },
     {
@@ -1214,9 +1203,8 @@
         "door_weatherstripping"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
-        "Repair"
+        "Repair",
+        "Install"
       ]
     },
     {
@@ -1230,9 +1218,8 @@
         "squeaky_floor_repair"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
-        "Repair"
+        "Repair",
+        "Install"
       ]
     },
     {
@@ -1245,8 +1232,6 @@
         "scratch_or_water_ring_removal"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
         "Repair"
       ]
     },
@@ -1262,8 +1247,6 @@
         "wood_paneling_repair"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
         "Repair"
       ]
     },
@@ -1278,9 +1261,8 @@
         "window_screen_repair"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
-        "Repair"
+        "Repair",
+        "Install"
       ],
       "default_qty": 2
     },
@@ -1293,8 +1275,7 @@
         "furniture_assembly_flat_pack"
       ],
       "dynamic_service_types": [
-        "Assembly",
-        "Repair"
+        "Assembly"
       ]
     },
     {
@@ -1319,7 +1300,6 @@
         "furniture_repair_hourly"
       ],
       "dynamic_service_types": [
-        "Assembly",
         "Repair"
       ]
     },
@@ -1473,8 +1453,6 @@
         "garbage_disposal_replacement"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Mount",
         "Install"
       ]
     },
@@ -1490,7 +1468,6 @@
         "p_trap_cleaning"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
         "Install",
         "Repair"
       ]
@@ -1506,7 +1483,6 @@
         "tub_spout_replacement"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
         "Install"
       ]
     },
@@ -1522,8 +1498,8 @@
         "toilet_wax_ring_replacement"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Install"
+        "Install",
+        "Repair"
       ],
       "typical_location": "bathroom"
     },
@@ -1536,7 +1512,6 @@
         "refrigerator_water_line_install"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
         "Install"
       ]
     },
@@ -1555,7 +1530,6 @@
       ],
       "dynamic_service_types": [
         "Diagnostic",
-        "Install",
         "Setup",
         "Repair"
       ]
@@ -1567,9 +1541,7 @@
       "icon": "🔌",
       "explicit_services": [],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Install",
-        "Setup"
+        "Install"
       ]
     },
     {
@@ -1582,9 +1554,7 @@
         "wi_fi_extender_setup"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Install",
-        "Setup"
+        "Install"
       ]
     },
     {
@@ -1597,9 +1567,7 @@
         "smart_speaker_setup"
       ],
       "dynamic_service_types": [
-        "Diagnostic",
-        "Install",
-        "Setup"
+        "Install"
       ]
     }
   ],
@@ -13331,8 +13299,7 @@
       ],
       "purpose": "pricing",
       "confidence_gain": 20,
-      "affects_price": true,
-      "_orphan_backlog_note": "v9.1 audit: this module is fully authored (question + client_response + fee/minute bands) but not referenced by any current service intake_chain. Left as-is rather than force-wired into a loosely-matching service, since guessing intent risks introducing a worse bug than leaving it unused (see CHANGELOG_v9.1.md — two real pre-existing wiring bugs were found and fixed this version; speculative wiring of the remaining orphans was intentionally deferred). Candidate for a future service that explicitly needs it, or removal if confirmed genuinely dead."
+      "affects_price": true
     },
     "attempted_fix": {
       "question": "Have you tried any DIY fixes already?",
@@ -13840,8 +13807,7 @@
       ],
       "purpose": "pricing",
       "confidence_gain": 20,
-      "affects_price": true,
-      "_orphan_backlog_note": "v9.1 audit: this module is fully authored (question + client_response + fee/minute bands) but not referenced by any current service intake_chain. Left as-is rather than force-wired into a loosely-matching service, since guessing intent risks introducing a worse bug than leaving it unused (see CHANGELOG_v9.1.md — two real pre-existing wiring bugs were found and fixed this version; speculative wiring of the remaining orphans was intentionally deferred). Candidate for a future service that explicitly needs it, or removal if confirmed genuinely dead."
+      "affects_price": true
     },
     "furn_item": {
       "question": "What type of furniture is it?",
@@ -15187,7 +15153,8 @@
       ],
       "purpose": "scheduling",
       "confidence_gain": 10,
-      "affects_price": true
+      "affects_price": true,
+      "_orphan_backlog_note": "v9.5 design intent, confirmed never fully implemented: #emergency/#no_parking/#pets_on_site's own notes explicitly name this module (alongside parking_difficulty/disposal_request/pets_present/urgency/item_volume) as intended to be force-injected into every service via global_rules.force_modules_by_variability -- confirmed directly that only urgency actually made it into that real data; this one did not. Left unwired rather than added unilaterally: doing so would add a new, universal question to every service in the catalog, a real friction/business decision directly touching the Project Charter's own friction-minimization goal, not a technical fix. Candidate for either completing the original v9.5 design (adding it to force_modules_by_variability) or confirming it's no longer wanted, as an explicit decision."
     },
     "disposal_request": {
       "question": "Do you have an old item that needs to be hauled away?",
@@ -15209,7 +15176,8 @@
       ],
       "purpose": "scheduling",
       "confidence_gain": 10,
-      "affects_price": true
+      "affects_price": true,
+      "_orphan_backlog_note": "v9.5 design intent, confirmed never fully implemented: #emergency/#no_parking/#pets_on_site's own notes explicitly name this module (alongside parking_difficulty/disposal_request/pets_present/urgency/item_volume) as intended to be force-injected into every service via global_rules.force_modules_by_variability -- confirmed directly that only urgency actually made it into that real data; this one did not. Left unwired rather than added unilaterally: doing so would add a new, universal question to every service in the catalog, a real friction/business decision directly touching the Project Charter's own friction-minimization goal, not a technical fix. Candidate for either completing the original v9.5 design (adding it to force_modules_by_variability) or confirming it's no longer wanted, as an explicit decision."
     },
     "pets_present": {
       "question": "Do you have pets that may be loose in the home?",
@@ -15231,7 +15199,8 @@
       ],
       "purpose": "scheduling",
       "confidence_gain": 5,
-      "affects_price": true
+      "affects_price": true,
+      "_orphan_backlog_note": "v9.5 design intent, confirmed never fully implemented: #emergency/#no_parking/#pets_on_site's own notes explicitly name this module (alongside parking_difficulty/disposal_request/pets_present/urgency/item_volume) as intended to be force-injected into every service via global_rules.force_modules_by_variability -- confirmed directly that only urgency actually made it into that real data; this one did not. Left unwired rather than added unilaterally: doing so would add a new, universal question to every service in the catalog, a real friction/business decision directly touching the Project Charter's own friction-minimization goal, not a technical fix. Candidate for either completing the original v9.5 design (adding it to force_modules_by_variability) or confirming it's no longer wanted, as an explicit decision."
     },
     "urgency": {
       "question": "How soon do you need this done?",
@@ -15275,7 +15244,8 @@
       ],
       "purpose": "pricing",
       "confidence_gain": 10,
-      "affects_price": true
+      "affects_price": true,
+      "_orphan_backlog_note": "v9.5 design intent, confirmed never fully implemented: #emergency/#no_parking/#pets_on_site's own notes explicitly name this module (alongside parking_difficulty/disposal_request/pets_present/urgency/item_volume) as intended to be force-injected into every service via global_rules.force_modules_by_variability -- confirmed directly that only urgency actually made it into that real data; this one did not. Left unwired rather than added unilaterally: doing so would add a new, universal question to every service in the catalog, a real friction/business decision directly touching the Project Charter's own friction-minimization goal, not a technical fix. Candidate for either completing the original v9.5 design (adding it to force_modules_by_variability) or confirming it's no longer wanted, as an explicit decision."
     },
     "mounting_height": {
       "question": "How high up will this be mounted or installed?",
