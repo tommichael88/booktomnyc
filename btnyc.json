@@ -177,7 +177,7 @@
             "ui_template": "self_quote",
             "bypass_intake": true
           },
-          "_note": "Archaeology fix: item_count_template-only services explicitly flagged bypass_intake (cabinet_knob_or_pull_install, door_lock_or_handle_install, led_bulb_upgrade) -- genuinely simple, but NOT chain_is_pure_quantity under the legacy module-name check, which is exactly why they never qualified for self-quote before this session's fix."
+          "_note": "Archaeology fix: item_count_template-only services explicitly flagged bypass_intake -- genuinely simple, but NOT chain_is_pure_quantity under the legacy module-name check, which is exactly why they never qualified for self-quote before this session's original fix. v9.6 CORRECTED EXAMPLE: the original 3-service example (cabinet_knob_or_pull_install, door_lock_or_handle_install, led_bulb_upgrade) went stale as those services' own intake_chains were separately revised later (T45/T57) -- confirmed directly against current data: only led_bulb_upgrade still genuinely has a single item_count_template-only chain today. door_lock_or_handle_install's chain is now global_quantity (no functional regression -- it still correctly reaches self_quote, just via the earlier chain_is_pure_quantity rule instead, since global_quantity is itself a recognized quantity-style module). cabinet_knob_or_pull_install's chain is now install_type (a real, non-quantity question) -- it no longer matches this rule at all, and correctly falls through to the chain_has_real_non_quantity_question + behavior.bypass_intake rule below instead (curated_card, not self_quote). This rule's own condition/logic needed no change; only this stale example citation did."
         },
         {
           "if": {
@@ -2031,7 +2031,8 @@
         "MAT-MHR-DRY-Mud"
       ],
       "optional_materials": [
-        "MAT-MHR-DRY-PatchSmall"
+        "MAT-MHR-DRY-PatchSmall",
+        "MAT-MHR-DRY-Tape"
       ]
     },
     {
@@ -4459,7 +4460,8 @@
         "MAT-MHR-DRY-Mud"
       ],
       "optional_materials": [
-        "MAT-MSC-PaintTouchUp"
+        "MAT-MSC-PaintTouchUp",
+        "MAT-MHR-DRY-Tape"
       ]
     },
     {
@@ -6381,7 +6383,9 @@
         "MAT-MHR-DRY-Mud"
       ],
       "optional_materials": [
-        "MAT-MSC-PaintTouchUp"
+        "MAT-MSC-PaintTouchUp",
+        "MAT-MHR-DRY-PatchLarge",
+        "MAT-MHR-DRY-Tape"
       ]
     },
     {
@@ -17449,7 +17453,8 @@
       "is_logistic": true,
       "ui_phrase": "bidet attachment",
       "negation_phrase": "",
-      "answers": {}
+      "answers": {},
+      "_review_note": "v9.6 reviewed: checked against real plumbing_fixture/toilet_symptom/existing_toilet_type options directly -- none has a bidet-specific label. No fee/effects.fee/answers/escalate_complexity mechanism exists. Genuinely no clear, real intake_modules match found; left as display-only rather than force a guess."
     },
     "#board_level": {
       "synonyms": [],
@@ -17462,7 +17467,8 @@
       "mutually_exclusive": [],
       "is_logistic": false,
       "ui_phrase": "Board Level",
-      "negation_phrase": ""
+      "negation_phrase": "",
+      "_review_note": "v9.6 reviewed: checked tech_issue_source/tech_device/tech_problem_type directly -- none has a board-level-repair-complexity option. No synonyms authored either, so NLP detection also relies solely on the tag's own literal ID. Genuinely no clear match found; left as display-only rather than force a guess."
     },
     "#brick_wall": {
       "synonyms": [
@@ -17790,7 +17796,8 @@
       "is_logistic": true,
       "ui_phrase": "flushometer + bidet",
       "negation_phrase": "",
-      "answers": {}
+      "answers": {},
+      "_review_note": "v9.6 reviewed: no synonyms authored. Name suggests overlap with both #flushometer (already correctly wired to existing_toilet_type) and a bidet concept (see #bidet_attachment's own note -- no real module exists for that). Unclear whether this is a genuine, distinct third concept or a stale duplicate; left as display-only rather than guess which."
     },
     "#furniture_assembly_ikea": {
       "synonyms": [
@@ -17902,7 +17909,8 @@
       "excluded_service_ids": [
         "under_cabinet_light_install",
         "cabinet_knob_or_pull_install"
-      ]
+      ],
+      "_review_note": "v9.6 reviewed: no synonyms authored, broad multi-category scope. Likely overlaps semantically with #heavy_item/#very_heavy (both correctly wired to weight), but no distinct real intake_modules match of its own found. Left as display-only rather than force a guess at a separate mechanism."
     },
     "#high_ceiling": {
       "synonyms": [
@@ -17992,7 +18000,9 @@
     },
     "#materials_supplied_anchors": {
       "synonyms": [],
-      "answers": {},
+      "answers": {
+        "masonry_anchor": "Please supply anchors"
+      },
       "requires": [],
       "display_group": "Wall Material",
       "applicable_categories": [
@@ -18101,7 +18111,8 @@
       "excluded_service_ids": [
         "under_cabinet_light_install",
         "cabinet_knob_or_pull_install"
-      ]
+      ],
+      "_review_note": "v9.6 reviewed: see #two_trip_minimum's note -- shares its exact applicable_group_ids list, plausibly the same diagnostic-outcome pattern. Left as-is; flagged for confirmation rather than assumed."
     },
     "#pets_on_site": {
       "synonyms": [
@@ -18127,7 +18138,9 @@
     },
     "#plaster_no_backing": {
       "synonyms": [],
-      "answers": {},
+      "answers": {
+        "lath_check": "No, just plaster (no solid backing)"
+      },
       "requires": [],
       "display_group": "Wall Material",
       "applicable_categories": [
@@ -18143,7 +18156,9 @@
     },
     "#plaster_unknown_backing": {
       "synonyms": [],
-      "answers": {},
+      "answers": {
+        "lath_check": "Not sure"
+      },
       "requires": [],
       "display_group": "Wall Material",
       "applicable_categories": [
@@ -18202,7 +18217,9 @@
     },
     "#tech_device_computer": {
       "synonyms": [],
-      "answers": {},
+      "answers": {
+        "tech_device": "Computer (desktop or laptop)"
+      },
       "requires": [],
       "display_group": "Tech Conditions",
       "applicable_categories": [
@@ -18227,7 +18244,8 @@
       "negation_phrase": "",
       "applicable_group_ids": [
         "minor_home_repairs_floors_trim"
-      ]
+      ],
+      "_review_note": "v9.6 reviewed: no synonyms authored, scoped only to minor_home_repairs_floors_trim. Reads as a broad 'this is tile work' context marker, similar to #electrical/#plumbing/#wall_mount, rather than a specific, priceable detail. Left as display-only."
     },
     "#toilet_running": {
       "synonyms": [
@@ -18277,7 +18295,8 @@
       "note": "v9.5: fee retired — now applied via the weight module's 'Over 50 lbs' answer (a $60 surcharge added on top of that tier's existing fee, since needing two people is the direct, self-evident consequence of an item being very heavy — the customer answers ONE real, knowable question about weight, not a separate, redundant 'does this need two people' question they couldn't actually answer themselves). See CHANGELOG_v9.5.md.",
       "excluded_service_ids": [
         "under_cabinet_light_install"
-      ]
+      ],
+      "_review_note": "v9.6 reviewed: real, strong synonyms ('two person', 'need helper', 'team lift') suggest this should carry a real effect (additional labor cost), but no matching intake_modules question exists, and authoring a new fee/effects.fee value would mean inventing a dollar figure with no grounding in existing catalog data -- not done, matching this project's standing rule against guessing real business numbers even under broad authoring trust. Candidate for a real, explicit business decision (either a flat surcharge amount, or a new intake_modules question) if this should have pricing impact."
     },
     "#two_trip_minimum": {
       "synonyms": [],
@@ -18327,7 +18346,8 @@
       "excluded_service_ids": [
         "under_cabinet_light_install",
         "cabinet_knob_or_pull_install"
-      ]
+      ],
+      "_review_note": "v9.6 reviewed: shares an identical applicable_group_ids list with #part_order_likely -- both plausibly diagnostic-outcome tags (set after an on-site visit reveals a part must be ordered, requiring a second trip) rather than upfront, customer-answerable questions. If that reading is correct, having no upfront pricing mechanism is likely intentional, not a gap -- diagnostic_open archetype services price the follow-up separately. Left as-is; flagged for confirmation rather than assumed."
     },
     "#very_heavy": {
       "synonyms": [
@@ -18483,7 +18503,8 @@
       "mutually_exclusive": [],
       "is_logistic": false,
       "ui_phrase": "Water Hazard",
-      "negation_phrase": ""
+      "negation_phrase": "",
+      "_review_note": "v9.6 reviewed: no synonyms authored. Possibly overlaps with water_damage (already correctly wired via #water_damage), or may be a distinct, broader safety concept (e.g. active leak posing a hazard vs. past water damage). Genuinely unclear which; left as display-only rather than guess."
     },
     "#wifi_dead_zone": {
       "synonyms": [
@@ -18671,7 +18692,7 @@
     }
   },
   "negation_library": {
-    "_note": "Word lists for NLP negation detection. JS reads these; no inline regex needed.",
+    "_note": "Word lists for NLP negation detection. JS reads these; no inline regex needed. v9.6: negation_confirmations removed -- confirmed genuinely dead, redundant data: the live code's actual negation-confirmation display reads tag.negation_phrase directly (qr.html's own comment: \"SSOT: negation confirmations from tag.negation_phrase\"), confirmed via direct search there are zero real references to this sub-key anywhere in qr.html. Also confirmed the two sources had silently drifted before removal: #fragile_item had its own, real negation_phrase field but was missing from this now-removed, already-unread duplicate. The same class of finding as this project's own prior confidence_tiers removal (a confirmed, unread duplicate of a mechanism the live code already reads from its real, single source elsewhere).",
     "action_conjugations": {
       "_note": "SSOT for verb-form matching AND ad-lib infinitive phrasing. Keyed by service_types key where applicable, so it can never drift from service_types[*].verb_natural. Built to fix the bug where 'window fixed' was detected as action='service' (generic fallback) instead of action='Repair', because the old detectAction() regex only matched bare infinitives ('fix') and not conjugated forms ('fixed'). Consumers should build ONE matching regex per action from all_forms+synonyms (word-boundary, case-insensitive), and use infinitive_for_adlib for 'I need to ___' sentence construction.",
       "Install": {
@@ -19014,18 +19035,6 @@
       "oversized",
       "xl"
     ],
-    "negation_confirmations": {
-      "#heavy_item": "not heavy",
-      "#very_heavy": "not very heavy",
-      "#brick_wall": "drywall (not brick)",
-      "#drywall": "not drywall",
-      "#high_ceiling": "standard ceiling height",
-      "#very_high_ceiling": "standard height",
-      "#emergency": "not urgent",
-      "#no_parking": "parking available",
-      "#cracked_tile": "tile intact",
-      "#water_damage": "no water damage"
-    },
     "negative_words": [
       "absent",
       "aren't",
@@ -19461,7 +19470,7 @@
       "service_type": "Repair",
       "base_price": 70,
       "note": "Generic 'Other' job – uses repair base rate",
-      "service_id": "generic_handyman_service"
+      "_note_authoring": "v9.6: removed dangling service_id ('generic_handyman_service', confirmed never existed as a real catalog service, and confirmed via workflow's own archaeology note never actually read by any code even when it did resolve). The remaining fields (category/service_type/base_price) already, correctly describe this as a category-level fallback -- workflow.fallback_routing_rules routes on category+service_type alone when nothing more specific resolves, needing no specific named service_id at all. Leaving a dangling reference was strictly worse than omitting the field: any future code that starts reading it would hit a real, broken lookup rather than correctly falling through to the generic_wizard path this fallback already, properly routes to."
     },
     "objects": [
       {
