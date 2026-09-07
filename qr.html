@@ -8548,6 +8548,34 @@ function sqBuilderChoose(stepId, choice) {
                                 }
                             }
                         }
+                        // v9.6 FIX: real, confirmed gap -- named services rarely carry
+                        // symptom-type modules; dynamic_services (keyed
+                        // category+groupId+stype) mostly do, and were never checked
+                        // here at all, silently falling through to the generic
+                        // fallback below for an estimated 30+ real groups. Same
+                        // search, same module list, just extended to the other real
+                        // source of intake_chains, matched by the key's own middle
+                        // segment (verified directly: 84 of 96 real keys use this
+                        // exact 3-part shape; the remaining 12 are 2-part,
+                        // category-level-only keys with no group segment at all, and
+                        // correctly don't match here since they aren't specific to
+                        // any one group).
+                        const dynEntries = Object.entries(DB.dynamic_services || {})
+                            .filter(([key]) => key.split('+')[1] === groupId);
+                        for (const [, dynDef] of dynEntries) {
+                            const chain = dynDef.intake_chain || [];
+                            const condModule = chain.find(m => ['symptom', 'issue', 'damage_type', 'state'].includes(m.module));
+                            if (condModule) {
+                                const mod = DB.intake_modules?.[condModule.module];
+                                if (mod?.client_response?.length) {
+                                    return mod.client_response.map(r => ({
+                                        label: r.label,
+                                        icon: '🔍',
+                                        value: r.label.toLowerCase(),
+                                    }));
+                                }
+                            }
+                        }
                     }
                     // Fix/remove: show universal fallback conditions
                     if (['fix', 'remove', 'look at'].includes(action)) return BLD_FALLBACK_CONDITIONS;
@@ -9051,6 +9079,10 @@ function sqOpenStep(n) {
                     if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
                 }
 
+// DEPRECATED — pending component layer consolidation. Confirmed
+// unreachable from any live entry point since T70's sqAnalyze
+// retirement (sqAnalyze -> executeWorkflow -> renderRoute no longer
+// calls into this). Left in place, not deleted, per explicit decision.
 function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                     // Fires when: detTagIds non-empty, not yet affirmed, service resolved.
                     // Shows: "We understood X" adlib + detected tag chips (tappable) +
@@ -9135,6 +9167,11 @@ function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                     container.style.setProperty('display', 'block', 'important');
                 }
 
+                // DEPRECATED — pending component layer consolidation. Confirmed
+                // unreachable from any live entry point since T70's sqAnalyze
+                // retirement (only ever called from renderTagAffirmationCard,
+                // itself confirmed dead). Left in place, not deleted, per
+                // explicit decision.
                 function sqAffirmYes() {
                     if (S._pendingPivotInfo) {
                         // T36: customer confirmed the group pivot. Re-run sqAnalyze
@@ -9151,6 +9188,11 @@ function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                     sqRenderQuote();
                 }
 
+                // DEPRECATED — pending component layer consolidation. Confirmed
+                // unreachable from any live entry point since T70's sqAnalyze
+                // retirement (only ever called from renderTagAffirmationCard,
+                // itself confirmed dead). Left in place, not deleted, per
+                // explicit decision.
                 function sqAffirmNo() {
                     // Customer wants to revise. Show the text input pre-filled with existing text.
                     S._tagsAffirmed = false;
@@ -9163,6 +9205,11 @@ function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                     if (textarea) { textarea.focus(); textarea.select(); }
                 }
 
+                // DEPRECATED — pending component layer consolidation. Confirmed
+                // unreachable from any live entry point since T70's sqAnalyze
+                // retirement (only ever called from renderTagAffirmationCard,
+                // itself confirmed dead). Left in place, not deleted, per
+                // explicit decision.
                 function sqAffirmRemoveTag(el, tid) {
                     // Removing a chip from the affirmation card is partial affirmation --
                     // the remaining tags stay charged. Removing resets _affirmedTagSet
@@ -9186,6 +9233,11 @@ function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
                     if (el) el.remove();
                 }
 
+                // DEPRECATED — pending component layer consolidation. Confirmed
+                // unreachable from any live entry point since T70's sqAnalyze
+                // retirement (only ever called from renderTagAffirmationCard,
+                // itself confirmed dead). Left in place, not deleted, per
+                // explicit decision.
                 function sqAffirmSelectService(svcId) {
                     // Customer tapped a recommended service card -- treat as selection + affirmation
                     S._tagsAffirmed = true;
