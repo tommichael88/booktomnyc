@@ -3332,9 +3332,27 @@ function extractSizeHint(text, tags) {
                         if (n >= 8) return 'oversized';
                         if (n >= 5) return 'large';
                     }
-                    // Explicit size words -- "neon sign" is a proxy for a large/heavy item
-                    if (/\b(very large|oversized|enormous|gigantic|huge)\b/i.test(text)) return 'oversized';
-                    if (/\b(large|big|neon sign)\b/i.test(text)) return 'large';
+                    // v9.6 FIX: real content gap, confirmed via
+                    // verify_ssot_consultation.js's own prior finding
+                    // ("CONFIRMED REAL GAP, not accepted-dead") --
+                    // this previously used a narrower, hardcoded,
+                    // duplicate word list instead of the real, carefully
+                    // -authored negation_library.large_size_words/
+                    // standard_size_words (21 words combined). Confirmed
+                    // via direct comparison the hardcoded version was
+                    // missing real entries ("bulky", "extra large",
+                    // "giant", "king size", "massive", "xl") and never
+                    // consulted standard_size_words at all. "neon sign"
+                    // kept as its own, separate item-type proxy --
+                    // confirmed via its own comment this was never really
+                    // a size word, just a real, common large/heavy-item
+                    // signal that happens to live in this function.
+                    const nl = (typeof DB !== 'undefined' ? DB : window.DB)?.negation_library || {};
+                    const largeSizeWords = nl.large_size_words || [];
+                    const standardSizeWords = nl.standard_size_words || [];
+                    if (largeSizeWords.length && new RegExp('\\b(' + largeSizeWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b', 'i').test(lower)) return 'large';
+                    if (/\bneon sign\b/i.test(text)) return 'large';
+                    if (standardSizeWords.length && new RegExp('\\b(' + standardSizeWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b', 'i').test(lower)) return 'standard';
                     return null;
                 }
 
