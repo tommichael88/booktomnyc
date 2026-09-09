@@ -683,6 +683,16 @@ body.modal-active{overflow:hidden}
     </head>
 
 <body>
+    <!-- v9.6: component-level tracing overlay scaffolding (added per direct
+         request). Off by default for every real customer; toggled on only
+         via the button below or ?trace=1 in the URL. See _trace()/_renderTraceOverlay()
+         for the logic -- this is deliberately just empty containers here,
+         populated safely via textContent/DOM methods, never raw innerHTML
+         of trace data, matching this project's own established XSS-safety
+         convention. -->
+    <button id="traceToggleBtn" onclick="_traceToggle(); _renderTraceOverlay();"
+        style="position:fixed;bottom:12px;right:12px;z-index:99999;background:#1e293b;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-size:12px;font-family:monospace;cursor:pointer;opacity:0.55;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🔍 Trace: Off</button>
+    <div id="traceOverlayPanel" style="display:none;position:fixed;top:0;right:0;width:420px;height:100vh;background:#0f172a;color:#e2e8f0;z-index:99998;overflow-y:auto;font-family:monospace;font-size:12px;padding:12px;box-shadow:-4px 0 12px rgba(0,0,0,0.4);"></div>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
         <div id="booking-modal" class="modal">
         <div class="modal-header">
@@ -2297,6 +2307,12 @@ function computeUnifiedQuote(ctx) {
                         && divergenceCfg.enabled !== false
                         && remoteDeepDiveModules.length > 0;
 
+                    if (typeof _trace === 'function') _trace('pricing_engine', 'computeUnifiedQuote: final quote computed', {
+                        base, extraFee, extraMin, totalMin, complexityTier,
+                        tierRate: effectiveHourlyRate, laborEstimate, dispatchFee,
+                        checkoutStateKey, activeLabels, feeBreakdown,
+                        meetsConfidenceBar, totalConfidence,
+                    });
                     return {
                         base, extraFee, extraMin, totalMin,
                         complexityTier, tierRate: effectiveHourlyRate,
@@ -2523,6 +2539,125 @@ function _computePrice(svc, answers, qty) {
  * see CHANGELOG_v9.4.md for the same deployment-model decision made for
  * pricing_engine.js, which applies identically here.
  */
+
+// ───────────────────────── Component-level tracing overlay (v9.6, added per direct request) ─────────────────────────
+// Real, recurring need this closes: this session repeatedly had to
+// manually re-derive pipeline behavior by hand (extracting functions,
+// building throwaway test harnesses) to answer "which component
+// actually produced this piece of state, and why" -- e.g. discovering
+// that EVERY service silently gets 'access'/'urgency' force-injected
+// on top of its own authored intake_chain (found investigating a real
+// screenshot), or being unable to fully confirm a suspected tag
+// contradiction from a static image alone. A live, toggleable trace
+// makes both kinds of question directly answerable from the running
+// app itself, without guessing or manual reconstruction.
+//
+// Design, matching this project's own component-layer separation of
+// concerns (Project Charter §5A): this is a pure, additive OBSERVER.
+// It never reads back its own trace log to influence any real
+// decision, and every call is a genuine no-op when disabled (checked
+// first, before any work) -- so it carries zero behavioral or
+// performance cost for real customers, who never see or trigger it.
+// _trace() calls are placed at each layer's own natural boundary
+// (right before a key function returns), not woven into internal
+// logic -- so tracing this or any future pipeline stage means adding
+// one line at its existing return point, not restructuring the stage
+// itself.
+window._traceEnabled = false;
+window._traceLog = [];
+window._traceInput = null; // the raw input (free text or a structured action list) that started the current trace
+function _trace(layer, label, data) {
+    if (!window._traceEnabled) return; // real, true no-op -- checked first, nothing below this line ever runs otherwise
+    try {
+        window._traceLog.push({
+            seq: window._traceLog.length,
+            t: Date.now(),
+            layer,   // which component layer produced this entry, e.g. 'nlp_engine', 'orchestrator_engine', 'pricing_engine'
+            label,   // a short, human-readable description of what happened
+            data: JSON.parse(JSON.stringify(data == null ? {} : data)), // deep-cloned snapshot, so later mutation of the real object can never retroactively change a past trace entry
+        });
+        if (typeof _renderTraceOverlay === 'function') _renderTraceOverlay();
+    } catch (e) {
+        // Deliberately swallow: a tracing failure must never surface to the
+        // customer or block the real pipeline it's observing.
+        console.warn('[trace] entry failed, ignored:', e);
+    }
+}
+function _traceStart(input) {
+    if (!window._traceEnabled) return;
+    window._traceLog = [];
+    window._traceInput = input;
+}
+function _traceExport() {
+    return JSON.stringify({ input: window._traceInput, trace: window._traceLog }, null, 2);
+}
+function _traceToggle(on) {
+    window._traceEnabled = (on !== undefined) ? !!on : !window._traceEnabled;
+    if (typeof _renderTraceOverlay === 'function') _renderTraceOverlay();
+    return window._traceEnabled;
+}
+function _renderTraceOverlay() {
+    const btn = document.getElementById('traceToggleBtn');
+    const panel = document.getElementById('traceOverlayPanel');
+    if (!btn || !panel) return;
+    btn.textContent = window._traceEnabled ? '🔍 Trace: On' : '🔍 Trace: Off';
+    btn.style.opacity = window._traceEnabled ? '1' : '0.55';
+    panel.style.display = window._traceEnabled ? 'block' : 'none';
+    if (!window._traceEnabled) return;
+
+    // Rebuilt via safe DOM methods every call -- every piece of trace data
+    // (which may contain raw customer free text) goes through textContent,
+    // never innerHTML string concatenation, matching this project's own
+    // established, audited XSS-safety convention (see innerhtml_audit.json/
+    // verify_xss_fixes.js).
+    panel.replaceChildren();
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid #334155;padding-bottom:8px;';
+    const title = document.createElement('strong');
+    title.textContent = `Trace (${window._traceLog.length} entries)`;
+    const exportBtn = document.createElement('button');
+    exportBtn.textContent = 'Copy JSON';
+    exportBtn.style.cssText = 'background:#334155;color:#e2e8f0;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;';
+    exportBtn.onclick = () => {
+        const json = _traceExport();
+        if (navigator.clipboard) navigator.clipboard.writeText(json);
+        exportBtn.textContent = 'Copied!';
+        setTimeout(() => { exportBtn.textContent = 'Copy JSON'; }, 1200);
+    };
+    header.append(title, exportBtn);
+    panel.appendChild(header);
+
+    if (window._traceInput != null) {
+        const inputBlock = document.createElement('div');
+        inputBlock.style.cssText = 'background:#1e293b;border-radius:4px;padding:6px 8px;margin-bottom:10px;word-break:break-word;';
+        const inputLabel = document.createElement('div');
+        inputLabel.style.cssText = 'color:#94a3b8;font-size:10px;margin-bottom:2px;';
+        inputLabel.textContent = 'INPUT';
+        const inputText = document.createElement('div');
+        inputText.textContent = typeof window._traceInput === 'string' ? window._traceInput : JSON.stringify(window._traceInput);
+        inputBlock.append(inputLabel, inputText);
+        panel.appendChild(inputBlock);
+    }
+
+    const LAYER_COLORS = { nlp_engine: '#38bdf8', orchestrator_engine: '#fbbf24', pricing_engine: '#4ade80', ui_renderer: '#f472b6' };
+    window._traceLog.forEach(entry => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#1e293b;border-left:3px solid ' + (LAYER_COLORS[entry.layer] || '#64748b') + ';border-radius:0 4px 4px 0;padding:6px 8px;margin-bottom:6px;word-break:break-word;';
+        const layerLine = document.createElement('div');
+        layerLine.style.cssText = 'color:' + (LAYER_COLORS[entry.layer] || '#64748b') + ';font-size:10px;font-weight:bold;';
+        layerLine.textContent = `#${entry.seq} · ${entry.layer}`;
+        const labelLine = document.createElement('div');
+        labelLine.style.cssText = 'color:#e2e8f0;margin:2px 0;';
+        labelLine.textContent = entry.label;
+        const dataLine = document.createElement('pre');
+        dataLine.style.cssText = 'color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:2px 0 0 0;';
+        dataLine.textContent = JSON.stringify(entry.data, null, 1);
+        card.append(layerLine, labelLine, dataLine);
+        panel.appendChild(card);
+    });
+    panel.scrollTop = panel.scrollHeight;
+}
 
 // ───────────────────────── Shared setup (required) ─────────────────────────
 
@@ -3135,6 +3270,13 @@ function detectIntentNLP(text) {
                             }
                         }
                     }
+                    if (typeof _trace === 'function') _trace('nlp_engine', 'detectIntentNLP: intent matched', {
+                        rawText: text, winningKeyword: best?.key || null,
+                        matchConfidence: best?._matchConfidence ?? null,
+                        category: best?.category || null, dynamicRule: best?.dynamic_rule || null,
+                        recommendedSku: best?.recommendedSku || null,
+                        hadContextualOverride: !!best?._hadContextualOverride,
+                    });
                     return best;
                 }
 
@@ -3611,6 +3753,18 @@ function resolveGroupFromIntent(category, objectNoun, stype, fullText, negatedGr
                             { keywords: ['window ac','air conditioner','ac unit','window unit'], group: 'minor_home_repairs_appliances_window_ac' },
                             { keywords: ['cabinet','drawer','cupboard','pantry','wardrobe','kitchen island','breakfast bar'], group: 'minor_home_repairs_cabinets_drawers' },
                             { keywords: ['door','hinge','knob','deadbolt','entry'], group: 'minor_home_repairs_doors' },
+                            // v9.6 NEW: must come BEFORE the generic tile rule
+                            // below -- this function's own loop is first-match-
+                            // wins (confirmed directly), and 'tile' alone would
+                            // otherwise capture "ceiling tile" too (a genuinely
+                            // different real product/job -- see T96/T97).
+                            // Deliberately multi-word keywords only (not bare
+                            // "ceiling"), matching intent_mappings.objects'
+                            // own synonyms exactly -- bare "ceiling" would
+                            // wrongly capture unrelated, already-correctly-
+                            // routed requests (ceiling fan, ceiling crack/
+                            // drywall, ceiling paint).
+                            { keywords: ['ceiling tile', 'drop ceiling', 'acoustic tile', 'suspended ceiling', 'ceiling panel'], group: 'minor_home_repairs_ceilings' },
                             { keywords: ['floor','tile','baseboard','trim','molding','moulding','grout','hardwood'], group: 'minor_home_repairs_floors_trim' },
                             { keywords: ['chair','sofa','couch','desk','table','furniture','bed frame','dresser','headboard','footboard','four-poster'], group: 'minor_home_repairs_furniture' },
                             { keywords: ['wall','drywall','plaster','crack','hole','stucco','patch'], group: 'minor_home_repairs_walls' },
@@ -4401,11 +4555,19 @@ function orch_compose_intake_chain(context, resolution, db) {
                     const forceMods = db.global_rules?.force_modules_by_variability?.[tier] || ['hybrid_qty'];
                     const existingKeys = new Set(allMods.map(m => m.moduleKey || m.module));
                     const composed = allMods.slice();
+                    const ownModuleKeys = allMods.map(m => m.moduleKey || m.module);
+                    const forcedAdded = [];
                     forceMods.forEach(fKey => {
                         if (!existingKeys.has(fKey) && db.intake_modules?.[fKey]) {
                             composed.push({ moduleKey: fKey, module: fKey, then: {}, ...db.intake_modules[fKey], _forced: true });
                             existingKeys.add(fKey);
+                            forcedAdded.push(fKey);
                         }
+                    });
+                    if (typeof _trace === 'function') _trace('orchestrator_engine', 'orch_compose_intake_chain: chain composed', {
+                        variabilityTier: tier, ownAuthoredModules: ownModuleKeys,
+                        universallyForcedCandidates: forceMods, actuallyAddedByForce: forcedAdded,
+                        finalComposedModules: composed.map(m => m.moduleKey || m.module),
                     });
                     return composed;
                 }
@@ -4765,6 +4927,7 @@ function collectBookingContext_otherTile(tile, category_id) {
                 }
 
 function collectBookingContext_freeText(rawText) {
+                    if (typeof _traceStart === 'function') _traceStart(rawText);
                     const nlpIntent = detectIntentNLP(rawText);
                     const extractedObject = extractObject(rawText, nlpIntent?.key || null);
                     // v9.5 FIX: thresholds now read from the real, single SSOT
@@ -4791,6 +4954,10 @@ function collectBookingContext_freeText(rawText) {
                         );
                     }
                     const preliminaryGroupId = selectedGroupId;
+                    if (typeof _trace === 'function') _trace('orchestrator_engine', 'resolveGroupFromIntent: group resolved', {
+                        category: nlpIntent.category, objectNoun: extractedObject || '', stype: nlpIntent.stype || 'Repair',
+                        resolvedGroupId: preliminaryGroupId, isCatchAll: !!groupMatchMeta.isCatchAll,
+                    });
 
                     // v9.5 FIX: run full tag detection so the orchestrator path gets
                     // the same #brick_wall / #heavy_item / contextual-tag signals that
@@ -11303,6 +11470,13 @@ function sqBuildCuratedIntake(svc) {
                     
 
                     const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
+                    if (typeof _trace === 'function') _trace('ui_renderer', 'sqBuildCuratedIntake: quantity-dedup filter applied', {
+                        serviceId: svc?.id || null,
+                        beforeFilter: allMods.map(m => m.moduleKey || m.module),
+                        filteredOut: allMods.filter(m => QTY_MODS.has(m.moduleKey)).map(m => m.moduleKey),
+                        finalRenderedModules: realMods.map(m => m.moduleKey || m.module),
+                    });
+
 
                     // v9.6 FIX: was a direct, raw `svc.confidence_strategy || {}` read
                     // with its own separate fallbacks (80/5) -- bypassed
