@@ -3267,19 +3267,53 @@ function extractObject(text, intentKeyword) {
                         if (isServiceVerb(words[i], VERBS)) lastVerbIdx = i;
                     }
                     if (lastVerbIdx > 0) {
-                        const backward = [];
-                        for (let i = lastVerbIdx - 1; i >= 0; i--) {
-                            const bw = words[i];
-                            if (PREPS.has(bw) || CLAUSE.has(bw)) break;
-                            if (SKIP.has(bw) || /^\d/.test(bw)) {
-                                if (backward.length > 0) break; // stop once a real noun phrase has started
-                                continue; // skip leading determiners/pronouns first
+                        // v9.6 FIX: a real, confirmed bug found via direct trace
+                        // ("I need 5 ceiling tiles in my office replaced" ->
+                        // extractedObject: "office", not "ceiling tiles") --
+                        // when a prepositional LOCATION phrase sits between the
+                        // real object and a trailing verb, the original scan
+                        // stopped at the first preposition it hit walking
+                        // backward from the verb, which is exactly the
+                        // location's own leading preposition ("in") --
+                        // incorrectly returning the location noun itself
+                        // ("office") as the object, never reaching the real
+                        // object sitting further back ("ceiling tiles").
+                        // Fix: when the scan stops having just collected a
+                        // phrase, check whether it's itself a recognized
+                        // room/location word (the same vocabulary
+                        // extractLocation uses) -- if so, this was a location
+                        // phrase, not the object; walk back past both its
+                        // determiner ("my") and its own leading preposition
+                        // ("in") and resume scanning from there for the real
+                        // object. Bounded (max 3 attempts) so a sentence
+                        // naming multiple real locations doesn't get guessed
+                        // through indefinitely.
+                        const rooms = new Set((_ROOMS_LIST() || []).map(r => r.toLowerCase()));
+                        let end = lastVerbIdx;
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            const backward = [];
+                            let i = end - 1;
+                            for (; i >= 0; i--) {
+                                const bw = words[i];
+                                if (PREPS.has(bw) || CLAUSE.has(bw)) break;
+                                if (SKIP.has(bw) || /^\d/.test(bw)) {
+                                    if (backward.length > 0) break;
+                                    continue;
+                                }
+                                backward.unshift(bw);
+                                if (backward.length >= 3) break;
                             }
-                            backward.unshift(bw);
-                            if (backward.length >= 3) break;
+                            const candidate = backward.join(' ').trim();
+                            if (candidate.length >= 2 && rooms.has(candidate.toLowerCase())) {
+                                let leadIdx = i;
+                                while (leadIdx >= 0 && SKIP.has(words[leadIdx])) leadIdx--;
+                                if (leadIdx >= 0 && PREPS.has(words[leadIdx])) leadIdx--;
+                                end = leadIdx + 1;
+                                continue;
+                            }
+                            if (candidate.length >= 2) return candidate;
+                            break;
                         }
-                        obj = backward.join(' ').trim();
-                        if (obj.length >= 2) return obj;
                     }
                     return null;
                 }
