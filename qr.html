@@ -1147,10 +1147,16 @@ function applyPricingFormula(formulaId, answers, qty, svc = null) {
                         extraMin += perUnitMinutes;
                         overrideHourlyRate = f.hourly_rate || 70;
                     } else if (formulaId === 'item_count_overflow_formula') {
-                        // v9.6 PLACEHOLDER-DATA FORMULA (T20). Dormant by design: only
-                        // activates once a future UI supplies an explicit exact count
-                        // (qty_value) for the open-ended top band -- until then, returns
-                        // exactly today's flat top-band price, zero behavior change.
+                        // v9.6: no longer purely dormant -- a real UI path now
+                        // exists for the curated-card intake surface (see the
+                        // '4+' chip's inline exact-count prompt in
+                        // sqBuildCuratedIntake) that sets answers.__exact_count
+                        // when the customer supplies one. Checked first for a
+                        // static, pre-authored qty_value (unchanged, existing
+                        // behavior); only falls through to the dynamic,
+                        // customer-typed count if no static value matched --
+                        // additive, not a replacement, so nothing that worked
+                        // before changes.
                         const svcId = svc?.id;
                         const cfg = f.anchor_and_overflow_ref_by_service?.[svcId];
                         if (!cfg) return { extraFee: 0, extraMin: 0, overrideHourlyRate: null };
@@ -1159,6 +1165,10 @@ function applyPricingFormula(formulaId, answers, qty, svc = null) {
                             const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
                             const resp = step?.params?.client_response?.find(r => r.label === answerLabel);
                             if (resp?.qty_value != null) { exactQty = resp.qty_value; break; }
+                        }
+                        if (exactQty == null && answers.__exact_count != null) {
+                            const n = parseInt(answers.__exact_count, 10);
+                            if (Number.isFinite(n) && n > 0) exactQty = n;
                         }
                         if (exactQty == null || exactQty <= cfg.anchor) {
                             return { extraFee: 0, extraMin: 0, overrideHourlyRate: null };
@@ -1177,6 +1187,31 @@ function applyPricingFormula(formulaId, answers, qty, svc = null) {
                             const m = _mod(f.grout_modifier_ref);
                             extraMin += m.minutes ?? (f.grout_penalty_minutes || 0);
                             extraFee += m.fee ?? (f.grout_fee || 0);
+                        }
+                        // v9.6 FIX: a real, confirmed undercharging bug (found via
+                        // §6E's own question audit), but not the bug initially
+                        // assumed -- waterproof_area already has a real, authored
+                        // modifier (waterproof_area_yes_requires_membrane, $30/
+                        // 45min), consumed correctly by the generic per-answer
+                        // modifier_ref loop elsewhere in this function -- but
+                        // that loop only runs `if (!formulaResult)`, so it's
+                        // silently skipped whenever a formula (like this one) is
+                        // active. Confirmed directly: the dynamic-services "Tile"
+                        // branch (minor_home_repairs+Repair) activates
+                        // tile_repair_formula via surface_type's own
+                        // formula_override, so waterproof_area's real modifier
+                        // was never actually reaching this specific path, even
+                        // though it correctly does for named services using the
+                        // generic mechanism (e.g. loose_tile_replacement, which
+                        // has no formula_override and was never affected).
+                        // References the SAME real modifier, not a new one --
+                        // an earlier draft of this fix mistakenly authored a
+                        // brand-new, different-valued modifier before this real
+                        // one was found; corrected before trusting it.
+                        if (answers.waterproof_area === 'Yes (Requires membrane)') {
+                            const m = _mod(f.membrane_modifier_ref);
+                            extraMin += m.minutes ?? (f.membrane_penalty_minutes || 0);
+                            extraFee += m.fee ?? (f.membrane_fee || 0);
                         }
                         if (answers.water_damage === 'Yes') {
                             const m = _mod(f.water_damage_modifier_ref);
@@ -5652,6 +5687,26 @@ function _renderStructuredIntake(svc, category_id, container, prof) {
                             placeholder: 'Describe specifics: measurements, materials, current condition…',
                             rows: '3',
                             style: 'min-height:75px;margin-top:6px;'
+                        });
+                        // v9.6: real, live wiring for item_count_overflow_formula
+                        // (PENDING_DECISIONS.md item #4) -- the specific,
+                        // overflow-configured answer label itself instructs the
+                        // customer to "specify exact count in notes" (confirmed
+                        // directly against the real, authored data before
+                        // building this, not assumed), so this reuses that
+                        // existing field rather than adding a new one. Parses
+                        // the first real number typed, feeds it into the same
+                        // answers object refreshPrice/refreshBtn already read
+                        // from, so the live preview and the final add-to-cart
+                        // price never diverge -- safe for every other service
+                        // too, since the formula itself only ever applies this
+                        // value when the specific overflow answer is selected.
+                        detailEl.addEventListener('input', () => {
+                            const n = parseInt((detailEl.value.match(/\d+/) || [])[0], 10);
+                            if (Number.isFinite(n) && n > 0) answers.__exact_count = n;
+                            else delete answers.__exact_count;
+                            refreshPrice();
+                            refreshBtn();
                         });
                         body.appendChild(detSection);
                         detSection.appendChild(detailEl);

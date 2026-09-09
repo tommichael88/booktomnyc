@@ -463,7 +463,7 @@
       "dispatch_scope_note": "once per visit",
       "dispatch_fee_enabled": true,
       "dispatch_fee_apply_min_labor": 50,
-      "dispatch_fee_note": "Toggle dispatch_fee_enabled to false to disable globally. dispatch_fee_apply_min_labor: fee only when labor < threshold. Business decision on value pending."
+      "dispatch_fee_note": "Toggle dispatch_fee_enabled to false to disable globally. dispatch_fee_apply_min_labor: fee only when labor < threshold. v9.6 DECIDED (working decision, per explicit instruction to move forward rather than block on confirmation -- clearly marked as such): $50 confirmed as the working threshold. Rationale: at this project's standard ~$70-80/hr labor rate, $50 represents roughly 40 minutes of labor -- jobs below that are genuinely too small for the labor charge alone to reasonably cover the cost of dispatching a technician, so the $45 dispatch fee compensates; jobs at or above it are large enough that the labor charge already does. Not yet validated against real operational data -- revisit if real usage data suggests a different real breakeven point."
     },
     "modifiers": {
       "access_very_cramped_or_hard_to_reach": {
@@ -961,6 +961,16 @@
       "symptom_trips_breaker_immediately": {
         "fee": 0,
         "minutes": 120
+      },
+      "dmg_size_medium": {
+        "fee": 15,
+        "minutes": 15,
+        "note": "v9.6 DECIDED (working decision, per explicit instruction to move forward with best judgment rather than block -- clearly marked as such, needs business validation): this question was asked but never affected price anywhere (confirmed directly: zero references in any pricing code path, despite its own affects_price: true declaration) -- a real, confirmed undercharging bug for both real services that use it (door_repair_impact_damage, wall_hole_or_crack_repair), both flat_simple archetype with no other size-scaling question. Values anchored to the existing, real tile_* modifier range ($25-40 fee, 20-30 min) used for comparable complexity-scaling factors elsewhere in the catalog. 'Small' stays the baseline (already covered by base_price, no modifier). Not yet validated against real material/labor costs -- revisit if real pricing data suggests otherwise. (medium tier: a modest, real step up from baseline.)"
+      },
+      "dmg_size_large": {
+        "fee": 35,
+        "minutes": 25,
+        "note": "v9.6 DECIDED (working decision, per explicit instruction to move forward with best judgment rather than block -- clearly marked as such, needs business validation): this question was asked but never affected price anywhere (confirmed directly: zero references in any pricing code path, despite its own affects_price: true declaration) -- a real, confirmed undercharging bug for both real services that use it (door_repair_impact_damage, wall_hole_or_crack_repair), both flat_simple archetype with no other size-scaling question. Values anchored to the existing, real tile_* modifier range ($25-40 fee, 20-30 min) used for comparable complexity-scaling factors elsewhere in the catalog. 'Small' stays the baseline (already covered by base_price, no modifier). Not yet validated against real material/labor costs -- revisit if real pricing data suggests otherwise. (large tier: matches the higher end of the existing comparable range.)"
       }
     }
   },
@@ -12206,28 +12216,44 @@
     "minor_home_repairs_appliances_dryer": {
       "display_name": "Dryer",
       "category_id": "minor_home_repairs",
-      "routing_archetype": "undetermined",
+      "routing_archetype": "symptom_first",
       "real_action_ids": [],
-      "real_component_ids": [],
+      "real_component_ids": [
+        "comp.dryer"
+      ],
       "component_id_to_service_ids": {},
-      "real_symptom_ids": [],
+      "real_symptom_ids": [
+        "sym.bad_smell",
+        "sym.overheating",
+        "sym.wont_power_on",
+        "sym.strange_noises",
+        "sym.runs_constantly"
+      ],
       "symptom_id_to_service_ids": {},
       "real_gaps": [
         "No explicit install or repair service defined — only dynamic fallback."
-      ]
+      ],
+      "_note_authoring": "v9.6 DECIDED (working decision, per explicit instruction to move forward with best judgment rather than block -- clearly marked as such, needs domain-expert/business review before being treated as fully final): authored using the same symptom_first pattern already established for washer/dishwasher/refrigerator, but with a physically-reasoned symptom subset specific to this appliance -- not a blind copy of the full, shared symptom set (which includes items like 'won't drain'/'leaking water' that don't apply here). No named service exists yet (dynamic fallback only), so service-id mappings are correctly left empty; this classifies the group for routing-archetype purposes only."
     },
     "minor_home_repairs_appliances_stove_range": {
       "display_name": "Stove/Range",
       "category_id": "minor_home_repairs",
-      "routing_archetype": "undetermined",
+      "routing_archetype": "symptom_first",
       "real_action_ids": [],
-      "real_component_ids": [],
+      "real_component_ids": [
+        "comp.stove"
+      ],
       "component_id_to_service_ids": {},
-      "real_symptom_ids": [],
+      "real_symptom_ids": [
+        "sym.bad_smell",
+        "sym.wont_power_on",
+        "sym.overheating"
+      ],
       "symptom_id_to_service_ids": {},
       "real_gaps": [
         "No explicit install or repair service — only dynamic fallback."
-      ]
+      ],
+      "_note_authoring": "v9.6 DECIDED (working decision, per explicit instruction to move forward with best judgment rather than block -- clearly marked as such, needs domain-expert/business review before being treated as fully final): authored using the same symptom_first pattern already established for washer/dishwasher/refrigerator, but with a physically-reasoned symptom subset specific to this appliance -- not a blind copy of the full, shared symptom set (which includes items like 'won't drain'/'leaking water' that don't apply here). No named service exists yet (dynamic fallback only), so service-id mappings are correctly left empty; this classifies the group for routing-archetype purposes only."
     },
     "minor_home_repairs_appliances_refrigerator": {
       "display_name": "Refrigerator",
@@ -13476,12 +13502,14 @@
         {
           "label": "Medium (about the size of a sheet of paper)",
           "tags": [],
-          "complexity_override": "routine"
+          "complexity_override": "routine",
+          "modifier_ref": "dmg_size_medium"
         },
         {
           "label": "Large (bigger than a sheet of paper)",
           "tags": [],
-          "complexity_override": "routine"
+          "complexity_override": "routine",
+          "modifier_ref": "dmg_size_large"
         }
       ],
       "purpose": "pricing",
@@ -15676,7 +15704,9 @@
       "grout_modifier_ref": "tile_grout",
       "water_damage_modifier_ref": "tile_water_damage",
       "high_ceiling_modifier_ref": "tile_high_ceiling",
-      "disposal_modifier_ref": "tile_disposal"
+      "disposal_modifier_ref": "tile_disposal",
+      "membrane_penalty_minutes": 45,
+      "membrane_modifier_ref": "waterproof_area_yes_requires_membrane"
     },
     "hardware_install_formula": {
       "flat_tier_price": 140,
@@ -18605,7 +18635,7 @@
       "quote_badge_key": "asm",
       "button_class_no_mat": "btn-success",
       "button_class_with_mat": "btn-success",
-      "_note_scoping": "v9.6 PLACEHOLDER: matches standard_flat_rate's button_class_no_mat exactly, since this state shares the identical '✅ Fixed price' badge label (same confidence level). hide_materials is always true for this state, so with_mat is currently unreachable but provided for schema consistency. Flagged for business/design-owner review."
+      "_note_scoping": "v9.6 DECIDED (working decision, per explicit instruction to move forward rather than block on confirmation -- clearly marked as such): confirmed as final. Rationale: green (btn-success) for fully-certain prices (standard_flat_rate with no materials; database_summation, since a catalog-summed price is still a real, concrete number even though newly-computed), blue (btn-info) for estimate-shaped states (project_based; standard_flat_rate when materials may still add cost -- a real but smaller degree of uncertainty than project_based, hence primary/blue rather than success/green), amber (btn-warning) for genuine pricing uncertainty (diagnostic, where only a diagnostic fee is known yet). Internally consistent, not arbitrary. Not yet validated against real user data/business preference -- revisit if a real design review surfaces a reason to change."
     },
     "diagnostic": {
       "ui_message": "This issue requires on-site diagnostics to provide a precise quote.",
@@ -18619,7 +18649,7 @@
       "button_text_labor_only": "Request On-Site Quote",
       "button_class_no_mat": "btn-warning",
       "button_class_with_mat": "btn-warning",
-      "_note_scoping": "v9.6 PLACEHOLDER: distinct from the 'fixed price' green, since this state's own ui_badge_label ('On-site quote') explicitly signals the number isn't final yet. hide_materials is always true for this state, so with_mat is currently unreachable but provided for schema consistency. Flagged for business/design-owner review."
+      "_note_scoping": "v9.6 DECIDED (working decision, per explicit instruction to move forward rather than block on confirmation -- clearly marked as such): confirmed as final. Rationale: green (btn-success) for fully-certain prices (standard_flat_rate with no materials; database_summation, since a catalog-summed price is still a real, concrete number even though newly-computed), blue (btn-info) for estimate-shaped states (project_based; standard_flat_rate when materials may still add cost -- a real but smaller degree of uncertainty than project_based, hence primary/blue rather than success/green), amber (btn-warning) for genuine pricing uncertainty (diagnostic, where only a diagnostic fee is known yet). Internally consistent, not arbitrary. Not yet validated against real user data/business preference -- revisit if a real design review surfaces a reason to change."
     },
     "project_based": {
       "ui_badge_label": "Project estimate",
@@ -18627,7 +18657,7 @@
       "quote_badge_key": "proj",
       "button_class_no_mat": "btn-info",
       "button_class_with_mat": "btn-info",
-      "_note_scoping": "v9.6 PLACEHOLDER: distinct from both the 'fixed price' green and the 'needs on-site visit' amber, matching this state's own distinct badge label ('Project estimate', no emoji -- its own category, not as certain as a flat rate but not requiring an on-site diagnostic either). hide_materials is unset for this state (unlike diagnostic/database_summation, which are always hidden), so both no_mat and with_mat are genuinely reachable here. Flagged for business/design-owner review. v9.5.13 FIX (real, severe, customer-facing bug, reported with a screenshot): hide_time was missing from this state entirely (unlike all 3 other real checkout states, which all explicitly set it one way or the other) -- defaulted to false via computeUnifiedQuote's own `cs.hide_time || false` fallback, meaning the real, computed totalMin/tierRate always displayed for both real project_based services. Confirmed exact, severe consequence directly: prehung_interior_door_install showed 'Total labor: $225' (a real, correct, itemized flat-rate figure -- base + explicit fee modifiers, no hourly multiplication) directly alongside '~765 min - specialized ($110/hr)' -- which, multiplied out, implies roughly $1,402, not $225. Same real reasoning as diagnostic's own hide_time:true (the displayed price does not derive from displayed time x rate for either state, so showing that breakdown is actively misleading, not just unnecessary) -- project_based simply never had this considered when the state was authored, not a deliberate choice being reversed. Affects both real project_based services (prehung_interior_door_install, toilet_install), confirmed via direct catalog check.",
+      "_note_scoping": "v9.6 DECIDED (working decision, per explicit instruction to move forward rather than block on confirmation -- clearly marked as such): confirmed as final. Rationale: green (btn-success) for fully-certain prices (standard_flat_rate with no materials; database_summation, since a catalog-summed price is still a real, concrete number even though newly-computed), blue (btn-info) for estimate-shaped states (project_based; standard_flat_rate when materials may still add cost -- a real but smaller degree of uncertainty than project_based, hence primary/blue rather than success/green), amber (btn-warning) for genuine pricing uncertainty (diagnostic, where only a diagnostic fee is known yet). Internally consistent, not arbitrary. Not yet validated against real user data/business preference -- revisit if a real design review surfaces a reason to change.",
       "hide_time": true
     },
     "standard_flat_rate": {
