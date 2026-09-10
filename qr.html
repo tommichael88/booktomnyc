@@ -692,7 +692,7 @@ body.modal-active{overflow:hidden}
          convention. -->
     <button id="traceToggleBtn" onclick="_traceToggle(); _renderTraceOverlay();"
         style="position:fixed;bottom:12px;right:12px;z-index:99999;background:#1e293b;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-size:12px;font-family:monospace;cursor:pointer;opacity:0.55;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🔍 Trace: Off</button>
-    <div id="traceOverlayPanel" style="display:none;position:fixed;top:0;right:0;width:420px;height:100vh;background:#0f172a;color:#e2e8f0;z-index:99998;overflow-y:auto;font-family:monospace;font-size:12px;padding:12px;box-shadow:-4px 0 12px rgba(0,0,0,0.4);"></div>
+    <div id="traceOverlayPanel" style="display:none;position:fixed;top:0;right:0;width:420px;max-width:70vw;height:85vh;background:#0f172a;color:#e2e8f0;z-index:99998;overflow-y:auto;font-family:monospace;font-size:12px;padding:12px;box-shadow:-4px 0 12px rgba(0,0,0,0.4);"></div>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
         <div id="booking-modal" class="modal">
         <div class="modal-header">
@@ -2745,6 +2745,20 @@ function _simpleHash(str) {
 function _trace(layer, label, data) {
     if (!window._traceEnabled) return; // real, true no-op -- checked first, nothing below this line ever runs otherwise
     try {
+        // v9.6 FIX (T107): a real, confirmed gap -- a real, reported trace
+        // showed entryPath stuck at "unknown" for an entire real session
+        // (pure category/group-tile navigation, e.g. Minor Home Repairs ->
+        // Doors -> Install -> Prehung door). This means at least one real
+        // entry point never calls _traceStart at all -- rather than hand
+        // -instrument every group-tile click handler individually (multiple,
+        // separate locations, confirmed directly -- exactly the fragile,
+        // incomplete-by-construction approach the global listener below was
+        // built to avoid), this records the gap honestly the moment it's
+        // first observed, rather than silently defaulting to "unknown"
+        // forever with no record of why.
+        if (window._traceEnabled && !window._traceEntryPath && layer !== 'user_interaction') {
+            window._traceEntryPath = 'catalog_direct (inferred -- no explicit _traceStart call fired on this path)';
+        }
         window._traceLog.push({
             seq: window._traceLog.length,
             t: Date.now(),
@@ -2966,23 +2980,40 @@ function _initGlobalInteractionTracing() {
 function _traceDomSnapshot(label) {
     if (typeof _trace !== 'function' || !window._traceEnabled) return;
     try {
-        const card = document.querySelector('.sq-ic-card') || document.getElementById('sqQuoteOut') || document.body;
-        const weUnderstoodChips = [...card.querySelectorAll('.sq-ic-nlp-chip, .sq-ic-chip')].map(c => c.textContent.trim()).filter(Boolean);
-        const questions = [...card.querySelectorAll('.sq-ic-q')].map(q => ({
+        // v9.6 FIX (T107): the original selectors here only ever matched a
+        // synthetic test DOM built to match my own assumptions -- confirmed
+        // directly via a real, reported trace that they captured nothing at
+        // all against the real, live page, on either of the two real,
+        // separate curated-card rendering systems this codebase actually
+        // has (sqBuildCuratedIntake's own render(), and the separate
+        // renderCuratedCardFromRoute/ims-chip system). Broadened to real,
+        // confirmed selectors covering both, rather than one guessed set.
+        const card = document.querySelector('.sq-ic-card') || document.getElementById('sqQuoteOut')
+            || document.querySelector('.intake-module-step')?.closest('div') || document.body;
+        const weUnderstoodChips = [...document.querySelectorAll('.sq-ic-nlp-chip, .sq-ic-chip, .ims-chip.sel')].map(c => c.textContent.trim()).filter(Boolean);
+        const questionsA = [...document.querySelectorAll('.sq-ic-q')].map(q => ({
             label: (q.querySelector('.sq-ic-q-lbl')?.textContent || '').trim(),
             selectedOption: (q.querySelector('.sq-ic-btn.sel span')?.textContent || q.querySelector('.sq-ic-btn.sel')?.textContent || '').trim() || null,
             optionCount: q.querySelectorAll('.sq-ic-btn').length,
         }));
-        const priceLines = [...card.querySelectorAll('.ql')].map(l => ({
+        const questionsB = [...document.querySelectorAll('.intake-module-step')].map(q => ({
+            label: (q.querySelector('.ims-label')?.textContent || '').trim(),
+            selectedOption: (q.querySelector('.ims-chip.sel')?.textContent || '').trim() || null,
+            optionCount: q.querySelectorAll('.ims-chip').length,
+        }));
+        const questions = [...questionsA, ...questionsB];
+        const priceLines = [...document.querySelectorAll('.ql')].map(l => ({
             label: (l.querySelector('.qll')?.textContent || '').trim(),
             value: (l.querySelector('.qlv')?.textContent || '').trim(),
         })).filter(l => l.label || l.value);
+        const livePriceText = document.getElementById('sqLivePrice')?.textContent?.trim()
+            || document.querySelector('[class*="live-price"], [class*="livePrice"]')?.textContent?.trim() || null;
         const adlibText = (document.getElementById('sqAdlibSentence')?.textContent || '').trim() || null;
-        const addToCartBtn = card.querySelector('.ctap');
+        const addToCartBtn = document.querySelector('.ctap') || document.getElementById('btn-curated-add');
         const addToCartLabel = addToCartBtn ? addToCartBtn.textContent.trim() : null;
-        const addToCartLooksDisabled = addToCartBtn ? (addToCartBtn.disabled || addToCartBtn.style.pointerEvents === 'none') : null;
+        const addToCartLooksDisabled = addToCartBtn ? !!addToCartBtn.disabled : null;
         _trace('dom_snapshot', label || 'render: visible DOM state', {
-            weUnderstoodChips, questions, priceLines, adlibText, addToCartLabel, addToCartLooksDisabled,
+            weUnderstoodChips, questions, priceLines, livePriceText, adlibText, addToCartLabel, addToCartLooksDisabled,
         });
     } catch (e) {
         console.warn('[trace] dom snapshot failed, ignored:', e);
@@ -6381,6 +6412,17 @@ function _renderStructuredIntake(svc, category_id, container, prof) {
                         } else {
                             livePriceEl.textContent = '—';
                         }
+                        // v9.6 ADDITION (T107): this second, separate curated-card
+                        // rendering system (renderCuratedCardFromRoute, distinct
+                        // from sqBuildCuratedIntake's own render()) was never
+                        // wired into the DOM-snapshot trace layer added last turn
+                        // -- confirmed directly, via a real, reported trace
+                        // showing zero dom_snapshot entries anywhere on this
+                        // path. _computePrice already, correctly calls
+                        // computeUnifiedQuote (confirmed directly), so that part
+                        // of the pipeline was never in question -- only this
+                        // path's own visibility to the trace was missing.
+                        _traceDomSnapshot('refreshPrice: ims-chip card settled');
                     }
 
                     function refreshBtn() {
