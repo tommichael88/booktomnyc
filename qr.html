@@ -988,6 +988,26 @@ function resolveEngineKey(pricingType) {
     return pricingType || 'flat_rate';
 }
 
+// v9.6 ADDITION: shared by every entry path (free-text, Guided Builder,
+// and any future one) that needs to decide whether an outer, raw
+// extracted/stepper-set quantity should apply as a price multiplier, or
+// whether the resolved entity already, separately captures "how many"
+// via its own, dedicated intake question (item_count_template), which
+// independently drives complexity-tier escalation. Applying both at
+// once double-counts quantity -- confirmed as a real, severe,
+// user-reported bug on two entirely separate code paths (Guided
+// Builder's sqBuilderFinish, T102; free-text's own S.qty assignment,
+// T103) before this was extracted into one, single, shared source of
+// truth instead of two, separately-maintained copies of the same
+// logic.
+const _GENERIC_QTY_MODULE_KEYS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
+function entityHasOwnQtyQuestion(entity) {
+    return !!(entity?.intake_chain || []).some(step => {
+        const key = step.module || '';
+        return !_GENERIC_QTY_MODULE_KEYS.has(key) && (key === 'item_count_template' || key.startsWith('item_count_template::'));
+    });
+}
+
 function resolveServiceBadge(fe, svc) {
     // v9.6 FIX: added optional svc param -- fe alone (just the financial_engine
     // sub-object) has no access to ui_taxonomy.group_id, so an archetype-inheriting
@@ -2188,8 +2208,49 @@ function computeUnifiedQuote(ctx) {
                     // labor estimate by qty below, would double-count for every formula
                     // uniformly — not just furniture, which is why this is keyed off
                     // "is a formula active" rather than a single formula's name.
-                    const formulaIsQtyAware = !!formulaResult;
-                    if (qty > 1 && !formulaIsQtyAware) totalMin += (qty - 1) * 30;
+                    // v9.6 FIX: a second, real, separate bug in the same family as
+                    // the formula_override fix above -- found via the same direct,
+                    // empirical process (reconciling this session's own test
+                    // against a real screenshot's real, displayed price). This was
+                    // `!!formulaResult`, correct in intent (per the comment below:
+                    // don't double-multiply a formula that already scales its own
+                    // minutes by qty internally) but wrong in scope -- true for ANY
+                    // active formula, not just the one formula that's actually
+                    // qty-aware. Confirmed directly by reading each real formula's
+                    // own code: only furniture_repair_formula genuinely, internally
+                    // accounts for qty>1 (`(qty - 1) * per_unit_minutes`); the other
+                    // 5, including item_count_overflow_formula, do not. This was
+                    // silently suppressing the real, outer qty multiplier (`(base +
+                    // extraFee) * qty` below) whenever ANY OTHER formula was active
+                    // -- e.g. wall_hole_or_crack_repair with qty=5 and "4 or more
+                    // areas" selected (item_count_overflow_formula active) priced
+                    // identically to qty=1, when it should scale like every other
+                    // qty-bearing answer on this same service correctly already
+                    // does.
+                    // v9.6 FIX: broadened beyond furniture_repair_formula alone --
+                    // confirmed directly (not guessed) that tile_repair_formula
+                    // (`parseInt(answers.tile_count) || qty || 1`) and
+                    // hardware_install_formula (`parseInt(answers.unit_count) ||
+                    // qty || 1`) both use the exact same "count answer, falling
+                    // back to the outer qty" pattern internally -- genuinely
+                    // qty-aware in the same sense furniture_repair_formula is,
+                    // just via a differently-named answer key rather than a
+                    // literal `qty` reference, which is why an earlier, narrower
+                    // version of this same fix missed them.
+                    const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula']);
+                    const formulaIsQtyAware = QTY_AWARE_FORMULAS.has(effectiveFormulaId);
+                    // v9.6 FIX: this totalMin padding step has the exact same
+                    // "does the resolved entity already, independently capture
+                    // qty via its own dedicated question" concern as the later
+                    // qtyMultiplier guard below -- found together, by the same
+                    // automated_path_sweep.js run (T104), since padding minutes
+                    // here still inflated the price even after the later guard
+                    // correctly suppressed the final multiplier. Computed once,
+                    // here, and reused below so both guards can never drift out
+                    // of sync with each other.
+                    const _qtyEntity = svc || dynDef;
+                    const qtyAlreadyAppliedByOwnQuestion = (typeof entityHasOwnQtyQuestion === 'function') && entityHasOwnQtyQuestion(_qtyEntity);
+                    if (qty > 1 && !formulaIsQtyAware && !qtyAlreadyAppliedByOwnQuestion) totalMin += (qty - 1) * 30;
 
                     // v9.2: tag-level AND answer-level overrides both feed the same
                     // ratchet — take whichever of the two is higher-ranked, never
@@ -2224,7 +2285,10 @@ function computeUnifiedQuote(ctx) {
                     // totalMin padding suppression above; qty is folded into the
                     // formula math itself, not applied as an outer multiplier.
                     const qtyAlreadyAppliedByFormula = formulaIsQtyAware;
-                    const qtyMultiplier = qtyAlreadyAppliedByFormula ? 1 : qty;
+                    // v9.6 FIX: reuses qtyAlreadyAppliedByOwnQuestion, computed
+                    // once above alongside the totalMin padding guard, so both
+                    // checks always agree with each other by construction.
+                    const qtyMultiplier = (qtyAlreadyAppliedByFormula || qtyAlreadyAppliedByOwnQuestion) ? 1 : qty;
                     let laborEstimate;
                     if (isFlatRate) {
                         laborEstimate = Math.round((base + extraFee) * qtyMultiplier);
@@ -2358,6 +2422,13 @@ function computeUnifiedQuote(ctx) {
                         tierRate: effectiveHourlyRate, laborEstimate, dispatchFee,
                         checkoutStateKey, activeLabels, feeBreakdown,
                         meetsConfidenceBar, totalConfidence,
+                        // v9.6 ADDITION: qty and answers weren't previously
+                        // captured in the trace itself, forcing anyone reading a
+                        // trace export to separately, manually track these --
+                        // exactly the friction the user directly reported after
+                        // using this tool to find a real bug. Both are already,
+                        // directly available in this scope.
+                        qty, answers,
                     });
                     return {
                         base, extraFee, extraMin, totalMin,
@@ -2471,7 +2542,18 @@ function computeArchetypeQuote(entity, archetype, answers, qty, db, formulaId) {
                             ? deriveComplexityTier(totalMin, null, om.complexity_tier || null)
                             : (om.complexity_tier || 'skilled');
                         const realRate = (formulaResult && formulaResult.overrideHourlyRate != null) ? formulaResult.overrideHourlyRate : ((db.global_rules?.complexity_tiers?.[realTier]?.hourly_rate) || rate);
-                        return { laborEstimate: Math.round((fe.base_price || 0) + extraFee + (totalMin / 60) * realRate), totalMin };
+                        // v9.6 FIX: a third, real bug in the same family as
+                        // computeUnifiedQuote's own two fixes above (found the same
+                        // way -- reconciling this session's own tests against a
+                        // real screenshot's real, displayed price) -- this branch
+                        // never multiplied by qty at all, always computing a
+                        // single-unit price regardless of how many units were
+                        // requested. Matches computeUnifiedQuote's own, now-correct
+                        // qtyMultiplier logic: qty applies except for the one real
+                        // formula (furniture_repair_formula) that already,
+                        // genuinely scales its own minutes internally.
+                        const archQtyMultiplier = ['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula'].includes(realFormulaId) ? 1 : (qty || 1);
+                        return { laborEstimate: Math.round(((fe.base_price || 0) + extraFee + (totalMin / 60) * realRate) * archQtyMultiplier), totalMin };
                     }
                     return null; // genuinely unrecognized archetype -- caller must fall back to the legacy path
                 }
@@ -2612,6 +2694,31 @@ function _computePrice(svc, answers, qty) {
 window._traceEnabled = false;
 window._traceLog = [];
 window._traceInput = null; // the raw input (free text or a structured action list) that started the current trace
+// v9.6 ADDITION: a manually-maintained build marker for qr.html itself.
+// A real, byte-for-byte hash of this file computed from WITHIN this
+// file's own running code isn't practically achievable (the file would
+// need to already be complete to hash it, but the hash would then need
+// to be embedded inside the not-yet-complete file -- a genuine
+// chicken-and-egg problem for a single, self-contained HTML file with
+// no separate build step). This is updated by hand alongside every real
+// change, in the same spirit as this project's own session-label
+// convention (T98, T99, ...) already used throughout TIMELINE.md.
+const QR_BUILD_VERSION = 'T103';
+
+// A simple, fast, synchronous string hash (djb2) -- not cryptographic,
+// deliberately: the real, stated purpose here is "are we looking at the
+// same btnyc.json", not tamper-proofing, so a fast, dependency-free,
+// synchronous hash is the right tool. crypto.subtle.digest exists in
+//-browser but is Promise-based, which would force every trace call
+// site to become async for no real benefit here.
+function _simpleHash(str) {
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) + h + str.charCodeAt(i)) | 0; // h*33 + c
+    }
+    return (h >>> 0).toString(16).padStart(8, '0');
+}
+
 function _trace(layer, label, data) {
     if (!window._traceEnabled) return; // real, true no-op -- checked first, nothing below this line ever runs otherwise
     try {
@@ -2629,13 +2736,47 @@ function _trace(layer, label, data) {
         console.warn('[trace] entry failed, ignored:', e);
     }
 }
-function _traceStart(input) {
+function _traceStart(input, entryPath) {
     if (!window._traceEnabled) return;
     window._traceLog = [];
     window._traceInput = input;
+    // v9.6 ADDITION: which of the 3 real, distinct UI paths produced this
+    // trace -- 'smart_quote' (free-text), 'guided_builder', or 'catalog'.
+    // Directly, explicitly requested by the user after having to infer
+    // this from circumstantial evidence (an nlp_engine entry's presence,
+    // the raw input field) rather than having it stated outright.
+    window._traceEntryPath = entryPath || 'unknown';
 }
 function _traceExport() {
-    return JSON.stringify({ input: window._traceInput, trace: window._traceLog }, null, 2);
+    // v9.6 ADDITION: a compact, top-level summary built from the trace's
+    // own last real pricing_engine entry, so reading a trace no longer
+    // requires manually digging through the full, raw log to find the
+    // final price/qty/answers -- directly requested by the user after
+    // having to do exactly that by hand.
+    const pricingEntries = window._traceLog.filter(e => e.layer === 'pricing_engine');
+    const last = pricingEntries[pricingEntries.length - 1];
+    const summary = last ? {
+        finalPrice: last.data.laborEstimate,
+        dispatchFee: last.data.dispatchFee,
+        qty: last.data.qty,
+        answers: last.data.answers || {},
+        complexityTier: last.data.complexityTier,
+        checkoutStateKey: last.data.checkoutStateKey,
+        meetsConfidenceBar: last.data.meetsConfidenceBar,
+    } : null;
+    let btnycHash = null;
+    try { btnycHash = _simpleHash(JSON.stringify(window.DB || {})); } catch (e) { /* best-effort only */ }
+    return JSON.stringify({
+        meta: {
+            entryPath: window._traceEntryPath || 'unknown',
+            qrBuildVersion: QR_BUILD_VERSION,
+            btnycJsonHash: btnycHash,
+            exportedAt: new Date().toISOString(),
+        },
+        summary,
+        input: window._traceInput,
+        trace: window._traceLog,
+    }, null, 2);
 }
 function _traceToggle(on) {
     window._traceEnabled = (on !== undefined) ? !!on : !window._traceEnabled;
@@ -4929,6 +5070,7 @@ function catastrophicFallbackRoute(originalRoute, violations) {
                 }
 
 function collectBookingContext_catalog(svc, category_id) {
+                    if (typeof _traceStart === 'function') _traceStart({ tappedServiceId: svc.id }, 'catalog');
                     return makeBookingContext('catalog', {
                         selectedServiceId: svc.id,
                         selectedCategoryId: category_id || svc.ui_taxonomy?.category_id || null,
@@ -4940,6 +5082,7 @@ function collectBookingContext_catalog(svc, category_id) {
                 }
 
 function collectBookingContext_otherTile(tile, category_id) {
+                    if (typeof _traceStart === 'function') _traceStart({ tappedOtherTileGroupId: tile?.ui_taxonomy?.group_id || null }, 'catalog');
                     // v9.5 FIX (caught during this function's own verification):
                     // guessed at tile.groupId/tile._groupId — the real, confirmed
                     // field (from buildOtherTilesForGroup's actual return shape) is
@@ -4973,7 +5116,7 @@ function collectBookingContext_otherTile(tile, category_id) {
                 }
 
 function collectBookingContext_freeText(rawText) {
-                    if (typeof _traceStart === 'function') _traceStart(rawText);
+                    if (typeof _traceStart === 'function') _traceStart(rawText, 'smart_quote');
                     const nlpIntent = detectIntentNLP(rawText);
                     const extractedObject = extractObject(rawText, nlpIntent?.key || null);
                     // v9.5 FIX: thresholds now read from the real, single SSOT
@@ -11141,7 +11284,6 @@ function sqAnalyze() {
                     S.detTagIds = [...(ctx.detectedTagIds || [])];
                     S.manTagIds = [];
                     S.negatedTagIds = [...(ctx.negatedTagIds || [])];
-                    S.qty = ctx.extractedQty;
                     S._tagsAffirmed = false;
 
                     // S.intent: matches the exact fallback default the full
@@ -11162,6 +11304,26 @@ function sqAnalyze() {
                     if (route?.entity?.financial_engine?.base_price) {
                         S.intent.base = route.entity.financial_engine.base_price;
                     }
+                    // v9.6 FIX (T103): a real, confirmed bug -- the EXACT bug the
+                    // user reported via a real, captured trace ("need 5 ceiling
+                    // tiles put up" -> $1738), traced precisely to THIS free-text
+                    // path, not the Guided Builder path fixed in T102 (that fix
+                    // was real and correct for its own path, but this is a
+                    // separate code location and was not, in fact, covered by
+                    // it -- confirmed by directly re-testing this exact scenario
+                    // before writing this fix, not assumed). ctx.extractedQty is
+                    // the raw number parsed straight out of the customer's own
+                    // sentence (extractQty("need 5 ceiling tiles put up") = 5) --
+                    // applying it unconditionally as S.qty, the OUTER price
+                    // multiplier, double-counts quantity when the resolved
+                    // entity already has its own, dedicated quantity question
+                    // (item_count_template) that independently captures the same
+                    // "how many" via its own answer and complexity-tier
+                    // escalation. Needed route.entity to be resolved first (this
+                    // line, not the earlier one this replaced), since
+                    // entityHasOwnQtyQuestion needs the real, resolved entity to
+                    // check against.
+                    S.qty = entityHasOwnQtyQuestion(route?.entity) ? 1 : (ctx.extractedQty || 1);
                     window._currentContext = ctx;
                     renderRoute(route);
                 }
@@ -11621,6 +11783,24 @@ function sqBuildCuratedIntake(svc) {
                     // ── RENDER ────────────────────────────────────────────────────
                     const render = () => {
                         syncTagSynthesizedAnswers();
+                        // v9.6 FIX: a real, confirmed bug found investigating the
+                        // "We understood" row directly (prompted by a real
+                        // screenshot's apparent tag contradiction that couldn't be
+                        // fully verified from the image alone -- now confirmed via
+                        // direct, empirical testing: detectTagsNLP genuinely
+                        // returns both #brick_wall and #drywall simultaneously when
+                        // a customer's text happens to mention both, despite them
+                        // being explicitly declared mutually_exclusive).
+                        // applySSOTRules already exists, is already correctly
+                        // written (manTagIds/user taps win over detTagIds/NLP
+                        // detection when they conflict), and was already,
+                        // genuinely wired -- but only into sqBuildStep3, a
+                        // separate, legacy step-by-step builder flow, never into
+                        // this, the main curated-card render path every named
+                        // service (including wall_hole_or_crack_repair) actually
+                        // uses. Confirmed via direct search this was the only real
+                        // call site before this fix.
+                        if (typeof applySSOTRules === 'function') applySSOTRules();
                         const answers = S.answers;
                         const exist = new Set([...S.manTagIds, ...S.detTagIds]);
                         const suggested = new Set(S._suggestedTagIds || []);
@@ -12177,6 +12357,7 @@ function sqBuildStep3() {
                 }
 
 function sqBuilderFinish() {
+                    if (typeof _traceStart === 'function') _traceStart({ builderGroupId: BLD._groupId || null, builderQty: BLD.qty }, 'guided_builder');
                     // Resolve human label from group ID (BLD.object/specific are now group IDs)
                     const _rawBldObj = BLD.specific || BLD.object;
                     const _bldGrp = _rawBldObj && DB ? (DB.group || []).find(g => g.id === _rawBldObj) : null;
@@ -12209,7 +12390,17 @@ function sqBuilderFinish() {
                     S.manTagIds = [];
                     S.detTagIds = [];
                     S.negatedTagIds = [];
-                    S.qty = BLD.qty || 1;
+                    // v9.6 FIX (T102): a real, severe, confirmed bug (found via a
+                    // real, user-provided trace showing a $1738 quote for 5
+                    // ceiling tiles that should have priced closer to $150-250).
+                    // See entityHasOwnQtyQuestion's own definition for the full,
+                    // shared rationale (now also used by the free-text path,
+                    // T103, once the identical bug was found to exist there too
+                    // via a separate code location).
+                    const _bldEntity = (typeof resolveDynamicService === 'function')
+                        ? resolveDynamicService(BLD._cat, normStype, BLD._groupId)
+                        : null;
+                    S.qty = entityHasOwnQtyQuestion(_bldEntity) ? 1 : (BLD.qty || 1);
                     S.stype = normStype;
                     // Resolve display label from group if we have a groupId
                     const _grpObj = BLD._groupId ? (DB.group || []).find(g => g.id === BLD._groupId) : null;
