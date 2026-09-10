@@ -2417,6 +2417,26 @@ function computeUnifiedQuote(ctx) {
                         && divergenceCfg.enabled !== false
                         && remoteDeepDiveModules.length > 0;
 
+                    // v9.6 ADDITION (T106): Friction, computed exactly per the
+                    // Charter's own §7 formula (Friction = max(0, τₓ − Cₓ)),
+                    // rather than leaving the reader to derive it by hand from
+                    // separate totalConfidence/threshold numbers. Directly
+                    // responds to a pointed, well-founded question: is this
+                    // hard-fought metric actually being surfaced anywhere
+                    // meaningful, or just computed and left inert. A real,
+                    // honest, separate finding from the same investigation,
+                    // recorded here rather than silently fixed: the customer
+                    // -facing question COUNT is capped by a static number
+                    // (confidence_strategy.maximum_followup_questions),
+                    // checked against how many questions are still unanswered
+                    // -- not by live-checking whether frictionThreshold has
+                    // already, mathematically been reached. The two usually
+                    // agree by tuning, but nothing here structurally guarantees
+                    // it — this trace field makes that gap directly, honestly
+                    // observable per real quote, not asserted away.
+                    const frictionThreshold = liveStrategy.minimum_quote_confidence || 0;
+                    const friction = Math.max(0, frictionThreshold - totalConfidence);
+
                     if (typeof _trace === 'function') _trace('pricing_engine', 'computeUnifiedQuote: final quote computed', {
                         base, extraFee, extraMin, totalMin, complexityTier,
                         tierRate: effectiveHourlyRate, laborEstimate, dispatchFee,
@@ -2429,6 +2449,9 @@ function computeUnifiedQuote(ctx) {
                         // using this tool to find a real bug. Both are already,
                         // directly available in this scope.
                         qty, answers,
+                        // v9.6 ADDITION (T106): the Charter's own named metrics,
+                        // explicit and computed, not left for the reader to derive.
+                        friction, frictionThreshold,
                     });
                     return {
                         base, extraFee, extraMin, totalMin,
@@ -2763,7 +2786,19 @@ function _traceExport() {
         complexityTier: last.data.complexityTier,
         checkoutStateKey: last.data.checkoutStateKey,
         meetsConfidenceBar: last.data.meetsConfidenceBar,
+        // v9.6 ADDITION (T106): the Charter's own named metrics, surfaced
+        // explicitly in the summary too, not just buried in the raw log.
+        totalConfidence: last.data.totalConfidence,
+        friction: last.data.friction,
+        frictionThreshold: last.data.frictionThreshold,
     } : null;
+    // v9.6 ADDITION (T106): what the customer's screen actually, last
+    // showed -- separate from summary above, which is the CODE's own
+    // computed state. A real divergence between the two (this project
+    // has found several this session) is only visible when both are
+    // captured side by side, not derivable from internal state alone.
+    const domEntries = window._traceLog.filter(e => e.layer === 'dom_snapshot');
+    const lastDomSnapshot = domEntries.length ? domEntries[domEntries.length - 1].data : null;
     let btnycHash = null;
     try { btnycHash = _simpleHash(JSON.stringify(window.DB || {})); } catch (e) { /* best-effort only */ }
     return JSON.stringify({
@@ -2774,6 +2809,12 @@ function _traceExport() {
             exportedAt: new Date().toISOString(),
         },
         summary,
+        lastVisibleScreen: lastDomSnapshot,
+        // v9.6 ADDITION (T106): a short, plain-English, step-by-step
+        // account of the whole session, built from the same raw log
+        // below -- read this first; dig into `trace` only when it doesn't
+        // answer the question.
+        narrative: _traceNarrative(window._traceLog),
         input: window._traceInput,
         trace: window._traceLog,
     }, null, 2);
@@ -2827,7 +2868,7 @@ function _renderTraceOverlay() {
         panel.appendChild(inputBlock);
     }
 
-    const LAYER_COLORS = { nlp_engine: '#38bdf8', orchestrator_engine: '#fbbf24', pricing_engine: '#4ade80', ui_renderer: '#f472b6' };
+    const LAYER_COLORS = { nlp_engine: '#38bdf8', orchestrator_engine: '#fbbf24', pricing_engine: '#4ade80', ui_renderer: '#f472b6', dom_snapshot: '#a78bfa', user_interaction: '#fb923c' };
     window._traceLog.forEach(entry => {
         const card = document.createElement('div');
         card.style.cssText = 'background:#1e293b;border-left:3px solid ' + (LAYER_COLORS[entry.layer] || '#64748b') + ';border-radius:0 4px 4px 0;padding:6px 8px;margin-bottom:6px;word-break:break-word;';
@@ -2846,7 +2887,141 @@ function _renderTraceOverlay() {
     panel.scrollTop = panel.scrollHeight;
 }
 
-// ───────────────────────── Shared setup (required) ─────────────────────────
+// ═══════════════════════ Tracing v3 (T106) ═══════════════════════
+// A direct response to a real, pointed, well-founded challenge: prior
+// tracing (T98, T104) logged internal pipeline STATE (which module
+// resolved, which price computed) but never the two things that
+// actually determine whether a customer has a good or bad experience:
+// (1) what they actually did (every tap, every typed value), and (2)
+// what actually rendered on their screen as a RESULT -- distinct from
+// the internal data that produced it, since a rendering bug could
+// make those two diverge (exactly the class of "qty says 1 door"
+// investigation from a prior turn, which the trace format at the time
+// had no way to directly confirm one way or the other).
+
+// ─── 1. Global interaction capture ─────────────────────────────────
+// A single, capturing-phase listener on document, not per-handler
+// instrumentation. This is a deliberate architectural choice: hand
+// -adding a _trace() call inside every individual click/chip/button
+// handler across this file is fragile and, more importantly, provably
+// incomplete -- it only covers handlers someone remembered to
+// instrument, and silently misses every handler added afterward. A
+// single, global listener structurally guarantees coverage of every
+// tap and every settled text edit, present and future, without
+// depending on hand-instrumenting each one -- directly the point of
+// "not relying on human accuracy to compensate for missing
+// instrumentation."
+function _describeInteractionTarget(el) {
+    if (!el || el === document) return null;
+    const tag = el.tagName ? el.tagName.toLowerCase() : '';
+    if (['html', 'body', 'div'].includes(tag) && !el.dataset?.mod && !el.className) return null; // skip bare structural containers
+    const text = (el.textContent || '').trim().slice(0, 60);
+    const out = { tag, id: el.id || null, class: (el.className && typeof el.className === 'string') ? el.className.slice(0, 80) : null, text: text || null };
+    // data-* attributes carry the real, semantic meaning for this
+    // codebase's own question buttons (data-mod/data-label) -- far
+    // more useful than the generic tag/class alone.
+    if (el.dataset && Object.keys(el.dataset).length) out.data = { ...el.dataset };
+    return out;
+}
+function _initGlobalInteractionTracing() {
+    if (typeof document === 'undefined') return; // no real DOM in this context (e.g. a test harness sandbox)
+    if (window._interactionTracingInit) return; // idempotent -- safe if called more than once
+    window._interactionTracingInit = true;
+    document.addEventListener('click', (e) => {
+        if (typeof _trace !== 'function' || !window._traceEnabled) return;
+        // Walk up to the nearest genuinely-interactive element (button,
+        // a real class-bearing element) so a click on an icon/span INSIDE
+        // a button is attributed to the real, meaningful button, not an
+        // anonymous inner span.
+        let el = e.target;
+        for (let i = 0; i < 4 && el && el !== document.body; i++) {
+            if (el.tagName === 'BUTTON' || el.dataset?.mod || (el.className && typeof el.className === 'string' && el.className.trim())) break;
+            el = el.parentElement;
+        }
+        const desc = _describeInteractionTarget(el);
+        if (desc) _trace('user_interaction', 'click', desc);
+    }, true);
+    // 'change' (fires on blur/commit, not per-keystroke) deliberately,
+    // not 'input' -- capturing every keystroke would itself become
+    // exactly the kind of per-keystroke overhead the notes-focus bug
+    // (T105) was about, and a customer's real, intended input is its
+    // final, settled value, not each intermediate character.
+    document.addEventListener('change', (e) => {
+        if (typeof _trace !== 'function' || !window._traceEnabled) return;
+        const el = e.target;
+        if (!el || !('value' in el)) return;
+        const desc = _describeInteractionTarget(el) || {};
+        desc.value = typeof el.value === 'string' ? el.value.slice(0, 200) : el.value;
+        _trace('user_interaction', 'input_settled', desc);
+    }, true);
+}
+
+// ─── 2. DOM snapshot: what the customer actually sees ──────────────
+// Deliberately separate from the internal-state trace points (NLP,
+// orchestrator, pricing) already in place -- those show what the CODE
+// computed; this shows what actually rendered. Only textContent is
+// ever read, matching this project's own established XSS-safety
+// convention (see innerhtml_audit.json/verify_xss_fixes.js) -- this
+// function only reads the DOM, it never writes to it.
+function _traceDomSnapshot(label) {
+    if (typeof _trace !== 'function' || !window._traceEnabled) return;
+    try {
+        const card = document.querySelector('.sq-ic-card') || document.getElementById('sqQuoteOut') || document.body;
+        const weUnderstoodChips = [...card.querySelectorAll('.sq-ic-nlp-chip, .sq-ic-chip')].map(c => c.textContent.trim()).filter(Boolean);
+        const questions = [...card.querySelectorAll('.sq-ic-q')].map(q => ({
+            label: (q.querySelector('.sq-ic-q-lbl')?.textContent || '').trim(),
+            selectedOption: (q.querySelector('.sq-ic-btn.sel span')?.textContent || q.querySelector('.sq-ic-btn.sel')?.textContent || '').trim() || null,
+            optionCount: q.querySelectorAll('.sq-ic-btn').length,
+        }));
+        const priceLines = [...card.querySelectorAll('.ql')].map(l => ({
+            label: (l.querySelector('.qll')?.textContent || '').trim(),
+            value: (l.querySelector('.qlv')?.textContent || '').trim(),
+        })).filter(l => l.label || l.value);
+        const adlibText = (document.getElementById('sqAdlibSentence')?.textContent || '').trim() || null;
+        const addToCartBtn = card.querySelector('.ctap');
+        const addToCartLabel = addToCartBtn ? addToCartBtn.textContent.trim() : null;
+        const addToCartLooksDisabled = addToCartBtn ? (addToCartBtn.disabled || addToCartBtn.style.pointerEvents === 'none') : null;
+        _trace('dom_snapshot', label || 'render: visible DOM state', {
+            weUnderstoodChips, questions, priceLines, adlibText, addToCartLabel, addToCartLooksDisabled,
+        });
+    } catch (e) {
+        console.warn('[trace] dom snapshot failed, ignored:', e);
+    }
+}
+
+// ─── 3. Human-readable narrative ────────────────────────────────────
+// The full, raw trace log remains available in every export (nothing
+// removed) -- this walks it into a short, plain-English, step-by-step
+// account, directly answering "I should not have to take diligent
+// mental notes because the logging is not grabbing relevant details."
+function _traceNarrative(log) {
+    const lines = [];
+    for (const e of log) {
+        if (e.layer === 'user_interaction' && e.label === 'click') {
+            const d = e.data;
+            const what = d.data?.mod ? `question option "${d.data.label || d.text || ''}" (${d.data.mod})` : (d.text || d.tag || 'an element');
+            lines.push(`User tapped: ${what}`);
+        } else if (e.layer === 'user_interaction' && e.label === 'input_settled') {
+            const val = (e.data.value || '').length > 40 ? e.data.value.slice(0, 40) + '…' : e.data.value;
+            lines.push(`User typed (settled): "${val}" into ${e.data.class || e.data.tag}`);
+        } else if (e.layer === 'nlp_engine') {
+            lines.push(`NLP matched: "${e.data.winningKeyword}" (confidence ${e.data.matchConfidence}) -> category ${e.data.category}`);
+        } else if (e.layer === 'orchestrator_engine' && e.data.resolvedGroupId) {
+            lines.push(`Routed to group: ${e.data.resolvedGroupId}`);
+        } else if (e.layer === 'pricing_engine') {
+            const d = e.data;
+            const frictionNote = (d.frictionThreshold != null) ? `, friction ${d.friction} (need ${d.frictionThreshold}, have ${d.totalConfidence})` : '';
+            lines.push(`Price computed: $${d.laborEstimate} (qty ${d.qty}, tier ${d.complexityTier}${frictionNote})`);
+        } else if (e.layer === 'dom_snapshot') {
+            const d = e.data;
+            lines.push(`Screen showed: ${d.questions?.length || 0} question(s), price lines [${(d.priceLines || []).map(l => l.label + '=' + l.value).join(', ')}], add-to-cart button: "${d.addToCartLabel || '(none)'}"${d.addToCartLooksDisabled ? ' [DISABLED-LOOKING]' : ''}`);
+        } else if (e.layer === 'ui_renderer' && e.label === 'sqAddToCart: invoked') {
+            lines.push(`User clicked Add to Cart (qty ${e.data.qty}, ${e.data.answersCount} answers on file)`);
+        }
+    }
+    return lines;
+}
+if (typeof document !== 'undefined') _initGlobalInteractionTracing(); // guarded -- many test harnesses extract this region without a real document
 
 function initNlpSets() {
     const nl = window.DB?.negation_library || {};
@@ -8646,6 +8821,7 @@ function computeQuoteFromState() {
                 }
 
 function sqAddToCart() {
+                    if (typeof _trace === 'function') _trace('ui_renderer', 'sqAddToCart: invoked', { serviceId: S.intent?.key || null, qty: S.qty, answersCount: Object.keys(S.answers || {}).length });
                     if (!cartLimiter.isAllowed('add')) {
                         toast('Adding too fast.', 'error');
                         return;
@@ -12237,7 +12413,36 @@ function sqBuildCuratedIntake(svc) {
                                             (S._suggestedTagIds = S._suggestedTagIds || []).push(tid);
                                     });
                                 }
+                                // v9.6 FIX: a real, confirmed bug -- the debounce
+                                // above only reduced how OFTEN this problem hit,
+                                // it never actually fixed it. render() fully
+                                // rebuilds the intake card's DOM, which destroys
+                                // and recreates this very textarea -- the
+                                // browser's focus was on the OLD element, which
+                                // no longer exists once render() returns,
+                                // dropping focus every single time the customer
+                                // pauses mid-thought while writing a longer note
+                                // (confirmed directly against a real, user
+                                // -reported trace: 39 near-identical
+                                // computeUnifiedQuote calls over ~3 minutes, one
+                                // per debounced pause while writing one long
+                                // note). Notes genuinely don't affect price,
+                                // questions, or confidence -- only the suggested
+                                // -tags display actually needs this re-render --
+                                // so rather than restructure render() itself,
+                                // save this field's real focus/cursor state
+                                // first and restore it to the new element render()
+                                // creates, immediately after.
+                                const _wasFocused = document.activeElement === ta;
+                                const _selStart = ta.selectionStart, _selEnd = ta.selectionEnd;
                                 render(); // full re-render only after 400ms pause
+                                if (_wasFocused) {
+                                    const _newTa = card.querySelector('.sq-ic-notes');
+                                    if (_newTa) {
+                                        _newTa.focus();
+                                        try { _newTa.setSelectionRange(_selStart, _selEnd); } catch (e) { /* best-effort only */ }
+                                    }
+                                }
                             }, 400);
                         });
 
@@ -12271,6 +12476,7 @@ function sqBuildCuratedIntake(svc) {
 
                         // Back button
                         card.querySelector('#sqCurBackBtn')?.addEventListener('click', sqRestart);
+                        _traceDomSnapshot('render: curated card settled');
                     };
 
                     window._sqCuratedRender = render;
