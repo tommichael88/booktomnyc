@@ -1970,6 +1970,7 @@ function computeUnifiedQuote(ctx) {
                     // price difference, since the formula that actually reads
                     // that answer never ran at all.
                     let effectiveFormulaId = formulaId || _entity?.pricing_engine || null;
+                    let formulaTriggeredByModuleKey = null;
                     if (!effectiveFormulaId || !DB.pricing_formulas?.[effectiveFormulaId]) {
                         for (const [moduleKey, answerLabel] of Object.entries(answers)) {
                             // Check the per-service override first (e.g. item_count_template's
@@ -1982,7 +1983,7 @@ function computeUnifiedQuote(ctx) {
                             const mod = DB.intake_modules?.[moduleKey];
                             const chosen = (overrideResponses || mod?.client_response || []).find(r => r.label === answerLabel);
                             const fov = chosen?.formula_override;
-                            if (fov && DB.pricing_formulas?.[fov]) { effectiveFormulaId = fov; break; }
+                            if (fov && DB.pricing_formulas?.[fov]) { effectiveFormulaId = fov; formulaTriggeredByModuleKey = moduleKey; break; }
                         }
                     }
                     // SSOT: formulaId is now passed in explicitly via ctx (caller resolves
@@ -2079,9 +2080,54 @@ function computeUnifiedQuote(ctx) {
                     // is deliberately not done blind.
                     let answerCheckoutOverride = null;
                     const CS_RESTRICTIVENESS = { standard_flat_rate: 0, project_based: 1, database_summation: 1, diagnostic: 2 };
-                    if (!formulaResult) {
+                    // v9.6 FIX: a real, confirmed, severe bug found via direct,
+                    // empirical testing prompted by a real screenshot (T98/T99) --
+                    // this guard was `if (!formulaResult)`, which is correct in
+                    // INTENT (per the comment above: don't double-count the ONE
+                    // answer a formula already consumed directly, e.g.
+                    // furniture_repair_formula reading answers.issue itself) but
+                    // wrong in SCOPE -- it silently skipped this ENTIRE loop for
+                    // EVERY answer whenever ANY formula was active, not just the
+                    // one answer that actually triggered it. Confirmed directly:
+                    // wall_hole_or_crack_repair with "4 or more areas" selected
+                    // (which carries item_count_overflow_formula's own
+                    // formula_override) silently dropped all 5 of its OTHER, real,
+                    // unrelated answers' modifiers (wall_type, dmg_size,
+                    // mounting_height, access, urgency -- $175 of real, confirmed
+                    // fee alone) versus selecting "1 area" (no formula_override),
+                    // which correctly applies all 5. This affects every service in
+                    // the catalog where a formula-override answer can be combined
+                    // with other, real modifier-driving answers -- not isolated to
+                    // this one case. Fixed narrowly, preserving the original,
+                    // correct intent: skip only the SPECIFIC moduleKey that
+                    // actually triggered the active formula (tracked above as
+                    // formulaTriggeredByModuleKey), not every answer.
+                    // v9.6 FIX (continued): a single triggering moduleKey isn't
+                    // enough to exclude -- some formulas (tile_repair_formula)
+                    // directly consume SEVERAL answers beyond the one that
+                    // carries their own formula_override (confirmed directly by
+                    // extracting each real formula's own code block and finding
+                    // every literal `answers.X` reference, not guessed). Without
+                    // this, fixing the original bug would have introduced a new,
+                    // real double-counting bug for exactly these formulas --
+                    // caught directly by this session's own existing regression
+                    // test for tile_repair_formula's earlier fix (T93), not
+                    // discovered by luck.
+                    const FORMULA_CONSUMED_KEYS = {
+                        drywall_repair_formula: ['area_sqft', 'texture_match'],
+                        furniture_repair_formula: ['issue'],
+                        tile_repair_formula: ['ceiling_height', 'disposal', 'grout_repair', 'tile_count', 'water_damage', 'waterproof_area'],
+                        hardware_install_formula: ['install_type', 'unit_count'],
+                        item_count_overflow_formula: ['__exact_count'],
+                    };
+                    const formulaConsumedKeys = new Set([
+                        formulaTriggeredByModuleKey,
+                        ...(effectiveFormulaId && FORMULA_CONSUMED_KEYS[effectiveFormulaId] || []),
+                    ].filter(Boolean));
+                    if (true) {
                         const _mods = DB.global_rules?.modifiers || {};
                         for (const [moduleKey, answerLabel] of Object.entries(answers)) {
+                            if (formulaConsumedKeys.has(moduleKey)) continue;
                             const mod = DB.intake_modules?.[moduleKey];
                             if (!mod) continue;
                             const chosen = (mod.client_response || []).find(r => r.label === answerLabel);
