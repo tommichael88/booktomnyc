@@ -4415,7 +4415,18 @@ function executeWorkflow(context, db) {
                         throw new Error('OrchestratorError: db.workflow.steps is missing or not an array.');
                     }
                     const trace = [];
-                    let resolution = null, flags = null, intakeChain = [], answers = {},
+                    // T108 FIX (Operator Brief, Session 1 / Charter §5A.5, §11 item 1):
+                    // executeWorkflow previously hardcoded answers = {} and never read
+                    // context.answers, so every chip click on the orchestrator's curated
+                    // card (renderCuratedCardFromRoute, via free-text/other-tile entries)
+                    // was silently discarded on the next workflow pass -- handleIntakeAnswer
+                    // writes to ctx.answers and re-dispatches executeWorkflow(ctx, DB), but
+                    // the re-run always started from empty. Seeding from context.answers
+                    // here (defensively defaulting to {} when absent, e.g. for the legacy
+                    // catalog collector, which intentionally does not set this field yet --
+                    // see PENDING_DECISIONS.md #33) makes the read side finally honor the
+                    // write side of the documented BookingContext contract.
+                    let resolution = null, flags = null, intakeChain = [], answers = Object.assign({}, context.answers || {}),
                         confidenceState = null, uiTemplate = null, materialsEstimate = null, quote = null;
                     const activeTagIds = [...new Set([
                         ...(context.detectedTagIds || []),
