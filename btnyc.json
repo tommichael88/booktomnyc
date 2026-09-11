@@ -19991,7 +19991,12 @@
           }
         ],
         "confidence_weight": 90,
-        "default_dynamic_category": "plumbing_help"
+        "default_dynamic_category": "plumbing_help",
+        "full_weight_synonyms": [
+          "water closet",
+          "commode"
+        ],
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'water closet' is an unambiguous formal synonym, zero collision. 'commode' has a real but rare furniture/medical-device sense elsewhere in English -- promoted anyway since this catalog only ever sees 'fix my X'-shaped repair requests, where 'commode' overwhelmingly means toilet, and it has zero collision with any other of the 80 other intent_mappings entries. Both confirmed via direct detectIntentNLP execution: scored 45 (half of this entry's 90) before this fix, 90 after."
       },
       {
         "keyword": "cabinet",
@@ -20050,6 +20055,12 @@
         "confidence_weight": 90,
         "default_dynamic_category": "minor_home_repairs",
         "default_service_type": "Repair",
+        "full_weight_synonyms": [
+          "refrigerator",
+          "frig",
+          "freezer"
+        ],
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'refrigerator' and 'frig' are exact formal/informal spellings of the same appliance, zero ambiguity. 'freezer' names an adjacent appliance concept this catalog already treats as fridge-repair territory (no separate freezer entry/service exists anywhere in intent_mappings); the word itself has no other common meaning, so promoting it carries the same near-zero risk as the other two. All three confirmed via direct detectIntentNLP execution (scored 45 before, 90 after) and checked against all 80 other entries: zero collisions.",
         "contextual_overrides": [
           {
             "keywords": [
@@ -20086,7 +20097,11 @@
         ],
         "confidence_weight": 90,
         "default_dynamic_category": "minor_home_repairs",
-        "default_service_type": "Repair"
+        "default_service_type": "Repair",
+        "full_weight_synonyms": [
+          "washing machine"
+        ],
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'washing machine' is the exact formal name for this appliance, zero ambiguity, zero collision against the other 80 entries. Confirmed via direct detectIntentNLP execution: scored 45 before this fix, 90 after. ('clothes washer' was already effectively safe without promotion -- it contains the literal word 'washer', so this entry's own keyword-match path already fires at full weight whenever it appears.)"
       },
       {
         "keyword": "dryer",
@@ -20109,6 +20124,10 @@
         "confidence_weight": 90,
         "default_dynamic_category": "minor_home_repairs",
         "default_service_type": "Repair",
+        "full_weight_synonyms": [
+          "dish washer"
+        ],
+        "_note_full_weight_synonyms": "T112 (PENDING_DECISIONS #37, closed): 'dish washer' is exactly as specific/unambiguous as the bare keyword -- a customer writing it with a space obviously means the same appliance. Paired with a code fix in detectIntentNLP itself (not data-only): 'dish washer' independently contains the SEPARATE washer entry's own keyword as a whole word, so promotion alone would only produce a 90-90 tie, not a reliable win -- see the T112 comment beside detectIntentNLP's main scoring loop for the actual precedence fix. Confirmed via direct execution: 'fix my dish washer' now resolves to dishwasher_repair, not washer_repair.",
         "contextual_overrides": [
           {
             "keywords": [
@@ -20159,7 +20178,12 @@
         ],
         "confidence_weight": 85,
         "default_dynamic_category": "minor_home_repairs",
-        "default_service_type": "Repair"
+        "default_service_type": "Repair",
+        "full_weight_synonyms": [
+          "oven",
+          "cooktop"
+        ],
+        "_note_full_weight_synonyms": "T110 (Operator Brief, Session 2 sweep): 'oven' is genuinely the same shape as computer/laptop -- a distinct word from this entry's own keyword ('stove'), so 'fix my oven' previously scored only 42.5 (half weight) and missed the 50-point route_to_group_other_tile gate. T111 (per-synonym audit): 'cooktop' is the same shape and same fix -- specific, kitchen-appliance-only term, zero collision, scored 42.5 before / 85 after. 'range' and 'burner' were deliberately checked and NOT promoted: both are common general-English words with real meanings unrelated to stoves (a mountain/price/shooting range; a burner phone/account) -- promoting either to full weight would raise, not lower, the risk this catalog's own PENDING_DECISIONS #30 already flags (incidental-keyword hijacking of unrelated free text). Left at the existing half-weight deliberately, not by oversight."
       },
       {
         "keyword": "window",
@@ -20262,7 +20286,11 @@
         "default_dynamic_category": "plumbing_help",
         "default_service_sku": "shower_head_replacement",
         "confidence_weight": 75,
-        "default_service_type": "Install"
+        "default_service_type": "Install",
+        "full_weight_synonyms": [
+          "showerhead"
+        ],
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'showerhead' (one word) is a pure spelling variant of this entry's own keyword and doesn't share word-boundary substring status with the two-word 'shower head', so it was scoring at half weight (37.5) with no rescue from any other mechanism -- same shape as the original laptop/computer bug. Zero ambiguity, zero collision. Scored 100 after this fix. ('shower head replacement' was already safe without promotion: it contains the literal two-word keyword as a prefix, so the keyword-match path already fires at full weight whenever it appears.)"
       },
       {
         "keyword": "thermostat",
@@ -20275,7 +20303,11 @@
         "default_dynamic_category": "electric_lighting",
         "default_service_sku": "thermostat_replacement",
         "confidence_weight": 80,
-        "default_service_type": "Install"
+        "default_service_type": "Install",
+        "full_weight_synonyms": [
+          "ecobee"
+        ],
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'ecobee' is a coined brand name with no other meaning in English -- arguably even less ambiguous than a generic word like 'refrigerator'. Zero collision. Scored 40 before this fix, 80 after. 'nest' was deliberately checked and NOT promoted despite being the same structural shape (a brand name, not a keyword-substring-safe phrase): 'nest' is an extremely common, highly ambiguous English word (bird's nest, nest egg, nesting, plus the tech company itself) with real, meaningful risk of hijacking unrelated free text if scored at full weight -- left at the existing half-weight deliberately, consistent with this catalog's own established caution (see faucet's 'tap'/'basin', also deliberately left half-weight for the same reason). ('smart thermostat' was already safe without promotion: it contains the literal keyword 'thermostat' as a word, so the keyword-match path already fires at full weight whenever it appears.)"
       },
       {
         "keyword": "light bulb",
@@ -20680,7 +20712,14 @@
         "default_dynamic_category": "tech_trouble",
         "default_service_sku": "computer_diagnostic",
         "confidence_weight": 85,
-        "default_service_type": "Diagnostic"
+        "default_service_type": "Diagnostic",
+        "full_weight_synonyms": [
+          "laptop",
+          "desktop",
+          "macbook",
+          "notebook"
+        ],
+        "_note_full_weight_synonyms": "T110 (Operator Brief, Session 2): promoted -- these are the plain-English nouns a customer actually types ('fix my laptop'), not generic half-weight synonyms; checked directly against all 80 other intent_mappings entries, zero collisions (none of the four appear anywhere else in the catalog). Closes charter S11 item 12: 'fix my laptop' previously scored 42.5 (half of this entry's own confidence_weight) and never cleared the 50-point route_to_group_other_tile gate."
       },
       {
         "keyword": "concrete",

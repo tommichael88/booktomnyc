@@ -2726,7 +2726,20 @@ window._traceInput = null; // the raw input (free text or a structured action li
 // no separate build step). This is updated by hand alongside every real
 // change, in the same spirit as this project's own session-label
 // convention (T98, T99, ...) already used throughout TIMELINE.md.
-const QR_BUILD_VERSION = 'T103';
+//
+// T109 FIX: confirmed via direct check of every TIMELINE.md entry's own
+// "Files modified" line that this value was left at 'T103' through five
+// real, subsequent qr.html edits (T104-T108) -- quietly wrong, not
+// caught by anything, for the exact reason a hand-maintained value
+// always eventually is. Guarded going forward by
+// test_harness/verify_qr_build_version_freshness.js, which fails loudly
+// (rather than staying quiet) the next time this drifts.
+//
+// T112 UPDATE: the freshness test did its job on the very next real
+// qr.html edit after it existed -- caught this value still reading
+// 'T109' after the detectIntentNLP cross-entry fix landed, exactly the
+// drift this test exists to catch. Bumped to 'T112'.
+const QR_BUILD_VERSION = 'T112';
 
 // A simple, fast, synchronous string hash (djb2) -- not cryptographic,
 // deliberately: the real, stated purpose here is "are we looking at the
@@ -3299,6 +3312,28 @@ function detectIntentNLP(text) {
                     let best = null,
                         top = 0,
                         bestMapping = null;
+                    // T112 FIX (PENDING_DECISIONS #37): pure extraction, zero
+                    // behavior change -- factored out so the new cross-entry
+                    // specificity check below (after the main loop) can build
+                    // a candidate object from a DIFFERENT entry using the
+                    // exact same shape/logic as the main loop always has,
+                    // with no risk of the two object literals drifting apart.
+                    const buildCandidate = (m, score) => ({
+                        category: m.default_dynamic_category || m.fallback?.category || 'other',
+                        stype: normStype(m.default_service_type || m.fallback?.service_type || 'Repair'),
+                        group: m.keyword,
+                        base: m.fallback?.base_price || 70,
+                        key: m.keyword,
+                        label: m.keyword,
+                        qtyLabel: 'item',
+                        resolver: m.resolver || null,
+                        recommendedSku: m.default_service_sku || null,
+                        _matchConfidence: score,
+                        dynamic_rule: m.dynamic_rule || null,
+                        _ctxFee: 0,
+                        _ctxMin: 0,
+                        _ctxTags: []
+                    });
                     // v9.5 FIX (severe, previously-undiscovered bug, found while
                     // fact-checking an external analysis against real data):
                     // lower.includes(kw) is a bare substring check, so "washer"
@@ -3397,43 +3432,112 @@ function detectIntentNLP(text) {
                         // defaulting to faucet's own "Repair" stype instead
                         // of correctly resolving to Install.
                         const resolverShouldWin = m.resolver && kwMatched && !(bestMapping?.resolver);
+                        // v9.5 FIX: confirmed via direct execution that this real,
+                        // designed field (the "install"/"setup" intent_mappings
+                        // entry's resolver:"object_based") was NEVER copied onto
+                        // the returned intent object at all — meaning the entire
+                        // object-based re-resolution mechanism (distinguishing
+                        // "install a TV" from "install a faucet" by the OBJECT,
+                        // not just the shared verb) was completely unreachable in
+                        // BOTH the legacy sqAnalyze code AND this session's own
+                        // orchestrator port of that same logic. The consuming
+                        // branches (legacy: S.intent.resolver === 'object_based';
+                        // orchestrator: orch_apply_object_based_resolution) were
+                        // both already correctly built — they simply never had
+                        // real data to act on until this line existed.
+                        // The actual confidence score used to pick this match —
+                        // was computed and then discarded before; now attached
+                        // so downstream code (the recommendedSku banner's
+                        // auto-select) can gate on the REAL number instead of
+                        // re-estimating or assuming a SKU implies confidence.
                         if (score > top || resolverShouldWin) {
                             top = resolverShouldWin ? Math.max(score, top) : score;
                             bestMapping = m;
-                            best = {
-                                category: m.default_dynamic_category || m.fallback?.category || 'other',
-                                stype: normStype(m.default_service_type || m.fallback?.service_type || 'Repair'),
-                                group: m.keyword,
-                                base: m.fallback?.base_price || 70,
-                                key: m.keyword,
-                                label: m.keyword,
-                                qtyLabel: 'item',
-                                // v9.5 FIX: confirmed via direct execution that this real,
-                                // designed field (the "install"/"setup" intent_mappings
-                                // entry's resolver:"object_based") was NEVER copied onto
-                                // the returned intent object at all — meaning the entire
-                                // object-based re-resolution mechanism (distinguishing
-                                // "install a TV" from "install a faucet" by the OBJECT,
-                                // not just the shared verb) was completely unreachable in
-                                // BOTH the legacy sqAnalyze code AND this session's own
-                                // orchestrator port of that same logic. The consuming
-                                // branches (legacy: S.intent.resolver === 'object_based';
-                                // orchestrator: orch_apply_object_based_resolution) were
-                                // both already correctly built — they simply never had
-                                // real data to act on until this line existed.
-                                resolver: m.resolver || null,
-                                recommendedSku: m.default_service_sku || null,
-                                // The actual confidence score used to pick this match —
-                                // was computed and then discarded before; now attached
-                                // so downstream code (the recommendedSku banner's
-                                // auto-select) can gate on the REAL number instead of
-                                // re-estimating or assuming a SKU implies confidence.
-                                _matchConfidence: score,
-                                dynamic_rule: m.dynamic_rule || null,
-                                _ctxFee: 0,
-                                _ctxMin: 0,
-                                _ctxTags: []
-                            };
+                            best = buildCandidate(m, score);
+                        }
+                    }
+
+                    // T112 FIX (PENDING_DECISIONS #37): a shorter entry's own
+                    // bare keyword can legitimately be a whole word embedded
+                    // inside a DIFFERENT entry's own authored, multi-word
+                    // synonym for the exact same real-world object -- e.g.
+                    // "washer" inside dishwasher's own synonym "dish washer".
+                    // The v9.5 fix above already stops "washer" from matching
+                    // as a bare substring inside the single word "dishwasher"
+                    // (no space, no word boundary between them); it does NOT
+                    // stop "washer" from being a genuine, separately
+                    // word-bounded match when the customer writes the natural
+                    // two-word "dish washer" instead -- same underlying
+                    // confusion the v9.5 fix's own test case was named for,
+                    // reintroduced by a different, equally common spelling.
+                    // Confirmed via direct test this was live before this fix:
+                    // "fix my dish washer" resolved to washer_repair, not
+                    // anything dishwasher-related, because "washer"'s own
+                    // full keyword weight (90) beat dishwasher's un-promoted
+                    // synonym weight (45) outright, and even promoting that
+                    // synonym to full weight would only produce a 90-90 TIE —
+                    // the existing tie-break is pure array order (see the
+                    // v9.5 comment above), not a reliable resolution either
+                    // way. When a genuinely more specific, multi-word phrase
+                    // belonging to a DIFFERENT entry contains the current
+                    // winner's own bare keyword, the customer's actual words
+                    // point at that more specific entry, and it should win
+                    // regardless of raw score or array order. Deliberately
+                    // narrow: only ever triggers on an AUTHORED catalog
+                    // phrase (a real keyword or synonym already in the data),
+                    // never a coincidental substring of arbitrary free text.
+                    //
+                    // SAFETY CONDITIONS, both added after direct testing
+                    // showed the mechanism above, unconstrained, changed 29
+                    // different phrases catalog-wide -- far past the one
+                    // diagnosed bug this fix was scoped to. Most of those 29
+                    // were trading a confident WRONG answer for an
+                    // unconfident right-ish one (new score well under this
+                    // catalog's own real confidence gates), which is not
+                    // the same fix and was never verified case-by-case. Two
+                    // conditions bring the mechanism back to exactly the
+                    // diagnosed shape, confirmed via a full 441-string sweep
+                    // of every keyword/synonym in the catalog before/after:
+                    // only "dish washer" (the diagnosed bug) and "drawer
+                    // front" (same resulting SKU either way, so a no-op for
+                    // the customer) still change.
+                    //   1. The more-specific candidate must clear this
+                    //      catalog's own real confidence gate on its own
+                    //      merits -- otherwise this would silently replace
+                    //      one problem (wrong-but-confident) with a
+                    //      different one (right-ish-but-uncertain) for
+                    //      dozens of other phrases never individually
+                    //      checked. Left as future work, recorded rather
+                    //      than shipped unverified: PENDING_DECISIONS #38.
+                    //   2. Never override a resolver-bearing entry (e.g.
+                    //      "install") -- that mechanism is already, by
+                    //      original design (see the resolverShouldWin
+                    //      comment above), a deliberately stronger signal
+                    //      than a raw score, and should stay authoritative.
+                    if (bestMapping && bestMapping.keyword && !bestMapping.resolver) {
+                        const loserKw = bestMapping.keyword.toLowerCase();
+                        const specificityGate = (DB.global_rules?.thresholds?.route_to_group_other_tile) ?? 50;
+                        crossEntrySpecificity: for (const m2 of maps) {
+                            if (m2 === bestMapping) continue;
+                            const kw2 = (m2.keyword || '').toLowerCase();
+                            const phrases = [kw2].concat(
+                                Array.isArray(m2.synonyms) ? m2.synonyms.filter(s => typeof s === 'string').map(s => s.toLowerCase()) : []
+                            );
+                            for (const phrase of phrases) {
+                                if (!phrase || !phrase.includes(' ')) continue; // only genuinely multi-word phrases count as "more specific"
+                                if (phrase === loserKw) continue;
+                                if (!wordBoundaryIncludes(phrase, loserKw)) continue; // does this authored phrase itself contain the current winner's bare keyword as a whole word?
+                                if (!wordBoundaryIncludes(lower, phrase)) continue; // does the CUSTOMER'S text actually contain this longer phrase?
+                                const isKwMatch = phrase === kw2;
+                                const w2 = m2.confidence_weight || 30;
+                                const isFullWeight = isKwMatch || (Array.isArray(m2.full_weight_synonyms) && m2.full_weight_synonyms.includes(phrase));
+                                const m2Score = Math.min(isFullWeight ? w2 : w2 * .5, 100);
+                                if (m2Score < specificityGate) continue; // safety condition 1 -- see block comment above
+                                bestMapping = m2;
+                                top = m2Score;
+                                best = buildCandidate(m2, m2Score);
+                                break crossEntrySpecificity;
+                            }
                         }
                     }
 
