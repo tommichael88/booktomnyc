@@ -8015,11 +8015,13 @@
       "intake_chain": [
         {
           "module": "tech_device",
-          "then": {}
-        },
-        {
-          "module": "symptom",
-          "then": {}
+          "then": {
+            "Computer (desktop or laptop)": ["computer_symptom"],
+            "Router or WiFi extender": ["network_symptom"],
+            "Smart speaker or smart plug": ["smart_device_symptom"],
+            "Other (describe in notes)": ["generic_tech_symptom"]
+          },
+          "_note": "T114 (Operator Brief, Session 3, Charter §11 item 13): removed the unconditional `symptom` step (the shared washer/dryer/dishwasher-shaped module -- laptop customers were being asked whether the device 'won't drain' or 'won't spin'). Branches on tech_device's own answer instead, to the device-appropriate symptom module. Question count unchanged (still exactly 2 authored questions: tech_device, then exactly one symptom module) -- well under the specialized-tier §6E ceiling of 7."
         }
       ],
       "smart_tags": [],
@@ -11685,8 +11687,9 @@
       },
       "intake_chain": [
         {
-          "module": "symptom",
-          "then": {}
+          "module": "computer_symptom",
+          "then": {},
+          "_note": "T114 (Operator Brief, Session 3, Charter §11 item 13): was `symptom` (the shared washer/dryer/dishwasher-shaped module). This dynamic service is scoped to the tech_trouble_computer_repair GROUP specifically -- the device type is already known from the customer's own navigation path, so this goes straight to the computer-appropriate symptom module with no branching needed."
         }
       ],
       "suggested_tags": [
@@ -11827,8 +11830,9 @@
       },
       "intake_chain": [
         {
-          "module": "symptom",
-          "then": {}
+          "module": "generic_tech_symptom",
+          "then": {},
+          "_note": "T114 (Operator Brief, Session 3): was `symptom` (washer/dryer/dishwasher-shaped). Found during verification, not named in the original brief -- confirmed real and in-scope (tech_trouble category, same defect shape) via direct execution, not assumed unreachable just because this group's own dynamic_service_types only lists 'Install' (resolveDynamicService has no such gate; this entry is genuinely reachable). generic_tech_symptom is an IMPERFECT fit for cable-specific issues (e.g. 'Won't power on' doesn't really apply to a passive cable) -- flagged in PENDING_DECISIONS.md for content review rather than inventing a dedicated cable_symptom module outside this session's authorized scope of exactly three stub modules."
         }
       ],
       "suggested_tags": [],
@@ -11947,8 +11951,9 @@
       },
       "intake_chain": [
         {
-          "module": "symptom",
-          "then": {}
+          "module": "network_symptom",
+          "then": {},
+          "_note": "T114 (Operator Brief, Session 3): was `symptom` (washer/dryer/dishwasher-shaped). Found during verification, not named in the original brief -- confirmed real and in-scope via direct execution (same defect shape, same tech_trouble category). This group's own device type (router/WiFi extender) is already known from the customer's navigation path, so this goes straight to network_symptom with no branching needed -- exact match, not an approximation like cable_management's."
         }
       ],
       "suggested_tags": [
@@ -12080,8 +12085,9 @@
       },
       "intake_chain": [
         {
-          "module": "symptom",
-          "then": {}
+          "module": "smart_device_symptom",
+          "then": {},
+          "_note": "T114 (Operator Brief, Session 3): was `symptom` (washer/dryer/dishwasher-shaped). Found during verification, not named in the original brief -- confirmed real and in-scope via direct execution (same defect shape, same tech_trouble category). This group's own device type (smart speaker/plug) is already known from the customer's navigation path, so this goes straight to smart_device_symptom with no branching needed -- exact match, not an approximation like cable_management's."
         }
       ],
       "suggested_tags": [],
@@ -14824,6 +14830,134 @@
         },
         {
           "label": "Smart speaker or smart plug",
+          "tags": []
+        },
+        {
+          "label": "Other (describe in notes)",
+          "tags": []
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true
+    },
+    "computer_symptom": {
+      "_note": "T114 (Operator Brief, Session 3, Charter §11 item 13): authored to replace the shared appliance `symptom` module for computer/laptop diagnostics -- that module's own options (\"Won't spin\", \"Won't drain\") are washer/dryer/dishwasher-shaped and were being asked of laptop customers. Wired via tech_device's own `then` branch (see tech_trouble+Diagnostic's intake_chain) and used directly by tech_trouble+tech_trouble_computer_repair+Diagnostic, which already knows the device is a computer from its own group context. Deliberately NOT given any modifier_ref or #emergency tag on any option -- both are real pricing/urgency decisions (see PENDING_DECISIONS.md), not this session's to make; matches computeUnifiedQuote's existing behavior for tech_device itself, which also declares affects_price without any option currently carrying a modifier.",
+      "question": "What's the issue with the computer?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "Won\u2019t power on at all",
+          "tags": []
+        },
+        {
+          "label": "Turns on but won\u2019t boot / stuck on loading",
+          "tags": []
+        },
+        {
+          "label": "Very slow or freezing",
+          "tags": []
+        },
+        {
+          "label": "Crashes or blue screen errors",
+          "tags": []
+        },
+        {
+          "label": "Overheating or fan very loud",
+          "tags": []
+        },
+        {
+          "label": "Screen issue (black, flickering, or cracked)",
+          "tags": []
+        },
+        {
+          "label": "Won\u2019t connect to WiFi or internet",
+          "tags": []
+        },
+        {
+          "label": "Battery won\u2019t charge or drains quickly",
+          "tags": []
+        },
+        {
+          "label": "Other (describe in notes)",
+          "tags": []
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true
+    },
+    "network_symptom": {
+      "_note": "T114 (Operator Brief, Session 3): STUB per the brief's own instruction -- directional draft only, flagged in PENDING_DECISIONS.md for content review before being treated as final. Wired via tech_device's `then` branch for the Router/WiFi extender path.",
+      "question": "What's the issue with the router or WiFi extender?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "No internet connection at all",
+          "tags": []
+        },
+        {
+          "label": "WiFi drops in and out",
+          "tags": []
+        },
+        {
+          "label": "Slow speeds or weak signal in parts of the home",
+          "tags": []
+        },
+        {
+          "label": "Won\u2019t power on or reboots constantly",
+          "tags": []
+        },
+        {
+          "label": "Other (describe in notes)",
+          "tags": []
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true
+    },
+    "smart_device_symptom": {
+      "_note": "T114 (Operator Brief, Session 3): STUB per the brief's own instruction -- directional draft only, flagged in PENDING_DECISIONS.md for content review before being treated as final. Wired via tech_device's `then` branch for the Smart speaker/smart plug path.",
+      "question": "What's the issue with the smart device?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "Won\u2019t connect to WiFi or the app",
+          "tags": []
+        },
+        {
+          "label": "Unresponsive to voice commands or app controls",
+          "tags": []
+        },
+        {
+          "label": "Won\u2019t power on",
+          "tags": []
+        },
+        {
+          "label": "Other (describe in notes)",
+          "tags": []
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true
+    },
+    "generic_tech_symptom": {
+      "_note": "T114 (Operator Brief, Session 3): STUB per the brief's own instruction -- directional draft only, flagged in PENDING_DECISIONS.md for content review before being treated as final. Wired via tech_device's `then` branch for the Other/unlisted device path -- a deliberately generic catch-all, not device-specific.",
+      "question": "What's the issue with the device?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "Won\u2019t power on",
+          "tags": []
+        },
+        {
+          "label": "Not working as expected",
+          "tags": []
+        },
+        {
+          "label": "Visible physical damage",
           "tags": []
         },
         {
