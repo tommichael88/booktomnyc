@@ -101,7 +101,7 @@
         "complexity_tiers",
         "confidence_escalation",
         "diagnostic_governance",
-        "force_modules_by_variability",
+        "intake_defaults",
         "pricing_engines",
         "surcharges"
       ],
@@ -198,13 +198,39 @@
             }
           }
         },
-        "force_modules_by_variability": {
+        "force_modules_by_variability_DEPRECATED": {
           "type": "object",
+          "_note": "T118: deprecated, renamed from force_modules_by_variability, no longer read by any live code. Not in `required` -- preserved purely as a reversibility record; see intake_defaults below for the real, live schema.",
           "patternProperties": {
             "^(low|medium|high|diagnostic)$": {
               "type": "array",
               "items": {
                 "type": "string"
+              }
+            }
+          }
+        },
+        "intake_defaults": {
+          "type": "object",
+          "_note": "T118: replaces force_modules_by_variability_DEPRECATED. Precedence: service's own authored intake_chain > group_defaults > category_defaults > universal.",
+          "required": ["universal", "category_defaults", "group_defaults"],
+          "properties": {
+            "universal": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "category_defaults": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "group_defaults": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string" }
               }
             }
           }
