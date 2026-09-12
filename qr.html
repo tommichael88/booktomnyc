@@ -5213,11 +5213,20 @@ function orch_compose_intake_chain(context, resolution, db) {
                     const categoryId = context.selectedCategoryId || entity.ui_taxonomy?.category_id || null;
                     const groupId = context.selectedGroupId || entity.ui_taxonomy?.group_id || null;
                     const defs = db.global_rules?.intake_defaults || {};
+                    // T118 (PENDING_DECISIONS.md #22): excluded_services is a
+                    // targeted opt-out for a specific service within an
+                    // otherwise-correct category/group default (e.g.
+                    // wall_mounting's own access default is right for TV/
+                    // frame/drywall work, but not for two specific,
+                    // low-complexity, hourly-billed SKUs) -- checked here,
+                    // after the normal precedence resolves candidates, so it
+                    // can only ever remove, never add, a module.
+                    const excludedForThisService = new Set(defs.excluded_services?.[entity.id] || []);
                     const forceMods = [...new Set([
                         ...(defs.universal || []),
                         ...(defs.category_defaults?.[categoryId] || []),
                         ...(defs.group_defaults?.[groupId] || []),
-                    ])];
+                    ])].filter(m => !excludedForThisService.has(m));
                     const existingKeys = new Set(allMods.map(m => m.moduleKey || m.module));
                     const composed = allMods.slice();
                     const ownModuleKeys = allMods.map(m => m.moduleKey || m.module);
@@ -8141,6 +8150,31 @@ function renderCuratedCardFromRoute(route) {
         html += `<p style="color:#666; font-size:0.9rem; margin-bottom:12px;">Need this for more than one? Each one can have different specifics (size, material, condition) — add this as its own request for each one so we get the right details for all of them.</p>`;
     }
 
+    // T118 (Step 6 item 9, per PENDING_DECISIONS.md #25, explicit operator
+    // direction): a targeted cross-link for services confirmed to be
+    // commonly confused via catalog navigation (e.g. cabinet knob
+    // INSTALL vs. cabinet door/drawer ADJUSTMENT -- a materially
+    // different job). Does not address the underlying catalog-
+    // discoverability root cause (#25's own text names that as a
+    // separate, still-open question) -- a real, working escape hatch
+    // for a customer who already landed on the wrong one, not a claim
+    // the navigation itself is fixed.
+    const relatedIds = Array.isArray(entity.related_services) ? entity.related_services : [];
+    if (relatedIds.length) {
+        html += `<div class="related-services-notice" style="background:#f8f9fb; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:0.9rem;">`;
+        relatedIds.forEach(relId => {
+            const relSvc = (DB.services || []).find(s => s.id === relId);
+            if (!relSvc) return;
+            const relName = relSvc.ui_taxonomy?.display_name || relId;
+            html += `Looking for <strong>${relName}</strong> instead?
+                      <button class="related-service-switch" data-related-svc="${relId}"
+                          style="background:none;border:none;color:#8a0615;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;font-size:inherit;">
+                          Switch to that
+                      </button>`;
+        });
+        html += `</div>`;
+    }
+
     // Render each module as a set of chips
     chain.forEach((mod, idx) => {
         const modKey = mod.moduleKey || mod.module;
@@ -8192,6 +8226,19 @@ function renderCuratedCardFromRoute(route) {
                 window.handleIntakeAnswer(modKey, label);
             } else {
                 console.warn('No handler for intake answer');
+            }
+        });
+    });
+
+    // T118 (Step 6 item 9, per PENDING_DECISIONS.md #25): related-service
+    // switch button -- reuses prefillSmartQuoteFromService, the same real,
+    // proven path a catalog tile tap or component/symptom resolution
+    // already uses, rather than a bespoke navigation mechanism.
+    container.querySelectorAll('.related-service-switch').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const relSvc = (DB.services || []).find(s => s.id === this.dataset.relatedSvc);
+            if (relSvc && typeof prefillSmartQuoteFromService === 'function') {
+                prefillSmartQuoteFromService(relSvc, relSvc.ui_taxonomy?.category_id || entity.ui_taxonomy?.category_id);
             }
         });
     });
@@ -9627,6 +9674,35 @@ function sqBuilderChoose(stepId, choice) {
                         prompt: 'Where in the home?',
                         icon: 'ti-map-pin',
                         choices: () => BLD_LOCATIONS
+                    },
+                    {
+                        // T118 (Step 6 item 6, per PENDING_DECISIONS.md #21,
+                        // explicit operator direction): sqBuilderGetSteps()
+                        // never included a qty step at all -- BLD.qty stayed at
+                        // its sqOpenBuilderPreseeded default of 1 forever for
+                        // any builder session reached via catalog navigation
+                        // into a dynamic-service-only group (the real,
+                        // diagnosed case: tapping Ceiling Tile Replacement
+                        // showed a real, correctly-computed price with zero
+                        // questions, including no quantity prompt). Only
+                        // included when genuinely needed -- see
+                        // sqBuilderGetSteps's own gating logic below, which
+                        // restricts this to catalog-navigation sessions
+                        // specifically (BLD._fromOtherTile): a free-text
+                        // session already attempts real extraction via
+                        // extractQty(existingText) at open time, so asking
+                        // again here would be redundant friction for that
+                        // path, not a gap.
+                        id: 'qty',
+                        prompt: 'How many?',
+                        icon: 'ti-hash',
+                        choices: () => [
+                            { value: 1, label: '1' },
+                            { value: 2, label: '2' },
+                            { value: 3, label: '3' },
+                            { value: 4, label: '4' },
+                            { value: 5, label: '5 or more' },
+                        ]
                     }
                 ];
 
@@ -9855,6 +9931,13 @@ function sqBuilderChoose(stepId, choice) {
                     if (condChoices && condChoices.length > 0) steps.push('condition');
                     // location always
                     steps.push('location');
+                    // T118 (PENDING_DECISIONS.md #21): quantity, but only for
+                    // catalog-navigation sessions (BLD._fromOtherTile) -- a
+                    // free-text session already tried real extraction via
+                    // extractQty(existingText) at open time (see
+                    // sqToggleBuilder's own free-text branch), so this would
+                    // be redundant friction there, not a gap to close.
+                    if (BLD._fromOtherTile) steps.push('qty');
                     return steps;
                 }
 
@@ -10020,7 +10103,22 @@ function sqOpenBuilderPreseeded({ action, groupId, categoryLabel, allowedTypes }
                         specific: null,
                         condition: null,
                         location: null,
-                        qty: 1,
+                        // T118 (PENDING_DECISIONS.md #21): was `qty: 1`. The
+                        // existing "already answered" skip-forward logic in
+                        // sqBuilderChoose (search "stepsAfterChoice") treats
+                        // any non-null/non-undefined field as already
+                        // answered -- a real, literal 1 is neither, so the
+                        // new qty step (BLD_STEPS, gated in
+                        // sqBuilderGetSteps on _fromOtherTile) was being
+                        // silently auto-skipped exactly like the bug this
+                        // item exists to fix, discovered directly via this
+                        // fix's own end-to-end jsdom test, not assumed safe.
+                        // null correctly marks it unanswered until a real
+                        // chip tap sets it; sqBuilderFinish's own `BLD.qty
+                        // || 1` already defaults it back to 1 on read if the
+                        // step is ever skipped for an unrelated reason, so
+                        // this is safe on both ends.
+                        qty: null,
                         _stype: S.stype || null,
                         _cat: S.intent?.category || null,
                         // _groupId/_keyword normally only get set inside

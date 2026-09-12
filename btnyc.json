@@ -503,6 +503,15 @@
         "wall_mounting_drywall_or_plaster": [
           "disposal_request"
         ]
+      },
+      "excluded_services": {
+        "_note": "T118 (Step 6 item 7, per PENDING_DECISIONS.md #22, explicit operator direction): a targeted opt-out for a specific service within an otherwise-correct category/group default -- not a general exception mechanism to reach for casually. wall_mounting's own access default is genuinely right for TV/frame/drywall work at real heights and angles, but doesn't fit these two low-complexity, hourly-billed 'buy the hour' SKUs the same way; shelf_mortar_mounting_buy_the_hour (masonry, genuinely more variable) deliberately keeps access, so this exclusion is scoped to the two SKUs actually named/matching #22's own diagnosed shape, not every buy_the_hour service.",
+        "blinds_shades_curtains_buy_the_hour": [
+          "access"
+        ],
+        "shelf_mounting_standard_buy_the_hour": [
+          "access"
+        ]
       }
     },
     "pricing_engines": {
@@ -1773,13 +1782,14 @@
     {
       "id": "minor_home_repairs_ceilings",
       "category_id": "minor_home_repairs",
-      "display_name": "Ceilings",
+      "display_name": "Ceiling Tile Replacement",
       "icon": "🏢",
       "explicit_services": [],
       "dynamic_service_types": [
         "Repair"
       ],
-      "_note_new_group": "v9.6 NEW SERVICE (working design, per explicit instruction to build this out with best judgment -- clearly marked as such, needs business validation): created to give ceiling-specific work (starting with drop-ceiling/acoustic tile replacement) a real, distinct home -- confirmed directly this didn't already exist anywhere in the catalog before creating it."
+      "_note_new_group": "v9.6 NEW SERVICE (working design, per explicit instruction to build this out with best judgment -- clearly marked as such, needs business validation): created to give ceiling-specific work (starting with drop-ceiling/acoustic tile replacement) a real, distinct home -- confirmed directly this didn't already exist anywhere in the catalog before creating it.",
+      "_note_rename": "T118 (Step 6 item 6, per PENDING_DECISIONS.md #21, explicit operator direction): renamed from \"Ceilings\" -- the group's own real, dynamic-service-only content is ceiling-tile replacement specifically, not general ceiling repair (crack/water-damage/structural work), and the broader name risked setting the wrong customer expectation."
     }
   ],
   "services": [
@@ -2358,7 +2368,11 @@
         "MAT-MHR-DOR-Hinge"
       ],
       "optional_materials": [],
-      "suggested_tags": []
+      "suggested_tags": [],
+      "related_services": [
+        "cabinet_knob_or_pull_install"
+      ],
+      "_note_related_services": "T118 (Step 6 item 9, per PENDING_DECISIONS.md #25, explicit operator direction): real, user-confirmed confusion (T105) -- a customer wanting knob INSTALLATION landed on this service (cabinet_door_or_drawer_adjustment), a materially different job, via catalog navigation. related_services links the two so a customer who landed on the wrong one can be shown the other, real alternative directly, without needing to re-navigate the catalog from scratch. Does not fix the underlying catalog-discoverability root cause (#25's own text: 'likely connects to #21's own naming/discoverability question') -- a targeted, low-risk mitigation, not a claim the root cause is resolved."
     },
     {
       "id": "cabinet_knob_or_pull_install",
@@ -2439,7 +2453,11 @@
         "MAT-MHR-CAB-Knob"
       ],
       "optional_materials": [],
-      "suggested_tags": []
+      "suggested_tags": [],
+      "related_services": [
+        "cabinet_door_or_drawer_adjustment"
+      ],
+      "_note_related_services": "T118 (Step 6 item 9, per PENDING_DECISIONS.md #25, explicit operator direction): real, user-confirmed confusion (T105) -- a customer wanting knob INSTALLATION landed on this service (cabinet_knob_or_pull_install), a materially different job, via catalog navigation. related_services links the two so a customer who landed on the wrong one can be shown the other, real alternative directly, without needing to re-navigate the catalog from scratch. Does not fix the underlying catalog-discoverability root cause (#25's own text: 'likely connects to #21's own naming/discoverability question') -- a targeted, low-risk mitigation, not a claim the root cause is resolved."
     },
     {
       "id": "cable_management",
@@ -2792,13 +2810,12 @@
           "then": {}
         },
         {
-          "module": "tech_problem_type",
+          "module": "backup_source_device",
           "then": {}
         },
         {
           "module": "hybrid_qty",
-          "then": {},
-          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
+          "then": {}
         }
       ],
       "default_tags": [
@@ -5360,10 +5377,6 @@
         {
           "module": "global_quantity",
           "then": {}
-        },
-        {
-          "module": "mounting_height",
-          "then": {}
         }
       ],
       "default_tags": [
@@ -5391,7 +5404,8 @@
       ],
       "optional_materials": [
         "MAT-MNT-ANCH-Masonry"
-      ]
+      ],
+      "_note_t118_item7": "T118 (Step 6 item 7, per PENDING_DECISIONS.md #22, explicit operator direction): mounting_height removed. This SKU is billed by the hour, and its name signals a standard, typical installation -- unlike a flat-fee service, where height directly determines a fixed additional charge decided before work starts, hourly work naturally reflects real difficulty (including height) in the hours actually billed. shelf_mortar_mounting_buy_the_hour, also hourly but not a 'standard' SKU (masonry work, a genuinely different, more variable case), keeps its own mounting_height question -- this is a targeted fix for the specific SKU shape named, not a blanket rule for all hourly work."
     },
     {
       "id": "shower_head_replacement",
@@ -12208,9 +12222,9 @@
       },
       "intake_chain": [
         {
-          "module": "generic_tech_symptom",
+          "module": "cable_symptom",
           "then": {},
-          "_note": "T114 (Operator Brief, Session 3): was `symptom` (washer/dryer/dishwasher-shaped). Found during verification, not named in the original brief -- confirmed real and in-scope (tech_trouble category, same defect shape) via direct execution, not assumed unreachable just because this group's own dynamic_service_types only lists 'Install' (resolveDynamicService has no such gate; this entry is genuinely reachable). generic_tech_symptom is an IMPERFECT fit for cable-specific issues (e.g. 'Won't power on' doesn't really apply to a passive cable) -- flagged in PENDING_DECISIONS.md for content review rather than inventing a dedicated cable_symptom module outside this session's authorized scope of exactly three stub modules."
+          "_note": "T118 (Step 6 item 5, closes PENDING_DECISIONS.md #40's cable_management fit problem): was generic_tech_symptom, an imperfect fit confirmed at T114 ('Won't power on' doesn't apply to a passive cable). cable_symptom is authored specifically for this chain's own real content (tangled/damaged/hazard/routing/connection), not a borrowed catch-all."
         }
       ],
       "suggested_tags": [],
@@ -13783,7 +13797,7 @@
       "real_gaps": []
     },
     "minor_home_repairs_ceilings": {
-      "display_name": "Ceilings",
+      "display_name": "Ceiling Tile Replacement",
       "category_id": "minor_home_repairs",
       "routing_archetype": "component_first",
       "real_action_ids": [
@@ -15266,29 +15280,33 @@
       "affects_price": true
     },
     "network_symptom": {
-      "_note": "T114 (Operator Brief, Session 3): STUB per the brief's own instruction -- directional draft only, flagged in PENDING_DECISIONS.md for content review before being treated as final. Wired via tech_device's `then` branch for the Router/WiFi extender path.",
+      "_note": "T118 (Step 6 item 5, per PENDING_DECISIONS.md #40): expanded from the T114 stub to computer_symptom's own bar (8 real, distinct, customer-answerable options; the T114 stub's original 5 -- no internet, intermittent WiFi, slow/weak signal, won't power on, other -- are preserved as a subset, not replaced, since they were already reasonable). No longer a directional draft. Wired via tech_device's `then` branch for the Router/WiFi extender path. Deliberately NOT given any modifier_ref or #emergency tag on any option, matching computer_symptom's own established precedent.",
       "question": "What's the issue with the router or WiFi extender?",
       "type": "single",
       "client_response": [
         {
-          "label": "No internet connection at all",
-          "tags": []
+          "label": "No internet connection at all"
         },
         {
-          "label": "WiFi drops in and out",
-          "tags": []
+          "label": "WiFi drops in and out intermittently"
         },
         {
-          "label": "Slow speeds or weak signal in parts of the home",
-          "tags": []
+          "label": "Slow speeds or weak signal in parts of the home"
         },
         {
-          "label": "Won’t power on or reboots constantly",
-          "tags": []
+          "label": "Won’t power on or reboots constantly"
         },
         {
-          "label": "Other (describe in notes)",
-          "tags": []
+          "label": "Blinking or error lights on the device"
+        },
+        {
+          "label": "Can’t connect new devices to the network"
+        },
+        {
+          "label": "Forgot WiFi password or need the network renamed"
+        },
+        {
+          "label": "Other (describe in notes)"
         }
       ],
       "purpose": "pricing",
@@ -15296,25 +15314,30 @@
       "affects_price": true
     },
     "smart_device_symptom": {
-      "_note": "T114 (Operator Brief, Session 3): STUB per the brief's own instruction -- directional draft only, flagged in PENDING_DECISIONS.md for content review before being treated as final. Wired via tech_device's `then` branch for the Smart speaker/smart plug path.",
+      "_note": "T118 (Step 6 item 5, per PENDING_DECISIONS.md #40): expanded from the T114 stub to computer_symptom's own bar (7 real, distinct, customer-answerable options -- split \"unresponsive to voice commands or app controls\" into two separate, genuinely different failure modes, added randomly-disconnects and physical-damage). No longer a directional draft. Wired via tech_device's `then` branch for the Smart speaker/smart plug path. Deliberately NOT given any modifier_ref or #emergency tag on any option, matching computer_symptom's own established precedent.",
       "question": "What's the issue with the smart device?",
       "type": "single",
       "client_response": [
         {
-          "label": "Won’t connect to WiFi or the app",
-          "tags": []
+          "label": "Won’t connect to WiFi or the app"
         },
         {
-          "label": "Unresponsive to voice commands or app controls",
-          "tags": []
+          "label": "Unresponsive to voice commands"
         },
         {
-          "label": "Won’t power on",
-          "tags": []
+          "label": "Unresponsive to app controls"
         },
         {
-          "label": "Other (describe in notes)",
-          "tags": []
+          "label": "Won’t power on"
+        },
+        {
+          "label": "Randomly disconnects or loses settings"
+        },
+        {
+          "label": "Physical damage or a button not working"
+        },
+        {
+          "label": "Other (describe in notes)"
         }
       ],
       "purpose": "pricing",
@@ -15322,25 +15345,27 @@
       "affects_price": true
     },
     "generic_tech_symptom": {
-      "_note": "T114 (Operator Brief, Session 3): STUB per the brief's own instruction -- directional draft only, flagged in PENDING_DECISIONS.md for content review before being treated as final. Wired via tech_device's `then` branch for the Other/unlisted device path -- a deliberately generic catch-all, not device-specific.",
+      "_note": "T118 (Step 6 item 5, per PENDING_DECISIONS.md #40): expanded from the T114 stub to computer_symptom's own bar (6 real options; deliberately stays more generic than the device-specific modules by nature -- it's the catch-all for the Other/unlisted device type -- but adds connectivity and noise/heat as genuinely common cross-device failure modes the original 4 options didn't cover). No longer a directional draft. Wired via tech_device's `then` branch for the Other/unlisted device path. Deliberately NOT given any modifier_ref or #emergency tag on any option, matching computer_symptom's own established precedent.",
       "question": "What's the issue with the device?",
       "type": "single",
       "client_response": [
         {
-          "label": "Won’t power on",
-          "tags": []
+          "label": "Won’t power on"
         },
         {
-          "label": "Not working as expected",
-          "tags": []
+          "label": "Not working as expected or malfunctioning"
         },
         {
-          "label": "Visible physical damage",
-          "tags": []
+          "label": "Visible physical damage"
         },
         {
-          "label": "Other (describe in notes)",
-          "tags": []
+          "label": "Won’t connect to WiFi, Bluetooth, or an app"
+        },
+        {
+          "label": "Making an unusual noise or getting hot"
+        },
+        {
+          "label": "Other (describe in notes)"
         }
       ],
       "purpose": "pricing",
@@ -15627,33 +15652,24 @@
       "affects_price": true
     },
     "tech_issue_source": {
-      "question": "What is the source of the problem?",
+      "question": "What's the situation?",
       "type": "single",
+      "_note": "T118 (Step 6 item 8, per PENDING_DECISIONS.md #23, explicit operator direction): rewritten. The old question (\"What is the source of the problem?\") mixed two unrelated dimensions in one option list -- working-state (\"needs setup\" vs \"broken\") and device type (\"hard drive\" vs \"phone\") as sibling choices, confirmed confusing via direct user testing (T102). Confirmed via direct check that tech_issue_source is used exclusively by data_backup_or_transfer (not shared with computer_diagnostic or virus_or_malware_removal, unlike tech_problem_type), so a full rewrite here cannot affect any other service. The 'files may already be lost or corrupted' option carries the same modifier_ref data_backup_or_transfer previously got from the shared tech_problem_type module -- the real pricing signal is preserved, not dropped, just asked as part of a question actually about this service's own real situations rather than borrowed from a general-troubleshooting question that also covers viruses and pop-ups.",
       "client_response": [
         {
-          "label": "It’s working but needs setup",
-          "tags": [],
-          "complexity_override": "routine"
+          "label": "Getting a new device — need my files moved over"
         },
         {
-          "label": "It’s broken / not working",
-          "tags": [],
-          "complexity_override": "routine"
+          "label": "My current device is failing or already broken"
         },
         {
-          "label": "Hard drive",
-          "tags": [],
-          "complexity_override": "routine"
+          "label": "Just want a backup for safety"
         },
         {
-          "label": "Phone / mobile device",
-          "tags": [],
-          "complexity_override": "routine"
+          "label": "Files may already be lost or corrupted — need recovery",
+          "modifier_ref": "tech_problem_type_lost_or_corrupted_files"
         }
-      ],
-      "purpose": "pricing",
-      "confidence_gain": 20,
-      "affects_price": true
+      ]
     },
     "device_state": {
       "question": "What’s the current state of the device?",
@@ -16342,6 +16358,50 @@
       "confidence_gain": 20,
       "affects_price": true,
       "_note_new_module": "v9.6 NEW SERVICE (working design, per explicit instruction to build this out with best judgment -- clearly marked as such, needs business validation): real, distinct question from the existing ceiling_height module (that one is worded for wall/floor tile work near a high ceiling, not the ceiling itself -- reusing it would read confusingly here)."
+    },
+    "cable_symptom": {
+      "question": "What's the issue with the cables?",
+      "_note": "T118 (Step 6 item 5, per PENDING_DECISIONS.md #40): authored to replace generic_tech_symptom's imperfect fit for tech_trouble_cable_management's own Diagnostic chain -- a passive cable has no 'Won't power on' failure mode. Options describe cable-specific conditions (tangled/damaged/hazard/routing/connection), matching computer_symptom's own bar: real, distinct, customer-answerable options, not a directional draft. Deliberately NOT given any modifier_ref or #emergency tag on any option, matching computer_symptom's own established precedent -- both are real pricing/urgency decisions, not this item's to make.",
+      "client_response": [
+        {
+          "label": "Cables are tangled or disorganized"
+        },
+        {
+          "label": "A cable is damaged, frayed, or exposed"
+        },
+        {
+          "label": "Cables create a tripping or safety hazard"
+        },
+        {
+          "label": "Need cables hidden or run through a wall/floor"
+        },
+        {
+          "label": "Connection seems loose or intermittent"
+        },
+        {
+          "label": "Other (describe in notes)"
+        }
+      ],
+      "type": "single"
+    },
+    "backup_source_device": {
+      "question": "What device are the files on?",
+      "type": "single",
+      "_note": "T118 (Step 6 item 8, per PENDING_DECISIONS.md #23): authored to replace tech_problem_type for data_backup_or_transfer specifically -- that module is shared with computer_diagnostic and virus_or_malware_removal, where \"Virus or pop-ups\"/\"Running slow\" are genuinely relevant; neither applies to a backup/transfer request, confirmed confusing via direct user testing (T102). No modifier_ref on any option -- this is purely informational for the technician, not a pricing/complexity signal, matching how the old device-type options in tech_issue_source also carried none.",
+      "client_response": [
+        {
+          "label": "Computer or laptop"
+        },
+        {
+          "label": "External hard drive"
+        },
+        {
+          "label": "Phone or tablet"
+        },
+        {
+          "label": "Multiple devices"
+        }
+      ]
     }
   },
   "pricing_formulas": {
