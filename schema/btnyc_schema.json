@@ -232,6 +232,16 @@
                 "type": "array",
                 "items": { "type": "string" }
               }
+            },
+            "excluded_services": {
+              "type": "object",
+              "_note": "T118: optional, targeted opt-out for specific services within an otherwise-correct category/group default. Mixed shape: '_note' is a string, every other key is a service_id -> array of excluded module keys.",
+              "additionalProperties": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "array", "items": { "type": "string" } }
+                ]
+              }
             }
           }
         },
@@ -1490,6 +1500,11 @@
           "per_unit_answers_vary": {
             "type": "boolean",
             "description": "v9.5: when true, this service's intake answers genuinely describe ONE specific unit (e.g. a particular door's size/style/frame-removal status), not a generalizable per-unit fact that scales safely with quantity. Such a service should NOT show the qty stepper at all -- a customer needing this work done on two structurally different units (e.g. a front door vs. a bathroom door, each with its own size, material, and removal status) should book two SEPARATE service requests, each with its own correct, specific answers, rather than one qty=2 entry that can only carry a single shared set of answers and would silently misattribute one unit's specifics to both. Distinct from a real, generalizable quantity question (e.g. 'how many light bulbs' -- the answer genuinely is the same fact applied N times)."
+          },
+          "related_services": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "T118 (PENDING_DECISIONS.md #25): service IDs of other, real services this one is commonly confused with, most often via catalog navigation rather than free text (where NLP intent-matching already disambiguates better). Surfaced as a direct cross-link on the curated intake card so a customer who landed on the wrong one can switch without re-navigating the whole catalog. A targeted mitigation for confirmed, real confusion between two specific services -- not a general recommendation/upsell mechanism."
           }
         }
       }
