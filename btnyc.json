@@ -416,7 +416,8 @@
       "diagnostic_fee": 85,
       "credit_policy": "If you book the on‑site diagnostic, the $85 fee is fully credited toward any subsequent repair work."
     },
-    "force_modules_by_variability": {
+    "force_modules_by_variability_DEPRECATED": {
+      "_note": "T118 (operator brief: universal force-injection removed, per-service/group/category authoring instead). Renamed rather than deleted, per the operator's own 'easier to reverse' guidance -- no code reads this key anymore (see intake_defaults below and orch_compose_intake_chain's rewired precedence), so this is inert, preserved purely as a historical/reversibility record. Full audit: FORCE_INJECTION_AUDIT.md. Full reasoning for what replaced it: TIMELINE.md's T118 entry.",
       "low": [
         "hybrid_qty",
         "access",
@@ -437,6 +438,72 @@
         "access",
         "urgency"
       ]
+    },
+    "intake_defaults": {
+      "_note": "T118: replaces force_modules_by_variability_DEPRECATED. Precedence when resolving a service's real intake chain: service's own authored intake_chain > group_defaults[service's group] > category_defaults[service's category] > universal. A module is never added twice even if it would qualify at multiple levels. Full reasoning per category/group: TIMELINE.md T118, FORCE_INJECTION_AUDIT.md.",
+      "universal": [],
+      "category_defaults": {
+        "plumbing_help": [
+          "urgency",
+          "access"
+        ],
+        "tech_trouble": [
+          "urgency"
+        ],
+        "electric_lighting": [
+          "urgency",
+          "access"
+        ],
+        "wall_mounting": [
+          "access"
+        ]
+      },
+      "group_defaults": {
+        "minor_home_repairs_ceilings": [
+          "access",
+          "disposal_request"
+        ],
+        "minor_home_repairs_walls": [
+          "access",
+          "disposal_request"
+        ],
+        "minor_home_repairs_doors": [
+          "access"
+        ],
+        "minor_home_repairs_windows": [
+          "access"
+        ],
+        "minor_home_repairs_appliances_washer": [
+          "access"
+        ],
+        "minor_home_repairs_appliances_dryer": [
+          "access"
+        ],
+        "minor_home_repairs_appliances_stove_range": [
+          "access"
+        ],
+        "minor_home_repairs_appliances_refrigerator": [
+          "access"
+        ],
+        "minor_home_repairs_appliances_dishwasher": [
+          "access"
+        ],
+        "minor_home_repairs_appliances_microwave": [
+          "access"
+        ],
+        "minor_home_repairs_appliances_window_ac": [
+          "access"
+        ],
+        "minor_home_repairs_appliances_other": [
+          "access"
+        ],
+        "minor_home_repairs_floors_trim": [
+          "disposal_request"
+        ],
+        "wall_mounting_drywall_or_plaster": [
+          "disposal_request"
+        ]
+      }
     },
     "pricing_engines": {
       "flat_rate": {
@@ -999,7 +1066,8 @@
         "minor_home_repairs_floors_trim",
         "minor_home_repairs_furniture",
         "minor_home_repairs_walls",
-        "minor_home_repairs_windows"
+        "minor_home_repairs_windows",
+        "minor_home_repairs_ceilings"
       ]
     },
     {
@@ -1644,6 +1712,11 @@
         {
           "module": "access",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -1716,6 +1789,11 @@
         {
           "module": "length",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -1784,6 +1862,11 @@
         {
           "module": "mounting_height",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -1857,6 +1940,11 @@
         {
           "module": "action",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -2207,6 +2295,11 @@
         {
           "module": "install_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -2281,6 +2374,11 @@
         {
           "module": "mounting_height",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -2353,6 +2451,11 @@
         {
           "module": "mounting_height",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -2432,6 +2535,11 @@
         {
           "module": "mounting_height",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -2569,6 +2677,11 @@
         {
           "module": "tech_problem_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -2978,6 +3091,11 @@
         {
           "module": "door_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -3046,6 +3164,11 @@
         {
           "module": "space_ready",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -3467,6 +3590,11 @@
         {
           "module": "item_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -3538,6 +3666,11 @@
         {
           "module": "issue",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -3616,6 +3749,11 @@
         {
           "module": "wiring",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -3891,6 +4029,11 @@
         {
           "module": "laptop_or_desktop",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -4213,6 +4356,11 @@
         {
           "module": "has_matching_tiles",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -4369,6 +4517,11 @@
         {
           "module": "space_ready",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -4619,6 +4772,11 @@
         {
           "module": "sink_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -4764,6 +4922,11 @@
         {
           "module": "distance",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -4928,6 +5091,11 @@
         {
           "module": "damage_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -4999,6 +5167,11 @@
         {
           "module": "mounting_height",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -5149,6 +5322,11 @@
         {
           "module": "existing_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -5238,6 +5416,11 @@
         {
           "module": "single_fixture_or_multiple",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -5397,6 +5580,11 @@
         {
           "module": "brand",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -5544,6 +5732,11 @@
         {
           "module": "software_install_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -5694,6 +5887,11 @@
         {
           "module": "device_state",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -5753,6 +5951,11 @@
         {
           "module": "thermostat_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -5820,6 +6023,11 @@
         {
           "module": "toilet_symptom",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -5973,6 +6181,11 @@
         {
           "module": "leak_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -6045,6 +6258,11 @@
         {
           "module": "existing_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -6118,6 +6336,11 @@
         {
           "module": "length",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -6278,6 +6501,11 @@
         {
           "module": "tech_problem_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -6537,6 +6765,11 @@
         {
           "module": "space_ready",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -7147,6 +7380,11 @@
         {
           "module": "pax_interior_count",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "confidence_strategy": {
@@ -7218,6 +7456,11 @@
         {
           "module": "existing_toilet_type",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [
@@ -7285,6 +7528,11 @@
         {
           "module": "space_ready",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -7348,6 +7596,11 @@
         {
           "module": "space_ready",
           "then": {}
+        },
+        {
+          "module": "hybrid_qty",
+          "then": {},
+          "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
         }
       ],
       "default_tags": [],
@@ -8016,10 +8269,18 @@
         {
           "module": "tech_device",
           "then": {
-            "Computer (desktop or laptop)": ["computer_symptom"],
-            "Router or WiFi extender": ["network_symptom"],
-            "Smart speaker or smart plug": ["smart_device_symptom"],
-            "Other (describe in notes)": ["generic_tech_symptom"]
+            "Computer (desktop or laptop)": [
+              "computer_symptom"
+            ],
+            "Router or WiFi extender": [
+              "network_symptom"
+            ],
+            "Smart speaker or smart plug": [
+              "smart_device_symptom"
+            ],
+            "Other (describe in notes)": [
+              "generic_tech_symptom"
+            ]
           },
           "_note": "T114 (Operator Brief, Session 3, Charter §11 item 13): removed the unconditional `symptom` step (the shared washer/dryer/dishwasher-shaped module -- laptop customers were being asked whether the device 'won't drain' or 'won't spin'). Branches on tech_device's own answer instead, to the device-appropriate symptom module. Question count unchanged (still exactly 2 authored questions: tech_device, then exactly one symptom module) -- well under the specialized-tier §6E ceiling of 7."
         }
@@ -14847,11 +15108,11 @@
       "type": "single",
       "client_response": [
         {
-          "label": "Won\u2019t power on at all",
+          "label": "Won’t power on at all",
           "tags": []
         },
         {
-          "label": "Turns on but won\u2019t boot / stuck on loading",
+          "label": "Turns on but won’t boot / stuck on loading",
           "tags": []
         },
         {
@@ -14871,11 +15132,11 @@
           "tags": []
         },
         {
-          "label": "Won\u2019t connect to WiFi or internet",
+          "label": "Won’t connect to WiFi or internet",
           "tags": []
         },
         {
-          "label": "Battery won\u2019t charge or drains quickly",
+          "label": "Battery won’t charge or drains quickly",
           "tags": []
         },
         {
@@ -14905,7 +15166,7 @@
           "tags": []
         },
         {
-          "label": "Won\u2019t power on or reboots constantly",
+          "label": "Won’t power on or reboots constantly",
           "tags": []
         },
         {
@@ -14923,7 +15184,7 @@
       "type": "single",
       "client_response": [
         {
-          "label": "Won\u2019t connect to WiFi or the app",
+          "label": "Won’t connect to WiFi or the app",
           "tags": []
         },
         {
@@ -14931,7 +15192,7 @@
           "tags": []
         },
         {
-          "label": "Won\u2019t power on",
+          "label": "Won’t power on",
           "tags": []
         },
         {
@@ -14949,7 +15210,7 @@
       "type": "single",
       "client_response": [
         {
-          "label": "Won\u2019t power on",
+          "label": "Won’t power on",
           "tags": []
         },
         {
@@ -15501,8 +15762,7 @@
       ],
       "purpose": "scheduling",
       "confidence_gain": 10,
-      "affects_price": true,
-      "_orphan_backlog_note": "v9.6 DECIDED (explicit business decision, project owner): these 4 modules (parking_difficulty, disposal_request, pets_present, item_volume) will NOT be force-injected into every service via global_rules.force_modules_by_variability -- unlike urgency, which was the only one of the original v9.5 design's 5 intended modules actually wired that way. Decision: leave as optional, available via their own smart_tags (#no_parking, #disposal_needed, #pets_on_site, #high_volume) and any high-logistics category/group context, not as a universal question on every quote. No further action needed here."
+      "affects_price": true
     },
     "pets_present": {
       "question": "Do you have pets that may be loose in the home?",

@@ -1068,8 +1068,21 @@ function resolveBaseConfidenceStrategy(svc, dynDef) {
                 }
 
 function resolveForceModules(variabilityTier) {
-                    const map = DB.global_rules?.force_modules_by_variability || {};
-                    return map[variabilityTier] || ['hybrid_qty'];
+                    // T118: kept as a real, callable function -- deleting it outright
+                    // broke extract_engine.py's own hardcoded function list AND
+                    // automated_path_sweep.js's real, active call site, on top of the
+                    // ~30 test files that defensively reference it in their own FNS
+                    // extraction lists (confirmed the hard way: deleting it caused
+                    // MORE failures than leaving it, not fewer). Returns [] honestly
+                    // rather than guessing: this function's only argument is a
+                    // variability tier, and the new intake_defaults mechanism is
+                    // organized by category/group, not tier -- there is no longer a
+                    // tier-only answer to give. Real, load-bearing resolution happens
+                    // via the inlined category/group-aware logic in
+                    // orch_compose_intake_chain and sqPrepareFlow; callers that need
+                    // the real answer and have a category/group available should
+                    // resolve it the same way those two do, not call this function.
+                    return [];
                 }
 
 function applyLiveConfidenceEscalation(baseStrategy, activeTagIds, smartTags, escalationDef) {
@@ -2390,7 +2403,20 @@ function computeUnifiedQuote(ctx) {
                         ? (liveStrategy.base_confidence || 0) + Math.min(20, keywordConfidence * 0.2)
                         : 100;
                     const meetsConfidenceBar = totalConfidence >= liveStrategy.minimum_quote_confidence;
-                    const forceModules = resolveForceModules(variabilityTier);
+                    // T118 FIX: was resolveForceModules(variabilityTier) ->
+                    // force_modules_by_variability[tier], unconditional. Purely
+                    // informational (this field is only ever read for the trace
+                    // export below, nothing in this function's own pricing math
+                    // depends on it) -- inlined and gracefully degrades to [] when
+                    // only dynDef (no ui_taxonomy) is available, rather than
+                    // guessing a category/group for a dynamic-service entity this
+                    // function has no reliable way to resolve one for.
+                    const _idefs = DB.global_rules?.intake_defaults || {};
+                    const forceModules = [...new Set([
+                        ...(_idefs.universal || []),
+                        ...(_idefs.category_defaults?.[svc?.ui_taxonomy?.category_id] || []),
+                        ...(_idefs.group_defaults?.[svc?.ui_taxonomy?.group_id] || []),
+                    ])];
 
                     // Divergence Resolution ("Fork in the Road" -- PROJECT_GOALS §9/10):
                     // when a route has genuinely hit the diagnostic dead end
@@ -2739,7 +2765,13 @@ window._traceInput = null; // the raw input (free text or a structured action li
 // qr.html edit after it existed -- caught this value still reading
 // 'T109' after the detectIntentNLP cross-entry fix landed, exactly the
 // drift this test exists to catch. Bumped to 'T112'.
-const QR_BUILD_VERSION = 'T112';
+//
+// T115 UPDATE: caught again, exactly as designed, after
+// sqBuildCuratedIntake's confidence-formula fix. Bumped to 'T115'.
+// (T114 touched only btnyc.json, no qr.html edit, so no bump was due
+// between T112 and T115 -- confirmed by this test itself staying green
+// through that session.)
+const QR_BUILD_VERSION = 'T118';
 
 // A simple, fast, synchronous string hash (djb2) -- not cryptographic,
 // deliberately: the real, stated purpose here is "are we looking at the
@@ -5047,20 +5079,33 @@ function orch_compose_intake_chain(context, resolution, db) {
                     const entity = resolution.entity;
                     if (!entity) return [];
                     const allMods = typeof _resolveIntakeChain === 'function' ? _resolveIntakeChain(entity) : (entity.intake_chain || []);
-                    const tier = entity.confidence_strategy?._variability_tier || 'medium';
-                    // v9.5 FIX (found while building the intake-chain diff
-                    // comparison): the legacy code's equivalent computation
-                    // (S._forceModules, set in sqPrepareFlow) has a defensive
-                    // fallback -- force in 'hybrid_qty' if the tier doesn't
-                    // resolve to a real key in force_modules_by_variability.
-                    // This orchestrator function had no equivalent fallback,
-                    // defaulting to an empty array instead. Confirmed
-                    // theoretical for all current real data (every service's
-                    // tier genuinely exists in force_modules_by_variability),
-                    // but a future malformed/unrecognized tier would cause the
-                    // two engines to silently diverge. Fixed to match the
-                    // legacy's more defensive, battle-tested behavior.
-                    const forceMods = db.global_rules?.force_modules_by_variability?.[tier] || ['hybrid_qty'];
+                    // T118 FIX: was force_modules_by_variability[tier] -- unconditional,
+                    // ignored category/group entirely. Now resolves the real
+                    // categoryId/groupId for whichever entity kind this is (a real
+                    // service carries it on ui_taxonomy directly; the BookingContext
+                    // itself already carries the customer's selected category/group
+                    // for every entry path, including dynamic-service resolutions,
+                    // since resolveDynamicService needed them to do the lookup in the
+                    // first place -- context is the more reliable source for dynamic
+                    // entities specifically, since dynDef-shaped objects carry no
+                    // category/group fields of their own; confirmed directly, not
+                    // assumed, by checking a real dynamic_services entry's own keys).
+                    // Resolution logic is inlined (not a separately-called helper)
+                    // deliberately: many existing tests extract this exact function in
+                    // isolation via their own FNS lists for VM sandboxing, and a
+                    // separate helper function would silently ReferenceError in every
+                    // one of them unless each test's own list were individually
+                    // updated -- confirmed the hard way (18 real test failures) before
+                    // this fix. Precedence: group_defaults > category_defaults >
+                    // universal, deduplicated.
+                    const categoryId = context.selectedCategoryId || entity.ui_taxonomy?.category_id || null;
+                    const groupId = context.selectedGroupId || entity.ui_taxonomy?.group_id || null;
+                    const defs = db.global_rules?.intake_defaults || {};
+                    const forceMods = [...new Set([
+                        ...(defs.universal || []),
+                        ...(defs.category_defaults?.[categoryId] || []),
+                        ...(defs.group_defaults?.[groupId] || []),
+                    ])];
                     const existingKeys = new Set(allMods.map(m => m.moduleKey || m.module));
                     const composed = allMods.slice();
                     const ownModuleKeys = allMods.map(m => m.moduleKey || m.module);
@@ -5073,8 +5118,8 @@ function orch_compose_intake_chain(context, resolution, db) {
                         }
                     });
                     if (typeof _trace === 'function') _trace('orchestrator_engine', 'orch_compose_intake_chain: chain composed', {
-                        variabilityTier: tier, ownAuthoredModules: ownModuleKeys,
-                        universallyForcedCandidates: forceMods, actuallyAddedByForce: forcedAdded,
+                        categoryId, groupId, ownAuthoredModules: ownModuleKeys,
+                        intakeDefaultCandidates: forceMods, actuallyAddedFromDefaults: forcedAdded,
                         finalComposedModules: composed.map(m => m.moduleKey || m.module),
                     });
                     return composed;
@@ -12158,33 +12203,27 @@ function sqBuildCuratedIntake(svc) {
                         });
 
                         // ── CONFIDENCE CALCULATION ───────────────────────────────────
-                        // SSOT: confidence = base + module gains + NLP match + tag complexity.
-                        // This is an INTERNAL metric — drives the estimate button gate only.
-                        // Not shown to the user: the adlib sentence + answered dot indicators
-                        // communicate progress better than a % bar would.
-                        const _baseConf2 = svc.confidence_strategy?.base_confidence ?? 40;
-                        let conf = _baseConf2;
-                        // Module gains (already answered, visible)
-                        realMods.forEach(mod => {
-                            if (_isModVisible(mod, answers, allMods) && answers[mod.moduleKey])
-                                conf += (mod.confidence_gain || 15);
-                        });
-                        // NLP match contribution — if the user's typed text already
-                        // identified this service with high confidence, that should
-                        // count toward the estimate bar (avoids requiring unnecessary
-                        // questions when NLP is already 85% sure of the intent).
-                        const nlpBonus = Math.min(20, (S.intent?._matchConfidence || 0) * 0.2);
-                        conf += nlpBonus;
-                        // Active tag complexity contribution — a user who has explicitly
-                        // confirmed a complexity tag (#heavy_item, #high_ceiling) has
-                        // provided real, pricing-relevant information that raises confidence.
+                        // T115 FIX (Operator Brief, Session 4, Charter §11 item 3): was
+                        // a hand-rolled, third, independent confidence formula
+                        // (base_confidence + module gains + NLP match + tag complexity)
+                        // that disagreed with the canonical orch_compute_confidence used
+                        // everywhere else -- confirmed real and customer-visible: on
+                        // minimum_quote_confidence: 90 services, this formula could stay
+                        // under 90 even with every question answered (base_confidence is
+                        // typically 30-40, and module/NLP/tag bonuses are individually
+                        // capped), permanently disabling the Estimate button.
+                        // sqBuildCuratedIntake is reached only via catalog taps and the
+                        // divergence-path return -- both mean "customer chose this exact
+                        // service by name," which is exactly orch_compute_confidence's
+                        // own entryType: 'catalog' case: direct taps score confidence 100
+                        // unconditionally (see that function's own v9.5 FIX comment),
+                        // since intent is certain regardless of how many intake
+                        // questions have been answered yet. { entity: svc } matches the
+                        // exact resolution shape this same function already passes to
+                        // orch_compose_intake_chain a few lines above -- not a new
+                        // convention introduced here.
                         const activeTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
-                        const tagBonus = Math.min(15, activeTagIds.reduce((sum, tid) => {
-                            const co = tags[tid]?.escalate_complexity ?? tags[tid]?.effects?.complexity_override;
-                            return sum + (co === 'specialized' ? 10 : co === 'skilled' ? 5 : 0);
-                        }, 0));
-                        conf += tagBonus;
-                        conf = Math.min(conf, 100);
+                        const conf = orch_compute_confidence({ entity: svc }, activeTagIds, S.intent?._matchConfidence || 0, DB, 'catalog').score;
                         const ready = conf >= minConf;
 
                         // Total tag fee from currently-active tags (detTagIds + manTagIds)
@@ -12987,13 +13026,23 @@ function sqPrepareFlow(skipStep2) {
                     }
                     S._confidenceStrategy = liveStrategy;
                     S._escalatedBy = escalatedBy;
-                    // SSOT: force_modules_by_variability — which intake modules MUST
-                    // be present in this job's chain, keyed by variability tier
-                    // (not the separate NLP-confidence-tier vocabulary in
-                    // confidence_tiers, which describes a different axis — see
-                    // global_rules.force_modules_by_variability for why these are
-                    // two distinct concepts that shouldn't be conflated).
-                    S._forceModules = DB.global_rules?.force_modules_by_variability?.[liveStrategy._variability_tier] || ['hybrid_qty'];
+                    // T118 FIX: was force_modules_by_variability[tier], unconditional.
+                    // Legacy equivalent of orch_compose_intake_chain's own T118 fix,
+                    // inlined the same way and for the same reason (FNS-list
+                    // extraction safety -- see that function's own comment).
+                    // S.intent.category/S.intent._groupId are populated for every real
+                    // entry path this function runs under (catalog taps synthesize an
+                    // intent-shaped object via prefillSmartQuoteFromService/
+                    // prefillSmartQuoteFromOtherTile; free-text populates it directly
+                    // from detectIntentNLP).
+                    {
+                        const _defs = DB.global_rules?.intake_defaults || {};
+                        S._forceModules = [...new Set([
+                            ...(_defs.universal || []),
+                            ...(_defs.category_defaults?.[S.intent?.category] || []),
+                            ...(_defs.group_defaults?.[S.intent?._groupId] || []),
+                        ])];
+                    }
 
                     if (skipStep2) {
                         sqBuildStep2();
