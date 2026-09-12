@@ -1755,6 +1755,34 @@ function sqTagLabel(t, tid) {
                     return t.ui_phrase || t.label || t.display_name || tid.replace('#', '').replace(/_/g, ' ');
                 }
 
+function sqTagFeeImpact(tid) {
+                    // T118 (Step 6 item 10, per PENDING_DECISIONS.md #26): a
+                    // tag's real fee impact can no longer be read from its own
+                    // `effects.fee` for most tags -- confirmed directly, not
+                    // assumed: the v9.5 migration retired fee/minutes from
+                    // individual smart_tags in favor of applying them through
+                    // the module-answer mechanism instead (each tag's own
+                    // `answers` field names which module/label it synthesizes,
+                    // e.g. #access_obstructed -> { access: 'Very cramped or
+                    // hard to reach' }). Traces from the tag's own source
+                    // definition through to the real modifier fee, rather than
+                    // trying to correlate an already-computed feeBreakdown
+                    // entry back to a specific tag id after the fact (multiple
+                    // tags can point at the same module/answer, and a
+                    // feeBreakdown entry doesn't retain which tag, if any,
+                    // produced it once merged with directly-answered
+                    // questions).
+                    const tag = DB.smart_tags?.[tid];
+                    if (!tag || !tag.answers) return 0;
+                    let total = 0;
+                    for (const [moduleKey, label] of Object.entries(tag.answers)) {
+                        const resp = (DB.intake_modules?.[moduleKey]?.client_response || []).find(r => r.label === label);
+                        const mod = resp?.modifier_ref ? DB.global_rules?.modifiers?.[resp.modifier_ref] : null;
+                        total += mod?.fee || 0;
+                    }
+                    return total;
+                }
+
 function mathFurnitureAssembly(items) {
                     if (!items.length) return {
                         hours: 0,
@@ -8166,7 +8194,18 @@ function renderCuratedCardFromRoute(route) {
             const relSvc = (DB.services || []).find(s => s.id === relId);
             if (!relSvc) return;
             const relName = relSvc.ui_taxonomy?.display_name || relId;
-            html += `Looking for <strong>${relName}</strong> instead?
+            // T118 CORRECTION: an earlier version of this line omitted
+            // escapeHtml() on the mistaken belief that no such function
+            // exists in this codebase -- confirmed directly this was
+            // wrong: it's declared as `const escapeHtml = (str) => {...}`
+            // (an arrow function, not a `function` statement, which is
+            // why an overly narrow grep pattern missed it), and it's the
+            // dominant, established convention across dozens of call
+            // sites in this exact file, including the closely analogous
+            // "insert a recommended service's display name into HTML"
+            // pattern at this file's own affirm-rec-name rendering.
+            // Corrected here rather than left as shipped.
+            html += `Looking for <strong>${escapeHtml(relName)}</strong> instead?
                       <button class="related-service-switch" data-related-svc="${relId}"
                           style="background:none;border:none;color:#8a0615;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;font-size:inherit;">
                           Switch to that
@@ -10530,9 +10569,35 @@ function sqRenderQuote() {
                             '<span class="qlv ' + (q.extraFee < 0 ? 'g' : '') + '">' + (q.extraFee >= 0 ? '+' : '') + '$' + q.extraFee + '</span></div>' :
                             '');
 
-                    const tagsRow = q.activeLabels.length ?
-                        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px">' +
-                        q.activeLabels.map(l => '<span class="chip gtag" style="cursor:default;font-size:12px;padding:4px 12px"><i class="ti ti-check"></i> ' + l + '</span>').join('') +
+                    // T118 (Step 6 item 10, per PENDING_DECISIONS.md #26,
+                    // explicit operator direction): was a single, flat row of
+                    // q.activeLabels in whatever order they happened to
+                    // accumulate -- confirmed directly, not a guess, that this
+                    // is the real "Special Conditions" chip row the operator's
+                    // own testing found unordered and cluttered relative to
+                    // the "We understood" summary above it. Reordered by real
+                    // fee impact (sqTagFeeImpact, traced from each tag's own
+                    // authored answers -- not the mostly-retired effects.fee
+                    // field) so the conditions actually affecting price are
+                    // what a customer sees first; zero-fee conditions
+                    // (display-only, informational) collapse into a single,
+                    // small toggle instead of taking the same visual weight
+                    // as fee-bearing ones.
+                    const _activeTids = [...new Set([...(S.detTagIds || []), ...(S.manTagIds || [])])]
+                        .filter(tid => !(S.negatedTagIds || []).includes(tid));
+                    const _tidInfo = _activeTids.map(tid => ({
+                        tid, label: sqTagLabel(DB.smart_tags?.[tid], tid), fee: sqTagFeeImpact(tid),
+                    }));
+                    const _feeBearing = _tidInfo.filter(t => t.fee > 0).sort((a, b) => b.fee - a.fee);
+                    const _zeroFee = _tidInfo.filter(t => t.fee <= 0);
+                    const _chip = t => '<span class="chip gtag" style="cursor:default;font-size:12px;padding:4px 12px"><i class="ti ti-check"></i> ' + t.label + '</span>';
+                    const tagsRow = _tidInfo.length ?
+                        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px" id="sqConditionsRow">' +
+                        _feeBearing.map(_chip).join('') +
+                        (_zeroFee.length ?
+                            '<span class="chip gtag" id="sqZeroFeeToggle" style="cursor:pointer;font-size:12px;padding:4px 12px;opacity:.65" onclick="sqToggleZeroFeeConditions()">+' + _zeroFee.length + ' more detail' + (_zeroFee.length > 1 ? 's' : '') + '</span>' +
+                            '<span id="sqZeroFeeConditions" style="display:none">' + _zeroFee.map(_chip).join('') + '</span>'
+                            : '') +
                         '</div>' :
                         '';
 
@@ -10570,6 +10635,24 @@ function sqRenderQuote() {
                         behavior: 'smooth',
                         block: 'start'
                     });
+                }
+
+function sqToggleZeroFeeConditions() {
+                    // T118 (Step 6 item 10, per PENDING_DECISIONS.md #26):
+                    // simple show/hide toggle for the collapsed, zero-fee
+                    // conditions group -- deliberately plain (no animation,
+                    // no separate state tracked in S) since the whole row
+                    // regenerates fresh, collapsed, on every sqRenderQuote()
+                    // call anyway (e.g. after answering another question),
+                    // matching how a customer would expect a "more details"
+                    // disclosure to behave: open while looking, collapsed
+                    // again once something else changes.
+                    const el = document.getElementById('sqZeroFeeConditions');
+                    const toggle = document.getElementById('sqZeroFeeToggle');
+                    if (!el || !toggle) return;
+                    const isHidden = el.style.display === 'none';
+                    el.style.display = isHidden ? 'contents' : 'none';
+                    toggle.style.display = isHidden ? 'none' : '';
                 }
 
 function sqRestart() {
@@ -11959,8 +12042,27 @@ function sqBuildAdlib() {
                     // ── Object noun ───────────────────────────────────────────────
                     const rawKw = (S.intent?.key || '').toLowerCase();
                     const lbl = S.intent?.label || '';
+                    // T118 (Step 6 item 12, per PENDING_DECISIONS.md #28,
+                    // definitively confirmed via a real, full jsdom render
+                    // rather than static code reading alone -- see this
+                    // item's own verification test): falling back to the
+                    // full service label when S._objectNoun is unset is the
+                    // right general idea (confirmed correct, kept as-is),
+                    // but for a label ending in a nominalized action word
+                    // (e.g. "Cabinet Door or Drawer Adjustment"), using the
+                    // WHOLE label as the noun produces a real, confirmed,
+                    // awkward redundancy once the verb is appended: "I need
+                    // 1 Cabinet Door or Drawer Adjustment adjusted". Strips
+                    // exactly one trailing action-suffix word, a small,
+                    // static, low-risk list rather than a general rewrite of
+                    // this fallback's own broader logic (deliberately not
+                    // touched otherwise -- it's correct for the common case,
+                    // confirmed directly against several other real service
+                    // names during this fix).
+                    const _actionSuffixes = /\s+(Adjustment|Replacement|Repair|Installation|Install|Assembly|Configuration|Setup|Diagnostic)$/i;
+                    const _cleanedLbl = lbl.replace(_actionSuffixes, '').trim();
                     let noun = S._objectNoun ||
-                        (lbl.toLowerCase() !== rawKw && lbl.length > 2 ? lbl : null) ||
+                        (lbl.toLowerCase() !== rawKw && _cleanedLbl.length > 2 ? _cleanedLbl : null) ||
                         'item';
 
                     // ── Classify scope tags by display_group ──────────────────────
