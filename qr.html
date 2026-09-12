@@ -2029,6 +2029,21 @@ function computeUnifiedQuote(ctx) {
 
 
                     let extraFee = 0, extraMin = 0;
+                    // T118 #29 FIX: extraFee (above) is now specifically the PER-UNIT
+                    // fee bucket -- everything that should scale with quantity (frame
+                    // demo, per-door labor, material-condition modifiers). perVisitFee
+                    // is the NEW, separate bucket for costs that are logically one-time
+                    // regardless of how many units are worked on in the same visit
+                    // (access, urgency, parking, disposal, pets, item_volume -- exactly
+                    // the six modules PENDING_DECISIONS.md #29 named). Populated below,
+                    // in the one place these six are ever actually priced (the generic
+                    // answer -> modifier_ref loop; confirmed directly via
+                    // FORCE_INJECTION_AUDIT.md's own code trace that no other extraFee
+                    // += site anywhere in this function can produce one of these six).
+                    // Added to the final laborEstimate OUTSIDE the qtyMultiplier
+                    // instead of inside it -- see that formula, below, for the fix
+                    // itself.
+                    let perVisitFee = 0;
                     const activeLabels = [];
                     const feeBreakdown = [];
 
@@ -2173,9 +2188,24 @@ function computeUnifiedQuote(ctx) {
                             // nested effects.{fee,minutes,complexity_override,
                             // checkout_state_override} pattern).
                             const m = chosen.modifier_ref ? (_mods[chosen.modifier_ref] || {}) : {};
-                            extraFee += m.fee || 0;
+                            // T118 #29 FIX: was unconditionally `extraFee += m.fee || 0`
+                            // -- every answer-driven fee, including access/urgency/
+                            // parking/disposal/pets/item_volume, fed the SAME bucket
+                            // that later gets multiplied by qty. Routes by the
+                            // modifier's own new `scope` field instead. Defaults to
+                            // 'per_unit' (extraFee) when scope is absent -- confirmed
+                            // directly that every modifier in the current catalog now
+                            // has an explicit scope (see the classification pass in
+                            // TIMELINE.md's T118 Step 6 item 1 entry), so this default
+                            // is a safety net for future data, not a live behavior for
+                            // any modifier today.
+                            if (m.scope === 'per_visit') {
+                                perVisitFee += m.fee || 0;
+                            } else {
+                                extraFee += m.fee || 0;
+                            }
                             extraMin += m.minutes || 0;
-                            if (m.fee) feeBreakdown.push({ source: 'answer', moduleKey, label: (mod.question ? mod.question + ': ' : '') + answerLabel, fee: m.fee });
+                            if (m.fee) feeBreakdown.push({ source: 'answer', moduleKey, label: (mod.question ? mod.question + ': ' : '') + answerLabel, fee: m.fee, scope: m.scope || 'per_unit' });
                             const ov = chosen.complexity_override;
                             if (ov && (RANK[ov] || 0) > (RANK[answerOverrideTier] || 0)) {
                                 answerOverrideTier = ov;
@@ -2303,10 +2333,18 @@ function computeUnifiedQuote(ctx) {
                     // checks always agree with each other by construction.
                     const qtyMultiplier = (qtyAlreadyAppliedByFormula || qtyAlreadyAppliedByOwnQuestion) ? 1 : qty;
                     let laborEstimate;
+                    // T118 #29 FIX: perVisitFee is added OUTSIDE the * qtyMultiplier
+                    // multiplication, on both branches -- applied exactly once
+                    // regardless of quantity, whether qtyMultiplier is 1 (already
+                    // handled elsewhere) or the real qty (the actual bug case this
+                    // fixes). This is the complete fix: `(base + extraFee) *
+                    // qtyMultiplier` was the entire formula PENDING_DECISIONS.md #29
+                    // diagnosed -- multiplying access/urgency/parking/disposal/pets/
+                    // item_volume fees by quantity when they're logically one-time.
                     if (isFlatRate) {
-                        laborEstimate = Math.round((base + extraFee) * qtyMultiplier);
+                        laborEstimate = Math.round((base + extraFee) * qtyMultiplier) + perVisitFee;
                     } else {
-                        laborEstimate = Math.round((base + extraFee + (totalMin / 60) * effectiveHourlyRate) * qtyMultiplier);
+                        laborEstimate = Math.round((base + extraFee + (totalMin / 60) * effectiveHourlyRate) * qtyMultiplier) + perVisitFee;
                     }
 
                     // GAP 2 FIX completion: if computeArchetypeQuote produced a result
@@ -2464,7 +2502,7 @@ function computeUnifiedQuote(ctx) {
                     const friction = Math.max(0, frictionThreshold - totalConfidence);
 
                     if (typeof _trace === 'function') _trace('pricing_engine', 'computeUnifiedQuote: final quote computed', {
-                        base, extraFee, extraMin, totalMin, complexityTier,
+                        base, extraFee, perVisitFee, extraMin, totalMin, complexityTier,
                         tierRate: effectiveHourlyRate, laborEstimate, dispatchFee,
                         checkoutStateKey, activeLabels, feeBreakdown,
                         meetsConfidenceBar, totalConfidence,
@@ -2480,7 +2518,7 @@ function computeUnifiedQuote(ctx) {
                         friction, frictionThreshold,
                     });
                     return {
-                        base, extraFee, extraMin, totalMin,
+                        base, extraFee, perVisitFee, extraMin, totalMin,
                         complexityTier, tierRate: effectiveHourlyRate,
                         laborEstimate, qty, activeLabels, feeBreakdown, dispatchFee,
                         checkoutStateKey,
@@ -3336,14 +3374,48 @@ function extractCondition(text) {
 // ───────────────────────── ANALYSIS pipeline ─────────────────────────
 
 function detectIntentNLP(text) {
-                    const lower = text.toLowerCase();
+                    // T118 #30 FIX (PENDING_DECISIONS.md #30): real, user-captured
+                    // trace -- "I need a bed assembled. [...] produces irrelevant
+                    // questions like Drywall or plaster..." matched "plaster", a
+                    // word appearing only in the customer's OWN parenthetical
+                    // complaint about the app, and routed the entire quote to
+                    // brick_or_concrete_crack_repair instead of furniture
+                    // assembly. Two changes, both applied before any scoring:
+                    // (1) strip quoted/parenthetical/bracketed spans entirely --
+                    // this is where incidental complaints/asides/meta-commentary
+                    // live, not the customer's actual stated need; (2) compute
+                    // primaryRegionEnd, the character offset ending the first
+                    // ~15 words of what remains, so the scoring loop below can
+                    // weight matches found only beyond it. Both are deliberately
+                    // narrow, additive preprocessing steps -- the scoring loop
+                    // itself, and everything after it (cross-entry specificity,
+                    // resolver precedence, etc.), is unchanged in structure,
+                    // only in the weight each match contributes and in whether
+                    // the FINAL winner may carry a recommendedSku. See the
+                    // weight application (search "positionWeight") and the
+                    // recommendedSku suppression at this function's return for
+                    // the other two pieces.
+                    const _stripped = (text || '').replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ').replace(/"[^"]*"/g, ' ').replace(/'[^']*'/g, ' ');
+                    const _primaryWordMatch = _stripped.trim().match(/^(?:\S+\s+){0,14}\S+/);
+                    const primaryRegionEnd = _primaryWordMatch ? _primaryWordMatch[0].length : _stripped.length;
+                    const matchesInRegion = (fullText, term, endIndex) => {
+                        if (!term) return false;
+                        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const silentEDrop = term.endsWith('e') ? escaped.slice(0, -1) : null;
+                        const altPattern = silentEDrop ? '|' + silentEDrop + '(?:ed|ing)' : '';
+                        const re = new RegExp('\\b(?:' + escaped + "(?:'?s|es|ed|ing)?" + altPattern + ')\\b', 'i');
+                        const m = re.exec(fullText);
+                        return !!(m && m.index < endIndex);
+                    };
+                    const lower = _stripped.toLowerCase();
                     let maps = DB.intent_mappings || [];
                     if (!Array.isArray(maps) && maps.objects) maps = maps.objects;
                     const normStype = s => (window._normServiceType ? window._normServiceType(s) : (s || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
 
                     let best = null,
                         top = 0,
-                        bestMapping = null;
+                        bestMapping = null,
+                        bestMatchedFromPrimary = false;
                     // T112 FIX (PENDING_DECISIONS #37): pure extraction, zero
                     // behavior change -- factored out so the new cross-entry
                     // specificity check below (after the main loop) can build
@@ -3413,7 +3485,16 @@ function detectIntentNLP(text) {
                         const kw = (m.keyword || '').toLowerCase(),
                             w = m.confidence_weight || 30;
                         const kwMatched = !!(kw && wordBoundaryIncludes(lower, kw));
-                        if (kwMatched) score += w;
+                        // T118 #30 FIX: a match found only beyond the first ~15
+                        // words scores at half weight, same reduction factor
+                        // already established for generic (non-full-weight)
+                        // synonyms above -- reusing a familiar number rather
+                        // than inventing a new one. kwInPrimary tracks whether
+                        // THIS specific match is strong (primary) or incidental,
+                        // for the recommendedSku gate at the return.
+                        const kwInPrimary = kwMatched && matchesInRegion(lower, kw, primaryRegionEnd);
+                        let matchedFromPrimary = false;
+                        if (kwMatched) { score += kwInPrimary ? w : w * .5; matchedFromPrimary = matchedFromPrimary || kwInPrimary; }
                         if (Array.isArray(m.synonyms))
                             m.synonyms.forEach(s => {
                                 if (typeof s !== 'string') return;
@@ -3446,7 +3527,16 @@ function detectIntentNLP(text) {
                                     // weight too, not the generic half-weight
                                     // every other synonym gets.
                                     const isFullWeight = Array.isArray(m.full_weight_synonyms) && m.full_weight_synonyms.includes(sl);
-                                    score += isFullWeight ? w : w * .5;
+                                    // T118 #30 FIX: same position weighting as
+                                    // the primary keyword match above, compounded
+                                    // with (not replacing) the existing full/half
+                                    // -weight synonym distinction -- a
+                                    // full-weight synonym found only in the
+                                    // incidental region still scores lower than
+                                    // one found in the primary region.
+                                    const synInPrimary = matchesInRegion(lower, sl, primaryRegionEnd);
+                                    matchedFromPrimary = matchedFromPrimary || synInPrimary;
+                                    score += (isFullWeight ? w : w * .5) * (synInPrimary ? 1 : .5);
                                 }
                             });
                         score = Math.min(score, 100);
@@ -3486,6 +3576,7 @@ function detectIntentNLP(text) {
                             top = resolverShouldWin ? Math.max(score, top) : score;
                             bestMapping = m;
                             best = buildCandidate(m, score);
+                            bestMatchedFromPrimary = matchedFromPrimary;
                         }
                     }
 
@@ -3799,12 +3890,33 @@ function detectIntentNLP(text) {
                             }
                         }
                     }
+                    // T118 #30 FIX: "require minimum match support before
+                    // committing to a named service on a single incidental
+                    // keyword" -- the third piece of PENDING_DECISIONS.md #30's
+                    // fix. bestMatchedFromPrimary is false only when EVERY
+                    // match contributing to this winner's score came from
+                    // beyond the first ~15 words (the "plaster" trace's exact
+                    // shape). Deliberately does NOT suppress category/stype/
+                    // group -- general routing on a weak signal is still
+                    // better than no routing -- only the specific, named-
+                    // service commitment a customer would see as a confident
+                    // recommendation. Checked AFTER contextual_override and
+                    // the description-based sibling override above (not
+                    // before): both represent genuine, ADDITIONAL evidence
+                    // beyond the single incidental keyword -- exactly what
+                    // "minimum match support" means to require, not a reason
+                    // to suppress harder.
+                    if (best && !bestMatchedFromPrimary && !best._hadContextualOverride && !best._descriptionOverride) {
+                        best.recommendedSku = null;
+                        best._recommendedSkuSuppressedIncidental = true;
+                    }
                     if (typeof _trace === 'function') _trace('nlp_engine', 'detectIntentNLP: intent matched', {
                         rawText: text, winningKeyword: best?.key || null,
                         matchConfidence: best?._matchConfidence ?? null,
                         category: best?.category || null, dynamicRule: best?.dynamic_rule || null,
                         recommendedSku: best?.recommendedSku || null,
                         hadContextualOverride: !!best?._hadContextualOverride,
+                        recommendedSkuSuppressedIncidental: !!best?._recommendedSkuSuppressedIncidental,
                     });
                     return best;
                 }
@@ -5669,6 +5781,21 @@ function collectBookingContext_freeText(rawText) {
                 }
 
 function makeBookingContext(entry, overrides) {
+                    // T118 FIX (PENDING_DECISIONS.md #33): makeBookingContext's own
+                    // defaults never included `answers` at all -- confirmed
+                    // directly, not assumed -- so a fresh context (from ANY entry
+                    // path: catalog, other_tile, free_text) had no `.answers` field
+                    // until something explicitly set one after the fact. Harmless
+                    // for executeWorkflow's own T108 fix specifically
+                    // (`context.answers || {}` already degrades safely), but a real
+                    // gap in the object's own contract -- any other consumer
+                    // reading `context.answers` directly, without the `|| {}`
+                    // guard, would see undefined rather than an empty object.
+                    // Fixed here, once, at the single shared default rather than
+                    // in collectBookingContext_catalog specifically (or any other
+                    // individual collector) -- every real entry path already
+                    // flows through this one function's Object.assign, so this is
+                    // the one place that actually needs it.
                     return Object.assign({
                         entry,
                         selectedServiceId: null,
@@ -5683,6 +5810,7 @@ function makeBookingContext(entry, overrides) {
                         negatedTagIds: [],
                         _negationOverride: null,
                         uncoveredServiceTypes: null,
+                        answers: {},
                     }, overrides || {});
                 }
 
