@@ -440,62 +440,22 @@
       ]
     },
     "intake_defaults": {
-      "_note": "T118: replaces force_modules_by_variability_DEPRECATED. Precedence when resolving a service's real intake chain: service's own authored intake_chain > group_defaults[service's group] > category_defaults[service's category] > universal. A module is never added twice even if it would qualify at multiple levels. Full reasoning per category/group: TIMELINE.md T118, FORCE_INJECTION_AUDIT.md.",
+      "_note": "T118: replaces force_modules_by_variability_DEPRECATED. Precedence when resolving a service's real intake chain: service's own authored intake_chain > group_defaults[service's group] > category_defaults[service's category] > universal. A module is never added twice even if it would qualify at multiple levels. Full reasoning per category/group: TIMELINE.md T118, FORCE_INJECTION_AUDIT.md. T118 (operator-directed, explicit removal): access removed catalog-wide -- not a question with a meaningful answer distribution in residential handyman work; reachability is either constant for this job type or covered by a specific factual module (e.g. mounting_height) where it genuinely varies. See PROJECT_CHARTER.md §6E's own added principle note and PENDING_DECISIONS.md for the full reasoning.",
       "universal": [],
       "category_defaults": {
         "plumbing_help": [
-          "urgency",
-          "access"
+          "urgency"
         ],
         "tech_trouble": [
           "urgency"
-        ],
-        "electric_lighting": [
-          "urgency",
-          "access"
-        ],
-        "wall_mounting": [
-          "access"
         ]
       },
       "group_defaults": {
         "minor_home_repairs_ceilings": [
-          "access",
           "disposal_request"
         ],
         "minor_home_repairs_walls": [
-          "access",
           "disposal_request"
-        ],
-        "minor_home_repairs_doors": [
-          "access"
-        ],
-        "minor_home_repairs_windows": [
-          "access"
-        ],
-        "minor_home_repairs_appliances_washer": [
-          "access"
-        ],
-        "minor_home_repairs_appliances_dryer": [
-          "access"
-        ],
-        "minor_home_repairs_appliances_stove_range": [
-          "access"
-        ],
-        "minor_home_repairs_appliances_refrigerator": [
-          "access"
-        ],
-        "minor_home_repairs_appliances_dishwasher": [
-          "access"
-        ],
-        "minor_home_repairs_appliances_microwave": [
-          "access"
-        ],
-        "minor_home_repairs_appliances_window_ac": [
-          "access"
-        ],
-        "minor_home_repairs_appliances_other": [
-          "access"
         ],
         "minor_home_repairs_floors_trim": [
           "disposal_request"
@@ -505,13 +465,7 @@
         ]
       },
       "excluded_services": {
-        "_note": "T118 (Step 6 item 7, per PENDING_DECISIONS.md #22, explicit operator direction): a targeted opt-out for a specific service within an otherwise-correct category/group default -- not a general exception mechanism to reach for casually. wall_mounting's own access default is genuinely right for TV/frame/drywall work at real heights and angles, but doesn't fit these two low-complexity, hourly-billed 'buy the hour' SKUs the same way; shelf_mortar_mounting_buy_the_hour (masonry, genuinely more variable) deliberately keeps access, so this exclusion is scoped to the two SKUs actually named/matching #22's own diagnosed shape, not every buy_the_hour service.",
-        "blinds_shades_curtains_buy_the_hour": [
-          "access"
-        ],
-        "shelf_mounting_standard_buy_the_hour": [
-          "access"
-        ]
+        "_note": "T118: previously held a targeted access opt-out for two buy-the-hour SKUs (see PENDING_DECISIONS.md #22/#44). Now empty -- access itself was removed catalog-wide, making a per-service access exclusion moot. Kept as an empty, documented mechanism (not deleted) in case a future, different module needs this exact kind of targeted opt-out again."
       }
     },
     "pricing_engines": {
@@ -542,11 +496,6 @@
       "dispatch_fee_note": "Toggle dispatch_fee_enabled to false to disable globally. dispatch_fee_apply_min_labor: fee only when labor < threshold. v9.6 DECIDED (working decision, per explicit instruction to move forward rather than block on confirmation -- clearly marked as such): $50 confirmed as the working threshold. Rationale: at this project's standard ~$70-80/hr labor rate, $50 represents roughly 40 minutes of labor -- jobs below that are genuinely too small for the labor charge alone to reasonably cover the cost of dispatching a technician, so the $45 dispatch fee compensates; jobs at or above it are large enough that the labor charge already does. Not yet validated against real operational data -- revisit if real usage data suggests a different real breakeven point."
     },
     "modifiers": {
-      "access_very_cramped_or_hard_to_reach": {
-        "fee": 25,
-        "minutes": 20,
-        "scope": "per_visit"
-      },
       "attempted_fix_yes_used_chemical_drain_cleane": {
         "fee": 0,
         "minutes": 5,
@@ -835,11 +784,6 @@
       "disposal_request_yes_please_haul_it_away": {
         "fee": 25,
         "minutes": 20,
-        "scope": "per_visit"
-      },
-      "pets_present_yes_pets_may_be_loose": {
-        "fee": 0,
-        "minutes": 5,
         "scope": "per_visit"
       },
       "urgency_urgent_today_or_tomorrow": {
@@ -1172,7 +1116,7 @@
       }
     }
   },
-"category": [
+  "category": [
     {
       "id": "minor_home_repairs",
       "display_name": "Minor Home Repairs",
@@ -1209,7 +1153,7 @@
     {
       "id": "wall_mounting",
       "display_name": "Wall Mounting",
-      "icon": "ti ti-frame",
+      "icon": "ti ti-wall",
       "group_ids": [
         "wall_mounting_drywall_or_plaster",
         "wall_mounting_blinds_curtain",
@@ -1221,7 +1165,7 @@
     {
       "id": "electric_lighting",
       "display_name": "Electric & Lighting",
-      "icon": "ti ti-bulb",
+      "icon": "ti ti-plug",
       "group_ids": [
         "electric_lighting_bulbs",
         "electric_lighting_fans",
@@ -1234,7 +1178,7 @@
     {
       "id": "plumbing_help",
       "display_name": "Plumbing Help",
-      "icon": "ti ti-droplet",
+      "icon": "ti ti-bath",
       "group_ids": [
         "plumbing_help_garbage_disposals",
         "plumbing_help_sinks",
@@ -1837,10 +1781,6 @@
       "service_type": "Install",
       "intake_chain": [
         {
-          "module": "access",
-          "then": {}
-        },
-        {
           "module": "hybrid_qty",
           "then": {},
           "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
@@ -2104,7 +2044,7 @@
         "high_case_minutes": 120,
         "complexity_tier": "skilled"
       },
-      "pricing_engine": "algorithmic_flat_rate",
+      "pricing_engine": "buy_the_hour_qty_gate_formula",
       "default_estimates": {
         "materials": {
           "min": 0,
@@ -2134,7 +2074,7 @@
       "financial_engine": {
         "type": "hourly",
         "base_price": 50,
-        "pricing_archetype": "hourly_timed",
+        "pricing_archetype": "formula",
         "_inherits_checkout_state_from_archetype": "wall_mounted_object"
       },
       "intake_modules_refs": [],
@@ -2142,7 +2082,11 @@
       "service_type": "Install",
       "intake_chain": [
         {
-          "module": "global_quantity",
+          "module": "blind_curtain_shade_items",
+          "then": {}
+        },
+        {
+          "module": "buy_the_hour_qty",
           "then": {}
         }
       ],
@@ -2171,7 +2115,8 @@
       ],
       "optional_materials": [
         "MAT-MNT-ANCH-Masonry"
-      ]
+      ],
+      "_note_t118_pricing_redesign": "T118 (operator-directed, real user trace, 2026-09-12): pricing_engine changed from the old, non-real placeholder 'algorithmic_flat_rate' (confirmed during #22's own investigation to not be a registered formula at all) to the new, real buy_the_hour_qty_gate_formula. intake_chain replaced: global_quantity (a numeric stepper) no longer fits this service's new binary flat-vs-hourly design, so it's replaced by blind_curtain_shade_items (what's being mounted) + buy_the_hour_qty (the binary 1-item/more-than-1-item gate that drives pricing)."
     },
     {
       "id": "brick_or_concrete_crack_repair",
@@ -2743,10 +2688,6 @@
         {
           "module": "tech_problem_type",
           "then": {}
-        },
-        {
-          "module": "access",
-          "then": {}
         }
       ],
       "default_tags": [],
@@ -2974,10 +2915,6 @@
         },
         {
           "module": "symptom",
-          "then": {}
-        },
-        {
-          "module": "access",
           "then": {}
         }
       ],
@@ -3366,10 +3303,6 @@
         },
         {
           "module": "sink_type",
-          "then": {}
-        },
-        {
-          "module": "access",
           "then": {}
         }
       ],
@@ -4232,10 +4165,6 @@
         {
           "module": "leak_type",
           "then": {}
-        },
-        {
-          "module": "access",
-          "then": {}
         }
       ],
       "default_tags": [
@@ -4574,10 +4503,6 @@
         },
         {
           "module": "symptom",
-          "then": {}
-        },
-        {
-          "module": "access",
           "then": {}
         }
       ],
@@ -4987,10 +4912,6 @@
         },
         {
           "module": "symptom",
-          "then": {}
-        },
-        {
-          "module": "access",
           "then": {}
         }
       ],
@@ -6967,10 +6888,6 @@
         {
           "module": "symptom",
           "then": {}
-        },
-        {
-          "module": "access",
-          "then": {}
         }
       ],
       "default_tags": [],
@@ -7162,10 +7079,6 @@
             ],
             "question_override": "How many windows need work?"
           }
-        },
-        {
-          "module": "access",
-          "then": {}
         }
       ],
       "default_tags": [],
@@ -7798,10 +7711,6 @@
         },
         {
           "module": "symptom",
-          "then": {}
-        },
-        {
-          "module": "access",
           "then": {}
         }
       ],
@@ -13818,33 +13727,6 @@
     }
   },
   "intake_modules": {
-    "access": {
-      "question": "How easy is it to reach the work area?",
-      "type": "single",
-      "client_response": [
-        {
-          "label": "Open and easy – plenty of room",
-          "tags": [],
-          "complexity_override": "routine"
-        },
-        {
-          "label": "A bit tight but manageable",
-          "tags": [],
-          "complexity_override": "routine"
-        },
-        {
-          "label": "Very cramped or hard to reach",
-          "tags": [
-            "#access_obstructed"
-          ],
-          "complexity_override": "skilled",
-          "modifier_ref": "access_very_cramped_or_hard_to_reach"
-        }
-      ],
-      "purpose": "scheduling",
-      "confidence_gain": 5,
-      "affects_price": true
-    },
     "action": {
       "question": "What do you need done?",
       "type": "single",
@@ -15897,29 +15779,6 @@
       "confidence_gain": 10,
       "affects_price": true
     },
-    "pets_present": {
-      "question": "Do you have pets that may be loose in the home?",
-      "type": "single",
-      "client_response": [
-        {
-          "label": "No pets / pets will be secured",
-          "tags": [],
-          "complexity_override": "routine"
-        },
-        {
-          "label": "Yes, pets may be loose",
-          "tags": [
-            "#pets_on_site"
-          ],
-          "complexity_override": "routine",
-          "modifier_ref": "pets_present_yes_pets_may_be_loose"
-        }
-      ],
-      "purpose": "scheduling",
-      "confidence_gain": 5,
-      "affects_price": true,
-      "_orphan_backlog_note": "v9.6 DECIDED (explicit business decision, project owner): these 4 modules (parking_difficulty, disposal_request, pets_present, item_volume) will NOT be force-injected into every service via global_rules.force_modules_by_variability -- unlike urgency, which was the only one of the original v9.5 design's 5 intended modules actually wired that way. Decision: leave as optional, available via their own smart_tags (#no_parking, #disposal_needed, #pets_on_site, #high_volume) and any high-logistics category/group context, not as a universal question on every quote. No further action needed here."
-    },
     "urgency": {
       "question": "How soon do you need this done?",
       "type": "single",
@@ -16402,6 +16261,41 @@
           "label": "Multiple devices"
         }
       ]
+    },
+    "blind_curtain_shade_items": {
+      "question": "What's being mounted?",
+      "type": "single",
+      "_note": "T118 (operator-directed, real user trace, 2026-09-12): a new, dedicated preliminary question for blinds_shades_curtains_buy_the_hour, styled after wall_mount_items's own established pattern (used by shelf_mortar_mounting_buy_the_hour) but with content specific to this service -- confirmed directly that reusing wall_mount_items verbatim would be wrong (its own real options are shelves/frames/mirrors, not blinds/curtains/shades).",
+      "client_response": [
+        {
+          "label": "Blinds"
+        },
+        {
+          "label": "Curtains"
+        },
+        {
+          "label": "Shades"
+        },
+        {
+          "label": "Curtain rod only"
+        },
+        {
+          "label": "Mixed items"
+        }
+      ]
+    },
+    "buy_the_hour_qty": {
+      "question": "How many items?",
+      "type": "single",
+      "_note": "T118 (operator-directed, real user trace, 2026-09-12): a deliberately binary gate, not a numeric quantity question -- '1 item' -> flat rate; 'More than 1 item' -> real hourly billing at the SAME rate, with a 1-hour minimum. See buy_the_hour_qty_gate_formula in global_rules... (pricing_formulas) for the actual pricing logic this answer drives.",
+      "client_response": [
+        {
+          "label": "1 item"
+        },
+        {
+          "label": "More than 1 item"
+        }
+      ]
     }
   },
   "pricing_formulas": {
@@ -16536,6 +16430,10 @@
           "overflow_rate_ref": "wi_fi_extender_setup_item_count_overflow"
         }
       }
+    },
+    "buy_the_hour_qty_gate_formula": {
+      "_note": "T118 (operator-directed, real user trace, 2026-09-12): implements a flat-vs-hourly switch, both at the service's own base_price as the rate, for 'buy the hour' services where a customer answers a binary '1 item / more than 1 item' question (buy_the_hour_qty) rather than a numeric quantity. See this formula's own dispatch branch in applyPricingFormula (qr.html) for the real logic and the reasoning behind the extraFee: -basePrice cancellation on the >1-item branch. minimum_billable_hours here mirrors global_rules.pricing_engines.hourly_estimate's own field of the same name -- kept as an explicit, local override point (the code checks this local value first) rather than only ever reading the global default, in case a future buy-the-hour service needs a different minimum.",
+      "minimum_billable_hours": 1
     }
   },
   "materials_catalog": {
@@ -18199,27 +18097,6 @@
     }
   ],
   "smart_tags": {
-    "#access_obstructed": {
-      "synonyms": [
-        "tight space",
-        "furniture in way",
-        "cluttered",
-        "hard to reach",
-        "obstructed"
-      ],
-      "answers": {
-        "access": "Very cramped or hard to reach"
-      },
-      "requires": [],
-      "display_group": "Parking & Access",
-      "applicable_categories": [
-        "all"
-      ],
-      "is_logistic": true,
-      "ui_phrase": "obstructed access",
-      "negation_phrase": "",
-      "note": "v9.5: fee/minutes retired — now applied via access's 'Very cramped or hard to reach' answer effects (this answer previously had zero fee despite the module's purpose being scheduling/access difficulty). See CHANGELOG_v9.5.md."
-    },
     "#bidet_attachment": {
       "synonyms": [
         "bidet",
@@ -18895,28 +18772,6 @@
         "cabinet_knob_or_pull_install"
       ],
       "_review_note": "v9.6 reviewed: see #two_trip_minimum's note -- shares its exact applicable_group_ids list, plausibly the same diagnostic-outcome pattern. Left as-is; flagged for confirmation rather than assumed."
-    },
-    "#pets_on_site": {
-      "synonyms": [
-        "dog",
-        "cat",
-        "pet",
-        "animals",
-        "friendly dog",
-        "puppy"
-      ],
-      "answers": {
-        "pets_present": "Yes, pets may be loose"
-      },
-      "requires": [],
-      "display_group": "Site Conditions",
-      "applicable_categories": [
-        "all"
-      ],
-      "is_logistic": true,
-      "ui_phrase": "pets on site",
-      "negation_phrase": "",
-      "note": "v9.5: fee/minutes retired — now applied via a dedicated, single-select logistics module (parking_difficulty/disposal_request/pets_present/urgency/item_volume), force-injected into every service via global_rules.force_modules_by_variability. See CHANGELOG_v9.5.md."
     },
     "#plaster_no_backing": {
       "synonyms": [],
@@ -20244,7 +20099,22 @@
       "whose",
       "where",
       "whom"
-    ]
+    ],
+    "nlp_location_appliance_map": {
+      "stove": "kitchen",
+      "oven": "kitchen",
+      "range": "kitchen",
+      "refrigerator": "kitchen",
+      "fridge": "kitchen",
+      "dishwasher": "kitchen",
+      "microwave": "kitchen",
+      "toilet": "bathroom",
+      "bathtub": "bathroom",
+      "tub": "bathroom",
+      "shower": "bathroom",
+      "washer": "laundry room",
+      "dryer": "laundry room"
+    }
   },
   "intent_mappings": {
     "default_fallback": {
@@ -35308,7 +35178,6 @@
     "hourly_timed": {
       "definition": "base_price plus a real, computed labor-time estimate (operational_metrics.expected_minutes) at the entity's complexity-tier hourly rate.",
       "currently_assigned_to": [
-        "blinds_shades_curtains_buy_the_hour",
         "cabinet_knob_or_pull_install",
         "computer_diagnostic",
         "furniture_assembly_flat_pack",
@@ -35385,7 +35254,9 @@
     },
     "formula": {
       "definition": "Delegates to a real, named, registered entry in pricing_formulas for its complete calculation -- the archetype itself defines no fixed shape beyond 'look up and run this formula'.",
-      "currently_assigned_to": []
+      "currently_assigned_to": [
+        "blinds_shades_curtains_buy_the_hour"
+      ]
     }
   }
 }
