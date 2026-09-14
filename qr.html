@@ -2889,7 +2889,7 @@ window._traceInput = null; // the raw input (free text or a structured action li
 // (T114 touched only btnyc.json, no qr.html edit, so no bump was due
 // between T112 and T115 -- confirmed by this test itself staying green
 // through that session.)
-const QR_BUILD_VERSION = 'T118';
+const QR_BUILD_VERSION = 'T119';
 
 // A simple, fast, synchronous string hash (djb2) -- not cryptographic,
 // deliberately: the real, stated purpose here is "are we looking at the
@@ -7504,15 +7504,12 @@ function enterFocusedMode() {
                     // the card is present, explicitly force it visible
                     // (not just skip the redundant hide) to correctly win
                     // against the CSS rule too.
-                    // v9.6 FIX: 'sqTextBar' was previously swept into this
-                    // same loop, unconditionally force-hidden alongside
-                    // serviceRequestSummary -- as a side effect of fixing
-                    // THAT element's visibility, not its own deliberate
-                    // design decision. Per direct correction, removed: the
-                    // SmartQuote text bar should remain visible under the
-                    // tile grid throughout category/group browsing, not
-                    // just on the pre-navigation home state.
-                    ['serviceRequestSummary'].forEach(id => {
+                    // v9.6 FIX: 'sqTextBar' is now hidden in focused mode.
+                    // When a user taps a category tile and enters focused mode,
+                    // the text bar should be hidden to avoid visual clutter at
+                    // the top. It will be restored automatically in
+                    // exitFocusedMode() via removeProperty('display').
+                    ['serviceRequestSummary', 'sqTextBar'].forEach(id => {
                         const el = document.getElementById(id);
                         if (!el) return;
                         if (id === 'serviceRequestSummary' && el.querySelector('#sqAffirmCard')) {
@@ -7522,7 +7519,7 @@ function enterFocusedMode() {
                         el.style.setProperty('display', 'none', 'important');
                     });
                 }
-
+                
 function exitFocusedMode() {
                     const card = document.querySelector('.main-card-schedule-service');
                     if (!card) return;
@@ -10308,175 +10305,6 @@ function sqOpenStep(n) {
                     if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
                 }
 
-// DEPRECATED — pending component layer consolidation. Confirmed
-// unreachable from any live entry point since T70's sqAnalyze
-// retirement (sqAnalyze -> executeWorkflow -> renderRoute no longer
-// calls into this). Left in place, not deleted, per explicit decision.
-function renderTagAffirmationCard(detTagIds, intent, q, pivotInfo = null) {
-                    // Fires when: detTagIds non-empty, not yet affirmed, service resolved.
-                    // Shows: "We understood X" adlib + detected tag chips (tappable) +
-                    // service recommendations + live dynamic price + Yes/No buttons.
-                    // T36: also reused for the negation-pivot "did you mean" prompt
-                    // (pivotInfo present) -- same component, different framing, per
-                    // the design doc's own explicit recommendation rather than a
-                    // separate, third UI surface.
-                    const container = document.getElementById('serviceRequestSummary');
-                    if (!container) return;
-
-                    const tagDefs = DB.smart_tags || {};
-
-                    // Build tag chip HTML -- tappable to remove (partial affirmation)
-                    const chipHtml = detTagIds.map(tid => {
-                        const tag = tagDefs[tid] || {};
-                        const label = sqTagLabel(tag, tid);
-                        return `<span class="chip-btn sel affirm-chip" data-tid="${tid}" onclick="sqAffirmRemoveTag(this,'${tid}')">${label} ✕</span>`;
-                    }).join(' ');
-
-                    // Service recommendations: use recommendedSku + confidence siblings
-                    // Multiple recs if the intent was ambiguous (e.g. "unclog" → sink + toilet)
-                    const recs = [];
-                    const recSku = intent?.recommendedSku;
-                    if (recSku) {
-                        const primary = DB.services.find(s => s.id === recSku);
-                        if (primary) recs.push(primary);
-                    }
-                    // Add sibling services from the same group if confidence < 85 (ambiguous)
-                    if ((intent?._matchConfidence || 0) < 85 && intent?.category) {
-                        const siblings = (DB.services || []).filter(s =>
-                            s.ui_taxonomy?.category_id === intent.category &&
-                            s.ui_taxonomy?.group_id === intent?._groupId &&
-                            s.id !== recSku &&
-                            (() => { const csk = resolveServiceCheckoutStateKey(s, null); return csk === 'standard_flat_rate' || csk === 'database_summation'; })()
-                        ).slice(0, 2); // max 2 siblings
-                        siblings.forEach(s => { if (!recs.find(r => r.id === s.id)) recs.push(s); });
-                    }
-
-                    const recHtml = recs.length > 0 ? `
-                        <div class="affirm-recs">
-                            <div class="affirm-recs-label">Suggested service${recs.length > 1 ? 's' : ''}:</div>
-                            ${recs.map(svc => {
-                                const name = svc.ui_taxonomy?.display_name || svc.id;
-                                const desc = svc.ui_taxonomy?.description || '';
-                                return `<div class="affirm-rec-card" onclick="sqAffirmSelectService('${svc.id}')">
-                                    <span class="affirm-rec-name">${name}</span>
-                                    ${desc ? `<span class="affirm-rec-desc">${desc}</span>` : ''}
-                                </div>`;
-                            }).join('')}
-                        </div>` : '';
-
-                    // Adlib sentence
-                    const adlibText = S._adlibSentence || (intent?.label ? `a ${intent.label.toLowerCase()} job` : 'this job');
-
-                    // Live price display -- uses laborWithTags (full chargeable set)
-                    const priceDisplay = q.laborWithTags > 0
-                        ? `<span class="affirm-price">From $${q.laborWithTags}</span>`
-                        : '';
-
-                    const groupDefs = DB.group || [];
-                    const pivotToName = pivotInfo ? (groupDefs.find(g => g.id === pivotInfo.to)?.display_name || pivotInfo.to) : null;
-                    const headline = pivotInfo ? 'Did you mean:' : 'We understood:';
-                    const pivotNote = pivotInfo
-                        ? `<div class="affirm-pivot-note">You mentioned this isn't quite what we first thought, so we're now looking at <strong>${pivotToName}</strong> instead.</div>`
-                        : '';
-
-                    container.innerHTML = `
-                        <div class="affirm-card" id="sqAffirmCard">
-                            <div class="affirm-headline">${headline}</div>
-                            <div class="affirm-adlib">${adlibText}</div>
-                            ${pivotNote}
-                            <div class="affirm-chips" id="sqAffirmChips">${chipHtml}</div>
-                            ${recHtml}
-                            <div class="affirm-price-row">${priceDisplay}</div>
-                            <div class="affirm-actions">
-                                <button class="affirm-yes-btn" onclick="sqAffirmYes()">✓ Yes, that's it!</button>
-                                <button class="affirm-no-btn" onclick="sqAffirmNo()">Let me explain further</button>
-                            </div>
-                        </div>`;
-                    enterFocusedMode();
-                    container.style.setProperty('display', 'block', 'important');
-                }
-
-                // DEPRECATED — pending component layer consolidation. Confirmed
-                // unreachable from any live entry point since T70's sqAnalyze
-                // retirement (only ever called from renderTagAffirmationCard,
-                // itself confirmed dead). Left in place, not deleted, per
-                // explicit decision.
-                function sqAffirmYes() {
-                    if (S._pendingPivotInfo) {
-                        // T36: customer confirmed the group pivot. Re-run sqAnalyze
-                        // with the pivot accepted so the corrected group drives routing.
-                        S._negationPivotAccepted = true;
-                        S._pendingPivotInfo = null;
-                        sqAnalyze();
-                        return;
-                    }
-                    // Customer confirmed all shown tags. Set affirmed, re-render quote.
-                    S._tagsAffirmed = true;
-                    S._affirmedTagSet = [...S.detTagIds]; // snapshot the set that was affirmed
-                    const q = computeQuoteFromState();
-                    sqRenderQuote();
-                }
-
-                // DEPRECATED — pending component layer consolidation. Confirmed
-                // unreachable from any live entry point since T70's sqAnalyze
-                // retirement (only ever called from renderTagAffirmationCard,
-                // itself confirmed dead). Left in place, not deleted, per
-                // explicit decision.
-                function sqAffirmNo() {
-                    // Customer wants to revise. Show the text input pre-filled with existing text.
-                    S._tagsAffirmed = false;
-                    exitFocusedMode();
-                    const container = document.getElementById('serviceRequestSummary');
-                    if (container) { container.innerHTML = ''; container.style.display = 'none'; }
-                    const sqEl = document.getElementById('smartQuoteEngine');
-                    if (sqEl) sqEl.style.display = 'block';
-                    const textarea = document.getElementById('sqDescIn');
-                    if (textarea) { textarea.focus(); textarea.select(); }
-                }
-
-                // DEPRECATED — pending component layer consolidation. Confirmed
-                // unreachable from any live entry point since T70's sqAnalyze
-                // retirement (only ever called from renderTagAffirmationCard,
-                // itself confirmed dead). Left in place, not deleted, per
-                // explicit decision.
-                function sqAffirmRemoveTag(el, tid) {
-                    // Removing a chip from the affirmation card is partial affirmation --
-                    // the remaining tags stay charged. Removing resets _affirmedTagSet
-                    // to only the remaining tags.
-                    S.detTagIds = S.detTagIds.filter(x => x !== tid);
-                    S.negatedTagIds.push(tid); // treat removal as explicit negation
-                    if (!S.detTagIds.length) {
-                        // All tags removed -- nothing to affirm, proceed directly
-                        S._tagsAffirmed = false;
-                        sqPrepareFlow(false);
-                        return;
-                    }
-                    // Re-check if remaining set still needs affirmation
-                    S._affirmedTagSet = null;
-                    S._tagsAffirmed = false;
-                    const q = computeQuoteFromState();
-                    // Update price display live
-                    const priceEl = document.querySelector('#sqAffirmCard .affirm-price');
-                    if (priceEl) priceEl.textContent = q.laborWithTags > 0 ? `From $${q.laborWithTags}` : '';
-                    // Remove the chip from DOM
-                    if (el) el.remove();
-                }
-
-                // DEPRECATED — pending component layer consolidation. Confirmed
-                // unreachable from any live entry point since T70's sqAnalyze
-                // retirement (only ever called from renderTagAffirmationCard,
-                // itself confirmed dead). Left in place, not deleted, per
-                // explicit decision.
-                function sqAffirmSelectService(svcId) {
-                    // Customer tapped a recommended service card -- treat as selection + affirmation
-                    S._tagsAffirmed = true;
-                    S._affirmedTagSet = [...S.detTagIds];
-                    const svc = DB.services.find(s => s.id === svcId);
-                    if (svc) {
-                        const catId = svc.ui_taxonomy?.category_id || S.intent?.category || 'other';
-                        prefillSmartQuoteFromService(svc, catId);
-                    }
-                }
 
                 function sqChooseDivergencePath(path) {
                     // Divergence Resolution ("Fork in the Road" -- PROJECT_GOALS §9/10):
@@ -14974,11 +14802,10 @@ function wireGlobalEvents() {
 
     // ─── 10. EXPOSE SMARQUOTE FUNCTIONS (global for inline onclick) ─
     window.sqAnalyze = sqAnalyze;
-    window.sqAffirmYes = sqAffirmYes;
-    window.sqAffirmNo = sqAffirmNo;
-    window.sqAffirmRemoveTag = sqAffirmRemoveTag;
-    window.sqAffirmSelectService = sqAffirmSelectService;
-    window.renderTagAffirmationCard = renderTagAffirmationCard;
+    // T119: sqAffirmYes/sqAffirmNo/sqAffirmRemoveTag/sqAffirmSelectService/
+    // renderTagAffirmationCard deleted (confirmed genuinely unreachable
+    // since T70; these 5 window assignments would otherwise throw
+    // ReferenceError now that the definitions are gone).
     window.sqToggleBuilder = sqToggleBuilder;
     window.sqBuilderBack = sqBuilderBack;
     window.sqPickType = sqPickType;
