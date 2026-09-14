@@ -2889,7 +2889,7 @@ window._traceInput = null; // the raw input (free text or a structured action li
 // (T114 touched only btnyc.json, no qr.html edit, so no bump was due
 // between T112 and T115 -- confirmed by this test itself staying green
 // through that session.)
-const QR_BUILD_VERSION = 'T119';
+const QR_BUILD_VERSION = 'T125';
 
 // A simple, fast, synchronous string hash (djb2) -- not cryptographic,
 // deliberately: the real, stated purpose here is "are we looking at the
@@ -7482,7 +7482,7 @@ function ensureFocusedModeInner(card) {
                     card.appendChild(inner);
                 }
 
-function enterFocusedMode() {
+function enterFocusedMode(hideTextBar = false) {
                     const card = document.querySelector('.main-card-schedule-service');
                     if (!card) return;
                     card.classList.add('focused-mode');
@@ -7504,12 +7504,32 @@ function enterFocusedMode() {
                     // the card is present, explicitly force it visible
                     // (not just skip the redundant hide) to correctly win
                     // against the CSS rule too.
-                    // v9.6 FIX: 'sqTextBar' is now hidden in focused mode.
-                    // When a user taps a category tile and enters focused mode,
-                    // the text bar should be hidden to avoid visual clutter at
-                    // the top. It will be restored automatically in
-                    // exitFocusedMode() via removeProperty('display').
-                    ['serviceRequestSummary', 'sqTextBar'].forEach(id => {
+                    // v9.6 FIX: 'sqTextBar' was previously swept into this
+                    // same loop, unconditionally force-hidden alongside
+                    // serviceRequestSummary -- as a side effect of fixing
+                    // THAT element's visibility, not its own deliberate
+                    // design decision. Per direct correction, removed: the
+                    // SmartQuote text bar should remain visible under the
+                    // tile grid throughout category/group browsing, not
+                    // just on the pre-navigation home state.
+                    // T125 FIX: the v9.6 removal above was too broad in the
+                    // OTHER direction -- confirmed directly, not assumed:
+                    // sqTextBar should be hidden specifically when a
+                    // category tile is visually tapped (this function's
+                    // only caller that represents that exact action is
+                    // showGroupsForCategory, which now explicitly passes
+                    // hideTextBar=true), and should remain visible for
+                    // every other real entry path into focused mode --
+                    // "Other tile" entry (prefillSmartQuoteFromOtherTile,
+                    // named for exactly this case), a resolved/matched
+                    // service (showIntakeQuestions,
+                    // prefillSmartQuoteFromService), the free-text
+                    // affirmation flow (renderTagAffirmationFromRoute), and
+                    // the guided builder (sqPrepareFlow) -- none of which
+                    // pass hideTextBar, so all default to false (visible),
+                    // matching "if a service isn't matched" and every path
+                    // other than a literal category-tile tap.
+                    ['serviceRequestSummary'].forEach(id => {
                         const el = document.getElementById(id);
                         if (!el) return;
                         if (id === 'serviceRequestSummary' && el.querySelector('#sqAffirmCard')) {
@@ -7518,8 +7538,13 @@ function enterFocusedMode() {
                         }
                         el.style.setProperty('display', 'none', 'important');
                     });
+                    const textBarEl = document.getElementById('sqTextBar');
+                    if (textBarEl) {
+                        if (hideTextBar) textBarEl.style.setProperty('display', 'none', 'important');
+                        else textBarEl.style.removeProperty('display');
+                    }
                 }
-                
+
 function exitFocusedMode() {
                     const card = document.querySelector('.main-card-schedule-service');
                     if (!card) return;
@@ -8414,7 +8439,7 @@ function renderCuratedCardFromRoute(route) {
 
 function showGroupsForCategory(category_id, fromBack = false) {
     if (!fromBack) Breadcrumbs.push({ type: 'categories' });
-    if (!fromBack) enterFocusedMode();   // 👈 enter full‑screen glass mode
+    if (!fromBack) enterFocusedMode(true);   // 👈 enter full‑screen glass mode; hide the text bar specifically for this, the real category-tile-tap entry point
 
     const groups = (DB.group || []).filter(g => g.category_id === category_id && !(g.parent_group || g.parent_id));
     const container = DOM.serviceContainer;
