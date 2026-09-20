@@ -6519,6 +6519,7 @@ function ensureFocusedModeInner(card) {
                 }
 
 function enterFocusedMode(hideTextBar = false) {
+        _traceFn('enterFocusedMode', { hideTextBar });
                     const card = document.querySelector('.main-card-schedule-service');
                     if (!card) return;
                     card.classList.add('focused-mode');
@@ -6582,6 +6583,7 @@ function enterFocusedMode(hideTextBar = false) {
                 }
 
 function exitFocusedMode() {
+    _traceFn('exitFocusedMode');   
                     const card = document.querySelector('.main-card-schedule-service');
                     if (!card) return;
                     card.classList.remove('focused-mode');
@@ -7130,6 +7132,7 @@ function renderUnifiedSqButton(confidence, previewText) {
     }
 
 function restoreCategoryView() {
+     _traceFn('restoreCategoryView');
                     exitFocusedMode();
                     Breadcrumbs.clear();
                     setStep(1);
@@ -7474,6 +7477,7 @@ function renderCuratedCardFromRoute(route) {
 }
 
 function showGroupsForCategory(category_id, fromBack = false) {
+    _traceFn('showGroupsForCategory', { category_id, fromBack }); // <-- ADD
     if (!fromBack) Breadcrumbs.push({ type: 'categories' });
     if (!fromBack) enterFocusedMode(true);   // 👈 enter full‑screen glass mode; hide the text bar specifically for this, the real category-tile-tap entry point
 
@@ -7588,6 +7592,7 @@ function resolveComponentSymptomTap(serviceIds, group, category_id, chosenAction
 }
 
 function renderComponentSymptomPicker(container, group, category_id, chosenAction) {
+    _traceFn('renderComponentSymptomPicker', { groupId: group?.id, chosenAction }); // <-- ADD
     // v9.6 Track A / Phase 8: the real navigation picker, built on top of
     // the archetype/routing_archetypes data foundation. chosenAction (the
     // real service_type picked in the new showServiceTypesForGroup step
@@ -7779,6 +7784,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
 }
 
 function showServiceTypesForGroup(container, group, category_id) {
+     _traceFn('showServiceTypesForGroup', { groupId: group?.id });  // <-- ADD
     // v9.6 Track A / Phase 8, directly requested: the real Action step,
     // shown between the group and the component/symptom picker -- matches
     // the group's real, authored dynamic_service_types (e.g. Doors:
@@ -7824,6 +7830,7 @@ function showServiceTypesForGroup(container, group, category_id) {
 }
 
 function showSubGroups(group, category_id, fromBack = false) {
+    _traceFn('showSubGroups', { groupId: group?.id, category_id, fromBack }); // <-- ADD
     if (!fromBack) enterFocusedMode();
     const container = DOM.serviceContainer;
     container.replaceChildren();
