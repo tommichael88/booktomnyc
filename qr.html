@@ -1265,37 +1265,18 @@ function resolveServiceCheckoutStateKey(svc, dynDef) {
                 }
 
 function resolveCheckoutState(checkoutStateKey, laborTotal) {
-                    const cs = DB.checkout_states?.[checkoutStateKey] || {};
-                    const discs = DB.meta?.estimate_disclaimers || {};
-                    const isDiag = checkoutStateKey === 'diagnostic';
-                    const isProject = checkoutStateKey === 'project_based';
-
-                    // Button text: substitute ${labor_total} template
-                    const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
-                    let btnText = cs[btnKey] || cs.button_text || 'Add to Request';
-                    btnText = btnText.replace('${labor_total}', '$' + laborTotal);
-                    const btnClassKey = cs.hide_materials ? 'button_class_no_mat' : 'button_class_with_mat';
-                    const btnClass = cs[btnClassKey] || cs.button_class || 'btn-primary';
-
-                    // Disclaimer: SSOT is svc.default_estimates.disclaimer (same field
-                    // the curated card path reads). Fall through to inferred key only
-                    // when absent, so curated card and final quote always show the
-                    // same legal text for the same service.
-                    const svcDiscKey = S._svc?.default_estimates?.disclaimer || S._svc?.estimate_disclaimer || null;
-                    const discKey = svcDiscKey || (isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee');
-                    const disclaimerText = discs[discKey] || cs.ui_message || 'Labor estimate. Materials extra.';
-
-                    return {
-                        btnText,
-                        btnClass,
-                        disclaimerText,
-                        uiMessage: cs.ui_message || '',
-                        hideTime: cs.hide_time || false,
-                        hideMaterials: cs.hide_materials || false,
-                        isDiag,
-                        isProject
-                    };
-                }
+    const cs = DB.checkout_states?.[checkoutStateKey] || {};
+    const discs = DB.meta?.estimate_disclaimers || {};
+    const isDiag = checkoutStateKey === 'diagnostic';
+    const isProject = checkoutStateKey === 'project_based';
+    const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
+    let btnText = cs[btnKey] || cs.button_text || 'Add to Request';
+    btnText = btnText.replace('${labor_total}', '$' + laborTotal);
+    const svcDiscKey = S._svc?.default_estimates?.disclaimer || S._svc?.estimate_disclaimer || null;
+    const discKey = svcDiscKey || (isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee');
+    const disclaimerText = discs[discKey] || cs.ui_message || 'Labor estimate. Materials extra.';
+    return { btnText, disclaimerText, uiMessage: cs.ui_message || '', hideTime: cs.hide_time || false, hideMaterials: cs.hide_materials || false, isDiag, isProject };
+}
 
 function computeUnifiedQuote(ctx) {
                     const { svc, dynDef, activeTagIds: _rawActiveTagIds = [], answers = {}, qty = 1, intentKeyword = null, formulaId = null, ctxAdjFee = 0, ctxAdjMin = 0, enrichment = null } = ctx;
