@@ -4,129 +4,118 @@
  * Component-level tracing overlay. Extracted from qr.html into its own
  * file so future edits to qr.html cannot accidentally lose or regress
  * this layer. Loaded via a plain <script src> tag, before
- * pricing_engine.js — so all callers of its public functions
- * (_trace, _traceStart, _traceExport, _traceToggle, _renderTraceOverlay,
- * _traceDomSnapshot, _traceFn) see them as globals by the time any
- * runtime call happens.
+ * pricing_engine.js.
  *
- * Self-contained: every top-level function and window.* state field this
- * needs is declared here. The only two dependencies on the host page are
- * (1) the two container elements #traceToggleBtn and #traceOverlayPanel,
- * which live in qr.html's <body>, and (2) the app's own observable state
- * globals — window.DB, S, State, Breadcrumbs, window._currentRoute — read
- * best-effort and degraded gracefully when absent.
+ * ────────────────────────────────────────────────────────────────────
+ * PUBLIC API (all globals, callable from any classic-script block)
+ * ────────────────────────────────────────────────────────────────────
+ *
+ *   _trace(layer, label, data)          — push an entry. No-op when off.
+ *   _traceFn(name, args)                — record a function-entry marker;
+ *                                         RETURNS a handle with:
+ *                                           .branch(name, data)
+ *                                           .return(data)
+ *                                           .error(err)
+ *                                         Calling the handle's methods is
+ *                                         OPTIONAL — the one-line pattern
+ *                                         (_traceFn(...); and nothing else)
+ *                                         still works exactly as before.
+ *   _traceStart(input, entryPath)       — begin a new logical flow.
+ *   _traceExport()                      — compact JSON string of the log.
+ *   _traceToggle(on)                    — enable/disable.
+ *   _renderTraceOverlay(force)          — force a panel redraw.
+ *   _traceDomSnapshot(label)            — capture what's rendered now.
+ *   _traceTiles(containerSelector, lbl) — capture visible tile labels.
+ *
+ * ────────────────────────────────────────────────────────────────────
+ * AUTOMATIC MECHANISMS (no qr.html changes required)
+ * ────────────────────────────────────────────────────────────────────
+ *
+ *   1. Post-click state diff: after every user click, the tracer
+ *      records observable state (breadcrumbs, step, focused-mode, key
+ *      element visibility, S flags) as a microtask, compares to the
+ *      pre-click state, and emits a `session/state_change` entry with
+ *      the diff if anything moved. This is the mechanism that makes
+ *      "which internal function actually changed the screen" traceable
+ *      WITHOUT instrumenting that function.
+ *
+ *   2. Auto-entryPath: whenever the breadcrumb signature changes, the
+ *      session's entryPath is updated to reflect the current
+ *      navigation position, so pure-catalog paths are no longer stuck
+ *      at "catalog_direct (inferred)".
+ *
+ *   3. Cached observable-state reads within an 8ms window — a burst of
+ *      entries in the same task shares one snapshot rather than
+ *      re-reading the DOM per entry.
+ *
+ * ────────────────────────────────────────────────────────────────────
+ * RECOMMENDED qr.html INSTRUMENTATION (each line is optional; each is a
+ * single line and can be deleted just as easily)
+ * ────────────────────────────────────────────────────────────────────
+ *
+ * One-line pattern (entry only):
+ *
+ *   function enterFocusedMode(hideTextBar = false) {
+ *       _traceFn('enterFocusedMode', { hideTextBar });
+ *       // ... rest unchanged ...
+ *   }
+ *
+ * Handle pattern (entry + branch + return — full causality):
+ *
+ *   function renderComponentSymptomPicker(container, group, category_id, chosenAction) {
+ *       const _t = _traceFn('renderComponentSymptomPicker',
+ *                           { groupId: group?.id, chosenAction });
+ *       // ...
+ *       if (isComponentFirst) { _t.branch('component_first', { ids: ra.real_component_ids }); ... }
+ *       else if (isSymptomFirst) { _t.branch('symptom_first', { ids: ra.real_symptom_ids }); ... }
+ *       else { _t.branch('undetermined'); ... }
+ *       // ...
+ *       _t.return({ tilesRendered: ids.length });
+ *   }
  *
  * Load order note: classic (non-module) script semantics — top-level
  * `function` declarations become window globals, and top-level const/let
- * (e.g. TRACE_BUILD_VERSION, _lastInteractionSeq) live in the shared
- * global lexical environment, accessible to every other classic script
- * block on the page by their bare identifier.
+ * live in the shared global lexical environment.
  *
- * CSP note: qr.html's current Content-Security-Policy allows script-src
- * 'self' and 'unsafe-inline' — so ./trace.js served from the same origin
- * loads without any CSP change. Loading it from a CDN would require
- * adding that host to script-src.
+ * CSP note: qr.html's current policy allows script-src 'self' and
+ * 'unsafe-inline' — so ./trace.js served from the same origin loads
+ * without any CSP change.
  *
- * Service-worker note: sw.js is registered at qr.html's end. If the SW
- * caches trace.js, ship a version bump (or a cache-name bump in sw.js)
- * whenever this file changes, or the tester's browser may serve a stale
- * copy during debugging.
- *
- * ────────────────────────────────────────────────────────────────────
- * RECOMMENDED qr.html INSTRUMENTATION (one line per function, huge payoff)
- * ────────────────────────────────────────────────────────────────────
- *
- * This file CANNOT wrap the app's internal functions from the outside:
- * `enterFocusedMode`, `showSubGroups`, etc. are top-level `function`
- * declarations in qr.html's own script block. Other code inside that same
- * block calls them by bare identifier, which resolves to the lexical
- * binding — NOT to `window.enterFocusedMode` — so any attempt to wrap the
- * window property from here would silently miss every internal call.
- *
- * The correct fix is one line at the top of each function body in qr.html.
- * Add these (each is a single line, and can be deleted just as easily):
- *
- *   function enterFocusedMode(hideTextBar = false) {
- *       _traceFn('enterFocusedMode', { hideTextBar });           // <-- ADD
- *       // ... rest unchanged ...
- *   }
- *
- *   function exitFocusedMode() {
- *       _traceFn('exitFocusedMode');                             // <-- ADD
- *       // ... rest unchanged ...
- *   }
- *
- *   function showGroupsForCategory(category_id, fromBack = false) {
- *       _traceFn('showGroupsForCategory', { category_id, fromBack }); // <-- ADD
- *       // ... rest unchanged ...
- *   }
- *
- *   function showSubGroups(group, category_id, fromBack = false) {
- *       _traceFn('showSubGroups', { groupId: group?.id, category_id, fromBack }); // <-- ADD
- *       // ... rest unchanged ...
- *   }
- *
- *   function showServiceTypesForGroup(container, group, category_id) {
- *       _traceFn('showServiceTypesForGroup', { groupId: group?.id });  // <-- ADD
- *       // ... rest unchanged ...
- *   }
- *
- *   function renderComponentSymptomPicker(container, group, category_id, chosenAction) {
- *       _traceFn('renderComponentSymptomPicker', { groupId: group?.id, chosenAction }); // <-- ADD
- *       // ... rest unchanged ...
- *   }
- *
- *   function restoreCategoryView() {
- *       _traceFn('restoreCategoryView');                         // <-- ADD
- *       // ... rest unchanged ...
- *   }
- *
- * That's ~7 one-line additions. With them, the bug class this whole file
- * was pointed at (a state transition with no tap of its own) becomes
- * directly localizable from the exported JSON alone. Without them, this
- * file can still tell you *what the user did* and *what the app was
- * showing* — but not *which internal function made that happen*.
+ * Service-worker note: bump sw.js's cache name whenever this file
+ * changes, or the tester's browser may serve a stale copy.
  */
 
 // ─── Build marker ───────────────────────────────────────────────────
-// Manually maintained. Bump whenever this file changes, alongside the
-// qr.html bump. The freshness guard (test_harness/verify_*_freshness.js)
-// catches drift, matching the project's established convention.
-const TRACE_BUILD_VERSION = 'T136';
+const TRACE_BUILD_VERSION = 'T137';
 
 // ─── Persistent tracing state ───────────────────────────────────────
 window._traceEnabled = false;
 window._traceLog = [];
 window._traceInput = null;
-// Tracks which entry's flag-note editor is currently open (by entry.seq),
-// so incoming trace entries can't disrupt an in-progress edit.
+window._traceEntryPath = null;
 window._editingFlagNoteSeq = null;
-// Entry count at the last render — used to decide whether to preserve
-// scroll position (same count = user action) or jump to the bottom.
 window._lastRenderedTraceCount = 0;
-// Panel filter state, persisted across renders so the user doesn't lose
-// their filter on every new entry.
 window._traceFilterText = '';
 window._traceHiddenLayers = null;   // lazily initialised to an empty Set
+window._traceFlaggedOnly = false;
+// Panel entry collapse state: Set of seqs currently expanded. Entries are
+// collapsed by default so long traces stay scannable; clicking a card
+// header toggles expansion.
+window._traceExpandedSeqs = null;   // lazily initialised to an empty Set
 
-// ─── Module-private state (not on window, not exported) ─────────────
-// seq of the most recent user_interaction entry, used to stamp
-// parentSeq on any non-interaction entries that follow it. This is the
-// one piece of causality the flat log was missing.
+// ─── Module-private state (not exported) ────────────────────────────
 let _lastInteractionSeq = null;
-// rAF debounce flag for panel re-render.
 let _renderScheduled = false;
-// Estimate read cache. The trace read the same DOM node multiple times
-// per click; a 100ms memo removes almost all of the redundancy.
 let _estimateCache = null;
 let _estimateCacheAt = 0;
-// Error-capture install flag.
+let _observableCache = null;
+let _observableCacheAt = 0;
 let _errorCaptureInstalled = false;
+let _lastBreadcrumbSig = null;
+let _stateDiffInstalled = false;
 
 // ─── Small utilities ────────────────────────────────────────────────
 
-// Fast, synchronous, non-cryptographic string hash (djb2). Purpose is
-// "are we looking at the same btnyc.json", not tamper-proofing.
 function _simpleHash(str) {
     let h = 5381;
     for (let i = 0; i < str.length; i++) {
@@ -135,13 +124,6 @@ function _simpleHash(str) {
     return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-// Structured clone with a JSON fallback and a size guard. Fixes three
-// real problems with the previous JSON.parse(JSON.stringify(...)):
-//   1. Circular references silently killed the whole entry (caught by
-//      the outer try/catch, entry was lost with only a console.warn).
-//   2. Date/Map/Set/RegExp degraded to useless plain objects.
-//   3. A single careless _trace(..., S) call could push tens of KB
-//      per entry with no cap, bloating the panel and the export.
 function _safeClone(data) {
     if (data == null) return {};
     let clone;
@@ -150,8 +132,6 @@ function _safeClone(data) {
             ? structuredClone(data)
             : JSON.parse(JSON.stringify(data));
     } catch (e) {
-        // structuredClone throws on functions, DOM nodes, etc. Fall back
-        // to a shallow, JSON-safe reduction rather than losing the entry.
         try {
             clone = JSON.parse(JSON.stringify(data, (k, v) => {
                 if (typeof v === 'function') return '[Function ' + (v.name || 'anonymous') + ']';
@@ -172,9 +152,6 @@ function _safeClone(data) {
     return clone;
 }
 
-// Is this element actually visible? Uses computed style + offsetParent,
-// with a fixed-ancestor walk because offsetParent is null for elements
-// inside a position:fixed ancestor, even when they're genuinely on screen.
 function _isVisible(el) {
     if (!el) return false;
     let cs;
@@ -182,8 +159,6 @@ function _isVisible(el) {
     if (cs.display === 'none' || cs.visibility === 'hidden' || cs.visibility === 'collapse') return false;
     if (parseFloat(cs.opacity) === 0) return false;
     if (el.offsetParent === null) {
-        // Element or an ancestor is display:none. But position:fixed
-        // elements legitimately have null offsetParent — walk to check.
         let p = el.parentElement;
         while (p) {
             try { if (window.getComputedStyle(p).position === 'fixed') return true; }
@@ -195,7 +170,6 @@ function _isVisible(el) {
     return true;
 }
 
-// Compact visibility summary for a known element id.
 function _readElementVisibility(id) {
     const el = document.getElementById(id);
     if (!el) return 'absent';
@@ -210,9 +184,6 @@ function _readElementVisibility(id) {
     return disp + '/' + v + '/' + Math.round(r.width) + 'x' + Math.round(r.height);
 }
 
-// Keys of key app elements whose visibility is diagnostically important.
-// These are the exact elements whose wrong-showing/wrong-hiding caused
-// (or could cause) the class of bug this file is meant to catch.
 const _KEY_ELEMENTS = [
     'sqTextBar', 'category-card', 'serviceContainer',
     'serviceRequestSummary', 'intakeQuestionsContainer',
@@ -220,11 +191,26 @@ const _KEY_ELEMENTS = [
     'cartOverlay', 'bookingStepBar',
 ];
 
-// Full observable-state snapshot: breadcrumbs, step, focused-mode,
-// uiTemplate, visibility of every key element, and the small handful
-// of S.* flags that determine which navigation branch is active.
-// Best-effort — any read that throws is recorded, never fatal.
-function _readObservableState() {
+// Compact signature of the current breadcrumb path. Used to detect
+// navigation transitions (the auto-entryPath mechanism) and to
+// distinguish navigation entries in the diff.
+function _breadcrumbSignature() {
+    try {
+        if (typeof Breadcrumbs !== 'undefined' && Breadcrumbs && Array.isArray(Breadcrumbs.stack)) {
+            return Breadcrumbs.stack.map(f =>
+                f.type + (f.group ? ':' + f.group : (f.category_id ? ':' + f.category_id : ''))).join('|');
+        }
+    } catch (e) { /* degrade silently */ }
+    return '';
+}
+
+// Full observable-state snapshot. Cached within an 8ms window so a
+// burst of trace entries in the same task shares one read rather than
+// re-reading the DOM per entry.
+function _readObservableState(force) {
+    const now = Date.now();
+    if (!force && _observableCache && now - _observableCacheAt < 8) return _observableCache;
+
     const out = {};
     try {
         if (typeof Breadcrumbs !== 'undefined' && Breadcrumbs && Array.isArray(Breadcrumbs.stack)) {
@@ -246,6 +232,12 @@ function _readObservableState() {
 
     try {
         out.uiTemplate = (window._currentRoute && window._currentRoute.uiTemplate) || null;
+        if (window._currentRoute) {
+            out.route = {
+                entityType: window._currentRoute.entityType || null,
+                entityId: (window._currentRoute.entity && window._currentRoute.entity.id) || null,
+            };
+        }
     } catch (e) { out.uiTemplate = '_err:' + e; }
 
     try {
@@ -270,7 +262,34 @@ function _readObservableState() {
         }
     } catch (e) { out.intent = '_err:' + e; }
 
+    _observableCache = out;
+    _observableCacheAt = now;
     return out;
+}
+
+// Compute the diff between two observable-state snapshots. Only
+// top-level scalar fields and the visibility map are diffed — the
+// deeper objects (route, intent, entryFlags) are compared by JSON
+// equality since they're small. Returns null when nothing changed.
+function _diffObservableState(pre, post) {
+    if (!pre || !post) return null;
+    const changes = {};
+    const topKeys = ['breadcrumbs', 'step', 'focusedMode', 'uiTemplate', 'intent', 'svcId', 'entryFlags', 'qty', 'route'];
+    for (const k of topKeys) {
+        const a = JSON.stringify(pre[k]);
+        const b = JSON.stringify(post[k]);
+        if (a !== b) changes[k] = { before: pre[k], after: post[k] };
+    }
+    if (pre.visibility && post.visibility) {
+        const visDiff = {};
+        for (const id of _KEY_ELEMENTS) {
+            if (pre.visibility[id] !== post.visibility[id]) {
+                visDiff[id] = { before: pre.visibility[id], after: post.visibility[id] };
+            }
+        }
+        if (Object.keys(visDiff).length) changes.visibility = visDiff;
+    }
+    return Object.keys(changes).length ? changes : null;
 }
 
 // ─── Core trace write ───────────────────────────────────────────────
@@ -278,23 +297,31 @@ function _readObservableState() {
 function _trace(layer, label, data) {
     if (!window._traceEnabled) return;
     try {
-        // Record entryPath honestly if no explicit _traceStart was ever
-        // fired for this session (e.g. pure category/group-tile navigation).
-        if (window._traceEnabled && !window._traceEntryPath && layer !== 'user_interaction') {
+        // Auto-update entryPath from the actual breadcrumb state on every
+        // non-interaction entry. Replaces the old "inferred" placeholder
+        // with a real navigation path like
+        //   "catalog:wall_mounting > wall_mounting_drywall_or_plaster"
+        // whenever the breadcrumb stack is non-empty. Only writes when
+        // no explicit _traceStart has fired this session, or when the
+        // breadcrumbs have moved since the last update.
+        const bcSig = _breadcrumbSignature();
+        if (bcSig && bcSig !== _lastBreadcrumbSig) {
+            _lastBreadcrumbSig = bcSig;
+            try {
+                const bc = (typeof Breadcrumbs !== 'undefined' && Breadcrumbs.stack) || [];
+                window._traceEntryPath = 'catalog:' + bc
+                    .map(f => f.type + (f.group ? ':' + f.group : (f.category_id ? ':' + f.category_id : '')))
+                    .join(' > ');
+            } catch (e) { /* best-effort */ }
+        }
+        if (!window._traceEntryPath && layer !== 'user_interaction') {
             window._traceEntryPath = 'catalog_direct (inferred -- no explicit _traceStart call fired on this path)';
         }
 
-        // Enrich session-layer entries with the full observable state.
-        // Other layers (pricing/nlp/orchestrator) carry their own rich
-        // payloads; attaching observable state to those too would blow
-        // up entry sizes for marginal benefit.
-        const enriched = (layer === 'session' || layer === 'fn_call')
+        const enriched = (layer === 'session' || layer === 'fn_call' || layer === 'fn_return')
             ? Object.assign({}, data || {}, { _observable: _readObservableState() })
             : data;
 
-        // Causality: stamp parentSeq on every non-interaction entry that
-        // fires after a user click, so the flat log can be walked as a
-        // tree. Was the single biggest readability gap in the old file.
         const entry = {
             seq: window._traceLog.length,
             t: Date.now(),
@@ -308,57 +335,72 @@ function _trace(layer, label, data) {
 
         window._traceLog.push(entry);
 
-        // 2000-entry safety valve, well above any realistic single-session
-        // flow. When it fires, keep the most recent half and renumber.
         const MAX_ENTRIES = 2000;
         if (window._traceLog.length > MAX_ENTRIES) {
             window._traceLog = window._traceLog.slice(-Math.floor(MAX_ENTRIES / 2));
             window._traceLog.forEach((e, i) => { e.seq = i; });
-            // parentSeq references are now stale after the truncation.
-            // Rather than try to remap them (which requires tracking the
-            // dropped offset and re-pointing every surviving entry), it's
-            // safer to drop them — the log is still chronologically
-            // correct, it just loses the click-to-handler links for the
-            // oldest half.
             window._traceLog.forEach(e => { if ('parentSeq' in e) delete e.parentSeq; });
             _lastInteractionSeq = null;
         }
 
         _scheduleRender();
     } catch (e) {
-        // A tracing failure must never surface to the customer or block
-        // the real pipeline it's observing.
         console.warn('[trace] entry failed, ignored:', e);
     }
 }
 
-// Convenience wrapper for the recommended qr.html one-liners. Records
-// the function name plus the small args object as an fn_call layer
-// entry, enriched with the same observable state as session entries.
+// Records a function entry AND returns a handle the caller may use to
+// record branch decisions, a return value, and (implicitly, on return)
+// the duration. If the caller ignores the handle, behaviour is
+// identical to the old _traceFn(name, args) one-liner.
 function _traceFn(name, args) {
+    const startSeq = window._traceLog.length;
     _trace('fn_call', name, args || {});
+
+    // When tracing is off, _trace was a no-op — return a no-op handle so
+    // callers can invoke its methods unconditionally without branching.
+    const enabled = window._traceEnabled;
+    let closed = false;
+    const _nowAtEntry = Date.now();
+
+    return {
+        branch: function (branchName, branchData) {
+            if (!enabled || closed) return;
+            _trace('fn_call', name + ':branch', Object.assign({
+                branch: branchName,
+                _entrySeq: startSeq,
+            }, branchData || {}));
+        },
+        return: function (returnData) {
+            if (!enabled || closed) return;
+            closed = true;
+            _trace('fn_return', name, Object.assign({
+                _entrySeq: startSeq,
+                durationMs: Date.now() - _nowAtEntry,
+            }, returnData || {}));
+        },
+        error: function (err) {
+            if (!enabled || closed) return;
+            closed = true;
+            _trace('fn_return', name + ':error', {
+                _entrySeq: startSeq,
+                durationMs: Date.now() - _nowAtEntry,
+                error: String(err && err.message || err).slice(0, 300),
+            });
+        },
+    };
 }
 
 function _traceStart(input, entryPath) {
     if (!window._traceEnabled) return;
-    // No longer clears the log — a new entry flow is recorded as a
-    // session/context_transition marker so multi-step debugging (e.g.
-    // add to cart failed on service A, then tried service B) preserves
-    // all prior context. The trashcan button in the panel header clears
-    // explicitly when the tester wants a clean slate.
     window._traceInput = input;
     window._traceEntryPath = entryPath || 'unknown';
     window._editingFlagNoteSeq = null;
-    // Cross-check the caller's claimed entryPath against what the app
-    // is actually showing. A mismatch is the exact shape of the bug
-    // class that motivated this whole revision: the caller said
-    // 'smart_quote', but the breadcrumbs and step say 'catalog
-    // navigation, step 3'.
-    const observed = _readObservableState();
+    const observed = _readObservableState(true);
     const bc = Array.isArray(observed.breadcrumbs) ? observed.breadcrumbs : [];
     const claimed = entryPath || 'unknown';
     let mismatch = null;
-    if (claimed === 'smart_quote' && bc.length > 0 && bc[0] !== 'categories_home_only') {
+    if (claimed === 'smart_quote' && bc.length > 0) {
         mismatch = { claimed, breadcrumbs: bc, step: observed.step };
     } else if (claimed === 'catalog' && observed.uiTemplate === 'self_quote') {
         mismatch = { claimed, uiTemplate: observed.uiTemplate };
@@ -394,10 +436,6 @@ function _traceExport() {
     let btnycHash = null;
     try { btnycHash = _simpleHash(JSON.stringify(window.DB || {})); } catch (e) { /* best-effort */ }
 
-    // The tester's annotations, structured for machine consumption. Each
-    // carries the entry's seq/layer/label, the tester's note, the timestamp
-    // the flag was set, and the full entry snapshot so a bug-fixing AI has
-    // the complete context of what was on screen when the flag was raised.
     const flagged = window._traceLog.filter(e => e._flag && e._flag.flagged);
     const annotations = flagged.map(e => ({
         seq: e.seq,
@@ -408,6 +446,18 @@ function _traceExport() {
         entrySnapshot: e.data,
     }));
 
+    // A "state-change chain" — every state_change entry flattened into
+    // a compact timeline. Gives a bug-fixing reader the sequence of
+    // real navigation transitions without having to walk the full trace.
+    const stateChanges = window._traceLog
+        .filter(e => e.layer === 'session' && e.label === 'state_change')
+        .map(e => ({
+            seq: e.seq,
+            afterClick: e.parentSeq,
+            changed: Object.keys(e.data.changes || {}),
+            breadcrumbsAfter: (e.data.changes && e.data.changes.breadcrumbs && e.data.changes.breadcrumbs.after) || null,
+        }));
+
     return JSON.stringify({
         meta: {
             entryPath: window._traceEntryPath || 'unknown',
@@ -416,15 +466,12 @@ function _traceExport() {
             exportedAt: new Date().toISOString(),
             totalEntries: window._traceLog.length,
             flaggedCount: flagged.length,
+            stateChangeCount: stateChanges.length,
         },
         summary,
-        // Tester-raised flags/notes, directly consumable by a bug-fixing
-        // machine without scanning the full trace.
         annotations,
-        // Live, at-export-time snapshot of what the app currently shows.
-        // Complements lastVisibleScreen (which is a DOM snapshot at a
-        // render checkpoint) with pure state-derived facts.
-        observedState: _readObservableState(),
+        stateChanges,
+        observedState: _readObservableState(true),
         lastVisibleScreen: lastDomSnapshot,
         narrative: _traceNarrative(window._traceLog),
         input: window._traceInput,
@@ -434,7 +481,10 @@ function _traceExport() {
 
 function _traceToggle(on) {
     window._traceEnabled = (on !== undefined) ? !!on : !window._traceEnabled;
-    if (window._traceEnabled) _installErrorCapture();
+    if (window._traceEnabled) {
+        _installErrorCapture();
+        _installStateDiff();
+    }
     if (typeof _renderTraceOverlay === 'function') _renderTraceOverlay(true);
     return window._traceEnabled;
 }
@@ -444,27 +494,14 @@ function _traceToggle(on) {
 function _readCurrentEstimate() {
     const now = Date.now();
     if (_estimateCache && now - _estimateCacheAt < 100) return _estimateCache;
-    // Reads the current, live estimate off whatever panel is on screen.
-    // The specific selector is captured so the tester/developer knows
-    // exactly which UI element produced the number — multiple panels use
-    // different class names for the same concept.
     const candidates = [
-        '#sqLivePrice',
-        '.sq-ic-price',
-        '.iph-price',
-        '.qprice',
-        '.qpranger',
-        '#current-estimate',
-        '.price-value',
-        '#sqCurEstBtn',
+        '#sqLivePrice', '.sq-ic-price', '.iph-price', '.qprice',
+        '.qpranger', '#current-estimate', '.price-value', '#sqCurEstBtn',
     ];
     let result = null;
     for (const sel of candidates) {
         const el = document.querySelector(sel);
         if (!el) continue;
-        // Skip hidden elements — the old code would happily return a
-        // display:none #current-estimate whose text was the last visible
-        // value, even when a different, visible price was on screen.
         if (!_isVisible(el)) continue;
         const t = (el.textContent || '').trim();
         if (t) { result = { selector: sel, text: t.slice(0, 80) }; break; }
@@ -475,10 +512,6 @@ function _readCurrentEstimate() {
 }
 
 function _readPriorSelection(el) {
-    // When a click lands on an intake chip (data-mod/data-label), find the
-    // sibling chip in the same question group currently selected. Returns
-    // null for a fresh selection so the trace correctly distinguishes
-    // "first pick" from "changed pick".
     const mod = el && el.dataset && el.dataset.mod;
     if (!mod) return null;
     const scope = el.closest('.sq-ic-q') || el.closest('.intake-module-step') || el.parentElement;
@@ -486,15 +519,12 @@ function _readPriorSelection(el) {
     let selected = null;
     try {
         selected = scope.querySelector('[data-mod="' + mod.replace(/"/g, '\\"') + '"].sel');
-    } catch (e) { /* malformed selector, degrade silently */ }
+    } catch (e) { /* malformed selector */ }
     if (!selected || selected === el) return null;
     return { label: selected.dataset.label || (selected.textContent || '').trim().slice(0, 80) };
 }
 
 function _readScreenContext() {
-    // Compact snapshot of everything short of full observable state:
-    // current estimate plus the set of currently-selected intake
-    // answers. Cheaper than _readObservableState, used on every click.
     const ctx = {};
     const estimate = _readCurrentEstimate();
     if (estimate) ctx.estimate = estimate;
@@ -506,6 +536,49 @@ function _readScreenContext() {
     });
     if (selected.length) ctx.selectedAnswers = selected;
     return ctx;
+}
+
+// ─── Tile snapshot helper ───────────────────────────────────────────
+// Capture the visible tile labels inside a container. Useful after
+// any renderServices / renderComponentSymptomPicker / showServiceTypesForGroup
+// call, to record what was actually on screen (not just the container's
+// dimensions, which the visibility map already covers).
+function _traceTiles(containerSelector, label) {
+    if (typeof _trace !== 'function' || !window._traceEnabled) return;
+    try {
+        const container = typeof containerSelector === 'string'
+            ? document.querySelector(containerSelector)
+            : containerSelector;
+        if (!container) return;
+        const tiles = [...container.querySelectorAll('.group-tile, .service-tile, .detail-tile')]
+            .map(t => (t.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60))
+            .filter(Boolean);
+        _trace('dom_snapshot', (label || 'tiles') + ':rendered', {
+            container: typeof containerSelector === 'string' ? containerSelector : '(node)',
+            count: tiles.length,
+            tiles,
+        });
+    } catch (e) {
+        console.warn('[trace] tile snapshot failed, ignored:', e);
+    }
+}
+
+// ─── Post-click state-diff ──────────────────────────────────────────
+// The mechanism that makes "which internal function actually moved the
+// state" traceable WITHOUT instrumenting the function. On every click,
+// the interaction listener records pre-click observable state, then
+// schedules a microtask. When the microtask runs (after all bubble-
+// phase handlers have completed for that click), the post-click state
+// is captured and diffed. Non-empty diffs are emitted as
+// session/state_change entries with parentSeq already pointing at the
+// triggering click.
+function _installStateDiff() {
+    if (_stateDiffInstalled) return;
+    _stateDiffInstalled = true;
+    // Nothing further — the interaction listener does the scheduling on
+    // each click; this function exists purely as an idempotent install
+    // marker so the toggle-on path can call it without caring whether
+    // it's already run.
 }
 
 // ─── Panel rendering (rAF-debounced) ────────────────────────────────
@@ -530,6 +603,7 @@ const _LAYER_COLORS = {
     user_interaction: '#fb923c',
     session: '#94a3b8',
     fn_call: '#22d3ee',
+    fn_return: '#0e7490',
 };
 
 const _ALL_LAYERS = Object.keys(_LAYER_COLORS);
@@ -540,8 +614,15 @@ function _ensureHiddenLayers() {
     return window._traceHiddenLayers;
 }
 
+function _ensureExpandedSeqs() {
+    if (window._traceExpandedSeqs) return window._traceExpandedSeqs;
+    window._traceExpandedSeqs = new Set();
+    return window._traceExpandedSeqs;
+}
+
 function _entryMatchesFilter(entry) {
     if (_ensureHiddenLayers().has(entry.layer)) return false;
+    if (window._traceFlaggedOnly && !(entry._flag && entry._flag.flagged)) return false;
     const q = (window._traceFilterText || '').trim().toLowerCase();
     if (!q) return true;
     if ((entry.label || '').toLowerCase().indexOf(q) !== -1) return true;
@@ -551,7 +632,7 @@ function _entryMatchesFilter(entry) {
     try {
         const d = JSON.stringify(entry.data);
         if (d && d.toLowerCase().indexOf(q) !== -1) return true;
-    } catch (e) { /* circular — skip data match */ }
+    } catch (e) { /* circular */ }
     return false;
 }
 
@@ -565,31 +646,21 @@ function _renderTraceOverlay(force) {
     panel.style.display = window._traceEnabled ? 'block' : 'none';
     if (!window._traceEnabled) return;
 
-    // Don't disrupt an in-progress flag-note edit.
     if (window._editingFlagNoteSeq != null && !force) return;
 
-    // Preserve scroll only when the user is actively reading (i.e. not
-    // already parked at the bottom). This was the previous behaviour's
-    // other half — it always snapped to the bottom when new entries
-    // arrived, losing the reader's place.
     const prevScrollTop = panel.scrollTop;
     const atBottom = panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 30;
     const countChanged = window._lastRenderedTraceCount !== window._traceLog.length;
     window._lastRenderedTraceCount = window._traceLog.length;
 
-    // Remember focus on the filter input so we can restore it after the
-    // panel is rebuilt (the input is destroyed and recreated).
     const active = document.activeElement;
     const filterWasFocused = active && active.id === 'traceFilterInput';
     const filterSelStart = filterWasFocused ? active.selectionStart : null;
     const filterSelEnd = filterWasFocused ? active.selectionEnd : null;
 
-    // Rebuilt via safe DOM methods every call — every piece of trace data
-    // (which may contain raw customer free text) goes through textContent,
-    // never innerHTML string concatenation.
     panel.replaceChildren();
 
-    // ── Header: title, Copy JSON, Clear log ──
+    // ── Header ──
     const header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid #334155;padding-bottom:8px;gap:6px;';
     const title = document.createElement('strong');
@@ -599,6 +670,18 @@ function _renderTraceOverlay(force) {
 
     const btnGroup = document.createElement('div');
     btnGroup.style.cssText = 'display:flex;gap:6px;flex-shrink:0;';
+
+    const flaggedOnlyBtn = document.createElement('button');
+    flaggedOnlyBtn.textContent = '🚩';
+    flaggedOnlyBtn.title = window._traceFlaggedOnly ? 'Show all entries' : 'Show flagged only';
+    flaggedOnlyBtn.setAttribute('aria-pressed', String(window._traceFlaggedOnly));
+    flaggedOnlyBtn.style.cssText = 'background:' + (window._traceFlaggedOnly ? '#2a2416' : '#334155')
+        + ';color:#e2e8f0;border:1px solid ' + (window._traceFlaggedOnly ? '#fbbf24' : '#334155')
+        + ';border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;';
+    flaggedOnlyBtn.onclick = () => {
+        window._traceFlaggedOnly = !window._traceFlaggedOnly;
+        _renderTraceOverlay(true);
+    };
 
     const exportBtn = document.createElement('button');
     exportBtn.textContent = 'Copy JSON';
@@ -625,7 +708,7 @@ function _renderTraceOverlay(force) {
         _renderTraceOverlay(true);
     };
 
-    btnGroup.append(exportBtn, clearBtn);
+    btnGroup.append(flaggedOnlyBtn, exportBtn, clearBtn);
     header.append(title, btnGroup);
     panel.appendChild(header);
 
@@ -641,7 +724,6 @@ function _renderTraceOverlay(force) {
     filterInput.style.cssText = 'flex:1;min-width:120px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:4px 8px;font-family:monospace;font-size:11px;outline:none;';
     filterInput.addEventListener('input', () => {
         window._traceFilterText = filterInput.value;
-        // Re-render the list below without losing filter-input focus.
         _renderTraceOverlay(true);
     });
     filterRow.appendChild(filterInput);
@@ -650,9 +732,9 @@ function _renderTraceOverlay(force) {
         const hidden = _ensureHiddenLayers().has(layer);
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.textContent = layer.replace('_engine', '').replace('_interaction', '');
+        chip.textContent = layer.replace('_engine', '').replace('_interaction', '').replace('_return', '↩');
         chip.title = (hidden ? 'Show ' : 'Hide ') + layer + ' entries';
-        chip.style.cssText = 'background:' + (hidden ? '#1e293b' : (layer === 'fn_call' ? '#0e7490' : '#334155'))
+        chip.style.cssText = 'background:' + (hidden ? '#1e293b' : (layer === 'fn_call' ? '#0e7490' : (layer === 'fn_return' ? '#164e63' : '#334155')))
             + ';color:' + (hidden ? '#475569' : '#e2e8f0')
             + ';border:1px solid ' + (hidden ? '#334155' : (_LAYER_COLORS[layer] || '#475569'))
             + ';border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;'
@@ -667,7 +749,7 @@ function _renderTraceOverlay(force) {
     });
     panel.appendChild(filterRow);
 
-    // ── Input block (if a _traceStart was fired) ──
+    // ── Input block ──
     if (window._traceInput != null) {
         const inputBlock = document.createElement('div');
         inputBlock.style.cssText = 'background:#1e293b;border-radius:4px;padding:6px 8px;margin-bottom:10px;word-break:break-word;';
@@ -680,13 +762,17 @@ function _renderTraceOverlay(force) {
         panel.appendChild(inputBlock);
     }
 
-    // ── Entry cards (filtered) ──
+    // ── Entry cards ──
+    const expanded = _ensureExpandedSeqs();
     let shownCount = 0;
     window._traceLog.forEach(entry => {
         if (!_entryMatchesFilter(entry)) return;
         shownCount++;
         const isFlagged = !!(entry._flag && entry._flag.flagged);
         const isEditingThis = window._editingFlagNoteSeq === entry.seq;
+        const isExpanded = expanded.has(entry.seq) || isEditingThis;
+        // Flagged entries start expanded; others stay collapsed.
+        const actuallyExpanded = isExpanded || isFlagged;
 
         const card = document.createElement('div');
         card.style.cssText = 'background:' + (isFlagged ? '#2a2416' : '#1e293b')
@@ -697,11 +783,23 @@ function _renderTraceOverlay(force) {
         const headerRow = document.createElement('div');
         headerRow.style.cssText = 'display:flex;align-items:center;gap:4px;';
 
+        // Clickable layer line — clicking toggles the collapsed/expanded
+        // state for this entry, so a long trace stays scannable.
         const layerLine = document.createElement('div');
         layerLine.style.cssText = 'color:' + (_LAYER_COLORS[entry.layer] || '#64748b')
-            + ';font-size:10px;font-weight:bold;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-        layerLine.textContent = `#${entry.seq} · ${entry.layer}`
+            + ';font-size:10px;font-weight:bold;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;user-select:none;';
+        layerLine.textContent = (actuallyExpanded ? '▾ ' : '▸ ')
+            + `#${entry.seq} · ${entry.layer}`
             + (entry.parentSeq != null ? ` · ← #${entry.parentSeq}` : '');
+        layerLine.title = actuallyExpanded ? 'Collapse entry' : 'Expand entry';
+        layerLine.onclick = (e) => {
+            // If the click landed on the ← #N span specifically, scroll
+            // to that entry instead of toggling expansion.
+            if (e.target && e.target.dataset && e.target.dataset.jumpTo != null) return;
+            if (expanded.has(entry.seq)) expanded.delete(entry.seq);
+            else expanded.add(entry.seq);
+            _renderTraceOverlay(true);
+        };
         headerRow.appendChild(layerLine);
 
         const flagBtn = document.createElement('button');
@@ -739,9 +837,7 @@ function _renderTraceOverlay(force) {
             const noteBtn = document.createElement('button');
             noteBtn.type = 'button';
             noteBtn.textContent = '📝';
-            noteBtn.title = (entry._flag && entry._flag.note)
-                ? 'Edit flag note'
-                : 'Add a note to this flag';
+            noteBtn.title = (entry._flag && entry._flag.note) ? 'Edit flag note' : 'Add a note to this flag';
             noteBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:13px;padding:0 3px;line-height:1;';
             noteBtn.onclick = () => {
                 window._editingFlagNoteSeq = (window._editingFlagNoteSeq === entry.seq) ? null : entry.seq;
@@ -757,10 +853,12 @@ function _renderTraceOverlay(force) {
         labelLine.textContent = entry.label;
         card.appendChild(labelLine);
 
-        const dataLine = document.createElement('pre');
-        dataLine.style.cssText = 'color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:2px 0 0 0;';
-        dataLine.textContent = JSON.stringify(entry.data, null, 1);
-        card.appendChild(dataLine);
+        if (actuallyExpanded) {
+            const dataLine = document.createElement('pre');
+            dataLine.style.cssText = 'color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:2px 0 0 0;';
+            dataLine.textContent = JSON.stringify(entry.data, null, 1);
+            card.appendChild(dataLine);
+        }
 
         if (isEditingThis) {
             const editor = document.createElement('div');
@@ -799,7 +897,6 @@ function _renderTraceOverlay(force) {
         panel.appendChild(card);
     });
 
-    // Empty-state hint when the filter hides everything.
     if (shownCount === 0 && window._traceLog.length > 0) {
         const empty = document.createElement('div');
         empty.style.cssText = 'color:#64748b;font-size:11px;text-align:center;padding:16px 8px;font-style:italic;';
@@ -807,7 +904,6 @@ function _renderTraceOverlay(force) {
         panel.appendChild(empty);
     }
 
-    // ── Restore scroll and filter-input focus ──
     if (!countChanged || !atBottom) {
         panel.scrollTop = prevScrollTop;
     } else {
@@ -827,9 +923,6 @@ function _renderTraceOverlay(force) {
 
 // ─── Global interaction capture ─────────────────────────────────────
 
-// A single, capturing-phase listener on document, not per-handler
-// instrumentation — structurally guarantees coverage of every tap and
-// every settled text edit, present and future.
 function _describeInteractionTarget(el) {
     if (!el || el === document) return null;
     const tag = el.tagName ? el.tagName.toLowerCase() : '';
@@ -858,17 +951,41 @@ function _describeInteractionTarget(el) {
         if (el.classList.contains('done')) desc.uiDone = true;
     }
 
-    // Read inline style only (no forced reflow). The old code called
-    // getComputedStyle here on every click, which forced a layout pass.
-    // Every piece of information the computed-style read was producing
-    // (selected/active/locked/done) is already captured above via
-    // classList. Inline style is the only remaining useful signal, and
-    // reading it is free.
     if (el.style && el.style.cssText) {
         desc.inlineStyle = el.style.cssText.slice(0, 200);
     }
 
     return desc;
+}
+
+// Records the pre-click observable state, emits the click, and schedules
+// a microtask that captures the post-click state and emits a
+// session/state_change entry when anything moved. Runs for every click
+// when tracing is enabled, independent of any inline instrumentation.
+function _recordClickAndScheduleDiff(desc) {
+    const preState = _readObservableState(true);
+    _trace('user_interaction', 'click', desc);
+    _lastInteractionSeq = window._traceLog.length - 1;
+    const clickSeq = _lastInteractionSeq;
+    const schedule = (typeof queueMicrotask === 'function')
+        ? queueMicrotask
+        : (fn) => Promise.resolve().then(fn);
+    schedule(() => {
+        if (!window._traceEnabled) return;
+        // Force a fresh read — bypass the 8ms cache so the diff sees the
+        // true post-handler state even if the burst is fast.
+        const postState = _readObservableState(true);
+        const diff = _diffObservableState(preState, postState);
+        if (diff) {
+            _trace('session', 'state_change', {
+                afterClickSeq: clickSeq,
+                changes: diff,
+            });
+            // The state_change entry's parentSeq is set automatically by
+            // _trace via _lastInteractionSeq, which is still clickSeq at
+            // this point — so the causality link survives.
+        }
+    });
 }
 
 function _initGlobalInteractionTracing() {
@@ -878,9 +995,6 @@ function _initGlobalInteractionTracing() {
 
     document.addEventListener('click', (e) => {
         if (typeof _trace !== 'function' || !window._traceEnabled) return;
-        // Skip clicks that land on the trace panel itself or the toast
-        // container. The old version traced those too, doubling the log
-        // with no diagnostic value.
         if (e.target && e.target.closest &&
             e.target.closest('#traceOverlayPanel, #traceToggleBtn, #toast-container')) return;
 
@@ -893,9 +1007,6 @@ function _initGlobalInteractionTracing() {
         const desc = _describeInteractionTarget(el);
         if (!desc) return;
 
-        // Question-response enrichment: capture the currently-selected
-        // sibling BEFORE the handler mutates state, so "customer changed
-        // their answer" is traceable.
         if (el && el.dataset && el.dataset.mod) {
             const prior = _readPriorSelection(el);
             if (prior) desc.priorSelection = prior;
@@ -903,21 +1014,15 @@ function _initGlobalInteractionTracing() {
             desc.newSelection = el.dataset.label || (el.textContent || '').trim().slice(0, 80);
         }
 
-        // Current estimate at click time, with its selector.
         const estimate = _readCurrentEstimate();
         if (estimate) desc.estimateAtClick = estimate;
 
-        // All currently-selected intake answers.
         const screenCtx = _readScreenContext();
         if (screenCtx.selectedAnswers && screenCtx.selectedAnswers.length) {
             desc.selectedAnswers = screenCtx.selectedAnswers;
         }
 
-        // Capture the click's own seq after it lands, so any non-interaction
-        // entries fired synchronously (or in the same tick) by its handler
-        // get parentSeq = this click's seq automatically.
-        _trace('user_interaction', 'click', desc);
-        _lastInteractionSeq = window._traceLog.length - 1;
+        _recordClickAndScheduleDiff(desc);
     }, true);
 
     document.addEventListener('change', (e) => {
@@ -930,14 +1035,11 @@ function _initGlobalInteractionTracing() {
         desc.value = typeof el.value === 'string' ? el.value.slice(0, 200) : el.value;
         const estimate = _readCurrentEstimate();
         if (estimate) desc.estimateAtChange = estimate;
-        _trace('user_interaction', 'input_settled', desc);
-        _lastInteractionSeq = window._traceLog.length - 1;
+        _recordClickAndScheduleDiff(desc);
     }, true);
 }
 
 // ─── Error capture ─────────────────────────────────────────────────
-// Not installed by default (fires only when tracing is enabled) so a
-// real customer never has anything extra attached to their session.
 function _installErrorCapture() {
     if (_errorCaptureInstalled) return;
     _errorCaptureInstalled = true;
@@ -958,15 +1060,11 @@ function _installErrorCapture() {
     });
 }
 
-// ─── DOM snapshot: what the customer actually sees ─────────────────
-// Separate from the internal-state trace points — those show what the
-// CODE computed; this shows what actually rendered. Only textContent is
-// read, matching this project's own established XSS-safety convention.
+// ─── DOM snapshot ──────────────────────────────────────────────────
+
 function _traceDomSnapshot(label) {
     if (typeof _trace !== 'function' || !window._traceEnabled) return;
     try {
-        const card = document.querySelector('.sq-ic-card') || document.getElementById('sqQuoteOut')
-            || document.querySelector('.intake-module-step')?.closest('div') || document.body;
         const weUnderstoodChips = [...document.querySelectorAll('.sq-ic-nlp-chip, .sq-ic-chip, .ims-chip.sel')]
             .map(c => c.textContent.trim()).filter(Boolean);
         const questionsA = [...document.querySelectorAll('.sq-ic-q')].map(q => ({
@@ -998,9 +1096,8 @@ function _traceDomSnapshot(label) {
     }
 }
 
-// ─── Human-readable narrative ──────────────────────────────────────
-// The full raw trace log remains available in every export; this walks it
-// into a short, plain-English, step-by-step account.
+// ─── Narrative ─────────────────────────────────────────────────────
+
 function _traceNarrative(log) {
     const lines = [];
     for (const e of log) {
@@ -1015,14 +1112,25 @@ function _traceNarrative(log) {
                     `breadcrumbs=[${(e.data.entryPathMismatch.breadcrumbs || []).join(' > ')}], ` +
                     `step=${e.data.entryPathMismatch.step}`);
             }
+        } else if (e.layer === 'session' && e.label === 'state_change') {
+            const d = e.data.changes || {};
+            const changed = Object.keys(d).filter(k => k !== 'visibility');
+            const visChanged = d.visibility ? Object.keys(d.visibility) : [];
+            const parts = [];
+            if (changed.length) parts.push(changed.map(k => k + ': ' + JSON.stringify(d[k].before) + ' → ' + JSON.stringify(d[k].after)).join(', '));
+            if (visChanged.length) parts.push('visibility: ' + visChanged.map(k => k + '=' + d.visibility[k].after).join(', '));
+            lines.push(`↻ state changed after click #${e.parentSeq}: ${parts.join(' | ')}${flagTag}`);
         } else if (e.layer === 'fn_call') {
+            if (e.label.indexOf(':branch') !== -1) {
+                const br = e.data.branch || '(unnamed)';
+                const rest = Object.keys(e.data).filter(k => !['_observable', 'branch', '_entrySeq'].includes(k));
+                const restStr = rest.length ? ' ' + rest.map(k => k + '=' + JSON.stringify(e.data[k])).join(' ') : '';
+                lines.push(`  branch → ${br}${restStr}${flagTag}`);
+                continue;
+            }
             const obs = e.data._observable || {};
             const vis = obs.visibility || {};
-            // Show only the elements that are actually visible — the whole
-            // point of this line is "what was on screen when this ran".
-            const visPairs = Object.keys(vis)
-                .filter(k => /\/vis\//.test(vis[k]))
-                .map(k => k);
+            const visPairs = Object.keys(vis).filter(k => /\/vis\//.test(vis[k])).map(k => k);
             const args = Object.keys(e.data).filter(k => k !== '_observable');
             const argStr = args.length
                 ? args.map(k => k + '=' + JSON.stringify(e.data[k])).join(' ')
@@ -1032,13 +1140,18 @@ function _traceNarrative(log) {
             const stepStr = (obs.step != null) ? ' step=' + obs.step : '';
             const visStr = visPairs.length ? ' visible={' + visPairs.join(',') + '}' : '';
             lines.push(`fn ${e.label}(${argStr})${bcStr}${stepStr}${visStr}${flagTag}`);
+        } else if (e.layer === 'fn_return') {
+            const dur = e.data.durationMs != null ? ` (${e.data.durationMs}ms)` : '';
+            const rest = Object.keys(e.data).filter(k => !['_observable', 'durationMs', '_entrySeq'].includes(k));
+            const restStr = rest.length ? ' ' + rest.map(k => k + '=' + JSON.stringify(e.data[k])).join(' ') : '';
+            lines.push(`  ↩ ${e.label}${dur}${restStr}${flagTag}`);
         } else if (e.layer === 'user_interaction' && e.label === 'click') {
             const d = e.data;
             const what = (d.data && d.data.mod)
                 ? `question option "${d.data.label || d.newSelection || d.text || ''}" (${d.data.mod})`
                 : (d.text || d.tag || 'an element');
             const priorNote = d.priorSelection ? ` [changed from "${d.priorSelection.label}"]` : '';
-            const estNote = d.estimateAtClick ? ` — estimate on screen: ${d.estimateAtClick.text} (${d.estimateAtClick.selector})` : '';
+            const estNote = d.estimateAtClick ? ` — estimate: ${d.estimateAtClick.text} (${d.estimateAtClick.selector})` : '';
             lines.push(`User tapped: ${what}${priorNote}${estNote}${flagTag}`);
         } else if (e.layer === 'user_interaction' && e.label === 'input_settled') {
             const val = (e.data.value || '').length > 40 ? e.data.value.slice(0, 40) + '…' : e.data.value;
@@ -1053,7 +1166,11 @@ function _traceNarrative(log) {
             lines.push(`Price computed: $${d.laborEstimate} (qty ${d.qty}, tier ${d.complexityTier}${frictionNote})${flagTag}`);
         } else if (e.layer === 'dom_snapshot') {
             const d = e.data;
-            lines.push(`Screen showed: ${d.questions?.length || 0} question(s), price lines [${(d.priceLines || []).map(l => l.label + '=' + l.value).join(', ')}], add-to-cart button: "${d.addToCartLabel || '(none)'}"${d.addToCartLooksDisabled ? ' [DISABLED-LOOKING]' : ''}${flagTag}`);
+            if (d.tiles) {
+                lines.push(`Tiles rendered in ${d.container}: [${d.tiles.join(' | ')}]${flagTag}`);
+            } else {
+                lines.push(`Screen showed: ${d.questions?.length || 0} question(s), price lines [${(d.priceLines || []).map(l => l.label + '=' + l.value).join(', ')}], add-to-cart button: "${d.addToCartLabel || '(none)'}"${d.addToCartLooksDisabled ? ' [DISABLED-LOOKING]' : ''}${flagTag}`);
+            }
         } else if (e.layer === 'ui_renderer' && e.label === 'sqAddToCart: invoked') {
             lines.push(`User clicked Add to Cart (qty ${e.data.qty}, ${e.data.answersCount} answers on file)${flagTag}`);
         } else if (e.layer === 'session' && e.label === 'window_error') {
@@ -1075,7 +1192,4 @@ function _traceNarrative(log) {
 }
 
 // ─── Auto-wire ─────────────────────────────────────────────────────
-// Classic (non-deferred) script: runs during HTML parsing, but only
-// attaches listeners — never queries the DOM at load time — so it's
-// safe regardless of where in <head>/<body> the <script src> tag sits.
 if (typeof document !== 'undefined') _initGlobalInteractionTracing();
