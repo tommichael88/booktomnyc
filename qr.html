@@ -8228,211 +8228,255 @@
          });
      }
 
-     function renderComponentSymptomPicker(container, group, category_id, chosenAction) {
-         _traceFn('renderComponentSymptomPicker', {
-             groupId: group?.id,
-             chosenAction
-         }); // <-- ADD
-         // v9.6 Track A / Phase 8: the real navigation picker, built on top of
-         // the archetype/routing_archetypes data foundation. chosenAction (the
-         // real service_type picked in the new showServiceTypesForGroup step
-         // above this in the flow) is threaded through to resolution -- see
-         // resolveComponentSymptomTap for why this matters for real, multi-
-         // service components even though it's a no-op for Doors/Toilets today.
-         const ra = DB.routing_archetypes?.[group.id];
-         const archetype = ra?.routing_archetype;
-         const isComponentFirst = archetype === 'component_first' && (ra?.real_component_ids || []).length > 0;
-         const isSymptomFirst = archetype === 'symptom_first' && (ra?.real_symptom_ids || []).length > 0;
+function renderComponentSymptomPicker(container, group, category_id, chosenAction) {
+    const _t = _traceFn('renderComponentSymptomPicker', {
+        groupId: group?.id,
+        chosenAction
+    });
 
-         // v9.6 FIX: real, distinct gap found while adding the appliances
-         // groups -- washer/dishwasher/refrigerator are symptom_first (their
-         // only real signal is 4 repair-oriented symptoms), but each also has
-         // a real, direct, unambiguous Install service that no symptom could
-         // ever surface (installing a new unit isn't a symptom). Without this,
-         // tapping "Install" still only ever shows the same 4 repair symptoms,
-         // none of which lead anywhere useful, even though the exact service
-         // being asked for already, unambiguously exists.
-         //
-         // Real bug caught in the first version of this fix, before shipping:
-         // checking for "exactly one unique service across all mappings"
-         // isn't the right test -- washer's 4 real Repair symptoms all
-         // happen to share the same washer_repair service, so that naive
-         // check also (wrongly) skipped the symptom picker for Repair, even
-         // though tapping a specific symptom still has real value (it
-         // pre-answers washer_repair's own "symptom" intake question,
-         // reducing friction later). The correct test: only skip when the
-         // tiles this archetype would NORMALLY display are entirely
-         // irrelevant to the chosen action -- i.e. none of them lead to a
-         // service of that type at all -- not merely when they converge on
-         // one shared destination.
-         if (chosenAction) {
-             const normalIds = isComponentFirst ? (ra?.real_component_ids || []) : (ra?.real_symptom_ids || []);
-             const normalMapping = isComponentFirst ? (ra?.component_id_to_service_ids || {}) : (ra?.symptom_id_to_service_ids || {});
-             const normalTilesHaveThisAction = normalIds.some(id =>
-                 (normalMapping[id] || []).some(svcId => {
-                     const svc = (DB.services || []).find(s => s.id === svcId);
-                     return svc && svc.service_type === chosenAction;
-                 })
-             );
-             if (!normalTilesHaveThisAction) {
-                 const allMapped = new Set([
-                     ...Object.values(ra?.component_id_to_service_ids || {}).flat(),
-                     ...Object.values(ra?.symptom_id_to_service_ids || {}).flat(),
-                 ]);
-                 const matchingAction = [...allMapped]
-                     .map(id => (DB.services || []).find(s => s.id === id))
-                     .filter(s => s && s.service_type === chosenAction);
-                 if (matchingAction.length === 1) {
-                     prefillSmartQuoteFromService(matchingAction[0], category_id);
-                     return;
-                 }
-             }
-         }
+    // v9.6 Track A / Phase 8: the real navigation picker, built on top of
+    // the archetype/routing_archetypes data foundation. chosenAction (the
+    // real service_type picked in the new showServiceTypesForGroup step
+    // above this in the flow) is threaded through to resolution -- see
+    // resolveComponentSymptomTap for why this matters for real, multi-
+    // service components even though it's a no-op for Doors/Toilets today.
+    const ra = DB.routing_archetypes?.[group.id];
+    const archetype = ra?.routing_archetype;
+    const isComponentFirst = archetype === 'component_first' && (ra?.real_component_ids || []).length > 0;
+    const isSymptomFirst = archetype === 'symptom_first' && (ra?.real_symptom_ids || []).length > 0;
 
-         if (!isComponentFirst && !isSymptomFirst) {
-             // No real, usable component/symptom signal for this group (undetermined,
-             // or component_first/symptom_first but the real data is empty) --
-             // the existing, proven flat tile grid is still the correct behavior
-             // here, not a gap this picker needs to force-cover.
-             const services = servicesByGroup.get(group.id) || [];
-             renderServices(container, services, category_id, group.id);
-             return;
-         }
+    _t.branch('archetype', {
+        archetype,
+        hasRa: !!ra,
+        isComponentFirst,
+        isSymptomFirst
+    });
 
-         container.replaceChildren();
-         container.className = 'group-grid';
+    // v9.6 FIX: real, distinct gap found while adding the appliances
+    // groups -- washer/dishwasher/refrigerator are symptom_first (their
+    // only real signal is 4 repair-oriented symptoms), but each also has
+    // a real, direct, unambiguous Install service that no symptom could
+    // ever surface (installing a new unit isn't a symptom). Without this,
+    // tapping "Install" still only ever shows the same 4 repair symptoms,
+    // none of which lead anywhere useful, even though the exact service
+    // being asked for already, unambiguously exists.
+    //
+    // Real bug caught in the first version of this fix, before shipping:
+    // checking for "exactly one unique service across all mappings"
+    // isn't the right test -- washer's 4 real Repair symptoms all
+    // happen to share the same washer_repair service, so that naive
+    // check also (wrongly) skipped the symptom picker for Repair, even
+    // though tapping a specific symptom still has real value (it
+    // pre-answers washer_repair's own "symptom" intake question,
+    // reducing friction later). The correct test: only skip when the
+    // tiles this archetype would NORMALLY display are entirely
+    // irrelevant to the chosen action -- i.e. none of them lead to a
+    // service of that type at all -- not merely when they converge on
+    // one shared destination.
+    if (chosenAction) {
+        const normalIds = isComponentFirst ? (ra?.real_component_ids || []) : (ra?.real_symptom_ids || []);
+        const normalMapping = isComponentFirst ? (ra?.component_id_to_service_ids || {}) : (ra?.symptom_id_to_service_ids || {});
+        const normalTilesHaveThisAction = normalIds.some(id =>
+            (normalMapping[id] || []).some(svcId => {
+                const svc = (DB.services || []).find(s => s.id === svcId);
+                return svc && svc.service_type === chosenAction;
+            })
+        );
+        _t.branch('chosenAction.normalTilesHaveThisAction', {
+            chosenAction,
+            normalIdsCount: normalIds.length,
+            normalTilesHaveThisAction
+        });
+        if (!normalTilesHaveThisAction) {
+            const allMapped = new Set([
+                ...Object.values(ra?.component_id_to_service_ids || {}).flat(),
+                ...Object.values(ra?.symptom_id_to_service_ids || {}).flat(),
+            ]);
+            const matchingAction = [...allMapped]
+                .map(id => (DB.services || []).find(s => s.id === id))
+                .filter(s => s && s.service_type === chosenAction);
+            _t.branch('chosenAction.matchingAction', { count: matchingAction.length });
+            if (matchingAction.length === 1) {
+                _t.branch('chosenAction.shortCircuit', {
+                    serviceId: matchingAction[0].id,
+                    serviceType: matchingAction[0].service_type
+                });
+                prefillSmartQuoteFromService(matchingAction[0], category_id);
+                return;
+            }
+        }
+    }
 
-         const ids = isComponentFirst ? ra.real_component_ids : ra.real_symptom_ids;
-         const mapping = isComponentFirst ? ra.component_id_to_service_ids : ra.symptom_id_to_service_ids;
+    if (!isComponentFirst && !isSymptomFirst) {
+        // No real, usable component/symptom signal for this group (undetermined,
+        // or component_first/symptom_first but the real data is empty) --
+        // the existing, proven flat tile grid is still the correct behavior
+        // here, not a gap this picker needs to force-cover.
+        const services = servicesByGroup.get(group.id) || [];
+        _t.branch('noArchetypeSignal.flatGrid', {
+            archetype,
+            servicesCount: services.length
+        });
+        renderServices(container, services, category_id, group.id);
+        return;
+    }
 
-         // v9.6 FIX: real, direct customer report -- tapping a group with only
-         // one real component/symptom (Bulbs, Thermostats, Water Lines, Garbage
-         // Disposals, Window AC -- confirmed 5 of 18 real groups today) forced a
-         // second, redundant tap on a tile whose name is often identical or
-         // near-identical to the group's own name just tapped ("Bulbs" -> tap
-         // "Bulb"). The same "skip when there's only one real, unambiguous
-         // option" principle already applied to the Action step
-         // (showServiceTypesForGroup) was never extended to this step. Skips
-         // straight to resolution -- which still, correctly, shows a real
-         // sub-picker when that one component maps to more than one service
-         // (Bulbs: "High Ceiling Bulb Replacement" vs "LED Bulb Upgrade" is a
-         // genuine choice, not redundant friction) or falls through to the
-         // pre-seeded builder when it maps to none. Only the pointless,
-         // single-tile tap itself is removed, not any real decision.
-         if (ids.length === 1) {
-             resolveComponentSymptomTap(mapping[ids[0]] || [], group, category_id, chosenAction);
-             return;
-         }
+    container.replaceChildren();
+    container.className = 'group-grid';
 
-         const prompt = create('div', {
-             class: 'picker-prompt',
-             text: isComponentFirst ? 'Which part?' : "What's happening?",
-             style: 'grid-column:1/-1;font-weight:600;font-size:.95rem;margin-bottom:6px;color:#374151;'
-         });
-         container.appendChild(prompt);
+    const ids = isComponentFirst ? ra.real_component_ids : ra.real_symptom_ids;
+    const mapping = isComponentFirst ? ra.component_id_to_service_ids : ra.symptom_id_to_service_ids;
 
-         ids.forEach(rawId => {
-             const label = humanizeComponentSymptomId(rawId);
-             const tile = document.createElement('div');
-             tile.className = 'group-tile';
-             tile.tabIndex = 0;
-             tile.role = 'button';
-             tile.innerHTML = `<span class="tile-name">${escapeHtml(label)}</span>`;
-             const handler = () => resolveComponentSymptomTap(mapping?.[rawId] || [], group, category_id, chosenAction);
-             tile.addEventListener('click', handler);
-             tile.addEventListener('keydown', e => {
-                 if (e.key === 'Enter' || e.key === ' ') {
-                     e.preventDefault();
-                     handler();
-                 }
-             });
-             container.appendChild(tile);
-         });
+    _t.branch('tiles.plan', {
+        isComponentFirst,
+        idsCount: ids.length,
+        hasMapping: !!mapping
+    });
 
-         // v9.6 FIX: real, distinct gap found while adding the second real group
-         // (Toilets) -- the zero-match fallback above only ever handles a
-         // LISTED tile mapping to zero services. It does nothing for a
-         // customer whose real need (e.g. "toilet seat", confirmed via direct
-         // check: no comp.toilet_seat exists anywhere in this group's real
-         // data, not even as a tracked real_gaps entry) was never a tile at
-         // all. Without this, such a customer sees 5 tiles, none of which
-         // match, with no obvious next step. Always shown, not conditional on
-         // any specific gap being known in advance -- the honest answer to
-         // "what if none of these are it" for every real group, not just the
-         // ones with a currently-tracked gap.
-         // v9.6 FIX (T74): a real, confirmed gap found scoping a customer-
-         // reported dual-intent situation (Tech Trouble's Computer Repair, but
-         // NOT unique to it -- confirmed the identical shape in 4 other real
-         // groups: Washer, Refrigerator, Dishwasher, Microwave). Each of these
-         // groups was deliberately, correctly authored with BOTH a component
-         // mapping AND a symptom mapping -- but routing_archetype can only
-         // select one as "live" per group, silently orphaning any service that
-         // ONLY exists in the other one. In every one of these 5 cases the
-         // orphaned service is the Install/Setup-type one, for exactly the
-         // reason checkRoutingArchetypeConsistency's own, separate validation
-         // already articulates for internal_hardware_replacement: a customer
-         // who wants a new washer/router/etc installed already knows what they
-         // want -- there is no real "symptom" to ask about. These services
-         // already have their own correct, authored intake_chain (confirmed,
-         // not assumed, by that same existing check) -- the gap was purely
-         // that this picker never offered a path to them, not that they lacked
-         // one. Surfaced as explicit, named tiles (not folded into the
-         // ambiguous component/symptom resolution below) precisely because a
-         // customer choosing one of these has stated an exact fact, the same
-         // certainty level as a direct catalog tap -- resolved accordingly via
-         // prefillSmartQuoteFromService, which correctly scores it via the
-         // existing, proven entryType==='catalog' path (confidence 100), not
-         // the group-level 'other_tile' formula this whole picker otherwise
-         // uses. Deliberately does not touch the 5 other real groups sharing
-         // the same dual-mapping shape (Toilets, Sinks, Showers/Tubs,
-         // Furniture, Networking) -- confirmed directly, not assumed, that
-         // their "dead" mapping is fully redundant with the live one, so
-         // nothing there is actually orphaned.
-         const otherMapping = isComponentFirst ? ra.symptom_id_to_service_ids : ra.component_id_to_service_ids;
-         if (otherMapping) {
-             const liveServiceIds = new Set();
-             for (const svcIds of Object.values(mapping || {}))
-                 for (const id of svcIds) liveServiceIds.add(id);
-             const orphanedServiceIds = new Set();
-             for (const svcIds of Object.values(otherMapping)) {
-                 for (const id of svcIds)
-                     if (!liveServiceIds.has(id)) orphanedServiceIds.add(id);
-             }
-             orphanedServiceIds.forEach(svcId => {
-                 const svc = (DB.services || []).find(s => s.id === svcId);
-                 if (!svc) return;
-                 const tile = document.createElement('div');
-                 tile.className = 'group-tile';
-                 tile.tabIndex = 0;
-                 tile.role = 'button';
-                 tile.innerHTML = `<span class="tile-name">${escapeHtml(svc.ui_taxonomy?.display_name || svc.id)}</span>`;
-                 const handler = () => prefillSmartQuoteFromService(svc, category_id);
-                 tile.addEventListener('click', handler);
-                 tile.addEventListener('keydown', e => {
-                     if (e.key === 'Enter' || e.key === ' ') {
-                         e.preventDefault();
-                         handler();
-                     }
-                 });
-                 container.appendChild(tile);
-             });
-         }
+    // v9.6 FIX: real, direct customer report -- tapping a group with only
+    // one real component/symptom (Bulbs, Thermostats, Water Lines, Garbage
+    // Disposals, Window AC -- confirmed 5 of 18 real groups today) forced a
+    // second, redundant tap on a tile whose name is often identical or
+    // near-identical to the group's own name just tapped ("Bulbs" -> tap
+    // "Bulb"). The same "skip when there's only one real, unambiguous
+    // option" principle already applied to the Action step
+    // (showServiceTypesForGroup) was never extended to this step. Skips
+    // straight to resolution -- which still, correctly, shows a real
+    // sub-picker when that one component maps to more than one service
+    // (Bulbs: "High Ceiling Bulb Replacement" vs "LED Bulb Upgrade" is a
+    // genuine choice, not redundant friction) or falls through to the
+    // pre-seeded builder when it maps to none. Only the pointless,
+    // single-tile tap itself is removed, not any real decision.
+    if (ids.length === 1) {
+        _t.branch('tiles.singleTileShortCircuit', {
+            id: ids[0],
+            svcIds: mapping?.[ids[0]] || []
+        });
+        // Note: mapping?.[...] -- mapping itself can be undefined even when
+        // real_*_ids is populated, if the archetype data only authored one
+        // side of the pair. Same defensive shape the tile loop below uses.
+        resolveComponentSymptomTap(mapping?.[ids[0]] || [], group, category_id, chosenAction);
+        return;
+    }
 
-         const fallbackTile = document.createElement('div');
-         fallbackTile.className = 'group-tile';
-         fallbackTile.tabIndex = 0;
-         fallbackTile.role = 'button';
-         fallbackTile.innerHTML = `<span class="tile-name">Something else</span>`;
-         const fallbackHandler = () => resolveComponentSymptomTap([], group, category_id, chosenAction);
-         fallbackTile.addEventListener('click', fallbackHandler);
-         fallbackTile.addEventListener('keydown', e => {
-             if (e.key === 'Enter' || e.key === ' ') {
-                 e.preventDefault();
-                 fallbackHandler();
-             }
-         });
-         container.appendChild(fallbackTile);
-     }
+    const prompt = create('div', {
+        class: 'picker-prompt',
+        text: isComponentFirst ? 'Which part?' : "What's happening?",
+        style: 'grid-column:1/-1;font-weight:600;font-size:.95rem;margin-bottom:6px;color:#374151;'
+    });
+    container.appendChild(prompt);
+
+    ids.forEach(rawId => {
+        const label = humanizeComponentSymptomId(rawId);
+        const tile = document.createElement('div');
+        tile.className = 'group-tile';
+        tile.tabIndex = 0;
+        tile.role = 'button';
+        tile.innerHTML = `<span class="tile-name">${escapeHtml(label)}</span>`;
+        const handler = () => resolveComponentSymptomTap(mapping?.[rawId] || [], group, category_id, chosenAction);
+        tile.addEventListener('click', handler);
+        tile.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handler();
+            }
+        });
+        container.appendChild(tile);
+    });
+
+    // v9.6 FIX (T74): a real, confirmed gap found scoping a customer-
+    // reported dual-intent situation (Tech Trouble's Computer Repair, but
+    // NOT unique to it -- confirmed the identical shape in 4 other real
+    // groups: Washer, Refrigerator, Dishwasher, Microwave). Each of these
+    // groups was deliberately, correctly authored with BOTH a component
+    // mapping AND a symptom mapping -- but routing_archetype can only
+    // select one as "live" per group, silently orphaning any service that
+    // ONLY exists in the other one. In every one of these 5 cases the
+    // orphaned service is the Install/Setup-type one, for exactly the
+    // reason checkRoutingArchetypeConsistency's own, separate validation
+    // already articulates for internal_hardware_replacement: a customer
+    // who wants a new washer/router/etc installed already knows what they
+    // want -- there is no real "symptom" to ask about. These services
+    // already have their own correct, authored intake_chain (confirmed,
+    // not assumed, by that same existing check) -- the gap was purely
+    // that this picker never offered a path to them, not that they lacked
+    // one. Surfaced as explicit, named tiles (not folded into the
+    // ambiguous component/symptom resolution below) precisely because a
+    // customer choosing one of these has stated an exact fact, the same
+    // certainty level as a direct catalog tap -- resolved accordingly via
+    // prefillSmartQuoteFromService, which correctly scores it via the
+    // existing, proven entryType==='catalog' path (confidence 100), not
+    // the group-level 'other_tile' formula this whole picker otherwise
+    // uses. Deliberately does not touch the 5 other real groups sharing
+    // the same dual-mapping shape (Toilets, Sinks, Showers/Tubs,
+    // Furniture, Networking) -- confirmed directly, not assumed, that
+    // their "dead" mapping is fully redundant with the live one, so
+    // nothing there is actually orphaned.
+    const otherMapping = isComponentFirst ? ra.symptom_id_to_service_ids : ra.component_id_to_service_ids;
+    if (otherMapping) {
+        const liveServiceIds = new Set();
+        for (const svcIds of Object.values(mapping || {}))
+            for (const id of svcIds) liveServiceIds.add(id);
+        const orphanedServiceIds = new Set();
+        for (const svcIds of Object.values(otherMapping)) {
+            for (const id of svcIds)
+                if (!liveServiceIds.has(id)) orphanedServiceIds.add(id);
+        }
+        _t.branch('orphanedServices', {
+            count: orphanedServiceIds.size,
+            ids: [...orphanedServiceIds]
+        });
+        orphanedServiceIds.forEach(svcId => {
+            const svc = (DB.services || []).find(s => s.id === svcId);
+            if (!svc) return;
+            const tile = document.createElement('div');
+            tile.className = 'group-tile';
+            tile.tabIndex = 0;
+            tile.role = 'button';
+            tile.innerHTML = `<span class="tile-name">${escapeHtml(svc.ui_taxonomy?.display_name || svc.id)}</span>`;
+            const handler = () => prefillSmartQuoteFromService(svc, category_id);
+            tile.addEventListener('click', handler);
+            tile.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handler();
+                }
+            });
+            container.appendChild(tile);
+        });
+    }
+
+    // v9.6 FIX: real, distinct gap found while adding the second real group
+    // (Toilets) -- the zero-match fallback above only ever handles a
+    // LISTED tile mapping to zero services. It does nothing for a
+    // customer whose real need (e.g. "toilet seat", confirmed via direct
+    // check: no comp.toilet_seat exists anywhere in this group's real
+    // data, not even as a tracked real_gaps entry) was never a tile at
+    // all. Without this, such a customer sees 5 tiles, none of which
+    // match, with no obvious next step. Always shown, not conditional on
+    // any specific gap being known in advance -- the honest answer to
+    // "what if none of these are it" for every real group, not just the
+    // ones with a currently-tracked gap.
+    const fallbackTile = document.createElement('div');
+    fallbackTile.className = 'group-tile';
+    fallbackTile.tabIndex = 0;
+    fallbackTile.role = 'button';
+    fallbackTile.innerHTML = `<span class="tile-name">Something else</span>`;
+    const fallbackHandler = () => resolveComponentSymptomTap([], group, category_id, chosenAction);
+    fallbackTile.addEventListener('click', fallbackHandler);
+    fallbackTile.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fallbackHandler();
+        }
+    });
+    container.appendChild(fallbackTile);
+
+    _t.branch('tiles.rendered', {
+        promptText: isComponentFirst ? 'Which part?' : "What's happening?",
+        totalChildren: container.children.length
+    });
+}
 
      function showServiceTypesForGroup(container, group, category_id) {
          _traceFn('showServiceTypesForGroup', {
