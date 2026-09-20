@@ -145,7 +145,7 @@ function _traceExport() {
     return JSON.stringify({
         meta: {
             entryPath: window._traceEntryPath || 'unknown',
-            traceBuildVersion: TRACE_BUILD_VERSION,
+            qrBuildVersion: (typeof QR_BUILD_VERSION !== 'undefined' ? QR_BUILD_VERSION : 'unknown'),
             btnycJsonHash: btnycHash,
             exportedAt: new Date().toISOString(),
             totalEntries: window._traceLog.length,
