@@ -1335,75 +1335,94 @@
              flatFeeTotal
          };
      }
+function resolveServiceCheckoutStateKey(svc, dynDef) {
+    // v9.6 Track A Phase 2 (financial_engine): the canonical, single
+    // place to determine which real checkout_state key an entity
+    // uses -- mirrors resolveBaseConfidenceStrategy's own precedence
+    // (real, explicit value > entity's real archetype default >
+    // generic fallback), built BEFORE any data migration, exactly
+    // matching the confidence_strategy discipline (verify the
+    // resolution logic is a true no-op first, migrate data second).
+    // Built only after finding 6 real, distinct call sites reading
+    // svc.financial_engine.checkout_state directly, several with
+    // fallback logic that would have broken silently for a
+    // migrated, archetype-inheriting service (e.g. an exact
+    // `=== 'standard_flat_rate'` filter would incorrectly exclude
+    // an inherited value it can no longer see).
+    const groupId = svc?.ui_taxonomy?.group_id;
+    let archetypeDefault = null;
+    if (groupId && window.DB?.archetypes) {
+        for (const arch of Object.values(window.DB.archetypes)) {
+            if (arch.member_group_ids?.includes(groupId)) {
+                archetypeDefault = arch.default_checkout_state;
+                break;
+            }
+        }
+    }
+    if (svc && svc.financial_engine?.checkout_state) return svc.financial_engine.checkout_state;
+    if (archetypeDefault) return archetypeDefault;
+    if (dynDef && dynDef.financial_engine?.checkout_state) return dynDef.financial_engine.checkout_state;
+    if (dynDef && dynDef.operational_metrics?.checkout_state) return dynDef.operational_metrics.checkout_state;
+    return 'standard_flat_rate';
+}
 
-     function resolveServiceCheckoutStateKey(svc, dynDef) {
-         // v9.6 Track A Phase 2 (financial_engine): the canonical, single
-         // place to determine which real checkout_state key an entity
-         // uses -- mirrors resolveBaseConfidenceStrategy's own precedence
-         // (real, explicit value > entity's real archetype default >
-         // generic fallback), built BEFORE any data migration, exactly
-         // matching the confidence_strategy discipline (verify the
-         // resolution logic is a true no-op first, migrate data second).
-         // Built only after finding 6 real, distinct call sites reading
-         // svc.financial_engine.checkout_state directly, several with
-         // fallback logic that would have broken silently for a
-         // migrated, archetype-inheriting service (e.g. an exact
-         // `=== 'standard_flat_rate'` filter would incorrectly exclude
-         // an inherited value it can no longer see).
-         const groupId = svc?.ui_taxonomy?.group_id;
-         let archetypeDefault = null;
-         if (groupId && window.DB?.archetypes) {
-             for (const arch of Object.values(window.DB.archetypes)) {
-                 if (arch.member_group_ids?.includes(groupId)) {
-                     archetypeDefault = arch.default_checkout_state;
-                     break;
-                 }
-             }
-         }
-         if (svc && svc.financial_engine?.checkout_state) return svc.financial_engine.checkout_state;
-         if (archetypeDefault) return archetypeDefault;
-         if (dynDef && dynDef.financial_engine?.checkout_state) return dynDef.financial_engine.checkout_state;
-         if (dynDef && dynDef.operational_metrics?.checkout_state) return dynDef.operational_metrics.checkout_state;
-         return 'standard_flat_rate';
-     }
+function resolveCheckoutState(checkoutStateKey, laborTotal, svc = S._svc) {
+    const cs = DB.checkout_states?.[checkoutStateKey] || {};
+    const discs = DB.meta?.estimate_disclaimers || {};
+    const isDiag = checkoutStateKey === 'diagnostic';
+    const isProject = checkoutStateKey === 'project_based';
+    const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
+    let btnText = cs[btnKey] || cs.button_text || 'Add to Request';
 
-     function resolveCheckoutState(checkoutStateKey, laborTotal, S_stub) {
-         const S_eff = S_stub !== undefined ? S_stub :
-             (typeof S !== 'undefined' ? S : null);
-         const cs = DB.checkout_states?.[checkoutStateKey] || {};
-         const discs = DB.meta?.estimate_disclaimers || {};
-         const isDiag = checkoutStateKey === 'diagnostic';
-         const isProject = checkoutStateKey === 'project_based';
-         const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
-         let btnText = cs[btnKey] || cs.button_text || 'Add to Request';
-         btnText = btnText.replace('${labor_total}', '$' + laborTotal);
-         const svcDiscKey = S_eff?._svc?.default_estimates?.disclaimer || S_eff?._svc?.estimate_disclaimer || null;
-         const discKey = svcDiscKey || (isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee');
-         const disclaimerText = discs[discKey] || cs.ui_message || 'Labor estimate. Materials extra.';
-         return {
-             btnText,
-             disclaimerText,
-             uiMessage: cs.ui_message || '',
-             hideTime: cs.hide_time || false,
-             hideMaterials: cs.hide_materials || false,
-             isDiag,
-             isProject
-         };
-     }
+    // Guard against a missing/NaN laborTotal -- without this, the
+    // ${labor_total} placeholder below renders literally as
+    // "$undefined" in the button text. The `|| 'Add to Request'`
+    // fallback above only protects against a missing *template*,
+    // not a missing *value*.
+    const laborStr = (laborTotal == null || isNaN(laborTotal)) ? '' : '$' + laborTotal;
+    // Global regex, not a string pattern -- String.replace with a
+    // string only replaces the FIRST occurrence, so a template with
+    // two ${labor_total} placeholders would leave the second literal.
+    btnText = btnText.replace(/\$\{labor_total\}/g, laborStr);
 
-     function computeUnifiedQuote(ctx) {
-         const {
-             svc,
-             dynDef,
-             activeTagIds: _rawActiveTagIds = [],
-             answers = {},
-             qty = 1,
-             intentKeyword = null,
-             formulaId = null,
-             ctxAdjFee = 0,
-             ctxAdjMin = 0,
-             enrichment = null
-         } = ctx;
+    // Pulled in as an explicit param (defaulting to the prior global
+    // read) so this function is testable/pure at the call site --
+    // previously two calls with identical args could return different
+    // results if S._svc changed in between.
+    const svcDiscKey = svc?.default_estimates?.disclaimer || svc?.estimate_disclaimer || null;
+
+    // Note: the original ternary here was `isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee'`,
+    // which collapses -- both the isDiag branch and the else return
+    // 'flat_fee'. Simplified below, but if diagnostic was SUPPOSED to
+    // map to a distinct disclaimer key, that intent is being silently
+    // lost and this line is the place to fix it.
+    const discKey = svcDiscKey || (isProject ? 'project_based' : 'flat_fee');
+
+    const disclaimerText = discs[discKey] || cs.ui_message || 'Labor estimate. Materials extra.';
+    return {
+        btnText,
+        disclaimerText,
+        uiMessage: cs.ui_message || '',
+        hideTime: cs.hide_time || false,
+        hideMaterials: cs.hide_materials || false,
+        isDiag,
+        isProject
+    };
+}
+
+function computeUnifiedQuote(ctx) {
+    const {
+        svc,
+        dynDef,
+        activeTagIds: _rawActiveTagIds = [],
+        answers = {},
+        qty = 1,
+        intentKeyword = null,
+        formulaId = null,
+        ctxAdjFee = 0,
+        ctxAdjMin = 0,
+        enrichment = null
+    } = ctx;
          // v9.6 FIX: an explicit intake answer should supersede an earlier,
          // NLP-detected tag that contradicts it (e.g. NLP detecting
          // #emergency from free-text like "urgent, need this asap", then
