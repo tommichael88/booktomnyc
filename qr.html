@@ -1263,7 +1263,9 @@ function resolveServiceCheckoutStateKey(svc, dynDef) {
                     return 'standard_flat_rate';
                 }
 
-function resolveCheckoutState(checkoutStateKey, laborTotal) {
+function resolveCheckoutState(checkoutStateKey, laborTotal, S_stub) {
+    const S_eff = S_stub !== undefined ? S_stub
+                : (typeof S !== 'undefined' ? S : null);
     const cs = DB.checkout_states?.[checkoutStateKey] || {};
     const discs = DB.meta?.estimate_disclaimers || {};
     const isDiag = checkoutStateKey === 'diagnostic';
@@ -1271,7 +1273,7 @@ function resolveCheckoutState(checkoutStateKey, laborTotal) {
     const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
     let btnText = cs[btnKey] || cs.button_text || 'Add to Request';
     btnText = btnText.replace('${labor_total}', '$' + laborTotal);
-    const svcDiscKey = S._svc?.default_estimates?.disclaimer || S._svc?.estimate_disclaimer || null;
+    const svcDiscKey = S_eff?._svc?.default_estimates?.disclaimer || S_eff?._svc?.estimate_disclaimer || null;
     const discKey = svcDiscKey || (isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee');
     const disclaimerText = discs[discKey] || cs.ui_message || 'Labor estimate. Materials extra.';
     return { btnText, disclaimerText, uiMessage: cs.ui_message || '', hideTime: cs.hide_time || false, hideMaterials: cs.hide_materials || false, isDiag, isProject };
