@@ -2097,7 +2097,8 @@ function _computePrice(svc, answers, qty) {
 </script> 
    
    <!-- nlp_engine.js -->
-    <script>/**
+    <script>
+/**
  * nlp_engine.js
  *
  * PHASE 1 — NLPEngine module (Logic / UI / Glue split, second module).
@@ -2251,7 +2252,6 @@ function _computePrice(svc, answers, qty) {
 // (T114 touched only btnyc.json, no qr.html edit, so no bump was due
 // between T112 and T115 -- confirmed by this test itself staying green
 // through that session.)
-const QR_BUILD_VERSION = 'T134';
 
 // A simple, fast, synchronous string hash (djb2) -- not cryptographic,
 // deliberately: the real, stated purpose here is "are we looking at the
@@ -2259,10 +2259,23 @@ const QR_BUILD_VERSION = 'T134';
 // synchronous hash is the right tool. crypto.subtle.digest exists in
 //-browser but is Promise-based, which would force every trace call
 // site to become async for no real benefit here.
-
-}
         
-if (typeof document !== 'undefined') _initGlobalInteractionTracing(); // guarded -- many test harnesses extract this region without a real document
+// ───────────────────────── Component-level tracing overlay ─────────────────────────
+// The trace layer (all _trace* functions, the _traceEnabled/_traceLog/
+// _traceInput state, and the global click/change listeners) lives in
+// trace.js, loaded via <script src="./trace.js" immediately
+// before the pricing_engine.js block. It installs its own
+// _initGlobalInteractionTracing() at load, guarded by the same
+// document-existence check and idempotency flag it always used, so
+// nothing needs to call it from here.
+//
+// QR_BUILD_VERSION stays in THIS file, not trace.js: the component-layer
+// test harness extracts this const from qr.html directly, and the
+// freshness guard (test_harness/verify_qr_build_version_freshness.js)
+// reads it here. Bump it by hand alongside every real qr.html edit. 
+*/
+    
+const QR_BUILD_VERSION = 'T135';
 
 function initNlpSets() {
     const nl = window.DB?.negation_library || {};
