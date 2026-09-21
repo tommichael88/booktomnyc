@@ -33,9 +33,12 @@
  * 3. `_traceStart`'s smart_quote mismatch branch now includes `step`,
  *    matching T137 (`{claimed, breadcrumbs, step}`), not just breadcrumbs.
  *
- * 4. `_traceExport` narrative remains a single newline-joined string
- *    (T141's shape, friendlier to clipboard) rather than T137's array.
- *    Documented, so downstream consumers aren't surprised.
+ * 4. `_traceExport` accepts a `compact` flag, defaulting to `true`. The
+ *    Copy JSON button therefore writes a single-line, non-truncated
+ *    payload to the clipboard. Call `_traceExport(false)` explicitly for
+ *    the old 2-space pretty form. Nothing is ever truncated by the
+ *    serializer; the only log-size limit is the tracer's own
+ *    MAX_ENTRIES = 2000 cap (see `_trace`).
  *
  * 5. `_traceNarrative` degrades safely if `window._traceLog` is empty
  *    and if any decoded field is missing — every accessor has a `'?'`
@@ -325,7 +328,7 @@ function _diffObservableState(pre, post) {
         const visDiff = {};
         for (const id of _KEY_ELEMENTS) {
             if (pre.visibility[id] !== post.visibility[id]) {
-                visDiff[id] = { before: pre.visibility[id], after: post.visibility[id] };
+                visDiff[id] = { before: pre[id], after: post[id] };
             }
         }
         if (Object.keys(visDiff).length) changes.visibility = visDiff;
@@ -642,8 +645,7 @@ function _traceNarrative(log) {
 
         // For the branches that emit a bare line, prepend the timestamp
         // to match the fallback's format so the whole document reads
-        // consistently. (Branches above already produced well-formed
-        // strings without it; this keeps the visual timeline uniform.)
+        // consistently.
         const last = lines[lines.length - 1];
         if (!last.startsWith('[')) {
             lines[lines.length - 1] = `[${timeStr}] ${last}`;
@@ -674,7 +676,22 @@ function _renderMismatch(lines, mm) {
     lines.push(`   ⚠ entryPath mismatch: caller claimed "${claimed}", breadcrumbs=[${bcStr}]${stepStr}${uiStr}`);
 }
 
-function _traceExport() {
+/**
+ * Serialize the current trace log.
+ *
+ * @param {boolean} [compact=true]
+ *      true  → single-line JSON, no indentation, nothing dropped.
+ *              This is what the "Copy JSON" button uses, so the
+ *              clipboard receives one line that pastes cleanly into
+ *              issue trackers, chat, and log aggregators.
+ *      false → 2-space pretty printed. Preserved for any consumer that
+ *              was relying on the previous multi-line shape.
+ *
+ * No truncation is ever performed by this function. The only size
+ * ceiling on the log is the tracer's own MAX_ENTRIES = 2000 cap inside
+ * `_trace`, after which the log is halved.
+ */
+function _traceExport(compact = true) {
     const pricingEntries = window._traceLog.filter(e => e.layer === 'pricing_engine');
     const last = pricingEntries[pricingEntries.length - 1];
 
@@ -725,7 +742,7 @@ function _traceExport() {
         }
     } catch (e) { /* best-effort */ }
 
-    return JSON.stringify({
+    const payload = {
         meta: {
             entryPath:         window._traceEntryPath || 'unknown',
             traceBuildVersion: TRACE_BUILD_VERSION,
@@ -743,7 +760,11 @@ function _traceExport() {
         lastVisibleScreen: lastDomSnapshot,
         narrative:         _traceNarrative(window._traceLog),
         trace:             window._traceLog,
-    }, null, 2);
+    };
+
+    // compact === true  → single line, no indentation, nothing dropped.
+    // compact === false → 2-space pretty print.
+    return compact ? JSON.stringify(payload) : JSON.stringify(payload, null, 2);
 }
 
 function _traceToggle(on) {
@@ -996,6 +1017,7 @@ function _renderTraceOverlay(forceInit) {
             'background:#2563eb;color:#fff;border:none;border-radius:4px;'
             + 'padding:4px 8px;cursor:pointer;font-size:11px;';
         copyBtn.onclick = () => {
+            // Compact by default — single line, nothing truncated.
             const json = _traceExport();
             if (navigator.clipboard) navigator.clipboard.writeText(json);
             copyBtn.textContent = 'Copied!';
