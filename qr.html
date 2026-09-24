@@ -33,7 +33,7 @@
          populated safely via textContent/DOM methods, never raw innerHTML
          of trace data, matching this project's own established XSS-safety
          convention. -->
-    <button id="traceToggleBtn" onclick="_traceToggle(); _renderTraceOverlay();"
+    <button id="traceToggleBtn" onclick="if (typeof _traceToggle === 'function') _traceToggle(); if (typeof _renderTraceOverlay === 'function') _renderTraceOverlay();"
         style="position:fixed;bottom:12px;right:12px;z-index:99999;background:#1e293b;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-size:12px;font-family:monospace;cursor:pointer;opacity:0.55;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🔍 Trace: Off</button>
     <div id="traceOverlayPanel" style="display:none;position:fixed;top:0;right:0;width:420px;max-width:70vw;height:85vh;background:#0f172a;color:#e2e8f0;z-index:99998;overflow-y:auto;font-family:monospace;font-size:12px;padding:12px;box-shadow:-4px 0 12px rgba(0,0,0,0.4);"></div>
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -165,23 +165,25 @@
                             </div>
           </div>
                         <br><br>
-<div class="main-card-invoices">
-    <img class="main-card-invoices-header" 
-         src="https://github.com/tommichael88/booktomnyc/blob/main/images/invoices.png?raw=true" 
-         alt="Invoices">
+                        <div class="main-card-invoices">
+                            <img class="main-card-invoices-header" 
+                                 src="https://github.com/tommichael88/booktomnyc/blob/main/images/invoices.png?raw=true" 
+                                 alt="Invoices">
 
-    <h3><b>BTNYC Client Portal</b> via <i>Zoho Invoices</i></h3>
+                            <h3><b>BTNYC Client Portal</b> via <i>Zoho Invoices</i></h3>
 
-        <span><i><li>View & download invoices | Make secure payments | Review & approve quotes <br>
-       Upload photos, documents & repair notes | Track payments & transaction history
-       <br> Update your contact information</li></i></span>
-        <br>
+                                <span><i><li>View &amp; download invoices | Make secure payments | Review &amp; approve quotes <br>
+                               Upload photos, documents &amp; repair notes | Track payments &amp; transaction history
+                               <br> Update your contact information</li></i></span>
+                                <br>
 
 
-    <div class="login-client-button" id="clientLoginBtn" role="button" tabindex="0">
-        <br>🔐 LOGIN
-    </div>
-</div>
+                            <div class="login-client-button" id="clientLoginBtn" role="button" tabindex="0">
+                                <br>🔐 LOGIN
+                            </div>
+                        </div>
+                    </div>
+                </div>
 <center>
   <img
     src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/tht_logo.png"
@@ -898,7 +900,7 @@
          // item_count_template WITHOUT bypass_intake goes to curated_card, not self_quote.
          const om = svc.operational_metrics || {};
          const chain = svc.intake_chain || [];
-         const QTY_MODS_UNCONDITIONAL = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
+         const QTY_MODS_UNCONDITIONAL = (typeof _GENERIC_QTY_MODULE_KEYS !== 'undefined') ? _GENERIC_QTY_MODULE_KEYS : new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
          const bypassIntake = !!svc.behavior?.bypass_intake;
          const isQtyMod = (m) => QTY_MODS_UNCONDITIONAL.has(m.module) ||
              (m.module === 'item_count_template' && bypassIntake);
@@ -1420,6 +1422,14 @@ function resolveCheckoutState(checkoutStateKey, laborTotal, svc = S._svc) {
     };
 }
 
+// T135: hoisted to module scope (was previously declared inside
+// computeUnifiedQuote alone) so computeArchetypeQuote can reference the
+// exact same set, rather than maintaining its own separate, hardcoded
+// copy that had already drifted out of sync -- see the T135 comment at
+// computeArchetypeQuote's own qty-multiplier line for the full story of
+// what that drift caused.
+const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula', 'buy_the_hour_qty_gate_formula']);
+
 function computeUnifiedQuote(ctx) {
     const {
         svc,
@@ -1892,8 +1902,16 @@ function computeUnifiedQuote(ctx) {
          // just via a differently-named answer key rather than a
          // literal `qty` reference, which is why an earlier, narrower
          // version of this same fix missed them.
-         const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula']);
-         const formulaIsQtyAware = QTY_AWARE_FORMULAS.has(effectiveFormulaId);
+         // T135: falls back to an inline copy ONLY when the module-level
+         // QTY_AWARE_FORMULAS (declared once, above computeUnifiedQuote)
+         // isn't present -- i.e. only when this function's body has been
+         // extracted in isolation by a test harness, never in the real,
+         // full qr.html, where the module-level declaration always runs
+         // first. verify_qty_tier_double_compounding_fix.js asserts this
+         // fallback and the real module-level Set never drift apart.
+         const formulaIsQtyAware = (typeof QTY_AWARE_FORMULAS !== 'undefined' ? QTY_AWARE_FORMULAS
+             : new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula', 'buy_the_hour_qty_gate_formula'])
+         ).has(effectiveFormulaId);
          // v9.6 FIX: this totalMin padding step has the exact same
          // "does the resolved entity already, independently capture
          // qty via its own dedicated question" concern as the later
@@ -1905,7 +1923,26 @@ function computeUnifiedQuote(ctx) {
          // of sync with each other.
          const _qtyEntity = svc || dynDef;
          const qtyAlreadyAppliedByOwnQuestion = (typeof entityHasOwnQtyQuestion === 'function') && entityHasOwnQtyQuestion(_qtyEntity);
-         if (qty > 1 && !formulaIsQtyAware && !qtyAlreadyAppliedByOwnQuestion) totalMin += (qty - 1) * 30;
+         // T135 FIX (PENDING_DECISIONS.md #42): the totalMin padding step
+         // that used to live here (padding totalMin by 30 minutes per
+         // extra unit, guarded the same way qtyMultiplier below is)
+         // is deleted, not merely reconditioned. Its own firing condition
+         // was byte-identical to the condition under which qtyMultiplier
+         // (below) independently multiplies the ENTIRE estimate by qty --
+         // so every service that ever hit this line got quantity applied
+         // twice: once via inflated minutes (which could also cross a
+         // deriveComplexityTier threshold and silently raise the hourly
+         // rate), once via the outer multiplication of that already-
+         // inflated result. Confirmed empirically before removing this:
+         // blinds_shades_curtains_buy_the_hour priced at $750 for qty=5
+         // against a genuine $50 base (15x, not the intended ~5x). Without
+         // this step, totalMin correctly reflects ONE unit's time (so the
+         // tier and hourly rate are derived correctly), and qtyMultiplier
+         // alone scales the whole per-unit estimate linearly -- matching
+         // the Charter's own §6A formula shape and the already-correct
+         // per-unit-rate precedent (§6B's overflow rule, T20's decision).
+         // See verify_qty_tier_double_compounding_fix.js for the full,
+         // catalog-wide before/after verification.
 
          // v9.2: tag-level AND answer-level overrides both feed the same
          // ratchet — take whichever of the two is higher-ranked, never
@@ -2291,7 +2328,26 @@ function computeUnifiedQuote(ctx) {
              // qtyMultiplier logic: qty applies except for the one real
              // formula (furniture_repair_formula) that already,
              // genuinely scales its own minutes internally.
-             const archQtyMultiplier = ['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula'].includes(realFormulaId) ? 1 : (qty || 1);
+             // T135 FIX (PENDING_DECISIONS.md #42, second instance of the
+             // same bug): this used to be a separate, hardcoded array
+             // literal here, independent from computeUnifiedQuote's own
+             // QTY_AWARE_FORMULAS -- confirmed directly this was silently
+             // missing buy_the_hour_qty_gate_formula, so a service using
+             // that formula still got double-multiplied by this function's
+             // own, then-unguarded qty multiplication, even after
+             // computeUnifiedQuote's copy was fixed, because THIS
+             // function's result is what actually wins for any
+             // 'formula'/'tiered_per_unit' archetype entity (see the
+             // override block in computeUnifiedQuote). Now references the
+             // real, module-level QTY_AWARE_FORMULAS Set when present
+             // (always true in the real, full qr.html), falling back to
+             // an identical inline copy only for isolated test extraction
+             // -- see computeUnifiedQuote's own matching fallback and
+             // verify_qty_tier_double_compounding_fix.js, which asserts
+             // both fallbacks and the real Set all agree.
+             const archQtyMultiplier = (typeof QTY_AWARE_FORMULAS !== 'undefined' ? QTY_AWARE_FORMULAS
+                 : new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula', 'buy_the_hour_qty_gate_formula'])
+             ).has(realFormulaId) ? 1 : (qty || 1);
              return {
                  laborEstimate: Math.round(((fe.base_price || 0) + extraFee + (totalMin / 60) * realRate) * archQtyMultiplier),
                  totalMin
@@ -2465,7 +2521,7 @@ function computeUnifiedQuote(ctx) {
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T134';
+     const QR_BUILD_VERSION = 'T135';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -4220,7 +4276,7 @@ function computeUnifiedQuote(ctx) {
       * two modules) -- see verify_orchestrator_engine_module.js.
       */
 
-     const ORCH_QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
+     const ORCH_QTY_MODS = (typeof _GENERIC_QTY_MODULE_KEYS !== 'undefined') ? _GENERIC_QTY_MODULE_KEYS : new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
      const KNOWN_UI_TEMPLATES = new Set(['self_quote', 'curated_card', 'chip_grid', 'legacy_flow', 'tag_affirmation']);
 
      function _resolveIntakeChain(svc) {
@@ -6484,7 +6540,7 @@ function computeUnifiedQuote(ctx) {
              // computeUnifiedQuote (confirmed directly), so that part
              // of the pipeline was never in question -- only this
              // path's own visibility to the trace was missing.
-             _traceDomSnapshot('refreshPrice: ims-chip card settled');
+             if (typeof _traceDomSnapshot === 'function') _traceDomSnapshot('refreshPrice: ims-chip card settled');
          }
 
          function refreshBtn() {
@@ -7159,7 +7215,7 @@ function computeUnifiedQuote(ctx) {
      }
 
      function enterFocusedMode(hideTextBar = false) {
-         _traceFn('enterFocusedMode', {
+         if (typeof _traceFn === 'function') _traceFn('enterFocusedMode', {
              hideTextBar
          });
          const card = document.querySelector('.main-card-schedule-service');
@@ -7225,7 +7281,7 @@ function computeUnifiedQuote(ctx) {
      }
 
      function exitFocusedMode() {
-         _traceFn('exitFocusedMode');
+         if (typeof _traceFn === 'function') _traceFn('exitFocusedMode');
          const card = document.querySelector('.main-card-schedule-service');
          if (!card) return;
          card.classList.remove('focused-mode');
@@ -7782,7 +7838,7 @@ function computeUnifiedQuote(ctx) {
      }
 
      function restoreCategoryView() {
-         _traceFn('restoreCategoryView');
+         if (typeof _traceFn === 'function') _traceFn('restoreCategoryView');
          exitFocusedMode();
          Breadcrumbs.clear();
          setStep(1);
@@ -8132,10 +8188,10 @@ function computeUnifiedQuote(ctx) {
      }
 
      function showGroupsForCategory(category_id, fromBack = false) {
-         _traceFn('showGroupsForCategory', {
+         if (typeof _traceFn === 'function') _traceFn('showGroupsForCategory', {
              category_id,
              fromBack
-         }); // <-- ADD
+         });
          if (!fromBack) Breadcrumbs.push({
              type: 'categories'
          });
@@ -8258,10 +8314,10 @@ function computeUnifiedQuote(ctx) {
      }
 
 function renderComponentSymptomPicker(container, group, category_id, chosenAction) {
-    const _t = _traceFn('renderComponentSymptomPicker', {
+    const _t = (typeof _traceFn === 'function') ? _traceFn('renderComponentSymptomPicker', {
         groupId: group?.id,
         chosenAction
-    });
+    }) : { branch(){}, return(){}, error(){} };
 
     // v9.6 Track A / Phase 8: the real navigation picker, built on top of
     // the archetype/routing_archetypes data foundation. chosenAction (the
@@ -8508,9 +8564,9 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
 }
 
      function showServiceTypesForGroup(container, group, category_id) {
-         _traceFn('showServiceTypesForGroup', {
+         if (typeof _traceFn === 'function') _traceFn('showServiceTypesForGroup', {
              groupId: group?.id
-         }); // <-- ADD
+         });
          // v9.6 Track A / Phase 8, directly requested: the real Action step,
          // shown between the group and the component/symptom picker -- matches
          // the group's real, authored dynamic_service_types (e.g. Doors:
@@ -8559,11 +8615,11 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
      }
 
      function showSubGroups(group, category_id, fromBack = false) {
-         _traceFn('showSubGroups', {
+         if (typeof _traceFn === 'function') _traceFn('showSubGroups', {
              groupId: group?.id,
              category_id,
              fromBack
-         }); // <-- ADD
+         });
          if (!fromBack) enterFocusedMode();
          const container = DOM.serviceContainer;
          container.replaceChildren();
@@ -12130,7 +12186,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          // When called after sqBuildCuratedIntake confirms (sqConfirmAdlib),
          // show answered intake questions inline — matches curated card adlib output.
          if (S._svc && S.answers && Object.keys(S.answers).length > 0) {
-             const _QM = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'item_count_template']);
+             const _QM = new Set([...((typeof _GENERIC_QTY_MODULE_KEYS !== 'undefined') ? _GENERIC_QTY_MODULE_KEYS : ['item_count', 'count', 'hybrid_qty', 'global_quantity']), 'item_count_template']);
              const _allResolvedMods = _resolveIntakeChain(S._svc);
              const _answeredMods = _allResolvedMods.filter(m =>
                  !_QM.has(m.moduleKey) && _isModVisible(m, S.answers, _allResolvedMods) && S.answers[m.moduleKey]
@@ -12268,7 +12324,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          }
 
          // ── JSON-sourced constants ────────────────────────────────────
-         const QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity', 'Install / Mount', 'Install']);
+         const QTY_MODS = new Set([...((typeof _GENERIC_QTY_MODULE_KEYS !== 'undefined') ? _GENERIC_QTY_MODULE_KEYS : ['item_count', 'count', 'hybrid_qty', 'global_quantity']), 'Install / Mount', 'Install']);
 
 
 
@@ -12901,7 +12957,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
 
              // Back button
              card.querySelector('#sqCurBackBtn')?.addEventListener('click', sqRestart);
-             _traceDomSnapshot('render: curated card settled');
+             if (typeof _traceDomSnapshot === 'function') _traceDomSnapshot('render: curated card settled');
          };
 
          window._sqCuratedRender = render;
