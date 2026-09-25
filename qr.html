@@ -8037,12 +8037,101 @@ function computeUnifiedQuote(ctx) {
          });
      }
 
+     function orchChooseDivergencePath(path) {
+         // T135+ (PHASE_PLAN.md Phase 2, Stage C, call site 2). Orchestrator
+         // equivalent of sqChooseDivergencePath -- same two paths, same
+         // shared S._divergencePath flag (this one piece of transient
+         // UI-interaction state, "has the customer already answered this
+         // specific fork," is reused across both renderers deliberately;
+         // it is not a pricing or routing decision, so sharing it here
+         // does not reintroduce the business-logic-in-renderers problem
+         // Stage C exists to remove). Requires S._lastRoute to have been
+         // set by the caller (renderCuratedCardFromRoute already does
+         // this on every render) so this function knows which entity/
+         // category to re-resolve against.
+         if (path !== 'remote' && path !== 'onsite') return; // defensive: unknown path, no-op
+         S._divergencePath = path;
+         const prevRoute = S._lastRoute;
+         if (!prevRoute || !prevRoute.entity) return; // defensive: nothing to re-render against
+
+         if (path === 'remote') {
+             // Re-run the real, canonical composition, then splice the
+             // entity's own authored remote_deep_dive_modules onto the
+             // resulting chain -- confirmed directly (computeUnifiedQuote's
+             // own remoteDeepDiveModules, already filtered to real,
+             // existing intake_modules) rather than re-deriving the
+             // filter logic a second time. Post-processing step, not a
+             // change to orch_compose_intake_chain itself, so every
+             // existing caller/test of that shared function is unaffected.
+             const svc = prevRoute.entity;
+             const category_id = prevRoute.context?.category_id || svc.ui_taxonomy?.category_id;
+             const ctx = collectBookingContext_catalog(svc, category_id);
+             // Carry the customer's already-given answers forward -- these
+             // are exactly what got them to the diagnostic dead-end that
+             // triggered this fork in the first place. Without this, the
+             // newly-appended remote_deep_dive module re-competes with
+             // already-answered questions for the same ceiling slot
+             // instead of being the one, new, unanswered question it
+             // should be (confirmed directly: this was a real bug, not a
+             // hypothetical -- attempted_fix silently never rendered
+             // until this fix).
+             ctx.answers = { ...(prevRoute.answers || {}) };
+             const newRoute = executeWorkflow(ctx, DB);
+             const extraModuleKeys = (newRoute.quote?.remoteDeepDiveModules || []);
+             const existingKeys = new Set((newRoute.intakeChain || []).map(m => m.moduleKey || m.module));
+             extraModuleKeys.forEach(mk => {
+                 if (!existingKeys.has(mk) && DB.intake_modules?.[mk]) {
+                     // Full module definition, not a bare reference --
+                     // confirmed directly that real intakeChain entries
+                     // carry question/client_response/type inline (this
+                     // is how orch_compose_intake_chain's own output is
+                     // shaped), and the renderer's own responses.length
+                     // check silently (and correctly, given a bare stub)
+                     // skips anything without them.
+                     newRoute.intakeChain = [...(newRoute.intakeChain || []), { ...DB.intake_modules[mk], moduleKey: mk, then: {} }];
+                 }
+             });
+             S._lastRoute = newRoute;
+             renderCuratedCardFromRoute(newRoute, S._lastContainerId);
+             return;
+         }
+         // Path B (On-Site Pro): nothing new to build -- re-render the
+         // same route; the divergence-choice branch below is skipped
+         // now that S._divergencePath is set, falling through to the
+         // normal, existing diagnostic quote panel.
+         renderCuratedCardFromRoute(prevRoute, S._lastContainerId);
+     }
+
      function renderCuratedCardFromRoute(route, containerId) {
          const container = document.getElementById(containerId || 'intakeQuestionsContainer');
          if (!container) return;
          const chain = route.intakeChain || [];
          const answers = route.answers || {};
          const entity = route.entity;
+
+         // T135+ (root-cause fix, WASHER_UI_ISSUES_trace.json -- direct
+         // operator instruction: treat the disease, not the symptom).
+         // Confirmed structurally: the SmartQuote panel (text bar,
+         // builder, #sqStepFlow -- this function's own step-flow render
+         // target when containerId is 'sqSb3') is DOM-inserted directly
+         // adjacent to #category-card/#serviceContainer at runtime
+         // (catCard.insertAdjacentElement('afterend', sqEl)), not merely
+         // nearby in the source file. Any path that (re-)renders real
+         // step-flow content without ALSO hiding the browse-mode
+         // containers stacks both in the same visual area -- confirmed
+         // as the real, structural cause of the trace's "Underneath
+         // again is showing What's Happening? Leaking water..." report.
+         // Rather than chase the exact sequence that left them shown
+         // (fragile, caller-dependent), this renderer now defensively
+         // hides them itself whenever it renders real step-flow content
+         // -- the same "don't trust implicit caller state" fix already
+         // applied to sqRestart/sqBuildStep3 this session.
+         if ((containerId || 'intakeQuestionsContainer') === 'sqSb3' && entity) {
+             const catCard = document.getElementById('category-card');
+             if (catCard) catCard.style.display = 'none';
+             if (DOM?.serviceContainer) DOM.serviceContainer.style.display = 'none';
+             else { const sc = document.getElementById('serviceContainer'); if (sc) sc.style.display = 'none'; }
+         }
 
          if (!entity) {
              container.innerHTML = '<div class="repair-hint">No service selected.</div>';
@@ -8051,6 +8140,22 @@ function computeUnifiedQuote(ctx) {
          }
 
          container.style.display = 'block';
+         S._lastRoute = route;
+         S._lastContainerId = containerId || 'intakeQuestionsContainer';
+
+         // T135+ (PHASE_PLAN.md Phase 2, Stage C, call site 2): the same
+         // "Fork in the Road" check the legacy renderer already has,
+         // reusing the same pure buildDivergenceResolutionHtml and the
+         // same data -- confirmed directly that executeWorkflow's own
+         // route.quote already carries divergenceEligible/
+         // remoteDeepDiveModules correctly (a real, pre-existing forward
+         // from computeUnifiedQuote, not something added here). This was
+         // a UI-layer gap, not a data gap: the data already reached this
+         // renderer, nothing displayed it.
+         if (route.quote?.divergenceEligible && !S._divergencePath) {
+             container.innerHTML = buildDivergenceResolutionHtml(route.quote, 'orchChooseDivergencePath');
+             return;
+         }
          let html = `<div class="intake-wrapper"><h3>${entity.ui_taxonomy?.display_name || 'Service'}</h3>`;
          if (entity.ui_taxonomy?.description) {
              html += `<p style="color:#555; margin-bottom:16px;">${entity.ui_taxonomy.description}</p>`;
@@ -8170,6 +8275,7 @@ function computeUnifiedQuote(ctx) {
 
          html += `</div>`;
          container.innerHTML = html;
+         if (typeof _traceDomSnapshot === "function") _traceDomSnapshot("renderCuratedCardFromRoute: settled");
 
          // Attach event listeners for chip clicks
          container.querySelectorAll('.ims-chip').forEach(btn => {
@@ -8349,6 +8455,15 @@ function computeUnifiedQuote(ctx) {
      }
 
 function renderComponentSymptomPicker(container, group, category_id, chosenAction) {
+    // T135+ (root-cause fix, WASHER_UI_ISSUES_trace.json): defensive
+    // hide, completing the same fix applied to showSubGroups/
+    // showServiceTypesForGroup/renderCuratedCardFromRoute -- this is the
+    // actual function that renders the symptom/component tiles (e.g.
+    // "Leaking water") the trace showed remaining visible and tappable
+    // well after the flow had moved on.
+    const _stepFlowGuard = document.getElementById('sqStepFlow');
+    if (_stepFlowGuard) _stepFlowGuard.style.display = 'none';
+
     const _t = (typeof _traceFn === 'function') ? _traceFn('renderComponentSymptomPicker', {
         groupId: group?.id,
         chosenAction
@@ -8602,6 +8717,12 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          if (typeof _traceFn === 'function') _traceFn('showServiceTypesForGroup', {
              groupId: group?.id
          });
+         // T135+ (root-cause fix, WASHER_UI_ISSUES_trace.json): same
+         // defensive hide as showSubGroups -- this is also a browse-mode
+         // renderer that can be reached after step-flow content was
+         // showing.
+         const stepFlow = document.getElementById('sqStepFlow');
+         if (stepFlow) stepFlow.style.display = 'none';
          // v9.6 Track A / Phase 8, directly requested: the real Action step,
          // shown between the group and the component/symptom picker -- matches
          // the group's real, authored dynamic_service_types (e.g. Doors:
@@ -8659,6 +8780,14 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          const container = DOM.serviceContainer;
          container.replaceChildren();
          container.className = 'group-grid'; // grid layout -- matches showGroupsForCategory
+         container.style.display = 'block';
+         // T135+ (root-cause fix, WASHER_UI_ISSUES_trace.json): symmetric
+         // to renderCuratedCardFromRoute's own new defensive hide -- this
+         // browse-mode renderer now also hides the step-flow container
+         // itself, rather than assuming the customer only ever arrives
+         // here with it already hidden.
+         const stepFlow = document.getElementById('sqStepFlow');
+         if (stepFlow) stepFlow.style.display = 'none';
 
          const subGroups = window.groupChildrenMap.get(group.id) || [];
 
@@ -10302,7 +10431,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          sqRenderQuote();
      }
 
-     function buildDivergenceResolutionHtml(q) {
+     function buildDivergenceResolutionHtml(q, handlerFnName) {
          // Pure: takes the already-computed quote object (q, from
          // computeQuoteFromState -> computeUnifiedQuote) and returns an
          // HTML string. Reads only its q argument and DB (config/copy),
@@ -10312,6 +10441,13 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          // See PROJECT_GOALS §9/10 ("Diagnostic Divergence: The Fork in
          // the Road") and global_rules.divergence_resolution for the
          // business terms this renders.
+         // T135+ (PHASE_PLAN.md Phase 2, Stage C, call site 2): handlerFnName
+         // defaults to sqChooseDivergencePath (existing, unchanged
+         // behavior for every current caller) -- the orchestrator path
+         // supplies orchChooseDivergencePath instead, so the exact same
+         // pure HTML-building logic serves both renderers without a
+         // second, drifting copy.
+         const handler = handlerFnName || 'sqChooseDivergencePath';
          const dr = DB.global_rules?.divergence_resolution || {};
          const n = (q.remoteDeepDiveModules || []).length;
          const qWord = n === 1 ? 'question' : 'questions';
@@ -10326,7 +10462,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              '</div>' +
              '<div class="qbody">' +
              '<div class="divergence-options">' +
-             '<button type="button" class="divergence-option" onclick="sqChooseDivergencePath(\'remote\')">' +
+             '<button type="button" class="divergence-option" onclick="' + handler + '(\'remote\')">' +
              '<div class="do-icon"><i class="ti ti-message-2-question"></i></div>' +
              '<div class="do-body">' +
              '<div class="do-title">' + escapeHtml(dr.remote_option_label || 'Answer a few more questions') + '</div>' +
@@ -10335,7 +10471,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              '</div>' +
              '<i class="ti ti-chevron-right do-chev"></i>' +
              '</button>' +
-             '<button type="button" class="divergence-option" onclick="sqChooseDivergencePath(\'onsite\')">' +
+             '<button type="button" class="divergence-option" onclick="' + handler + '(\'onsite\')">' +
              '<div class="do-icon"><i class="ti ti-tool"></i></div>' +
              '<div class="do-body">' +
              '<div class="do-title">' + escapeHtml(dr.onsite_option_label || 'Book an on-site diagnostic') + '</div>' +

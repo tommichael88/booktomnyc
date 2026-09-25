@@ -305,6 +305,15 @@ function _readObservableState(force) {
             out.intent = S.intent || null;
             out.svcId  = S._svc?.id || null;
             out.qty    = S.qty;
+            out.stype      = S.stype || null;
+            out.answers    = S.answers ? Object.keys(S.answers) : [];
+            out.sqSb2      = document.getElementById("sqSb2") ? document.getElementById("sqSb2").style.display : null;
+            out.sqSb3      = document.getElementById("sqSb3") ? document.getElementById("sqSb3").style.display : null;
+            out.sqSc2Class = document.getElementById("sqSc2") ? document.getElementById("sqSc2").className : null;
+            out.sqSc3Class = document.getElementById("sqSc3") ? document.getElementById("sqSc3").className : null;
+            out.serviceContainerFirstText = document.getElementById("serviceContainer") && document.getElementById("serviceContainer").firstElementChild ? document.getElementById("serviceContainer").firstElementChild.textContent.slice(0,60) : null;
+            out.intakeFirstText = document.getElementById("intakeQuestionsContainer") && document.getElementById("intakeQuestionsContainer").firstElementChild ? document.getElementById("intakeQuestionsContainer").firstElementChild.textContent.slice(0,60) : null;
+            out.sqSb3FirstText  = document.getElementById("sqSb3") && document.getElementById("sqSb3").firstElementChild ? document.getElementById("sqSb3").firstElementChild.textContent.slice(0,60) : null;
         }
     } catch (e) { out._error = String(e); }
 
@@ -328,7 +337,7 @@ function _diffObservableState(pre, post) {
         const visDiff = {};
         for (const id of _KEY_ELEMENTS) {
             if (pre.visibility[id] !== post.visibility[id]) {
-                visDiff[id] = { before: pre[id], after: post[id] };
+                visDiff[id] = { before: pre.visibility[id], after: post.visibility[id] };
             }
         }
         if (Object.keys(visDiff).length) changes.visibility = visDiff;
@@ -366,6 +375,8 @@ function _traceStart(input, entryPath, options = {}) {
         });
     }
 
+    try { if (typeof _traceDomSnapshot === "function") _traceDomSnapshot("_traceStart: entry settled"); } catch (_e) { /* best-effort */ }
+
     return _trace('session', 'trace_started', { input, entryPath });
 }
 
@@ -389,6 +400,12 @@ function _trace(layer, label, data, explicitParentId) {
             ? Object.assign({}, data || {}, { _observable: _readObservableState() })
             : data;
 
+        try {
+            const _prevEntry = window._traceLog[window._traceLog.length - 1];
+            if (_prevEntry && (Date.now() - _prevEntry.t) > 8000) {
+                window._traceLog.push({ id: _traceNextId++, t: Date.now() - 1, layer: "session", label: "idle_pause", data: { gapMs: Date.now() - _prevEntry.t, afterEntryId: _prevEntry.id } });
+            }
+        } catch (_err) { /* best-effort */ }
         const entryId = _traceNextId++;
         const entry = {
             id: entryId,
@@ -807,6 +824,23 @@ function _installStateDiff() {
     // invoke it unconditionally.
 }
 
+function _installConsoleCapture() {
+    if (window._consoleCaptureInstalled) return;
+    window._consoleCaptureInstalled = true;
+    const _origWarn  = console.warn.bind(console);
+    const _origError = console.error.bind(console);
+    console.warn = function () {
+        const args = Array.prototype.slice.call(arguments);
+        try { if (window._traceEnabled) _trace("session", "console_warn", { args: args.map(function (a) { return typeof a === "string" ? a.slice(0, 300) : _safeClone(a); }) }); } catch (_e) {}
+        _origWarn.apply(console, args);
+    };
+    console.error = function () {
+        const args = Array.prototype.slice.call(arguments);
+        try { if (window._traceEnabled) _trace("session", "console_error", { args: args.map(function (a) { return typeof a === "string" ? a.slice(0, 300) : _safeClone(a); }) }); } catch (_e) {}
+        _origError.apply(console, args);
+    };
+}
+
 function _installErrorCapture() {
     if (_errorCaptureInstalled) return;
     _errorCaptureInstalled = true;
@@ -841,6 +875,12 @@ function _initGlobalInteractionTracing() {
         if (!desc) return;
 
         desc.module        = el.closest('.intake-module-step, .step-question')?.dataset?.moduleName || null;
+        desc.clickCoords = { x: e.clientX, y: e.clientY };
+        try {
+            const _atPoint = document.elementFromPoint(e.clientX, e.clientY);
+            desc.elementAtPoint = _describeInteractionTarget(_atPoint);
+            desc.elementAtPointIsTarget = (_atPoint === el);
+        } catch (_err) { /* best-effort */ }
         desc.newSelection  = (el.textContent || '').trim().slice(0, 50);
         desc.priorSelection = _readPriorSelection(el);
         desc.estimateAtClick = _readCurrentEstimate();
@@ -859,6 +899,8 @@ function _initGlobalInteractionTracing() {
             const diff = _diffObservableState(preState, postState);
             if (diff) {
                 _trace('session', 'state_change', { changes: diff }, clickId);
+            } else {
+                _trace('user_interaction', 'click_no_effect', { target: desc }, clickId);
             }
         }, 50);
     }, true);
