@@ -3044,6 +3044,156 @@
       "_note_checkout_state_investigation": "v9.6: investigated whether any specific symptom answer (Won't spin / Won't drain / Leaking water / Making strange noises) could confidently downgrade from this service's unconditional 'diagnostic' checkout_state via checkout_state_override (the mechanism exists, ready to use -- see computeUnifiedQuote's answerCheckoutOverride ratchet). Found no real evidentiary basis to do so: even the 'routine'-complexity symptoms (Won't spin, Making strange noises) fall within this service's own genuinely wide default_estimates.total_minutes range (70-390 min), and default_estimates.materials.note explicitly states exact part cost cannot be determined before diagnosis -- true regardless of which symptom is selected, since dishwasher internals aren't visible without opening the unit. The complexity_override/modifier_ref minutes already correctly differentiate the LABOR time estimate per symptom (working as intended); checkout_state is a separate, higher-level signal about whether a FINAL total (including parts) can be guaranteed, and for this service the honest answer is no, across all 4 symptoms. Remaining unconditionally 'diagnostic' is the correct, evidence-supported design here, not a content gap."
     },
     {
+      "id": "dryer_repair",
+      "operational_metrics": {
+        "expected_minutes": 60,
+        "high_case_minutes": 120,
+        "complexity_tier": "specialized"
+      },
+      "pricing_engine": "hourly_estimate",
+      "default_estimates": {
+        "materials": {
+          "min": 0,
+          "max": 250,
+          "note": "Common parts (heating element, belt, thermal fuse, igniter) typically $30‑$250. Exact part cost cannot be determined before diagnosis."
+        },
+        "total_minutes": {
+          "min": 70,
+          "max": 390,
+          "note": "1‑2 hours labor typical; parts extra. Final cost depends on fault and parts needed."
+        },
+        "disclaimer": "hourly"
+      },
+      "ui_taxonomy": {
+        "category_id": "minor_home_repairs",
+        "group_id": "minor_home_repairs_appliances_dryer",
+        "display_name": "Dryer Repair",
+        "icon": "🌪️",
+        "description": "Diagnostic and repair. Labor billed at $70 per hour, minimum 1 hour. Parts are additional and will be invoiced after the repair.",
+        "sort_order": 671,
+        "presentation_strategy": {
+          "display_enabled": true,
+          "buffer_label": "Average",
+          "calculation_basis": "base_plus_tags"
+        }
+      },
+      "financial_engine": {
+        "type": "hourly",
+        "base_price": 0,
+        "checkout_state": "diagnostic",
+        "pricing_archetype": "diagnostic_open"
+      },
+      "detail_prompt": "",
+      "details": [],
+      "materials_included": false,
+      "requires_furniture_selection": false,
+      "aliases": [],
+      "service_type": "Repair",
+      "intake_chain": [
+        {
+          "module": "location",
+          "then": {}
+        },
+        {
+          "module": "dryer_symptom",
+          "then": {}
+        }
+      ],
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ],
+      "default_tags": [],
+      "override_root": true,
+      "confidence_strategy": {
+        "minimum_quote_confidence": 90,
+        "maximum_followup_questions": 2,
+        "diagnostic_threshold": 0,
+        "base_confidence": 40,
+        "_variability_tier": "diagnostic",
+        "_variability_score": null,
+        "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): matches dishwasher_repair's own confidence_strategy exactly -- same real reasoning applies (specialized-tier diagnostic appliance repair; see dishwasher_repair's own, more fully-researched note for the full derivation). Flagged for business-owner review, same as the value it's modeled on, not independently re-derived from scratch for this specific appliance."
+      },
+      "verb_natural": "repaired",
+      "required_materials": [],
+      "optional_materials": [],
+      "_note_checkout_state_investigation": "T135+ (PENDING_DECISIONS.md #67): unconditionally 'diagnostic', matching dishwasher_repair's own investigated conclusion for the identical real reason -- exact part cost/final total can't be confirmed before opening the appliance, regardless of which of the 5 real symptoms (sym.wont_power_on, sym.overheating, sym.runs_constantly, sym.strange_noises, sym.bad_smell) is selected."
+    },
+    {
+      "id": "stove_repair",
+      "operational_metrics": {
+        "expected_minutes": 60,
+        "high_case_minutes": 120,
+        "complexity_tier": "specialized"
+      },
+      "pricing_engine": "hourly_estimate",
+      "default_estimates": {
+        "materials": {
+          "min": 0,
+          "max": 250,
+          "note": "Common parts (igniter, burner element, control board) typically $30‑$250. Exact part cost cannot be determined before diagnosis."
+        },
+        "total_minutes": {
+          "min": 70,
+          "max": 390,
+          "note": "1‑2 hours labor typical; parts extra. Final cost depends on fault and parts needed."
+        },
+        "disclaimer": "hourly"
+      },
+      "ui_taxonomy": {
+        "category_id": "minor_home_repairs",
+        "group_id": "minor_home_repairs_appliances_stove_range",
+        "display_name": "Stove / Range Repair",
+        "icon": "🔥",
+        "description": "Diagnostic and repair. Labor billed at $70 per hour, minimum 1 hour. Parts are additional and will be invoiced after the repair.",
+        "sort_order": 672,
+        "presentation_strategy": {
+          "display_enabled": true,
+          "buffer_label": "Average",
+          "calculation_basis": "base_plus_tags"
+        }
+      },
+      "financial_engine": {
+        "type": "hourly",
+        "base_price": 0,
+        "checkout_state": "diagnostic",
+        "pricing_archetype": "diagnostic_open"
+      },
+      "detail_prompt": "",
+      "details": [],
+      "materials_included": false,
+      "requires_furniture_selection": false,
+      "aliases": [],
+      "service_type": "Repair",
+      "intake_chain": [
+        {
+          "module": "location",
+          "then": {}
+        },
+        {
+          "module": "stove_symptom",
+          "then": {}
+        }
+      ],
+      "remote_deep_dive_modules": [
+        "attempted_fix"
+      ],
+      "default_tags": [],
+      "override_root": true,
+      "confidence_strategy": {
+        "minimum_quote_confidence": 90,
+        "maximum_followup_questions": 2,
+        "diagnostic_threshold": 0,
+        "base_confidence": 40,
+        "_variability_tier": "diagnostic",
+        "_variability_score": null,
+        "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): matches dishwasher_repair's own confidence_strategy exactly -- see dryer_repair's identical note. Flagged for business-owner review, not independently re-derived."
+      },
+      "verb_natural": "repaired",
+      "required_materials": [],
+      "optional_materials": [],
+      "_note_checkout_state_investigation": "T135+ (PENDING_DECISIONS.md #67): unconditionally 'diagnostic', matching dishwasher_repair's own investigated conclusion -- exact part cost/final total can't be confirmed before opening the appliance, regardless of which of the 3 real symptoms (sym.wont_power_on, sym.overheating, sym.bad_smell) is selected. Gas-smell safety note: this service's own dispatch/scheduling handling for a gas-smell report is outside this data fix's scope -- the #emergency tag on that specific symptom option is real and present, but whether it should also trigger something beyond standard emergency handling (e.g. an explicit gas-utility-first warning) is a real, separate question worth a direct look, not assumed answered here."
+    },
+    {
       "id": "door_lock_or_handle_install",
       "operational_metrics": {
         "expected_minutes": 60,
@@ -4482,7 +4632,7 @@
         "high_case_minutes": 120,
         "complexity_tier": "skilled"
       },
-      "pricing_engine": "algorithmic_flat_rate",
+      "pricing_engine": "tile_repair_formula",
       "default_estimates": {
         "materials": {
           "min": 0,
@@ -4490,11 +4640,11 @@
           "note": ""
         },
         "total_minutes": {
-          "min": 70,
-          "max": 90,
-          "note": ""
+          "min": 0,
+          "max": 0,
+          "note": "T135+: cleared (was 70/90) -- this field is flat-rate-display metadata that was unintentionally acting as an unearned floor once this service moved to tile_repair_formula's own minutes-based computation (base_minutes + minutes_per_tile*qty + conditional penalties). See PENDING_DECISIONS.md #65."
         },
-        "disclaimer": "flat_fee"
+        "disclaimer": "formula_based"
       },
       "ui_taxonomy": {
         "category_id": "minor_home_repairs",
@@ -4510,10 +4660,11 @@
         }
       },
       "financial_engine": {
-        "type": "flat_rate",
-        "base_price": 85.0,
-        "pricing_archetype": "flat_simple",
-        "_inherits_checkout_state_from_archetype": "surface_repair"
+        "type": "hourly",
+        "base_price": 35,
+        "pricing_archetype": "formula",
+        "_inherits_checkout_state_from_archetype": "surface_repair",
+        "_note": "T135+ (PENDING_DECISIONS.md #65, direct instruction): switched from flat_rate/algorithmic_flat_rate to hourly + tile_repair_formula. Verified empirically before applying: qty=1 with no special conditions computes to exactly $85 (preserving the established floor), qty=3 to $99, qty=5 to $113 -- real, sensible per-tile scaling (base_minutes:30 + minutes_per_tile:5 * qty), not flat and not the old outer-multiplier double-count #42 fixed. Conditional penalties (grout, water damage, high ceiling, disposal) are now genuinely reachable through this service's own answers where those questions exist; waterproof_area's real modifier (previously reached via the generic per-answer loop) is now handled by the formula's own equivalent branch instead, confirmed still firing (tested: qty=5 + membrane computes to $248, a real, substantial increase)."
       },
       "aliases": [],
       "service_type": "Repair",
@@ -12158,9 +12309,25 @@
         "sym.strange_noises",
         "sym.wont_power_on"
       ],
-      "symptom_id_to_service_ids": {},
+      "symptom_id_to_service_ids": {
+        "sym.bad_smell": [
+          "dryer_repair"
+        ],
+        "sym.overheating": [
+          "dryer_repair"
+        ],
+        "sym.runs_constantly": [
+          "dryer_repair"
+        ],
+        "sym.strange_noises": [
+          "dryer_repair"
+        ],
+        "sym.wont_power_on": [
+          "dryer_repair"
+        ]
+      },
       "real_gaps": [
-        "No explicit install or repair service defined — only dynamic fallback."
+        "T135+ (PENDING_DECISIONS.md #67): Repair resolved -- dryer_repair now exists with its own tailored symptom question. No explicit Install service defined yet -- comp.dryer still has no real component_id_to_service_ids entry, only dynamic fallback for that action."
       ]
     },
     "minor_home_repairs_appliances_stove_range": {
@@ -12182,9 +12349,19 @@
         "sym.overheating",
         "sym.wont_power_on"
       ],
-      "symptom_id_to_service_ids": {},
+      "symptom_id_to_service_ids": {
+        "sym.bad_smell": [
+          "stove_repair"
+        ],
+        "sym.overheating": [
+          "stove_repair"
+        ],
+        "sym.wont_power_on": [
+          "stove_repair"
+        ]
+      },
       "real_gaps": [
-        "No explicit install or repair service — only dynamic fallback."
+        "T135+ (PENDING_DECISIONS.md #67): Repair resolved -- stove_repair now exists with its own tailored symptom question. No explicit Install service defined yet -- comp.stove still has no real component_id_to_service_ids entry, only dynamic fallback for that action."
       ]
     },
     "minor_home_repairs_appliances_refrigerator": {
@@ -15030,6 +15207,82 @@
       "purpose": "pricing",
       "confidence_gain": 15,
       "affects_price": true
+    },
+    "dryer_symptom": {
+      "question": "What's the issue with the dryer?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "Won't power on",
+          "tags": [],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_works_intermittently"
+        },
+        {
+          "label": "Overheating / getting too hot",
+          "tags": [
+            "#emergency"
+          ],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_trips_breaker_immediately"
+        },
+        {
+          "label": "Runs constantly / won't shut off",
+          "tags": [],
+          "complexity_override": "routine",
+          "modifier_ref": "symptom_making_strange_noises"
+        },
+        {
+          "label": "Making strange noises",
+          "tags": [],
+          "complexity_override": "routine",
+          "modifier_ref": "symptom_making_strange_noises"
+        },
+        {
+          "label": "Burning smell",
+          "tags": [
+            "#emergency"
+          ],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_burning_smell"
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): authored so real_symptom_ids on minor_home_repairs_appliances_dryer (sym.wont_power_on, sym.overheating, sym.runs_constantly, sym.strange_noises, sym.bad_smell) route to a service with real, dryer-specific symptom options, not repair_appliances' washer-flavored ones. Modifier fee/minutes values reused from the existing, generic symptom_* modifiers where the underlying diagnostic-effort concept genuinely matches (confirmed by reading their real values first, not guessed) rather than authoring near-duplicate definitions."
+    },
+    "stove_symptom": {
+      "question": "What's the issue with the stove/range?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "Won't power on / no burners work",
+          "tags": [],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_works_intermittently"
+        },
+        {
+          "label": "Overheating / burners too hot",
+          "tags": [
+            "#emergency"
+          ],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_trips_breaker_immediately"
+        },
+        {
+          "label": "Burning or gas smell",
+          "tags": [
+            "#emergency"
+          ],
+          "checkout_state_override": "diagnostic",
+          "modifier_ref": "symptom_burning_smell"
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): authored so real_symptom_ids on minor_home_repairs_appliances_stove_range (sym.wont_power_on, sym.overheating, sym.bad_smell) route to a service with real, stove-specific symptom options. 'Burning or gas smell' deliberately merges what the routing archetype tracks as one concept (sym.bad_smell) -- a gas smell specifically is a real safety signal for this appliance type, tagged #emergency accordingly."
     },
     "washer_type": {
       "question": "What type of washing machine is it?",
@@ -21516,6 +21769,26 @@
         "base_price": 0,
         "checkout_state": "diagnostic"
       },
+      "dryer_repair": {
+        "pricing_engine_key": "hourly_estimate",
+        "is_real_registered_formula": false,
+        "formula_params": {},
+        "pricing_archetype": "diagnostic_open",
+        "pricing_type": "hourly",
+        "formula_ref": null,
+        "base_price": 0,
+        "checkout_state": "diagnostic"
+      },
+      "stove_repair": {
+        "pricing_engine_key": "hourly_estimate",
+        "is_real_registered_formula": false,
+        "formula_params": {},
+        "pricing_archetype": "diagnostic_open",
+        "pricing_type": "hourly",
+        "formula_ref": null,
+        "base_price": 0,
+        "checkout_state": "diagnostic"
+      },
       "door_lock_or_handle_install": {
         "pricing_engine_key": "algorithmic_flat_rate",
         "is_real_registered_formula": false,
@@ -21687,13 +21960,26 @@
         "checkout_state": null
       },
       "loose_tile_replacement": {
-        "pricing_engine_key": "algorithmic_flat_rate",
-        "is_real_registered_formula": false,
-        "formula_params": {},
-        "pricing_archetype": "flat_simple",
-        "pricing_type": "flat_rate",
+        "pricing_engine_key": "tile_repair_formula",
+        "is_real_registered_formula": true,
+        "formula_params": {
+          "base_minutes": 30,
+          "minutes_per_tile": 5,
+          "grout_penalty_minutes": 20,
+          "water_damage_penalty_minutes": 25,
+          "high_ceiling_penalty_minutes": 30,
+          "disposal_minutes": 20,
+          "grout_modifier_ref": "tile_grout",
+          "water_damage_modifier_ref": "tile_water_damage",
+          "high_ceiling_modifier_ref": "tile_high_ceiling",
+          "disposal_modifier_ref": "tile_disposal",
+          "membrane_penalty_minutes": 45,
+          "membrane_modifier_ref": "waterproof_area_yes_requires_membrane"
+        },
+        "pricing_archetype": "formula",
+        "pricing_type": "hourly",
         "formula_ref": null,
-        "base_price": 85.0,
+        "base_price": 35,
         "checkout_state": null
       },
       "microwave_repair": {
@@ -24235,6 +24521,7 @@
           "computer_diagnostic",
           "dishwasher_repair",
           "door_repair_impact_damage",
+          "dryer_repair",
           "faucet_repair_drip",
           "furniture_disassembly_for_moving",
           "furniture_repair_hourly",
@@ -24246,6 +24533,7 @@
           "repair_appliances",
           "scratch_or_water_ring_removal",
           "squeaky_floor_repair",
+          "stove_repair",
           "wall_hole_or_crack_repair",
           "washer_repair",
           "window_ac_repair",
@@ -24638,22 +24926,6 @@
           "slow_drain_clearing"
         ]
       },
-      "Yes – a little (under 1 inch)": {
-        "synonyms": [
-          "Yes – a little (under 1 inch)"
-        ],
-        "candidate_services": [
-          "slow_drain_clearing"
-        ]
-      },
-      "Yes – a lot (over 1 inch)": {
-        "synonyms": [
-          "Yes – a lot (over 1 inch)"
-        ],
-        "candidate_services": [
-          "slow_drain_clearing"
-        ]
-      },
       "Slow – takes a few minutes to empty": {
         "synonyms": [
           "Slow – takes a few minutes to empty"
@@ -24673,6 +24945,22 @@
       "Standing water – completely blocked": {
         "synonyms": [
           "Standing water – completely blocked"
+        ],
+        "candidate_services": [
+          "slow_drain_clearing"
+        ]
+      },
+      "Yes – a little (under 1 inch)": {
+        "synonyms": [
+          "Yes – a little (under 1 inch)"
+        ],
+        "candidate_services": [
+          "slow_drain_clearing"
+        ]
+      },
+      "Yes – a lot (over 1 inch)": {
+        "synonyms": [
+          "Yes – a lot (over 1 inch)"
         ],
         "candidate_services": [
           "slow_drain_clearing"
@@ -25795,6 +26083,130 @@
         "modules_needed_for_exact": [
           "location",
           "symptom"
+        ]
+      },
+      "dryer_repair": {
+        "name": "Dryer Repair",
+        "service_type": "Repair",
+        "category": "minor_home_repairs",
+        "group": "minor_home_repairs_appliances_dryer",
+        "aliases": [],
+        "intake_chain": [
+          {
+            "module": "location",
+            "then": {}
+          },
+          {
+            "module": "dryer_symptom",
+            "then": {}
+          }
+        ],
+        "pricing": {
+          "pricing_engine_key": "hourly_estimate",
+          "is_real_registered_formula": false,
+          "formula_params": {},
+          "pricing_archetype": "diagnostic_open",
+          "pricing_type": "hourly",
+          "formula_ref": null,
+          "base_price": 0,
+          "checkout_state": "diagnostic"
+        },
+        "dynamic": false,
+        "default_estimates": {
+          "materials": {
+            "min": 0,
+            "max": 250,
+            "note": "Common parts (heating element, belt, thermal fuse, igniter) typically $30‑$250. Exact part cost cannot be determined before diagnosis."
+          },
+          "total_minutes": {
+            "min": 70,
+            "max": 390,
+            "note": "1‑2 hours labor typical; parts extra. Final cost depends on fault and parts needed."
+          },
+          "disclaimer": "hourly"
+        },
+        "required_materials": [],
+        "optional_materials": [],
+        "default_tags": [],
+        "behavior": null,
+        "remote_deep_dive_modules": [
+          "attempted_fix"
+        ],
+        "requires_furniture_selection": false,
+        "confidence_strategy": {
+          "minimum_quote_confidence": 90,
+          "maximum_followup_questions": 2,
+          "diagnostic_threshold": 0,
+          "base_confidence": 40,
+          "_variability_tier": "diagnostic",
+          "_variability_score": null,
+          "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): matches dishwasher_repair's own confidence_strategy exactly -- same real reasoning applies (specialized-tier diagnostic appliance repair; see dishwasher_repair's own, more fully-researched note for the full derivation). Flagged for business-owner review, same as the value it's modeled on, not independently re-derived from scratch for this specific appliance."
+        },
+        "modules_needed_for_exact": [
+          "dryer_symptom",
+          "location"
+        ]
+      },
+      "stove_repair": {
+        "name": "Stove / Range Repair",
+        "service_type": "Repair",
+        "category": "minor_home_repairs",
+        "group": "minor_home_repairs_appliances_stove_range",
+        "aliases": [],
+        "intake_chain": [
+          {
+            "module": "location",
+            "then": {}
+          },
+          {
+            "module": "stove_symptom",
+            "then": {}
+          }
+        ],
+        "pricing": {
+          "pricing_engine_key": "hourly_estimate",
+          "is_real_registered_formula": false,
+          "formula_params": {},
+          "pricing_archetype": "diagnostic_open",
+          "pricing_type": "hourly",
+          "formula_ref": null,
+          "base_price": 0,
+          "checkout_state": "diagnostic"
+        },
+        "dynamic": false,
+        "default_estimates": {
+          "materials": {
+            "min": 0,
+            "max": 250,
+            "note": "Common parts (igniter, burner element, control board) typically $30‑$250. Exact part cost cannot be determined before diagnosis."
+          },
+          "total_minutes": {
+            "min": 70,
+            "max": 390,
+            "note": "1‑2 hours labor typical; parts extra. Final cost depends on fault and parts needed."
+          },
+          "disclaimer": "hourly"
+        },
+        "required_materials": [],
+        "optional_materials": [],
+        "default_tags": [],
+        "behavior": null,
+        "remote_deep_dive_modules": [
+          "attempted_fix"
+        ],
+        "requires_furniture_selection": false,
+        "confidence_strategy": {
+          "minimum_quote_confidence": 90,
+          "maximum_followup_questions": 2,
+          "diagnostic_threshold": 0,
+          "base_confidence": 40,
+          "_variability_tier": "diagnostic",
+          "_variability_score": null,
+          "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): matches dishwasher_repair's own confidence_strategy exactly -- see dryer_repair's identical note. Flagged for business-owner review, not independently re-derived."
+        },
+        "modules_needed_for_exact": [
+          "location",
+          "stove_symptom"
         ]
       },
       "door_lock_or_handle_install": {
@@ -27099,13 +27511,26 @@
           }
         ],
         "pricing": {
-          "pricing_engine_key": "algorithmic_flat_rate",
-          "is_real_registered_formula": false,
-          "formula_params": {},
-          "pricing_archetype": "flat_simple",
-          "pricing_type": "flat_rate",
+          "pricing_engine_key": "tile_repair_formula",
+          "is_real_registered_formula": true,
+          "formula_params": {
+            "base_minutes": 30,
+            "minutes_per_tile": 5,
+            "grout_penalty_minutes": 20,
+            "water_damage_penalty_minutes": 25,
+            "high_ceiling_penalty_minutes": 30,
+            "disposal_minutes": 20,
+            "grout_modifier_ref": "tile_grout",
+            "water_damage_modifier_ref": "tile_water_damage",
+            "high_ceiling_modifier_ref": "tile_high_ceiling",
+            "disposal_modifier_ref": "tile_disposal",
+            "membrane_penalty_minutes": 45,
+            "membrane_modifier_ref": "waterproof_area_yes_requires_membrane"
+          },
+          "pricing_archetype": "formula",
+          "pricing_type": "hourly",
           "formula_ref": null,
-          "base_price": 85.0,
+          "base_price": 35,
           "checkout_state": null
         },
         "dynamic": false,
@@ -27116,11 +27541,11 @@
             "note": ""
           },
           "total_minutes": {
-            "min": 70,
-            "max": 90,
-            "note": ""
+            "min": 0,
+            "max": 0,
+            "note": "T135+: cleared (was 70/90) -- this field is flat-rate-display metadata that was unintentionally acting as an unearned floor once this service moved to tile_repair_formula's own minutes-based computation (base_minutes + minutes_per_tile*qty + conditional penalties). See PENDING_DECISIONS.md #65."
           },
-          "disclaimer": "flat_fee"
+          "disclaimer": "formula_based"
         },
         "required_materials": [
           "MAT-MHR-FLR-Grout",
@@ -36474,7 +36899,7 @@
         "purpose": "pricing",
         "affects_price": true,
         "confidence_gain": 20,
-        "option_count": 4,
+        "option_count": 7,
         "used_by": [
           "door_lock_or_handle_install"
         ],
@@ -36717,10 +37142,12 @@
         "option_count": 4,
         "used_by": [
           "dishwasher_repair",
+          "dryer_repair",
           "leak_under_sink_repair",
           "microwave_repair",
           "repair_appliances",
           "slow_drain_clearing",
+          "stove_repair",
           "washer_repair",
           "window_ac_repair"
         ],
@@ -37220,6 +37647,38 @@
           "routine",
           "skilled"
         ]
+      },
+      "dryer_symptom": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 5,
+        "used_by": [
+          "dryer_repair"
+        ],
+        "tag_setters": [
+          "#emergency"
+        ],
+        "complexity_overrides": [
+          "routine"
+        ]
+      },
+      "stove_symptom": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 3,
+        "used_by": [
+          "stove_repair"
+        ],
+        "tag_setters": [
+          "#emergency"
+        ],
+        "complexity_overrides": []
       },
       "washer_type": {
         "classification": "component",
@@ -39975,7 +40434,9 @@
           "membrane_penalty_minutes": 45,
           "membrane_modifier_ref": "waterproof_area_yes_requires_membrane"
         },
-        "used_by": []
+        "used_by": [
+          "loose_tile_replacement"
+        ]
       },
       "hardware_install_formula": {
         "params": {
@@ -40147,8 +40608,10 @@
       ],
       "member_group_ids": [
         "minor_home_repairs_appliances_dishwasher",
+        "minor_home_repairs_appliances_dryer",
         "minor_home_repairs_appliances_microwave",
         "minor_home_repairs_appliances_refrigerator",
+        "minor_home_repairs_appliances_stove_range",
         "minor_home_repairs_appliances_washer",
         "minor_home_repairs_appliances_window_ac"
       ],
