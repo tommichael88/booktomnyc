@@ -1232,6 +1232,15 @@ function _renderTraceOverlay(forceInit) {
                 if (!entry._flag) entry._flag = { flagged: true, note: '', flaggedAt: Date.now() };
                 entry._flag.note = ta.value;
             });
+            ta.addEventListener('keydown', (e) => {
+                // Enter saves (same as tapping Done). Shift+Enter inserts
+                // a newline, so a multi-line note is still possible.
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    window._editingFlagNoteId = null;
+                    _scheduleRender();
+                }
+            });
             const doneBtn = document.createElement('button');
             doneBtn.type = 'button';
             doneBtn.textContent = 'Done';
@@ -1268,7 +1277,27 @@ function _renderTraceOverlay(forceInit) {
     }
 
     // ── Restore focus and cursor position ────────────────────────────
-    if (activeId) {
+    // Priority 1: the currently-open note editor. If a note is being
+    // edited, THAT textarea is what the user is typing into — it wins
+    // over anything else that may have been focused before this render.
+    // Priority 2: whatever had focus before, IF the element still exists
+    // (it won't if it was the previous note textarea that just closed).
+    // Priority 3: nothing.
+    let focused = false;
+    if (window._editingFlagNoteId) {
+        const noteEl = document.getElementById(`traceNote_${window._editingFlagNoteId}`);
+        if (noteEl) {
+            try {
+                noteEl.focus();
+                if (typeof noteEl.setSelectionRange === 'function') {
+                    try { noteEl.setSelectionRange(noteEl.value.length, noteEl.value.length); }
+                    catch (e) { /* selectionRange unsupported */ }
+                }
+            } catch (e) { /* best-effort */ }
+            focused = true;
+        }
+    }
+    if (!focused && activeId) {
         const restoredEl = document.getElementById(activeId);
         if (restoredEl) {
             try { restoredEl.focus(); } catch (e) { /* best-effort */ }
@@ -1277,8 +1306,6 @@ function _renderTraceOverlay(forceInit) {
                 catch (e) { /* selectionRange unsupported */ }
             }
         }
-    } else if (window._editingFlagNoteId) {
-        document.getElementById(`traceNote_${window._editingFlagNoteId}`)?.focus();
     }
 
     // ── Auto-scroll only when a new entry arrived and we were at bottom
