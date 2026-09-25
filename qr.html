@@ -8037,8 +8037,8 @@ function computeUnifiedQuote(ctx) {
          });
      }
 
-     function renderCuratedCardFromRoute(route) {
-         const container = document.getElementById('intakeQuestionsContainer');
+     function renderCuratedCardFromRoute(route, containerId) {
+         const container = document.getElementById(containerId || 'intakeQuestionsContainer');
          if (!container) return;
          const chain = route.intakeChain || [];
          const answers = route.answers || {};
@@ -10649,7 +10649,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              }
              if (sv) sv.textContent = '';
          });
-         document.getElementById('sqDynGroups').innerHTML = '';
+         const _sqDynGroupsEl = document.getElementById('sqDynGroups');
+         if (_sqDynGroupsEl) _sqDynGroupsEl.innerHTML = '';
          const ab = document.getElementById('sqAdlibBox');
          if (ab) ab.style.display = 'none';
          const bb = document.getElementById('sqS3build');
@@ -11821,7 +11822,33 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
                  S._jobNotes = '';
                  S._curatedMode = true;
                  S.userTagIds = S.userTagIds || [];
-                 sqBuildCuratedIntake(svc); // <- confidence accumulation lives here
+                 // T135+ (PHASE_PLAN.md Phase 2, Stage C): routes through the
+                 // orchestrator now, matching the self-quote branch's own
+                 // T64/"Phase 6 rewire" precedent above, rather than calling
+                 // the legacy sqBuildCuratedIntake directly. Confirmed safe
+                 // first: a full 74-service parity sweep
+                 // (curated_card_renderer_parity_sweep.js) found and fixed
+                 // the two real gaps renderCuratedCardFromRoute had (missing
+                 // ceiling enforcement, missing branch-visibility filtering)
+                 // and now shows 74/74 agreement, 0 divergences. sqBuildCuratedIntake
+                 // itself is untouched and still reachable from
+                 // sqChooseDivergencePath's own "remote deep-dive" path,
+                 // which has a real, confirmed capability
+                 // (remote_deep_dive_modules) the orchestrator path does not
+                 // yet have ported -- not swept up in this same change.
+                 if (typeof collectBookingContext_catalog === 'function' &&
+                     typeof executeWorkflow === 'function' &&
+                     typeof renderCuratedCardFromRoute === 'function' &&
+                     DB?.workflow) {
+                     const _curatedCtx = collectBookingContext_catalog(svc, category_id);
+                     const _curatedRoute = executeWorkflow(_curatedCtx, DB);
+                     S._lastRoute = _curatedRoute;
+                     renderCuratedCardFromRoute(_curatedRoute, 'sqSb3');
+                     const sb3 = document.getElementById('sqSb3');
+                     if (sb3) sb3.style.display = 'block';
+                 } else {
+                     sqBuildCuratedIntake(svc); // fallback if the orchestrator path isn't available
+                 }
              } else {
                  // Simple service (no questions): seed _svc so curated adlib has service context,
                  // then run chip grid — this is the only step-3 chip path.
@@ -13040,10 +13067,13 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              det += `<span class="chip gtag sel" data-tid="${tid}" onclick="sqToggleTag(this,'${tid}')"><i class="ti ti-check"></i> ${sqTagLabel(t,tid)}${_chipFee>0?' +$'+_chipFee:''}</span>`;
          });
          if (!det) det = '<span style="font-size:13px;color:#999;font-style:italic">None auto-detected from text</span>';
-         document.getElementById('sqDetTags').innerHTML = det;
+         const _sqDetTagsEl = document.getElementById('sqDetTags');
+         if (_sqDetTagsEl) _sqDetTagsEl.innerHTML = det;
 
-         document.getElementById('sqQtyLbl').textContent = S.intent?.qtyLabel || 'item';
-         document.getElementById('sqQtyV').textContent = S.qty;
+         const _sqQtyLblEl = document.getElementById('sqQtyLbl');
+         if (_sqQtyLblEl) _sqQtyLblEl.textContent = S.intent?.qtyLabel || 'item';
+         const _sqQtyVEl = document.getElementById('sqQtyV');
+         if (_sqQtyVEl) _sqQtyVEl.textContent = S.qty;
 
          // Grouped chips from SSOT smart_tags
          const cat = S.intent?.category || 'other';
@@ -13072,7 +13102,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              });
              if (chips) html += `<div class="group-label">${gName}</div><div class="chips">${chips}</div>`;
          }
-         document.getElementById('sqDynGroups').innerHTML = html;
+         const _sqDynGroupsEl2 = document.getElementById('sqDynGroups');
+         if (_sqDynGroupsEl2) _sqDynGroupsEl2.innerHTML = html;
 
          // Auto-build adlib immediately
          sqBuildAdlib();
