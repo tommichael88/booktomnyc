@@ -8097,11 +8097,46 @@ function computeUnifiedQuote(ctx) {
          }
 
          // Render each module as a set of chips
-         chain.forEach((mod, idx) => {
+         // T135+ FIX (PHASE_PLAN.md Phase 2, Stage B): this loop used to
+         // render every authored module in `chain` unconditionally -- the
+         // root cause of all 18 non-price divergences the full parity
+         // sweep found against sqBuildCuratedIntake. Confirmed directly
+         // (grep across the whole file) that no ceiling/maxQs enforcement
+         // existed anywhere in this render path; the legacy renderer's own
+         // `maxQs`-based cap is the ONLY place that logic lived. Ported
+         // here rather than invented fresh, preserving its own hard-won
+         // v9.5.15 semantics exactly: an answered module is always shown
+         // and never consumes a cap slot (so an already-answered parent
+         // question never crowds out a branching follow-up); only
+         // unanswered modules count against the cap, and once the cap is
+         // reached, remaining unanswered modules simply aren't rendered.
+         // confStrat/maxQs resolved via the same canonical
+         // resolveBaseConfidenceStrategy() the legacy path already uses --
+         // not a second, independently-derived value.
+         // T135+ FIX (PHASE_PLAN.md Phase 2, Stage B): `chain` (route.intakeChain)
+         // is the full, unfiltered composition -- it can include
+         // branch-conditional modules (e.g. door_size/door_style_pref,
+         // gated on client_supplying_door's own answer) that are not
+         // actually relevant yet given the answers so far. The legacy
+         // renderer filters through `_isModVisible` before ever iterating;
+         // this one didn't, so a not-yet-triggered branch question could
+         // render prematurely -- confirmed directly as the exact cause of
+         // this session's last remaining parity-sweep divergence
+         // (prehung_interior_door_install: 4 rendered vs. the real 2).
+         const _visibleChain = (typeof _isModVisible === 'function')
+             ? chain.filter(m => _isModVisible(m, answers, chain))
+             : chain;
+         const _confStrat = (typeof resolveBaseConfidenceStrategy === 'function') ? resolveBaseConfidenceStrategy(entity, null) : {};
+         const _maxQs = _confStrat.maximum_followup_questions || 5;
+         let _shownCount = 0;
+         _visibleChain.forEach((mod, idx) => {
              const modKey = mod.moduleKey || mod.module;
              const question = mod.question || 'Question';
              const responses = mod.client_response || [];
              if (!responses.length) return;
+             const _isDone = !!answers[modKey];
+             if (!_isDone && _shownCount >= _maxQs) return;
+             if (!_isDone) _shownCount++;
 
              html += `<div class="intake-module-step" style="margin-bottom:16px;">
                     <div class="ims-label" style="font-weight:bold; margin-bottom:8px;">${idx+1}. ${question}</div>
