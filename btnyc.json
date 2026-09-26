@@ -11,7 +11,12 @@
       "hourly": "This price is final for the described labor unless the scope changes on site. Materials (if any) are extra and will be confirmed before work begins.",
       "project_based": "All estimates are preliminary and non\u2011binding. Your final, binding price will be confirmed after our technician inspects the job site and you approve the exact scope and material selections. You are not committed until you accept the final quote."
     },
-    "enrichment_note": "Dynamic services enriched by refined script (group\u2011only suggested_tags). Generated on: 2026-07-09T01:50:33.515133"
+    "enrichment_note": "Dynamic services enriched by refined script (group\u2011only suggested_tags). Generated on: 2026-07-09T01:50:33.515133",
+    "global_rates": {
+      "standard_labor": 40,
+      "specialized_repair": 85,
+      "_note": "T135+ RE-ADDED (PRICING_GUIDE B1/P1): the v9.4 restructuring (see this same meta.note's own v9.4 entry) deliberately removed meta.global_rates as part of moving fee/minute surcharges to global_rules.modifiers -- but mathFurnitureAssembly's own reference to global_rates.standard_labor was never removed alongside it, leaving it silently falling through to a hardcoded $65/hr fallback ever since (confirmed live before this fix). standard_labor re-added narrowly, per direct business input: $40/hr is furniture assembly's real, standard labor rate -- matches furniture_catalog[]'s own authored flat_fee values (e.g. a 60-minute Bed Frame's flat_fee: 40 implies exactly $40/hr). specialized_repair added because the schema requires both fields on this object (found via direct schema-validation failure, not guessed) -- set to $85, matching the established skilled-tier hourly_rate in global_rules.complexity_tiers, since no more specific direct business input was given for this second rate. Not currently read by any live code path (confirmed: only standard_labor has a real consumer) -- flagged for business-owner confirmation if a different value was actually intended."
+    }
   },
   "workflow": {
     "version": "1.0",
@@ -2508,8 +2513,8 @@
         "base_price": 0,
         "checkout_state": "standard_flat_rate",
         "formula_ref": "hardware_install_formula",
-        "pricing_archetype": "hourly_timed",
-        "_archetype_note": " CORRECTED from a first-pass classification of tiered_per_unit after a comprehensive before/after price comparison across all 70 services caught a real divergence ($43 vs the archetype's computed $140) -- computeArchetypeQuote's implementation for this archetype does not correctly replicate this service's real, existing, more granular pricing logic. Reclassified to prevent the existing computeUnifiedQuote guard from overriding a correct, already-live price with an incorrect one. computeArchetypeQuote's own formula/tiered_per_unit branches are a real, separate, confirmed gap -- worth fixing on their own terms, not attempted in this pass."
+        "pricing_archetype": "formula",
+        "_archetype_note": "T135+ CORRECTED (PRICING_GUIDE B8/P10): realigned from 'hourly_timed' to the semantically correct 'formula', confirmed safe by direct test -- with the corrected hardware_install_formula now in place (PRICING_GUIDE B3/P3), 'formula' produces the identical, correct result the prior mismatch was protecting against losing. Original note, preserved for history: 'CORRECTED from a first-pass classification of tiered_per_unit after a comprehensive before/after price comparison across all 70 services caught a real divergence ($43 vs the archetype's computed $140) -- computeArchetypeQuote's implementation for this archetype does not correctly replicate this service's real, existing, more granular pricing logic. Reclassified to prevent the existing computeUnifiedQuote guard from overriding a correct, already-live price with an incorrect one.'"
       },
       "detail_prompt": "",
       "details": [],
@@ -16753,12 +16758,19 @@
       "membrane_modifier_ref": "waterproof_area_yes_requires_membrane"
     },
     "hardware_install_formula": {
-      "flat_tier_price": 140,
-      "base_minutes": 10,
-      "minutes_per_unit_swap": 1.25,
-      "minutes_per_unit_new_holes": 4,
-      "hourly_rate": 70,
-      "_note": "v9.6 CORRECTED: was minutes_per_unit_swap=4, minutes_per_unit_new_holes=5 -- this formula's own prior note claimed those were \"real, direct, explicit business input,\" but confirmed via direct comparison against intake_modules.install_type's own note (\"swap rate (1.25 min/unit) vs. measure/drill/mark rate (4 min/unit), both real, physical-fact figures... feeds hardware_install_formula directly\") that the two had silently diverged -- install_type was authored later (v9.5) explicitly to feed this formula, but this formula's own numbers were never updated to match. Confirmed authoritative directly by the project owner: swap=1.25, new_holes=4. The qualitative reasoning from the prior note is preserved, only the numbers changed: TIER 1 (the realistic, common case, 1-10ish units) is correctly NOT charged per-unit at this scale -- a single, fair flat_tier_price ($140, ~2hrs @ $70/hr) covers the real, non-trivial setup this job actually involves. TIER 2 (genuine bulk) takes over once real per-unit math exceeds flat_tier_price -- continuous, never a downward cliff, since price is always max(flat_tier_price, per-unit calculation). swap and new_holes stay genuinely DISTINCT even at bulk volume, by deliberate decision -- the riskier, more error-prone work (measuring/drilling/marking repeatedly, real fatigue and mis-drill risk) prices higher than a repetitive swap. $70/hr matches the real, already-established rate for general, ad-hoc minor-home-repair labor (see furniture_repair_formula's own override of the same value)."
+      "swap": {
+        "included_units": 20,
+        "flat_rate": 20,
+        "overflow_per_unit": 1.0,
+        "minutes_per_unit": 3
+      },
+      "new_holes": {
+        "included_units": 10,
+        "flat_rate": 35,
+        "overflow_per_unit": 3.5,
+        "minutes_per_unit": 6
+      },
+      "_note": "T135+ REWRITTEN (PRICING_GUIDE section 4.2/10.2 P3, direct business input): replaces the prior flat_tier_price ($140) two-tier model, which had a confirmed, live bug (B3) -- the swap rate's own Tier 2 never activated below 96 units, so every real job from 1 to 95 units priced identically at $140 flat, regardless of actual size. New model: swap covers 20 units for a flat $20, then $1.00/unit; new_holes covers 10 units for a flat $35, then $3.50/unit -- continuous, no downward cliff, verified against the reference ladder (12 units swap=$20/new_holes=$42; 22 units swap=$22/new_holes=$77; 100 units swap=$100/new_holes=$350)."
     },
     "item_count_overflow_formula": {
       "_note": "v9.6 DECIDED (explicit business decision, project owner, \u00a76A/\u00a76B): fixes the 'banded quantity price cliff' (T20) where an open-ended top band like '9 or more items' charged the exact same price whether the customer needed 9 or 400. Design: DORMANT by default -- if no explicit exact count is supplied (qty_value on the chosen answer), returns the existing flat top-band price with ZERO behavior change from today. Only activates once a future UI adds a real numeric-count capture for the open-ended band (the same 'specify exact count' pattern already established by pax_wardrobe_formula), at which point it charges the top band's own flat price PLUS a continuous per-unit rate for every unit beyond the band's anchor count -- guaranteed via max() to never charge less than today's flat price. Per-service overflow rate: a uniform rule, 10% of that service's own flat rate (financial_engine.base_price) per additional unit beyond the anchor, replacing the earlier per-service-extrapolated rates (each now retained, not in effect, in that service's own modifier note in global_rules.modifiers, for reference). Anchor quantities (the point overflow pricing begins) are unchanged from their original authoring. Still dormant pending the overflow-count UI itself -- see PENDING_DECISIONS.md item 4.",

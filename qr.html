@@ -572,67 +572,31 @@
          let overrideHourlyRate = null;
 
          if (formulaId === 'hardware_install_formula') {
-             // Two-tier model per direct business input:
-             // TIER 1 (common case, 1-10 units): flat_tier_price covers full job
-             // TIER 2 (>10 units): per-unit minutes at formula hourly_rate,
-             // swap vs. new-holes rates genuinely distinct
+             // T135+ REWRITTEN (PRICING_GUIDE section 4.2/10.2 P3, direct
+             // business input; fixes confirmed live bug B3): the prior
+             // flat_tier_price two-tier model never activated its own
+             // Tier 2 for swap jobs below 96 units -- every real job from
+             // 1 to 95 units priced identically at $140 regardless of
+             // actual size. New model: a single, continuous piecewise
+             // function per install type -- included units at a flat
+             // rate, then linear overflow -- with no flat-vs-per-unit
+             // comparison to get wrong, so there's no cliff to create.
              const installType = answers.install_type || '';
              const isNewHoles = /new hole/i.test(installType) || /drilling/i.test(installType);
              const unitsNum = parseInt(answers.unit_count) || qty || 1;
-             const minsPerUnit = isNewHoles ? (f.minutes_per_unit_new_holes || 5) : (f.minutes_per_unit_swap || 4);
-             // v9.6 FIX: was `!isNewHoles && unitsNum <= 10` -- excluded
-             // new-holes jobs from Tier 1 entirely, at ANY quantity,
-             // confirmed via direct test this made a single new-hole
-             // install price LOWER than the equivalent swap ($35 vs
-             // $140 at qty=1) -- backwards, since new-holes is real,
-             // additional labor (measuring/drilling/marking), never
-             // less. The formula's own note frames swap/new-holes as
-             // staying distinct "even at bulk volume", implying the
-             // distinction already exists below that threshold, not
-             // that it begins there. Tier 1 now gates on unit count
-             // alone, matching its own "1-10ish units" framing --
-             // install_type only affects Tier 2's per-unit rate.
-             if (unitsNum <= 10) {
-                 // Tier 1: flat tier price -- return as an override via extraFee
-                 // so the caller (computeArchetypeQuote) can set the final price directly
-                 const flatPrice = f.flat_tier_price || 140;
-                 // Signal the flat price by setting overrideHourlyRate to 0 and extraFee to flatPrice
-                 // and extraMin to 0 so base price + extraFee = flatPrice
-                 return {
-                     extraFee: flatPrice,
-                     extraMin: 0,
-                     overrideHourlyRate: 0
-                 };
-             }
-             // Tier 2: per-unit minutes
-             // v9.6 FIX: this branch previously returned its
-             // per-unit result unconditionally, with no comparison
-             // against Tier 1's flat price -- violating this same
-             // formula's own explicitly documented guarantee ("the
-             // real final price is always max(flat_tier_price, the
-             // per-unit calculation)... continuous, never a
-             // downward cliff"). Confirmed via direct test: qty=20
-             // priced at $105 (swap) / $128 (new holes), both
-             // BELOW qty<=10's flat $140 -- a real, confirmed
-             // downward cliff right at the tier boundary, exactly
-             // the failure mode the formula's own note says this
-             // design exists to prevent. Fixed by returning the
-             // greater of the two, expressed as extraFee (so the
-             // caller's base+extraFee+time*rate math still adds up
-             // correctly regardless of which side wins).
-             const perUnitMinutes = minsPerUnit * unitsNum;
-             const perUnitPrice = (f.hourly_rate || 70) * (perUnitMinutes / 60);
-             const flatPrice = f.flat_tier_price || 140;
-             if (perUnitPrice <= flatPrice) {
-                 return {
-                     extraFee: flatPrice,
-                     extraMin: 0,
-                     overrideHourlyRate: 0
-                 };
-             }
-             extraMin += perUnitMinutes;
-             overrideHourlyRate = f.hourly_rate || 70;
-         } else if (formulaId === 'item_count_overflow_formula') {
+             const rate = isNewHoles ? (f.new_holes || {}) : (f.swap || {});
+             const included = rate.included_units ?? (isNewHoles ? 10 : 20);
+             const flatRate = rate.flat_rate ?? (isNewHoles ? 35 : 20);
+             const overflowPerUnit = rate.overflow_per_unit ?? (isNewHoles ? 3.5 : 1.0);
+             const minsPerUnit = rate.minutes_per_unit ?? (isNewHoles ? 6 : 3);
+             const overflowUnits = Math.max(0, unitsNum - included);
+             const price = flatRate + overflowUnits * overflowPerUnit;
+             return {
+                 extraFee: price,
+                 extraMin: minsPerUnit * unitsNum,
+                 overrideHourlyRate: 0
+             };
+        } else if (formulaId === 'item_count_overflow_formula') {
              // v9.6: no longer purely dormant -- a real UI path now
              // exists for the curated-card intake surface (see the
              // '4+' chip's inline exact-count prompt in
@@ -1319,32 +1283,32 @@
              price: 0,
              minutes: 0
          };
-         // v9.5 FIX (backlog item 7, confirmed money-affecting --
-         // NOT deferrable as pure UI): every one of the 124 real
-         // furniture_catalog items has a designed, non-zero
-         // flat_fee that was silently discarded here. Confirmed
-         // via direct check: 124 of 124 real items have
-         // flat_fee > 0, and this function previously only ever
-         // received a bare minutesArr, with no path for flat_fee
-         // to ever reach the real price at all. Now accepts the
-         // full items array (each with .minutes and .flat_fee)
-         // and sums both real cost components.
+         // T135+ REWRITTEN (PRICING_GUIDE section 5.4/10.2 B1/B2/P1/P2,
+         // direct business input; fixes confirmed live bugs B1 and B2).
+         // B1: meta.global_rates.standard_labor was missing (removed in
+         // the v9.4 restructuring, never removed from this reference),
+         // silently falling through to a hardcoded $65/hr -- fixed by
+         // re-adding the rate (see meta.global_rates._note).
+         // B2: this function used to ADD flatFeeTotal on top of
+         // hours × rate. But furniture_catalog[].flat_fee already IS
+         // the labor cost at the correct rate -- a 60-minute Bed Frame's
+         // authored flat_fee: 40 is exactly 1hr × $40/hr, not a separate
+         // charge. Adding both double-counted labor on every item
+         // (confirmed live: a single 60-min Bed Frame priced at $105
+         // against its own catalog's authored $40). Fixed by using only
+         // the minutes-based calculation, with a $40 minimum -- flat_fee
+         // itself is no longer summed into the price at all.
          const minutesArr = items.map(it => (typeof it === 'number') ? it : (it.minutes || 0));
-         const flatFeeTotal = items.reduce((sum, it) => sum + ((typeof it === 'number') ? 0 : (it.flat_fee || 0)), 0);
          const totalMinutes = minutesArr.reduce((a, b) => a + b, 0);
-         let hours = totalMinutes / 60;
-         if (hours > 0 && hours < 1) hours = 1;
+         const rate = SERVICE_DATA?.meta?.global_rates?.standard_labor || 40;
+         const rawPrice = (totalMinutes / 60) * rate;
+         const price = Math.max(rate, rawPrice); // $40 minimum, matching the 1-hour-minimum job floor
+         const hours = totalMinutes / 60;
          const rounded = Math.round(hours * 100) / 100;
-         // SSOT: meta.global_rates.standard_labor — furniture assembly
-         // is standard labor, not the specialized_repair tier (85).
-         // meta.rate_per_hour does not exist in the JSON (was always
-         // falling through to the hardcoded 85 fallback, bypassing SSOT).
-         const rate = SERVICE_DATA?.meta?.global_rates?.standard_labor || 65;
          return {
              hours: rounded,
-             price: Math.round((rounded * rate + flatFeeTotal) * 100) / 100,
-             minutes: totalMinutes,
-             flatFeeTotal
+             price: Math.round(price * 100) / 100,
+             minutes: totalMinutes
          };
      }
 function resolveServiceCheckoutStateKey(svc, dynDef) {
@@ -8275,7 +8239,6 @@ function computeUnifiedQuote(ctx) {
 
          html += `</div>`;
          container.innerHTML = html;
-         if (typeof _traceDomSnapshot === "function") _traceDomSnapshot("renderCuratedCardFromRoute: settled");
 
          // Attach event listeners for chip clicks
          container.querySelectorAll('.ims-chip').forEach(btn => {
@@ -8327,6 +8290,7 @@ function computeUnifiedQuote(ctx) {
              });
          }
      }
+
      function showGroupsForCategory(category_id, fromBack = false) {
          if (typeof _traceFn === 'function') _traceFn('showGroupsForCategory', {
              category_id,
