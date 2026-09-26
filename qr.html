@@ -1758,7 +1758,24 @@ function computeUnifiedQuote(ctx) {
                  if (formulaConsumedKeys.has(moduleKey)) continue;
                  const mod = DB.intake_modules?.[moduleKey];
                  if (!mod) continue;
-                 const chosen = (mod.client_response || []).find(r => r.label === answerLabel);
+                 // T135+ FIX (PRICING_GUIDE B4, confirmed systemic root
+                 // cause across all 5 affected item_count_overflow
+                 // services): this loop is what actually computes fees --
+                 // it only ever read the generic, shared
+                 // intake_modules[moduleKey].client_response, never the
+                 // per-service step.params.client_response override the
+                 // sibling formula-detection loop above already checks
+                 // correctly. Any service customizing a parameterized
+                 // module's own bands (item_count_template's documented
+                 // mechanism) had its real, authored fees silently never
+                 // applied -- confirmed live: cabinet_door_or_drawer_adjustment
+                 // priced flat at $35 regardless of item count, its real
+                 // $15/$30 per-band fees never reachable. Fixed by
+                 // checking the per-service override first, matching the
+                 // same pattern already correct elsewhere in this function.
+                 const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
+                 const overrideResponses = step?.params?.client_response;
+                 const chosen = (overrideResponses || mod.client_response || []).find(r => r.label === answerLabel);
                  if (!chosen) continue;
                  // v9.6: fee/minutes resolve exclusively via modifier_ref ->
                  // global_rules.modifiers. complexity_override/checkout_state_override
@@ -9762,8 +9779,10 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              // fallback below for an estimated 30+ real groups. Same
              // search, same module list, just extended to the other real
              // source of intake_chains, matched by the key's own middle
-             // segment (verified directly: 84 of 96 real keys use this
-             // exact 3-part shape; the remaining 12 are 2-part,
+             // segment (T135+ CORRECTED, PRICING_GUIDE B17: was "84 of
+             // 96" -- confirmed stale against current SSOT, re-verified
+             // directly: 70 of 82 real keys use this exact 3-part shape;
+             // the remaining 12 are 2-part,
              // category-level-only keys with no group segment at all, and
              // correctly don't match here since they aren't specific to
              // any one group).
