@@ -1755,7 +1755,6 @@ function computeUnifiedQuote(ctx) {
          if (true) {
              const _mods = DB.global_rules?.modifiers || {};
              for (const [moduleKey, answerLabel] of Object.entries(answers)) {
-                 if (formulaConsumedKeys.has(moduleKey)) continue;
                  const mod = DB.intake_modules?.[moduleKey];
                  if (!mod) continue;
                  // T135+ FIX (PRICING_GUIDE B4, confirmed systemic root
@@ -1785,30 +1784,46 @@ function computeUnifiedQuote(ctx) {
                  // nested effects.{fee,minutes,complexity_override,
                  // checkout_state_override} pattern).
                  const m = chosen.modifier_ref ? (_mods[chosen.modifier_ref] || {}) : {};
-                 // T118 #29 FIX: was unconditionally `extraFee += m.fee || 0`
-                 // -- every answer-driven fee, including access/urgency/
-                 // parking/disposal/pets/item_volume, fed the SAME bucket
-                 // that later gets multiplied by qty. Routes by the
-                 // modifier's own new `scope` field instead. Defaults to
-                 // 'per_unit' (extraFee) when scope is absent -- confirmed
-                 // directly that every modifier in the current catalog now
-                 // has an explicit scope (see the classification pass in
-                 // TIMELINE.md's T118 Step 6 item 1 entry), so this default
-                 // is a safety net for future data, not a live behavior for
-                 // any modifier today.
-                 if (m.scope === 'per_visit') {
-                     perVisitFee += m.fee || 0;
-                 } else {
-                     extraFee += m.fee || 0;
+                 // T135+ FIX (found via a direct test-validity audit, not
+                 // assumed): fee accumulation and the complexity_override/
+                 // checkout_state_override ratchet are orthogonal concerns.
+                 // B4's fix correctly skips fee accumulation for
+                 // formula-consumed keys (avoiding double-counting a fee
+                 // the formula itself already prices in) -- but the
+                 // original `continue` skipped BOTH, silently losing the
+                 // override ratchet too. Confirmed live: once B11 bound
+                 // furniture_repair_hourly to furniture_repair_formula
+                 // (making 'issue' formula-consumed), its "Broken piece"
+                 // answer's real, authored checkout_state_override:
+                 // 'diagnostic' stopped firing entirely -- a real
+                 // regression, not a stale test. Fee accumulation alone is
+                 // now what's guarded; the ratchet below always runs.
+                 if (!formulaConsumedKeys.has(moduleKey)) {
+                     // T118 #29 FIX: was unconditionally `extraFee += m.fee || 0`
+                     // -- every answer-driven fee, including access/urgency/
+                     // parking/disposal/pets/item_volume, fed the SAME bucket
+                     // that later gets multiplied by qty. Routes by the
+                     // modifier's own new `scope` field instead. Defaults to
+                     // 'per_unit' (extraFee) when scope is absent -- confirmed
+                     // directly that every modifier in the current catalog now
+                     // has an explicit scope (see the classification pass in
+                     // TIMELINE.md's T118 Step 6 item 1 entry), so this default
+                     // is a safety net for future data, not a live behavior for
+                     // any modifier today.
+                     if (m.scope === 'per_visit') {
+                         perVisitFee += m.fee || 0;
+                     } else {
+                         extraFee += m.fee || 0;
+                     }
+                     extraMin += m.minutes || 0;
+                     if (m.fee) feeBreakdown.push({
+                         source: 'answer',
+                         moduleKey,
+                         label: (mod.question ? mod.question + ': ' : '') + answerLabel,
+                         fee: m.fee,
+                         scope: m.scope || 'per_unit'
+                     });
                  }
-                 extraMin += m.minutes || 0;
-                 if (m.fee) feeBreakdown.push({
-                     source: 'answer',
-                     moduleKey,
-                     label: (mod.question ? mod.question + ': ' : '') + answerLabel,
-                     fee: m.fee,
-                     scope: m.scope || 'per_unit'
-                 });
                  const ov = chosen.complexity_override;
                  if (ov && (RANK[ov] || 0) > (RANK[answerOverrideTier] || 0)) {
                      answerOverrideTier = ov;
