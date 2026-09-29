@@ -32,7 +32,7 @@ body.modal-active{overflow:hidden}
 #traceToggleBtn{position:fixed;bottom:12px;right:12px;z-index:99999;background:#1e293b;color:#fff;border:0;border-radius:20px;padding:8px 14px;font-size:12px;font-family:monospace;cursor:pointer;opacity:.55;box-shadow:0 2px 6px #0000004d}
 #traceOverlayPanel{display:none;position:fixed;top:0;right:0;width:420px;max-width:70vw;height:85vh;background:#0f172a;color:#e2e8f0;z-index:99998;overflow-y:auto;font-family:monospace;font-size:12px;padding:12px;box-shadow:-4px 0 12px #00000066}
 #toast-container{position:fixed;bottom:20px;right:20px;z-index:10001;display:flex;flex-direction:column;gap:10px;pointer-events:none}
-.pg_background{position:fixed;inset:0;z-index:0;height:100vh;background-size:cover;background-attachment:fixed;background-position:center top;background-image:url(https://tommichael88.github.io/booktomnyc/images/pg_background_b5.png?raw=true);backdrop-filter:#fff;-webkit-backdrop-filter:#fff}
+.pg_background{position:fixed;inset:0;z-index:0;height:100vh;background-size:cover;background-attachment:fixed;background-position:center top;background-image:url(https://tommichael88.github.io/booktomnyc/images/pg_background_b5.png?raw=true)}
 .qrc_page_inner{max-width:700px;margin:auto;padding:4px 4px 80px;position:relative;z-index:9}
 .profile-portrait-image{display:block;width:100%;height:auto;border-radius:10px;margin:2px auto;transition:transform .4s cubic-bezier(.34,1.56,.64,1);box-shadow:15px 15px 30px #bebebe,-15px -15px 30px #fff}
 .highlight-box{display:flex;width:100%;justify-content:space-between;align-items:center;padding:12px 15px;gap:2%;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:inset 0 1px 2px #ffffff26,0 2px 12px #0006;border:var(--glass-border);border-radius:var(--radius-sm);transition:var(--transition)}
@@ -667,12 +667,15 @@ body.modal-active{overflow:hidden}
     <div class="qrc_gallery section">
       <div class="qrc_gallery_wrapper">
         <div class="qrc_gallery_list">
+
           <div id="profile-portrait-image-container"><img class="profile-portrait-image" src="https://tommichael88.github.io/booktomnyc/images/TomKongerslev_nobg.png?raw=true" alt="Profile Image"></div>
+
           <span class="highlight-box">
             <img class="thandylogo" src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/tht_logo.png" alt="HandyTech logo">
             <div class="tmk_signature"><img src="https://tommichael88.github.io/booktomnyc/images/tmk_ai_signature_2b2.png?raw=true" alt="Tom Kongerslev signature"></div>
             <button id="contact-button" class="contact-button" aria-controls="contactToolbar" aria-expanded="false">𝗰𝗼𝗻𝘁𝗮𝗰𝘁≣<div class="contact-glow-ring"></div><span class="contact-sparkle"></span> <span class="contact-sparkle"></span> <span class="contact-sparkle"></span> <span class="contact-sparkle"></span></button>
           </span>
+
           <div id="contactToolbar" class="contact-toolbar" role="menu" tabindex="-1">
             <a href="#" class="contact-toolbar-item contact-mail" data-email="Ym9va3RvbUBpY2xvdWQuY29t" aria-label="Email" role="menuitem">
               <div class="contact-toolbar-icon">@</div>
@@ -690,82 +693,92 @@ body.modal-active{overflow:hidden}
               <div class="contact-toolbar-icon"><span style="font-size:5rem">+</span>🪪</div>
               <div class="contact-toolbar-label">vCard</div>
             </a>
-        </div>
-            <div class="main-card-schedule-service">
-              <img class="main-card-schedule-service-header" src="https://github.com/tommichael88/booktomnyc/blob/main/images/service_schedule.png?raw=true" alt="Service Schedule">
-              <div class="new-service-request-grid-topper">
-                <a href="https://tommichael88.github.io/booktomnyc/cat.html"><span><b>Book <u>ᴺᵉʷ</u></b><br><i>Service Request</i></span></a>
-                <button class="manageVisitBtn" id="manageVisitBtn" aria-label="Manage your visit"><img src="https://github.com/tommichael88/booktomnyc/blob/main/images/manageVisitBtn.png?raw=true" alt="Edit Visit"></button>
-                <div id="cartFab" class="cartFab star" style="display:none" role="button" tabindex="0" aria-label="View cart">
-                  <span class="sparkle"></span> <span class="sparkle"></span> <span class="sparkle"></span> <span class="sparkle"></span>
-                  <div class="glow-ring"></div>
-                  <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/checkout.png?raw=true" alt="checkout">
-                  <span id="fabCartCount">0</span>
-                </div>
-              </div>
-              <div class="main-card-container">
-                <div class="booking-step-bar" id="bookingStepBar" role="progressbar" aria-label="Booking progress">
-                  <div class="step-node"><div class="step-dot" id="step1dot">1</div><div class="step-label">CATEGORY</div></div>
-                  <div class="step-connector" id="conn1"></div>
-                  <div class="step-node"><div class="step-dot" id="step2dot">2</div><div class="step-label">TYPE</div></div>
-                  <div class="step-connector" id="conn2"></div>
-                  <div class="step-node"><div class="step-dot" id="step3dot">3</div><div class="step-label">SERVICE</div></div>
-                  <div class="step-connector" id="conn3"></div>
-                  <div class="step-node"><div class="step-dot" id="step4dot">4</div><div class="step-label">FINAL</div></div>
-                </div>
+          </div>
+          <!-- ▲▲▲ THE FIX: this </div> closes #contactToolbar. ▲▲▲
+               Without it, everything below nests INSIDE the toolbar and:
+                 • is hidden on load (toolbar display:none), and
+                 • squashes into a flex row when toolbar.active (display:flex). -->
 
-                <div id="category-card">
-                  <div class="category-card" data-category-id="minor_home_repairs" tabindex="0" role="button" aria-label="Minor Home Repairs">
-                    <div class="category-icon"><i class="ti ti-home"></i></div>
-                    <h2>Minor Home Repairs</h2>
-                  </div>
-                  <div class="category-card" data-category-id="furniture_fixes_assembly" tabindex="0" role="button" aria-label="Furniture Fixes &amp; Assembly">
-                    <div class="category-icon"><i class="ti ti-sofa"></i>️</div>
-                    <h2>Furniture Fixes &amp; Assembly</h2>
-                  </div>
-                  <div class="category-card" data-category-id="wall_mounting" tabindex="0" role="button" aria-label="Wall Mounting">
-                    <div class="category-icon"><i class="ti ti-library-photo"></i></div>
-                    <h2>Wall Mounting</h2>
-                  </div>
-                  <div class="category-card" data-category-id="electric_lighting" tabindex="0" role="button" aria-label="Electric &amp; Lighting">
-                    <div class="category-icon"><i class="ti ti-plug"></i></div>
-                    <h2>Electric &amp; Lighting</h2>
-                  </div>
-                  <div class="category-card" data-category-id="plumbing_help" tabindex="0" role="button" aria-label="Plumbing Help">
-                    <div class="category-icon"><i class="ti ti-bath"></i></div>
-                    <h2>Plumbing Help</h2>
-                  </div>
-                  <div class="category-card" data-category-id="tech_trouble" tabindex="0" role="button" aria-label="Tech Trouble">
-                    <div class="category-icon"><i class="ti ti-device-laptop"></i></div>
-                    <h2>Tech Trouble</h2>
-                  </div>
-                </div>
-              <div id="serviceContainer" class="group-grid"></div>
-              <div id="intakeQuestionsContainer"></div>
-
-              <div class="summaryMainContainer" id="serviceRequestSummary" style="display:none">
-                <div id="summary-header"><h3>New Service Request Summary</h3></div>
-                <div id="serviceRequestList"></div>
-                <div id="estimateTotalSummary" class="summary-estimate" style="display:none"><span>Due Today:</span> <span id="totalAmount">$0</span></div>
-                <span class="action-buttons">
-                  <button class="clear-all-btn" aria-label="Clear cart">Clear All 🗑</button>
-                  <button class="book-now-button" id="bookNowBtn" aria-label="Book now">★ BOOK ★</button>
-                </span>
+          <div class="main-card-schedule-service">
+            <img class="main-card-schedule-service-header" src="https://github.com/tommichael88/booktomnyc/blob/main/images/service_schedule.png?raw=true" alt="Service Schedule">
+            <div class="new-service-request-grid-topper">
+              <a href="https://tommichael88.github.io/booktomnyc/cat.html"><span><b>Book <u>ᴺᵉʷ</u></b><br><i>Service Request</i></span></a>
+              <button class="manageVisitBtn" id="manageVisitBtn" aria-label="Manage your visit"><img src="https://github.com/tommichael88/booktomnyc/blob/main/images/manageVisitBtn.png?raw=true" alt="Edit Visit"></button>
+              <div id="cartFab" class="cartFab star" style="display:none" role="button" tabindex="0" aria-label="View cart">
+                <span class="sparkle"></span> <span class="sparkle"></span> <span class="sparkle"></span> <span class="sparkle"></span>
+                <div class="glow-ring"></div>
+                <img src="https://github.com/tommichael88/booktomnyc/blob/main/images/checkout.png?raw=true" alt="checkout">
+                <span id="fabCartCount">0</span>
               </div>
             </div>
-        </div>
-            <br>
-            <br>
-            <div class="main-card-invoices">
-              <img class="main-card-invoices-header" src="https://github.com/tommichael88/booktomnyc/blob/main/images/invoices.png?raw=true" alt="Invoices">
-              <h3><b>BTNYC Client Portal</b> via <i>Zoho Invoices</i></h3>
-              <span><i><li>View &amp; download invoices | Make secure payments | Review &amp; approve quotes <br>
-                Upload photos, documents &amp; repair notes | Track payments &amp; transaction history
-                <br> Update your contact information</li></i></span>
-              <br>
-              <div class="login-client-button" id="clientLoginBtn" role="button" tabindex="0"><br>🔐 LOGIN</div>
+
+            <div class="main-card-container">
+              <div class="booking-step-bar" id="bookingStepBar" role="progressbar" aria-label="Booking progress">
+                <div class="step-node"><div class="step-dot" id="step1dot">1</div><div class="step-label">CATEGORY</div></div>
+                <div class="step-connector" id="conn1"></div>
+                <div class="step-node"><div class="step-dot" id="step2dot">2</div><div class="step-label">TYPE</div></div>
+                <div class="step-connector" id="conn2"></div>
+                <div class="step-node"><div class="step-dot" id="step3dot">3</div><div class="step-label">SERVICE</div></div>
+                <div class="step-connector" id="conn3"></div>
+                <div class="step-node"><div class="step-dot" id="step4dot">4</div><div class="step-label">FINAL</div></div>
+              </div>
+
+              <div id="category-card">
+                <div class="category-card" data-category-id="minor_home_repairs" tabindex="0" role="button" aria-label="Minor Home Repairs">
+                  <div class="category-icon"><i class="ti ti-home"></i></div>
+                  <h2>Minor Home Repairs</h2>
+                </div>
+                <div class="category-card" data-category-id="furniture_fixes_assembly" tabindex="0" role="button" aria-label="Furniture Fixes &amp; Assembly">
+                  <div class="category-icon"><i class="ti ti-sofa"></i>️</div>
+                  <h2>Furniture Fixes &amp; Assembly</h2>
+                </div>
+                <div class="category-card" data-category-id="wall_mounting" tabindex="0" role="button" aria-label="Wall Mounting">
+                  <div class="category-icon"><i class="ti ti-library-photo"></i></div>
+                  <h2>Wall Mounting</h2>
+                </div>
+                <div class="category-card" data-category-id="electric_lighting" tabindex="0" role="button" aria-label="Electric &amp; Lighting">
+                  <div class="category-icon"><i class="ti ti-plug"></i></div>
+                  <h2>Electric &amp; Lighting</h2>
+                </div>
+                <div class="category-card" data-category-id="plumbing_help" tabindex="0" role="button" aria-label="Plumbing Help">
+                  <div class="category-icon"><i class="ti ti-bath"></i></div>
+                  <h2>Plumbing Help</h2>
+                </div>
+                <div class="category-card" data-category-id="tech_trouble" tabindex="0" role="button" aria-label="Tech Trouble">
+                  <div class="category-icon"><i class="ti ti-device-laptop"></i></div>
+                  <h2>Tech Trouble</h2>
+                </div>
+              </div>
+            </div>
+
+            <div id="serviceContainer" class="group-grid"></div>
+            <div id="intakeQuestionsContainer"></div>
+
+            <div class="summaryMainContainer" id="serviceRequestSummary" style="display:none">
+              <div id="summary-header"><h3>New Service Request Summary</h3></div>
+              <div id="serviceRequestList"></div>
+              <div id="estimateTotalSummary" class="summary-estimate" style="display:none"><span>Due Today:</span> <span id="totalAmount">$0</span></div>
+              <span class="action-buttons">
+                <button class="clear-all-btn" aria-label="Clear cart">Clear All 🗑</button>
+                <button class="book-now-button" id="bookNowBtn" aria-label="Book now">★ BOOK ★</button>
+              </span>
             </div>
           </div>
+
+          <div class="main-card-invoices">
+            <img class="main-card-invoices-header" src="https://github.com/tommichael88/booktomnyc/blob/main/images/invoices.png?raw=true" alt="Invoices">
+            <h3><b>BTNYC Client Portal</b> via <i>Zoho Invoices</i></h3>
+            <span><i><li>View &amp; download invoices | Make secure payments | Review &amp; approve quotes <br>
+              Upload photos, documents &amp; repair notes | Track payments &amp; transaction history
+              <br> Update your contact information</li></i></span>
+            <br>
+            <div class="login-client-button" id="clientLoginBtn" role="button" tabindex="0"><br>🔐 LOGIN</div>
+          </div>
+
+        </div><!-- /.qrc_gallery_list -->
+      </div><!-- /.qrc_gallery_wrapper -->
+    </div><!-- /.qrc_gallery.section -->
+
     <center>
       <img class="brand-mark" src="https://raw.githubusercontent.com/tommichael88/booktomnyc/refs/heads/main/images/tht_logo.png" alt="HandyTech logo">
     </center>
@@ -775,10 +788,10 @@ body.modal-active{overflow:hidden}
       <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#annex-a">Service Scope</a> |
       <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement">Service Agreement</a>
     </footer>
-        </div>
-      </div>
-    </div>
-  </div>
+
+  </div><!-- /.qrc_page_inner -->
+</div><!-- /.qrc_page_wrapper -->
+
  <script>
      // ───────────────────────── GLOBAL STATE & CACHE ─────────────────────────
      let SERVICE_DATA = null;
@@ -15879,5 +15892,5 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          });
      }
  </script> 
-    </body>
+</body>
 </html>
