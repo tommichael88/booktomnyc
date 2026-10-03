@@ -802,8 +802,8 @@ body.modal-active{overflow:hidden}
      // ───────────────────────── GLOBAL STATE & CACHE ─────────────────────────
      let SERVICE_DATA = null;
      let DB = null;
-     // smartQuoteReady/smartQuoteCallbacks removed alongside onSmartQuoteReady above (v9.6 FIX).
-     // __sqActive removed alongside updateSmartQuoteBarVisibility above (v9.6 FIX).
+     // the retired SmartQuote-ready flag/the retired SmartQuote callbacks removed alongside the retired SmartQuote-ready callback above (v9.6 FIX).
+     // the retired active flag removed alongside the retired bar-visibility updater above (v9.6 FIX).
      let cartCurrentPage = 1;
      const ITEMS_PER_PAGE = 4;
      const STORAGE_KEY = "booktom_cart_v2";
@@ -1191,7 +1191,7 @@ body.modal-active{overflow:hidden}
              // v9.6: no longer purely dormant -- a real UI path now
              // exists for the curated-card intake surface (see the
              // '4+' chip's inline exact-count prompt in
-             // sqBuildCuratedIntake) that sets answers.__exact_count
+             // the legacy curated-intake builder) that sets answers.__exact_count
              // when the customer supplies one. Checked first for a
              // static, pre-authored qty_value (unchanged, existing
              // behavior); only falls through to the dynamic,
@@ -1420,6 +1420,17 @@ body.modal-active{overflow:hidden}
          const om = svc.operational_metrics || {};
          const pricingType = fe.type || fe.pricing_type || svc.service_type || 'Repair';
          const basePrice = fe.base_price || 0;
+          // Resolved display facts for renderers (renderers consume `prof`, never svc.financial_engine / the SSOT):
+          //  startingPrice   -- the service's listed starting price, 0 when it has none.
+          //  diagnosticPrice -- same, but a service with no listed price falls back to the SSOT-owned diagnostic rate
+          //                     (service_types.Diagnostic.base_price). This replaces a hardcoded 85 that two renderers carried (R-SYSTEM-NODATA).
+          const startingPrice = fe.base_price || svc.base_price || 0;
+          const diagnosticPrice = fe.base_price || DB.service_types?.Diagnostic?.base_price || 0;
+          //  badge             -- the resolved display badge label (SSOT checkout_states / ui_config), so a card never has to read `fe`.
+          //  isHourlyPricingType -- literally `fe.pricing_type === 'hourly'` (narrower than isHourly, which also accepts fe.type);
+          //                       kept distinct because the card's historical behavior depended on that exact check.
+          const badge = resolveServiceBadge(fe, svc);
+          const isHourlyPricingType = fe.pricing_type === 'hourly';
          const checkoutState = fe.checkout_state || 'standard_flat_rate';
          const chain = svc.intake_chain || [];
          const defaultTags = svc.default_tags || [];
@@ -1439,6 +1450,10 @@ body.modal-active{overflow:hidden}
          return {
              pricingType,
              basePrice,
+             startingPrice,
+             diagnosticPrice,
+             badge,
+             isHourlyPricingType,
              checkoutState,
              isDiagnostic,
              isProject,
@@ -1448,6 +1463,297 @@ body.modal-active{overflow:hidden}
              chainLen,
              tier
          };
+     }
+
+     // classifyServiceIntake -- LOGIC. Two facts the SmartQuote wiring needs about a named service, decided here and not in
+     // the controller:  isSelfQuoting = full pricing data + flat checkout + an intake that asks nothing but quantity (skip the
+     // chip grid);  needsCuratedCardTemplate = the intake chain asks at least one real, non-quantity question.
+     // NOTE: isSelfQuoting restates the orchestrator's self-quote decision (orch_select_ui_template) -- the controller's own
+     // comment called it "match orchestrator's logic". That is a second implementation (R-INVARIANT-CANONICAL). It is moved
+     // here unchanged so it sits in the right layer; delete it when prefill consumes route.uiTemplate instead.
+     function classifyServiceIntake(svc) {
+         const om = svc.operational_metrics || {};
+         const chain = svc.intake_chain || [];
+         // Match orchestrator's logic: item_count_template needs bypass_intake to be self-quote
+         const _bypassIntake = !!svc.behavior?.bypass_intake;
+         const _isQtyMod = (m) => ['item_count', 'count', 'hybrid_qty', 'global_quantity'].includes(m.module) || (m.module === 'item_count_template' && _bypassIntake);
+         const chainIsQtyOnly = chain.length === 0 || chain.every(_isQtyMod);
+         const hasPricingData = (om.expected_minutes > 0) && om.complexity_tier && (svc.financial_engine?.base_price > 0);
+         const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(svc.financial_engine?.checkout_state);
+         return {
+             isSelfQuoting: !!(hasPricingData && isFlatCheckout && chainIsQtyOnly),
+             needsCuratedCardTemplate: chain.some(m => !_isQtyMod(m)),
+             exactMinutes: om.expected_minutes,
+             exactTier: om.complexity_tier
+         };
+     }
+
+     // buildQuotePanelModel -- LOGIC. Everything the quote panel needs, decided from (session state, SSOT) and returned as a plain
+     // view-model: whether to offer the divergence fork, the resolved quote (with its checkout state merged in), the badge,
+     // the price copy, which banner accompanies it, and the customer's conditions ordered by real fee impact. No markup, no DOM.
+     // Split out of the former sqRenderQuote (R-SYSTEM-LAYERS: that function computed, resolved, built markup and wrote the DOM).
+     // mode 'fork'  -> { mode, q };   mode 'quote' -> { mode, q, badge, badgeKey, svcLabel, qtyLabel, stype, qty, dispatchLabel, banner, conditions }.
+     function buildQuotePanelModel(state, DB) {
+         const q = computeQuoteFromState(state);
+
+         // Divergence Resolution ("Fork in the Road"): when the route has
+         // genuinely hit the diagnostic dead end AND the entity has real,
+         // authored remote_deep_dive_modules, show the two-path choice
+         // INSTEAD of the normal price panel -- there is no real price
+         // to show yet, on either path, until the customer picks one.
+         // Once S._divergencePath is set (by the legacy divergence handler),
+         // this branch is skipped and rendering falls through to the
+         // normal panel below -- unchanged, existing behavior for the
+         // On-Site path, and a normal re-render (now possibly with a
+         // real price, if the deep-dive answers raised confidence
+         // enough) for the Remote path.
+         //
+         // v9.5.4: additionally requires S._svc. Path A (Remote Deep
+         // Dive) only actually works today for the curated-card intake
+         // path (the legacy curated-intake builder, used when S._svc is a real named
+         // service) -- traced directly: dynamic-service / builder-
+         // originated routes (S._svc unset, resolved via dynDef instead)
+         // render their intake through sqBuildStep3, a structurally
+         // different tag-chip grid, not intake_modules questions at all,
+         // and the legacy divergence handler has no integration with it yet.
+         // Without this guard the fork would offer a "Remote Deep Dive"
+         // button that silently did nothing for those routes. The 24
+         // dynamic_services entries' remote_deep_dive_modules data is
+         // real, authored, and schema-valid regardless -- this is a UI
+         // reach limitation, not a data gap -- and computeUnifiedQuote
+         // still correctly reports divergenceEligible for them, so this
+         // is the one place, not the pure layer, that needs the extra
+         // condition. Dynamic-service diagnostic routes keep today's
+         // exact, existing, correct single-path (On-Site Pro only)
+         // behavior until sqBuildStep3 gets the same treatment.
+                  // Offered only where BOTH paths actually work: Path B needs nothing, Path A re-renders the route the customer is on
+         // (orchChooseDivergencePath's own precondition is state._lastRoute.entity). This replaces the old `S._svc` test, which
+         // existed because only the legacy curated builder could do Path A; that builder is retired.
+         if (q.isDiagnostic && q.divergenceEligible && !state._divergencePath && state._lastRoute && state._lastRoute.entity) {
+             return { mode: 'fork', q };
+         }
+
+         // v9.6 FIX: resolveCheckoutState is the real, existing, correct
+         // source for disclaimerText/isDiag/btnText/btnClass/hideTime --
+         // sqRenderQuote read all of these directly off q (which never
+         // had them; computeQuoteFromState doesn't call this function)
+         // and had been showing them as literal "undefined" in the real,
+         // customer-facing quote. Confirmed via direct browser trace.
+         const cs = resolveCheckoutState(q.checkoutStateKey, q.laborCalc, state._svc);
+         Object.assign(q, cs);
+
+         // SSOT: badge from checkout_states (single source — see resolveServiceBadge)
+         const badge = resolveServiceBadge({
+             checkout_state: q.checkoutStateKey,
+             pricing_type: state.intent?._pricingType
+         });
+         const badgeKey = resolveServiceBadgeKey({
+             checkout_state: q.checkoutStateKey
+         });
+
+         const svcLabel = state.intent?.label || 'Service';
+         const qtyLabel = state.intent?.qtyLabel || 'item';
+
+         // v9.6 FIX: priceDisplay/priceSub were read (q.priceDisplay,
+         // q.priceSub) but never computed anywhere in the whole file --
+         // confirmed via exhaustive search. Matches the same "From $X"
+         // convention already used elsewhere (e.g. the affirmation
+         // card's own priceDisplay) for the not-yet-fully-confident
+         // case, and a plain "$X" once confident.
+         q.priceDisplay = (q.isDiag || q.isProject) ? ('From $' + q.laborCalc) : ('$' + q.laborCalc);
+         q.priceSub = q.isDiag ? 'Final price confirmed on-site' :
+             q.isProject ? 'Estimate — final price may vary with scope' :
+             (q.hideMaterials ? 'Fixed price' : 'Materials estimated separately');
+
+
+         // Which banner (if any) accompanies the quote -- decided here; the renderer only draws it.
+         //  auto    -- state._autoSelectedFrom is set: NLP matched the exact service, offer a clear way to revert.
+         //  suggest -- a recommendedSku exists but confidence did not clear the auto-select bar: a softer "you could also try X".
+         let banner = null;
+         if (state._autoSelectedFrom) {
+             banner = { kind: 'auto' };
+         } else {
+             // SSOT: if NLP matched a specific service SKU but confidence didn't clear the auto-select bar, still offer to switch --
+             // same underlying action (_sqSwitchToRecommended), just framed as a suggestion rather than something already done for them.
+             const _recSku = state.intent?.recommendedSku;
+             const _recSvc = _recSku ? (DB.services || []).find(sv => sv.id === _recSku) : null;
+             const _recCatId = state.intent?.category || _recSvc?.ui_taxonomy?.category_id || null;
+             if (_recSvc) banner = { kind: 'suggest', sku: _recSku, name: (_recSvc.ui_taxonomy?.display_name || _recSku), catId: _recCatId };
+         }
+
+         // T118 (Step 6 item 10, per PENDING_DECISIONS.md #26,
+         // explicit operator direction): was a single, flat row of
+         // q.activeLabels in whatever order they happened to
+         // accumulate -- confirmed directly, not a guess, that this
+         // is the real "Special Conditions" chip row the operator's
+         // own testing found unordered and cluttered relative to
+         // the "We understood" summary above it. Reordered by real
+         // fee impact (sqTagFeeImpact, traced from each tag's own
+         // authored answers -- not the mostly-retired effects.fee
+         // field) so the conditions actually affecting price are
+         // what a customer sees first; zero-fee conditions
+         // (display-only, informational) collapse into a single,
+         // small toggle instead of taking the same visual weight
+         // as fee-bearing ones.
+         // The conditions shown are the conditions priced: the same closure (SSOT `requires` applied, explicit negations winning).
+         const _activeTids = closeTagsOverRequires([...(state.detTagIds || []), ...(state.manTagIds || [])], state.negatedTagIds, DB);
+         const _tidInfo = _activeTids.map(tid => ({
+             tid,
+             label: sqTagLabel(DB.smart_tags?.[tid], tid),
+             fee: sqTagFeeImpact(tid),
+         }));
+         const _feeBearing = _tidInfo.filter(ti => ti.fee > 0).sort((a, b) => b.fee - a.fee);
+         const _zeroFee = _tidInfo.filter(ti => ti.fee <= 0);
+         return {
+             mode: 'quote', q, badge, badgeKey, svcLabel, qtyLabel,
+             stype: state.stype, qty: state.qty,
+             dispatchLabel: DB.global_rules?.surcharges?.dispatch_label || 'Dispatch fee',
+             banner,
+             conditions: { count: _tidInfo.length, feeBearing: _feeBearing, zeroFee: _zeroFee }
+         };
+     }
+
+     // requiredTagIdsFor -- LOGIC. The tag ids that selecting `tid` additionally requires, from the SSOT (smart_tags[tid].requires),
+     // as '#id' strings that actually exist in the catalog. Authored entries are { "$ref": "#two_person_required" } objects or bare strings.
+     // (Two tags carry a non-empty `requires` today: #very_heavy -> #two_person_required, #virus -> #tech_device_computer.)
+     function requiredTagIdsFor(tid, DB) {
+         const tags = DB.smart_tags || {};
+         return (tags[tid]?.requires || [])
+             .map(r => typeof r === 'string' ? r : (r?.$ref ? '#' + r.$ref.split('/').pop().replace(/^#/, '') : null))
+             .filter(req => req && tags[req]);
+     }
+
+     // closeTagsOverRequires -- LOGIC. The tag ids in force once the SSOT's `requires` relations are honoured: every id given, then --
+     // transitively, in discovery order -- every tag the SSOT says one of them requires, minus anything the CUSTOMER explicitly negated
+     // (their own words beat an implication). Provenance is the caller's job: pass only the tags chargeable on that path (a tag derived from
+     // a detected-but-unaffirmed tag is itself detected-but-unaffirmed). With no `requires` in play it returns exactly
+     // `[...new Set(tagIds)].filter(not negated)`, the expression every caller used before, so behaviour is unchanged for every other tag.
+     // This is the ONE place the rule lives (R-INVARIANT-NOPATCH: a fix that exists on one entry path is a symptom fix): the state path
+     // (computeQuoteFromState), the orchestrator (executeWorkflow) and the conditions the quote panel displays all call it, so no entry path
+     // prices a requirement another does not.
+     function closeTagsOverRequires(tagIds, negatedTagIds, DB) {
+         const negated = new Set(negatedTagIds || []);
+         const base = [...new Set(tagIds || [])].filter(t => !negated.has(t));
+         const inForce = new Set(base);
+         const queue = [...base];
+         for (let i = 0; i < queue.length; i++) {
+             for (const req of requiredTagIdsFor(queue[i], DB)) {
+                 if (negated.has(req) || inForce.has(req)) continue;
+                 inForce.add(req);
+                 queue.push(req);
+             }
+         }
+         return [...inForce];
+     }
+
+     // toggleTagState -- LOGIC. The state transition when a customer taps a tag chip: de-select removes it from every active set;
+     // select clears any negation, removes mutually-exclusive siblings from ALL sets (and their negation -- you cannot show "not heavy"
+     // after "very heavy"), adds the tag as an explicit user choice, and then pulls in the tags the SSOT says it REQUIRES.
+     // Pure with respect to everything but the state object it is handed. Moved out of sqToggleTag (Glue, R-SYSTEM-LAYERS: a
+     // controller must not own selection rules); the `requires` step restores a rule the retired curated-intake builder enforced
+     // and nothing live did (found when verify_ssot_consultation reported smart_tags.*.requires consulted by no live code).
+     function toggleTagState(state, tid, wasSelected, DB) {
+         const tag = (DB.smart_tags || {})[tid] || {};
+         const mutuallyExclusive = tag.mutually_exclusive || [];
+         if (wasSelected) {
+             // DE-SELECT: remove from all active sets; the user removed it -> neutral state (no negation) -- EXCEPT a tag that another active tag
+             // REQUIRES: it cannot go neutral (closeTagsOverRequires would derive it straight back), so the customer's deselect is recorded as an
+             // explicit negation, which beats the implication.
+             const stillRequired = closeTagsOverRequires([...state.manTagIds, ...state.detTagIds].filter(x => x !== tid), [], DB).includes(tid);
+             state.manTagIds = state.manTagIds.filter(x => x !== tid);
+             state.detTagIds = state.detTagIds.filter(x => x !== tid);
+             state.userTagIds = (state.userTagIds || []).filter(x => x !== tid);
+             if (stillRequired && !state.negatedTagIds.includes(tid)) state.negatedTagIds.push(tid);
+             return;
+         }
+         // SELECT: the user is explicitly choosing this tag.
+         state.negatedTagIds = state.negatedTagIds.filter(x => x !== tid);
+         mutuallyExclusive.forEach(sibId => {
+             state.manTagIds = state.manTagIds.filter(x => x !== sibId);
+             state.detTagIds = state.detTagIds.filter(x => x !== sibId);
+             state.userTagIds = (state.userTagIds || []).filter(x => x !== sibId);
+             state.negatedTagIds = state.negatedTagIds.filter(x => x !== sibId);
+         });
+         if (!state.manTagIds.includes(tid)) state.manTagIds.push(tid);
+         if (!(state.userTagIds || []).includes(tid)) {
+             state.userTagIds = state.userTagIds || [];
+             state.userTagIds.push(tid); // explicit user tap -> 100% confidence
+         }
+         requiredTagIdsFor(tid, DB).forEach(req => {
+             if (state.manTagIds.includes(req) || state.detTagIds.includes(req)) return;
+             state.manTagIds.push(req);
+             if (!(state.userTagIds || []).includes(req)) state.userTagIds.push(req);
+         });
+     }
+
+     // buildServiceSessionSeed -- LOGIC. The initial session state for a service the customer chose by name:
+     // intent, service type, description, the service's own default tags (as inherent facts) and the dynamic-service
+     // enrichment (fallback base price, checkout state, suggested-tag hints). Pure: everything arrives as an argument and
+     // the new state is RETURNED; the controller installs it (S = ...). Moved out of prefillSmartQuoteFromService (Glue,
+     // R-SYSTEM-LAYERS: a controller must not derive pricing/resolution), text preserved. A dead no-op block that iterated
+     // the always-empty detTagIds was dropped rather than moved.
+     function buildServiceSessionSeed(svc, category_id, preservedDynamicRule, categoryMap, DB) {
+         const catObj = categoryMap.get(category_id);
+         const catName = catObj ? (catObj.display_name || catObj.name || category_id) : category_id;
+         const seed = {
+             qty: 1,
+             intent: {
+                 category: category_id,
+                 label: svc.ui_taxonomy?.display_name || svc.display_name || catName,
+                 group: svc.ui_taxonomy?.display_name || svc.id,
+                 base: svc.financial_engine?.base_price ?? 70, // NOTE: hard-coded default carried over unchanged -- a business number in code (R-SYSTEM-NODATA); the SSOT should own it
+                 stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
+                 qtyLabel: 'item',
+                 key: svc.id,
+                 _groupId: svc.ui_taxonomy?.group_id || null,
+                 _pricingType: svc.financial_engine?.pricing_type || null,
+                 dynamic_rule: preservedDynamicRule
+             },
+             stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
+             desc: svc.ui_taxonomy?.display_name || svc.id,
+             detTagIds: [],
+             manTagIds: [],
+             negatedTagIds: [],
+             // inherentTagIds: default_tags from the service definition.
+             // These are SERVICE FACTS, not user-detected context -- they must
+             // NOT go into detTagIds which drives the "We understood from your
+             // text" banner. Kept separate so pricing still applies them.
+             inherentTagIds: [],
+             adlibConfirmed: false
+         };
+
+         // Seed default_tags into inherentTagIds (not detTagIds)
+         (svc.default_tags || []).forEach(tagRef => {
+             const tid = (typeof tagRef === 'object' && tagRef.$ref) ? tagRef.$ref : tagRef;
+             if (typeof tid === 'string' && tid.startsWith('#') && !seed.negatedTagIds.includes(tid))
+                 seed.inherentTagIds.push(tid);
+         });
+
+         // SSOT: dynamic_services — enrich base price and suggested_tags if service lacks them
+         const normStPrefill = (svc.service_type || 'Repair').replace('Install / Mount', 'Install');
+         const dynDefPrefill = resolveDynamicService(category_id, normStPrefill, svc.ui_taxonomy?.group_id);
+         if (dynDefPrefill) {
+             // Use dynamic base price if service base price is 0 or missing
+             if (!seed.intent.base && dynDefPrefill.financial_engine?.base_price) {
+                 seed.intent.base = dynDefPrefill.financial_engine.base_price;
+             }
+             // Also seed checkout state from dynamic_services operational_metrics
+             if (dynDefPrefill.operational_metrics?.checkout_state) {
+                 seed.intent.checkoutState = dynDefPrefill.operational_metrics.checkout_state;
+             }
+             // suggested_tags: store as hints only — NOT pre-selected
+             if (dynDefPrefill.suggested_tags) {
+                 seed._suggestedTagIds = seed._suggestedTagIds || [];
+                 dynDefPrefill.suggested_tags.forEach(tagObj => {
+                     if (!tagObj || typeof tagObj !== 'object') return;
+                     const segments = tagObj?.$ref ? tagObj.$ref.replace(/^#\//, '').split('/') : null;
+                     const tagId = segments ? '#' + segments[segments.length - 1].replace('#', '') : null;
+                     if (tagId && DB.smart_tags?.[tagId] && !seed._suggestedTagIds.includes(tagId))
+                         seed._suggestedTagIds.push(tagId);
+                 });
+             }
+         }
+         return seed;
      }
 
      function legacyDetermineSelfQuoting(svc) {
@@ -1633,14 +1939,14 @@ body.modal-active{overflow:hidden}
      //     one implying "Drywall", another "Brick or concrete") is resolved
      //     safely: neither wins, the module falls back to being asked
      //     normally, rather than guessing which tag is "more right"
-     function syncTagSynthesizedAnswers() {
-         S.answers = S.answers || {};
-         S._tagSynthesizedModules = S._tagSynthesizedModules || {};
+     function syncTagSynthesizedAnswers(state) {
+         state.answers = state.answers || {};
+         state._tagSynthesizedModules = state._tagSynthesizedModules || {};
          const smartTags = DB.smart_tags || {};
          // v9.6 FIX: real, confirmed, money-affecting bug -- this previously
-         // omitted S.inherentTagIds (a service's own default_tags, seeded as
+         // omitted state.inherentTagIds (a service's own default_tags, seeded as
          // "service facts" per this file's own design comment at
-         // S.inherentTagIds's seeding site: "pricing still applies them").
+         // state.inherentTagIds's seeding site: "pricing still applies them").
          // Confirmed directly: brick_or_concrete_crack_repair's inherent
          // #brick_wall tag carries a real $25 wall_type_brick_or_concrete
          // modifier fee via its own answers field, but since this service's
@@ -1650,8 +1956,9 @@ body.modal-active{overflow:hidden}
          // Included unconditionally (not gated), matching how
          // computeQuoteFromState already, correctly treats inherentTagIds
          // as always-chargeable, never negatable the way detTagIds are.
-         const active = [...new Set([...(S.detTagIds || []), ...(S.manTagIds || []), ...(S.inherentTagIds || [])])]
-             .filter(tid => !(S.negatedTagIds || []).includes(tid));
+         // The tags in force include what the SSOT's `requires` relations imply (closeTagsOverRequires), so a derived tag synthesizes its answer
+         // too (a virus implies a computer: the device question is retired, not asked). The customer's explicit negations still win.
+         const active = closeTagsOverRequires([...(state.detTagIds || []), ...(state.manTagIds || []), ...(state.inherentTagIds || [])], state.negatedTagIds, DB);
 
          // What every currently-active tag wants to synthesize this pass.
          const wants = {}; // moduleKey -> [{tid, label}, ...]
@@ -1671,27 +1978,27 @@ body.modal-active{overflow:hidden}
          // Reverse synthesis for any module this function previously set,
          // where the responsible tag is no longer active, or no longer
          // wants that same module at all.
-         for (const moduleKey of Object.keys(S._tagSynthesizedModules)) {
-             const tid = S._tagSynthesizedModules[moduleKey];
+         for (const moduleKey of Object.keys(state._tagSynthesizedModules)) {
+             const tid = state._tagSynthesizedModules[moduleKey];
              const stillWanted = (wants[moduleKey] || []).some(w => w.tid === tid);
              if (!stillWanted) {
-                 delete S.answers[moduleKey];
-                 delete S._tagSynthesizedModules[moduleKey];
+                 delete state.answers[moduleKey];
+                 delete state._tagSynthesizedModules[moduleKey];
              }
          }
 
          // Apply new/updated synthesis.
          for (const [moduleKey, wanters] of Object.entries(wants)) {
              const uniqueLabels = new Set(wanters.map(w => w.label));
-             const currentlySynthesizedBy = S._tagSynthesizedModules[moduleKey];
-             const alreadyExplicit = moduleKey in S.answers && !currentlySynthesizedBy;
+             const currentlySynthesizedBy = state._tagSynthesizedModules[moduleKey];
+             const alreadyExplicit = moduleKey in state.answers && !currentlySynthesizedBy;
              if (alreadyExplicit) continue; // real customer answer -- never touch it
 
              if (uniqueLabels.size > 1) {
                  // Conflict between active tags -- don't guess, fall back to asking.
                  if (currentlySynthesizedBy) {
-                     delete S.answers[moduleKey];
-                     delete S._tagSynthesizedModules[moduleKey];
+                     delete state.answers[moduleKey];
+                     delete state._tagSynthesizedModules[moduleKey];
                  }
                  continue;
              }
@@ -1699,8 +2006,8 @@ body.modal-active{overflow:hidden}
                  tid,
                  label
              } = wanters[0];
-             S.answers[moduleKey] = label;
-             S._tagSynthesizedModules[moduleKey] = tid;
+             state.answers[moduleKey] = label;
+             state._tagSynthesizedModules[moduleKey] = tid;
          }
      }
 
@@ -1905,7 +2212,7 @@ function resolveServiceCheckoutStateKey(svc, dynDef) {
     return 'standard_flat_rate';
 }
 
-function resolveCheckoutState(checkoutStateKey, laborTotal, svc = S._svc) {
+function resolveCheckoutState(checkoutStateKey, laborTotal, svc) {
     const cs = DB.checkout_states?.[checkoutStateKey] || {};
     const discs = DB.meta?.estimate_disclaimers || {};
     const isDiag = checkoutStateKey === 'diagnostic';
@@ -1924,10 +2231,8 @@ function resolveCheckoutState(checkoutStateKey, laborTotal, svc = S._svc) {
     // two ${labor_total} placeholders would leave the second literal.
     btnText = btnText.replace(/\$\{labor_total\}/g, laborStr);
 
-    // Pulled in as an explicit param (defaulting to the prior global
-    // read) so this function is testable/pure at the call site --
-    // previously two calls with identical args could return different
-    // results if S._svc changed in between.
+    // An explicit param with NO default: a Logic function must not read the global session state (R-SYSTEM-LAYERS).
+    // The caller (the quote view-model builder) passes state._svc; two calls with identical args now always agree.
     const svcDiscKey = svc?.default_estimates?.disclaimer || svc?.estimate_disclaimer || null;
 
     // Note: the original ternary here was `isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee'`,
@@ -2919,6 +3224,111 @@ function computeUnifiedQuote(ctx) {
              qty: qty || 1
          });
      }
+
+     function computeQuoteFromState(state) {
+         // Safety net: ensures state.answers reflects currently-active tags
+         // even if this is called without render() having just run
+         // (e.g. called directly). render() already calls this too,
+         // but the real, charged price computed here must not depend
+         // on that incidental ordering.
+         syncTagSynthesizedAnswers(state);
+         // Full display set -- every tag the customer sees (chips etc.)
+         // The SSOT's `requires` relations are applied here (closeTagsOverRequires), once, for every path; the customer's explicit negations win.
+         const allTagIds = closeTagsOverRequires([...(state.detTagIds || []), ...(state.manTagIds || []), ...(state.inherentTagIds || [])], state.negatedTagIds, DB);
+
+         // Chargeable set -- what actually drives price.
+         // detTagIds are gated: only included if the customer has
+         // explicitly affirmed them (state._tagsAffirmed) OR if
+         // meetsConfidenceBar is already true for the current quote.
+         // manTagIds and inherentTagIds are never gated (manual tap
+         // IS affirmation; inherent tags are service facts, not claims).
+         const detAndMan = [...new Set([...state.detTagIds, ...state.manTagIds])];
+         const svc = state._svc || (state.intent?.key ? DB.services.find(s => s.id === state.intent.key) : null);
+         const dynDef = svc ? null : resolveDynamicService(state.intent?.category, state.stype || 'Repair', state.intent?._groupId);
+
+         // Compute a preliminary quote with the full tag set to check meetsConfidenceBar
+         const fullQuote = computeUnifiedQuote({
+             svc,
+             dynDef,
+             activeTagIds: allTagIds,
+             answers: state.answers || {},
+             qty: state.qty || 1,
+             intentKeyword: state.intent?.key || null,
+             formulaId: state.intent?.dynamic_rule || null,
+             ctxAdjFee: state.intent?._ctxBaseAdjFee || 0,
+             ctxAdjMin: state.intent?._ctxBaseAdjMin || 0,
+         });
+
+         // Gate: if not affirmed and not already confident, exclude detTagIds from price
+         const detTagsChargeable = state._tagsAffirmed || fullQuote.meetsConfidenceBar;
+         const activeTagIds = detTagsChargeable ?
+             allTagIds : closeTagsOverRequires([...(state.manTagIds || []), ...(state.inherentTagIds || [])], state.negatedTagIds, DB);
+
+         // Final quote with correctly gated tag set
+         const u = detTagsChargeable ? fullQuote : computeUnifiedQuote({
+             svc,
+             dynDef,
+             activeTagIds,
+             answers: state.answers || {},
+             qty: state.qty || 1,
+             intentKeyword: state.intent?.key || null,
+             formulaId: state.intent?.dynamic_rule || null,
+             ctxAdjFee: state.intent?._ctxBaseAdjFee || 0,
+             ctxAdjMin: state.intent?._ctxBaseAdjMin || 0,
+         });
+
+         return {
+             laborCalc: u.laborEstimate,
+             dispatchFee: u.dispatchFee,
+             checkoutStateKey: u.checkoutStateKey,
+             activeLabels: u.activeLabels || [],
+             feeBreakdown: u.feeBreakdown || [],
+             isDiagnostic: u.isDiagnostic,
+             activeTagIds,
+             allTagIds,
+             detAndMan,
+             meetsConfidenceBar: fullQuote.meetsConfidenceBar,
+             detTagsChargeable,
+             // Full-set price for affirmation card preview ("price with these tags")
+             laborWithTags: fullQuote.laborEstimate,
+             // v9.6 FIX: these were never forwarded at all, even though
+             // computeUnifiedQuote always correctly computed them --
+             // sqRenderQuote reads them directly and was showing literal
+             // "$undefined"/"undefined min" in the real, customer-facing
+             // quote. Confirmed via real browser trace before fixing.
+             base: u.base,
+             totalMin: u.totalMin,
+             tierKey: u.complexityTier,
+             tierRate: u.tierRate,
+             hideTime: u.hideTime,
+             isProject: u.isProject,
+             // Divergence Resolution: same class of bug as the v9.6 FIX
+             // immediately above (computeUnifiedQuote computes it, this
+             // function's own narrow return contract has to explicitly
+             // forward it or every caller silently sees undefined) --
+             // caught by verify_divergence_resolution.js's real,
+             // end-to-end scenario check, not by static inspection alone.
+             divergenceEligible: u.divergenceEligible,
+             remoteDeepDiveModules: u.remoteDeepDiveModules || [],
+             divergenceFee: u.divergenceFee || 0,
+             divergenceCreditNote: u.divergenceCreditNote || '',
+         };
+     }
+
+     // Path B of the Fork in the Road (Charter: "switch to a FLAT-RATE diagnostic fee ... a bookable,
+     // priced service -- not a white flag ... we credit the fee back if we do the work"). What the client
+     // pays and is promised for that path, from the SSOT, in one place. Pure.
+     function onsiteDiagnosticTerms(q) {
+         const dr = DB.global_rules?.divergence_resolution || {};
+         const fee = (q && q.divergenceFee) || dr.diagnostic_fee || 0;
+         return {
+             fee,
+             label: dr.onsite_price_label || 'On-site diagnostic (flat rate):',
+             creditNote: (q && q.divergenceCreditNote) || dr.credit_policy_note || dr.credit_policy || '',
+             bookingNote: 'On-site diagnostic booked via Fork-in-the-Road: $' + fee + ' diagnostic fee. ' +
+                 (dr.credit_policy || 'No credit policy on file.')
+         };
+     }
  </script>
 
  <!-- nlp_engine.js -->
@@ -2952,8 +3362,8 @@ function computeUnifiedQuote(ctx) {
       * intentional design, not accidental drift:
       *
       *   PREVIEW PIPELINE (suffixed `Preview` here to disambiguate): buildPreview,
-      *   detectAction, detectActionInfinitive, extractObjectPreview,
-      *   extractQtyPreview, extractLocationPreview, extractCondition. Powers the
+      *   detectAction, detectActionInfinitive, a retired preview extractor,
+      *   a retired preview extractor, a retired preview extractor, extractCondition. Powers the
       *   live-as-you-type debounced preview under the SmartQuote text box —
       *   fast, simpler heuristics, lower stakes (it only affects a "looks right"
       *   button label before final submission).
@@ -3002,7 +3412,7 @@ function computeUnifiedQuote(ctx) {
       *      script block loads (NOT inside initNlpSets, and NOT inside any
       *      function — verified directly against the source before assuming
       *      otherwise, since an earlier draft of this extraction incorrectly
-      *      omitted it, causing extractObjectPreview to throw "ACTIONS is not
+      *      omitted it, causing a retired preview extractor to throw "ACTIONS is not
       *      defined"). Call refreshNlpPreviewBindings() (added below, wrapping
       *      that exact destructuring in a callable form so this module doesn't
       *      depend on top-level script execution order) once after initNlpSets().
@@ -3063,17 +3473,21 @@ function computeUnifiedQuote(ctx) {
       * drift this test exists to catch. Bumped to 'T112'.
       *
       * T115 UPDATE: caught again, exactly as designed, after
-      * sqBuildCuratedIntake's confidence-formula fix. Bumped to 'T115'.
+      * the legacy curated-intake builder's confidence-formula fix. Bumped to 'T115'.
       * (T114 touched only btnyc.json, no qr.html edit, so no bump was due
       * between T112 and T115 -- confirmed by this test itself staying green
       * through that session.)
+      *
+      * T143/T144 UPDATE: the stop-the-line layer migration changed qr.html substantially across two ledger entries; this value follows the newest
+      * (T144), which is what verify_qr_build_version_freshness.js reads from TIMELINE.md. Bumped to 'T144'. (The entries are numbered T143/T144
+      * because trace.js carries its own revisions T137-T142; renumber and re-bump if the live ledger already uses T143/T144.)
       */
 
      // QR_BUILD_VERSION stays live in THIS file, not trace.js: the component-layer
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T136';
+     const QR_BUILD_VERSION = 'T144';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -3721,18 +4135,18 @@ function computeUnifiedQuote(ctx) {
          return 'have serviced';
      }
 
-     // v9.6 FIX: extractObjectPreview removed -- confirmed zero real call
+     // v9.6 FIX: a retired preview extractor removed -- confirmed zero real call
      // sites; buildPreview (the real, live preview renderer) has always
      // called the bare-named extractObject, never this. Fully orphaned
      // since before this session, unrelated to the extractObject
      // consolidation (COMPONENT_LAYER_MAP.md).
 
-     // v9.6 FIX: extractQtyPreview removed -- same finding as
-     // extractObjectPreview above: confirmed zero real call sites,
+     // v9.6 FIX: a retired preview extractor removed -- same finding as
+     // a retired preview extractor above: confirmed zero real call sites,
      // buildPreview calls the bare-named extractQty instead
      // (COMPONENT_LAYER_MAP.md).
 
-     // v9.6 FIX: extractLocationPreview removed -- same finding as the two
+     // v9.6 FIX: a retired preview extractor removed -- same finding as the two
      // above: confirmed zero real call sites, buildPreview calls the
      // bare-named extractLocation instead (COMPONENT_LAYER_MAP.md).
 
@@ -5245,10 +5659,11 @@ function computeUnifiedQuote(ctx) {
              uiTemplate = null,
              materialsEstimate = null,
              quote = null;
-         const activeTagIds = [...new Set([
-             ...(context.detectedTagIds || []),
-             ...(context.manuallyToggledTagIds || [])
-         ])].filter(tid => !(context.negatedTagIds || []).includes(tid));
+         // The tags in force for this request: detected + manually toggled, the SSOT's `requires` relations applied (closeTagsOverRequires --
+         // the same single definition the state path uses), the customer's explicit negations winning.
+         const activeTagIds = closeTagsOverRequires(
+             [...(context.detectedTagIds || []), ...(context.manuallyToggledTagIds || [])],
+             context.negatedTagIds, db);
 
          for (const step of workflow.steps) {
              let outputSummary;
@@ -5348,6 +5763,7 @@ function computeUnifiedQuote(ctx) {
              answers,
              flags,
              confidence: confidenceState,
+             maxFollowupQuestions: orch_max_followup_questions(resolution?.entity),
              uiTemplate: uiTemplate?.ui_template || 'curated_card',
              bypassIntake: !!uiTemplate?.bypass_intake,
              skipTypeSelection: !!intakeBypass.skip_type_selection,
@@ -5370,7 +5786,7 @@ function computeUnifiedQuote(ctx) {
              // {from, to, negatedTagIds} or null, computed by
              // collectBookingContext_freeText itself.
              negationOverride: context._negationOverride || null,
-             // T66 follow-up: real port of renderTagAffirmationCard's
+             // T66 follow-up: real port of the legacy affirmation-card renderer's
              // sibling-service recommendation logic -- needs these
              // specific NLP-intent fields, not exposed on route before now.
              recommendedSku: context.nlpIntent?.recommendedSku || null,
@@ -5946,6 +6362,17 @@ function computeUnifiedQuote(ctx) {
          };
      }
 
+     // orch_max_followup_questions -- LOGIC. How many unanswered follow-up questions the curated card may show at
+     // once, from the entity's resolved confidence strategy. Exposed on the route (route.maxFollowupQuestions) as a
+     // resolved fact so the renderer never derives it -- it used to call resolveBaseConfidenceStrategy itself.
+     // NOTE: the `|| 5` default is carried over unchanged from the renderer. It is a business number living in code
+     // (R-SYSTEM-NODATA); the SSOT should own it. Tracked as a follow-up, deliberately not changed in this move.
+     function orch_max_followup_questions(entity) {
+         if (!entity) return null;
+         const strat = (typeof resolveBaseConfidenceStrategy === 'function') ? resolveBaseConfidenceStrategy(entity, null) : {};
+         return strat.maximum_followup_questions || 5;
+     }
+
      function orch_select_ui_template(flags, resolution, confidenceState, db) {
          const entity = resolution?.entity;
          const behavior = entity?.behavior;
@@ -6069,6 +6496,98 @@ function computeUnifiedQuote(ctx) {
          return Object.assign({}, db.workflow?.intake_bypass_rules?.fallback || {
              skip_type_selection: false
          });
+     }
+
+     // ---------------------------------------------------------------------
+     // orch_apply_remote_divergence -- LOGIC ("Fork in the Road", Path A: Remote Deep Dive).
+     // Pure: (previous route, SSOT) -> new route. No session state, no DOM. The handler
+     // that owns the customer's choice (orchChooseDivergencePath, AppController) sets the
+     // flag, calls this, and hands the result to the renderer. Split out of the former
+     // UIRenderer function of the same name, text preserved (R-SYSTEM-LAYERS: one role per function).
+     // ---------------------------------------------------------------------
+     function orch_apply_remote_divergence(prevRoute, DB) {
+         // Re-run the real, canonical composition, then splice the
+         // entity's own authored remote_deep_dive_modules onto the
+         // resulting chain -- confirmed directly (computeUnifiedQuote's
+         // own remoteDeepDiveModules, already filtered to real,
+         // existing intake_modules) rather than re-deriving the
+         // filter logic a second time. Post-processing step, not a
+         // change to orch_compose_intake_chain itself, so every
+         // existing caller/test of that shared function is unaffected.
+         const svc = prevRoute.entity;
+         const category_id = prevRoute.context?.category_id || svc.ui_taxonomy?.category_id;
+         const ctx = collectBookingContext_catalog(svc, category_id);
+         // Carry the customer's already-given answers forward -- these
+         // are exactly what got them to the diagnostic dead-end that
+         // triggered this fork in the first place. Without this, the
+         // newly-appended remote_deep_dive module re-competes with
+         // already-answered questions for the same ceiling slot
+         // instead of being the one, new, unanswered question it
+         // should be (confirmed directly: this was a real bug, not a
+         // hypothetical -- attempted_fix silently never rendered
+         // until this fix).
+         ctx.answers = { ...(prevRoute.answers || {}) };
+         const newRoute = executeWorkflow(ctx, DB);
+         const extraModuleKeys = (newRoute.quote?.remoteDeepDiveModules || []);
+         const existingKeys = new Set((newRoute.intakeChain || []).map(m => m.moduleKey || m.module));
+         extraModuleKeys.forEach(mk => {
+             if (!existingKeys.has(mk) && DB.intake_modules?.[mk]) {
+                 // Full module definition, not a bare reference --
+                 // confirmed directly that real intakeChain entries
+                 // carry question/client_response/type inline (this
+                 // is how orch_compose_intake_chain's own output is
+                 // shaped), and the renderer's own responses.length
+                 // check silently (and correctly, given a bare stub)
+                 // skips anything without them.
+                 newRoute.intakeChain = [...(newRoute.intakeChain || []), { ...DB.intake_modules[mk], moduleKey: mk, then: {} }];
+             }
+         });
+         return newRoute;
+     }
+
+     function buildOtherTilesForGroup(realServices, groupId, groupMap, DB) {
+         if (!groupId) return [];
+         const group = groupMap.get(groupId);
+         if (!group) return [];
+         const dynTypes = group.dynamic_service_types || [];
+         if (!dynTypes.length) return [];
+
+         const normalize = t => (t || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
+         const coveredTypes = new Set(realServices.map(s => normalize(s.service_type)));
+         const uncoveredTypes = dynTypes.filter(t => !coveredTypes.has(normalize(t)));
+         if (!uncoveredTypes.length) return [];
+
+         // icon preference order: Repair > Install > Diagnostic > Assembly > Setup
+         // (whichever uncovered type is most likely to be tapped first)
+         const iconPriority = ['Repair', 'Install', 'Install / Mount', 'Diagnostic', 'Assembly', 'Setup'];
+         const primaryType = uncoveredTypes.slice().sort((a, b) =>
+             iconPriority.indexOf(normalize(a)) - iconPriority.indexOf(normalize(b)))[0];
+         const primaryStDef = DB?.service_types?.[normalize(primaryType)] || {};
+
+         return [{
+             _isOtherTile: true,
+             id: '_other_' + groupId,
+             // Carries EVERY uncovered type (normalized), not just one —
+             // prefillSmartQuoteFromOtherTile uses this to decide whether
+             // the action step can be pre-seeded (exactly one type) or must
+             // still be asked (multiple types possible for this group).
+             uncovered_service_types: uncoveredTypes.map(normalize),
+             service_type: normalize(primaryType), // fallback/default if only one
+             ui_taxonomy: {
+                 // "[Group] Other" (e.g. "Doors Other") — the user already
+                 // knows what group they're in; which specific action
+                 // applies is asked inside the builder, not pre-guessed
+                 // from a tile label.
+                 display_name: (group.display_name || 'Other') + ' Other',
+                 icon: primaryStDef.icon || 'ti-help-circle',
+                 group_id: groupId,
+                 description: 'Describe your ' + (group.display_name || 'job') + ' need — we\u2019ll ask only what\u2019s necessary.'
+             },
+             financial_engine: {
+                 pricing_type: 'flat_rate',
+                 base_price: primaryStDef.base_price || 0
+             }
+         }];
      }
 
      function readRoutePath(route, path) {
@@ -6503,6 +7022,7 @@ function computeUnifiedQuote(ctx) {
              extractedLocation: null,
              manuallyToggledTagIds: [],
              negatedTagIds: [],
+            detectedTagIds: [],
              _negationOverride: null,
              uncoveredServiceTypes: null,
              answers: {},
@@ -6605,10 +7125,10 @@ function computeUnifiedQuote(ctx) {
       * majority of functions and correctly identified the enableLiveAdLibPreview
       * / renderUnifiedSqButton nesting relationship (verified independently here
       * via AST and confirmed accurate) — but it also listed three functions
-      * (showGroupsForCategory, showSubGroups, selectGroupForCategory) that do
+      * (showGroupsForCategory, showSubGroups, the retired group-selection helper) that do
       * NOT exist anywhere in this qr.html (confirmed: zero matches), and
       * misclassified three genuinely pure utility functions
-      * (buildOtherTilesForGroup, onSmartQuoteReady, _buildNavCrumbs — all
+      * (buildOtherTilesForGroup, the retired SmartQuote-ready callback, _buildNavCrumbs — all
       * verified to read only local Maps/closures and return plain data, no DOM,
       * no state writes) as belonging to the impure UIRenderer/AppController
       * split. Those three ship in the PURE UTILITIES section below instead.
@@ -6694,7 +7214,7 @@ function computeUnifiedQuote(ctx) {
      // text reinterpreted as HTML") — user-typed free text (S.desc/S._location/
      // S._sizeHint, all NLP-extracted from the raw SmartQuote textarea) was being
      // interpolated into innerHTML assignments with zero escaping in
-     // sqBuildCuratedIntake (AppController.js) and ctxBadge (used by sqBuildAdlib,
+     // the legacy curated-intake builder (AppController.js) and ctxBadge (used by sqBuildAdlib,
      // AppController.js). escapeHtml() itself lives here in UIRenderer.js since
      // most of ITS OWN functions also build HTML strings, but AppController.js's
      // fixed functions call it too — load UIRenderer.js before AppController.js
@@ -6748,53 +7268,9 @@ function computeUnifiedQuote(ctx) {
      // ───────────────────────── cross-check document as impure — verified pure  ─
      // ───────────────────────── here; shipped alongside UIRenderer for cohesion ─
 
-     function buildOtherTilesForGroup(realServices, groupId) {
-         if (!groupId) return [];
-         const group = groupMap.get(groupId);
-         if (!group) return [];
-         const dynTypes = group.dynamic_service_types || [];
-         if (!dynTypes.length) return [];
 
-         const normalize = t => (t || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
-         const coveredTypes = new Set(realServices.map(s => normalize(s.service_type)));
-         const uncoveredTypes = dynTypes.filter(t => !coveredTypes.has(normalize(t)));
-         if (!uncoveredTypes.length) return [];
-
-         // icon preference order: Repair > Install > Diagnostic > Assembly > Setup
-         // (whichever uncovered type is most likely to be tapped first)
-         const iconPriority = ['Repair', 'Install', 'Install / Mount', 'Diagnostic', 'Assembly', 'Setup'];
-         const primaryType = uncoveredTypes.slice().sort((a, b) =>
-             iconPriority.indexOf(normalize(a)) - iconPriority.indexOf(normalize(b)))[0];
-         const primaryStDef = DB?.service_types?.[normalize(primaryType)] || {};
-
-         return [{
-             _isOtherTile: true,
-             id: '_other_' + groupId,
-             // Carries EVERY uncovered type (normalized), not just one —
-             // prefillSmartQuoteFromOtherTile uses this to decide whether
-             // the action step can be pre-seeded (exactly one type) or must
-             // still be asked (multiple types possible for this group).
-             uncovered_service_types: uncoveredTypes.map(normalize),
-             service_type: normalize(primaryType), // fallback/default if only one
-             ui_taxonomy: {
-                 // "[Group] Other" (e.g. "Doors Other") — the user already
-                 // knows what group they're in; which specific action
-                 // applies is asked inside the builder, not pre-guessed
-                 // from a tile label.
-                 display_name: (group.display_name || 'Other') + ' Other',
-                 icon: primaryStDef.icon || 'ti-help-circle',
-                 group_id: groupId,
-                 description: 'Describe your ' + (group.display_name || 'job') + ' need — we\u2019ll ask only what\u2019s necessary.'
-             },
-             financial_engine: {
-                 pricing_type: 'flat_rate',
-                 base_price: primaryStDef.base_price || 0
-             }
-         }];
-     }
-
-     // v9.6 FIX: onSmartQuoteReady removed -- confirmed zero real call
-     // sites anywhere; smartQuoteReady/smartQuoteCallbacks (declared
+     // v9.6 FIX: the retired SmartQuote-ready callback removed -- confirmed zero real call
+     // sites anywhere; the retired SmartQuote-ready flag/the retired SmartQuote callbacks (declared
      // above) are removed alongside it since nothing else reads or
      // sets them either -- a fully self-contained, fully dead
      // "ready callback" system (COMPONENT_LAYER_MAP.md).
@@ -6876,10 +7352,10 @@ function computeUnifiedQuote(ctx) {
          };
      }
 
-     function _makePanelShell(svc, category_id, livePriceText) {
+     function _makePanelShell(svc, category_id, livePriceText, startingPrice) {
          const displayName = svc.ui_taxonomy?.display_name || svc.display_name || 'Service';
          const navCrumbs = _buildNavCrumbs(category_id);
-         const startP = svc.financial_engine?.base_price || svc.base_price;
+         const startP = startingPrice;
          const panel = create('div', {
              class: 'intake-panel'
          });
@@ -6977,12 +7453,12 @@ function computeUnifiedQuote(ctx) {
      }
 
      function _renderDiagnosticFlow(svc, category_id, container, prof) {
-         const basePrice = svc.financial_engine?.base_price || 85;
+         const basePrice = prof.diagnosticPrice;
          const {
              panel,
              navCrumbs,
              displayName
-         } = _makePanelShell(svc, category_id, `$${basePrice}+`);
+         } = _makePanelShell(svc, category_id, `$${basePrice}+`, prof.startingPrice);
          const body = create('div', {
              class: 'intake-panel-body'
          });
@@ -7037,7 +7513,7 @@ function computeUnifiedQuote(ctx) {
      }
 
      function _renderOtherFlow(svc, category_id, container, prof) {
-         const basePrice = svc.financial_engine?.base_price || 85;
+         const basePrice = prof.diagnosticPrice;
          const groupName = (() => {
              const lastFrame = [...Breadcrumbs.stack].reverse().find(f => f.type === 'subgroup' || f.type === 'subgroups');
              if (lastFrame) {
@@ -7051,7 +7527,7 @@ function computeUnifiedQuote(ctx) {
              panel,
              navCrumbs,
              displayName
-         } = _makePanelShell(svc, category_id, `$${basePrice}+`);
+         } = _makePanelShell(svc, category_id, `$${basePrice}+`, prof.startingPrice);
          const body = create('div', {
              class: 'intake-panel-body'
          });
@@ -7125,13 +7601,13 @@ function computeUnifiedQuote(ctx) {
 
      function _renderSimpleConfirm(svc, category_id, container, prof) {
          let qty = 1;
-         const startP = svc.financial_engine?.base_price || svc.base_price || 0;
+         const startP = prof.startingPrice;
          const {
              panel,
              livePriceEl,
              navCrumbs,
              displayName
-         } = _makePanelShell(svc, category_id, startP ? `$${startP}` : '—');
+         } = _makePanelShell(svc, category_id, startP ? `$${startP}` : '—', prof.startingPrice);
          const body = create('div', {
              class: 'intake-panel-body'
          });
@@ -7222,14 +7698,14 @@ function computeUnifiedQuote(ctx) {
          const discText = (SERVICE_DATA.meta?.estimate_disclaimers || {})[discKey];
          const mMin = svc.default_estimates?.materials?.min || 0;
          const mMax = svc.default_estimates?.materials?.max || 0;
-         const startP = svc.financial_engine?.base_price || svc.base_price;
+         const startP = prof.startingPrice;
          const initPrice = startP ? `$${startP}` : '—';
          const {
              panel,
              livePriceEl,
              navCrumbs,
              displayName
-         } = _makePanelShell(svc, category_id, initPrice);
+         } = _makePanelShell(svc, category_id, initPrice, prof.startingPrice);
          const body = create('div', {
              class: 'intake-panel-body'
          });
@@ -7408,7 +7884,7 @@ function computeUnifiedQuote(ctx) {
              }
              // v9.6 ADDITION (T107): this second, separate curated-card
              // rendering system (renderCuratedCardFromRoute, distinct
-             // from sqBuildCuratedIntake's own render()) was never
+             // from the legacy curated-intake builder's own render()) was never
              // wired into the DOM-snapshot trace layer added last turn
              // -- confirmed directly, via a real, reported trace
              // showing zero dom_snapshot entries anywhere on this
@@ -7477,12 +7953,6 @@ function computeUnifiedQuote(ctx) {
          });
      }
 
-     function _sqSwitchToRecommended(sku, categoryId) {
-         const svc = (DB.services || []).find(sv => sv.id === sku);
-         if (!svc) return;
-         const catId = categoryId || svc.ui_taxonomy?.category_id || S.intent?.category || null;
-         prefillSmartQuoteFromService(svc, catId);
-     }
 
      function addBackButton(container, onClick) {
          const btn = create('button', {
@@ -7693,14 +8163,14 @@ function computeUnifiedQuote(ctx) {
              role: 'button',
              'aria-label': svc.ui_taxonomy?.display_name
          });
-         const fe = svc.financial_engine || {};
-         const chain = svc.intake_chain || [];
+         const prof = getServiceProfile(svc);
+        const chain = svc.intake_chain || [];
          const defaultTags = svc.default_tags || [];
          const isOtherSvc = defaultTags.some(t => t === '#adhoc' || t === '#manual_review');
          const requiresSiteVisit = defaultTags.some(t => t === '#site_visit_required');
-         const isDiagSvc = isDiagnosticService(fe, svc); // SSOT: checkout_state drives this, not service_type
-         const isProjectSvc = (fe.base_price || 0) >= 150 || svc.default_estimates?.disclaimer === 'project_based';
-         const isHourlySvc = fe.pricing_type === 'hourly';
+         const isDiagSvc = prof.isDiagnostic; // SSOT: checkout_state drives this, not service_type
+         const isProjectSvc = prof.isProject; // one definition of "project" -- getServiceProfile (Logic)
+         const isHourlySvc = prof.isHourlyPricingType;
          let complexityBadge = null;
          if (requiresSiteVisit) {
              complexityBadge = {
@@ -7717,7 +8187,7 @@ function computeUnifiedQuote(ctx) {
          } else if (isDiagSvc) {
              // SSOT: badge text from checkout_states[cs].ui_badge_label
              complexityBadge = {
-                 text: resolveServiceBadge(fe, svc),
+                 text: prof.badge,
                  bg: '#374151',
                  color: '#e5e7eb'
              };
@@ -7735,7 +8205,7 @@ function computeUnifiedQuote(ctx) {
              };
          } else if (chain.length === 0) {
              complexityBadge = {
-                 text: resolveServiceBadge(fe, svc),
+                 text: prof.badge,
                  bg: '#166534',
                  color: '#dcfce7'
              };
@@ -7962,176 +8432,7 @@ function computeUnifiedQuote(ctx) {
          if (srs) srs.style.removeProperty('display');
      }
 
-     /**
-      * adaptV10ToLegacy(v10Data)
-      * Converts v10 domain‐grouped JSON to the flat legacy shape.
-      * Returns an object with all the old top‑level keys (services, group, category,
-      * intake_modules, global_rules, routing_archetypes, etc.).
-      */
-     function adaptV10ToLegacy(v10) {
-         const legacy = {};
 
-         // --- Root-level metadata & cross‑cutting ---
-         legacy.$schema = v10.$schema;
-         legacy.$id = v10.$id;
-         legacy.meta = v10.meta;
-         legacy.workflow = v10.workflow;
-         legacy.global_rules = v10.global_rules || {};
-         legacy.invariants = v10.invariants;
-
-         // --- Catalog domain ---
-         const catalog = v10.catalog || {};
-         legacy.services = catalog.services || [];
-         legacy.dynamic_services = catalog.dynamic_services || {};
-         legacy.group = catalog.groups || []; // old key is "group" (singular)
-         legacy.category = catalog.categories || []; // old key "category"
-         legacy.materials_catalog = catalog.materials || {};
-         legacy.furniture_catalog = catalog.furniture || [];
-
-         // --- Intake domain ---
-         const intake = v10.intake || {};
-         legacy.intake_modules = intake.modules || {};
-         legacy.smart_tags = intake.smart_tags || {};
-         // forced_modules_by_variability was inside global_rules in old; merge it.
-         if (intake.forced_modules_by_variability) {
-             legacy.global_rules.force_modules_by_variability = intake.forced_modules_by_variability;
-         }
-
-         // --- Pricing domain ---
-         const pricing = v10.pricing || {};
-         legacy.pricing_formulas = pricing.formulas || {};
-         if (pricing.surcharges) legacy.global_rules.surcharges = pricing.surcharges;
-         if (pricing.modifiers) legacy.global_rules.modifiers = pricing.modifiers;
-         if (pricing.complexity_tiers) legacy.global_rules.complexity_tiers = pricing.complexity_tiers;
-         if (pricing.engines) legacy.global_rules.pricing_engines = pricing.engines;
-
-         // --- UI domain ---
-         const ui = v10.ui || {};
-         legacy.checkout_states = ui.checkout_states || {};
-         legacy.ui_config = ui.config || {};
-         // Adlib templates: v10 has ui.adlib_templates and nlp.adlib
-         legacy.adlib_phrase_overrides = legacy.adlib_phrase_overrides || {};
-         if (ui.adlib_templates) {
-             legacy.adlib_phrase_overrides.group_templates = ui.adlib_templates.group_templates || {};
-             legacy.adlib_phrase_overrides.default_template = ui.adlib_templates.default_template || '{label}';
-         }
-         if (v10.nlp && v10.nlp.adlib) {
-             legacy.adlib_phrase_overrides.adlib = v10.nlp.adlib;
-         }
-
-         // --- NLP domain ---
-         const nlp = v10.nlp || {};
-         legacy.intent_mappings = nlp.intent_mappings || {};
-         legacy.negation_library = nlp.negation_library || {};
-
-         // --- Confidence domain ---
-         const confidence = v10.confidence || {};
-         if (confidence.escalation) {
-             legacy.global_rules.confidence_escalation = confidence.escalation;
-         }
-         if (confidence.resolution_thresholds && legacy.workflow) {
-             legacy.workflow.resolution_thresholds = confidence.resolution_thresholds;
-         }
-
-         // --- Build routing_archetypes from groups (for orchestrator) ---
-         const routingArchetypes = {};
-         (legacy.group || []).forEach(g => {
-             routingArchetypes[g.id] = {
-                 display_name: g.display_name,
-                 category_id: g.category_id,
-                 routing_archetype: g.routing_archetype || 'undetermined',
-                 real_actions_in_group: g.real_actions_in_group || [],
-                 real_components: g.real_components || [],
-                 component_to_service_ids: g.component_to_service_ids || {},
-                 real_symptoms: g.real_symptoms || [],
-                 symptom_to_service_ids: g.symptom_to_service_ids || {},
-                 real_gaps: g.real_gaps || [],
-                 typical_location: g.typical_location || null,
-                 default_qty: g.default_qty || 1,
-             };
-         });
-         legacy.routing_archetypes = routingArchetypes;
-
-         // --- Copy any other root-level keys that may exist ---
-         for (const key of Object.keys(v10)) {
-             if (!(key in legacy)) {
-                 legacy[key] = v10[key];
-             }
-         }
-
-         return legacy;
-     }
-
-     async function init() {
-         cacheDOM();
-
-         // Try v10 first (domain‑grouped), fallback to old flat JSON.
-         const DATA_URLS = [
-             './btnyc_v10_final.json',
-             'https://tommichael88.github.io/booktomnyc/btnyc_v10_final.json',
-             './btnyc.json',
-             'https://tommichael88.github.io/booktomnyc/btnyc.json'
-         ];
-
-         try {
-             let loaded = false;
-             let rawData = null;
-
-             for (const url of DATA_URLS) {
-                 try {
-                     const res = await fetch(url);
-                     if (!res.ok) continue;
-                     rawData = await res.json();
-                     loaded = true;
-                     break;
-                 } catch (e) {
-                     // try next URL
-                 }
-             }
-
-             if (!loaded) throw new Error('All data sources failed');
-
-             // If the loaded data has a "catalog" top‑level key, it's v10 – adapt it.
-             // Otherwise, assume it's already flat.
-             if (rawData.catalog) {
-                 SERVICE_DATA = adaptV10ToLegacy(rawData);
-                 console.log('[init] Adapted v10 domain‑grouped JSON to flat shape.');
-             } else {
-                 SERVICE_DATA = rawData;
-                 console.log('[init] Using flat JSON directly.');
-             }
-
-             DB = SERVICE_DATA;
-             window.DB = DB;
-
-             initNlpSets();
-             refreshNlpPreviewBindings();
-
-         } catch (err) {
-             console.error('Service data load error:', err);
-             toast('Could not load services. Please refresh.', 'error');
-             SERVICE_DATA = {
-                 meta: {},
-                 category: [],
-                 group: [],
-                 services: [],
-                 intake_modules: {}
-             };
-             DB = SERVICE_DATA;
-         }
-
-         // Continue with the rest of your initialisation
-         buildDataMaps(SERVICE_DATA);
-         renderCategoryCards();
-         initSmartQuote();
-         wireGlobalEvents();
-         renderCart();
-
-         if (DOM.serviceRequestSummary) {
-             DOM.serviceRequestSummary.style.display = State.serviceRequest.length ? 'block' : 'none';
-         }
-         setViewportHeight();
-     }
 
      function initSmartQuote() {
          let sqEl = document.getElementById('smartQuoteEngine');
@@ -8428,7 +8729,7 @@ function computeUnifiedQuote(ctx) {
          // correctly stay last regardless of their own irrelevant position.
          const sortedServices = [...(services || [])].sort((a, b) =>
              (a.ui_taxonomy?.sort_order ?? 999) - (b.ui_taxonomy?.sort_order ?? 999));
-         const otherTiles = buildOtherTilesForGroup(services || [], group_id);
+         const otherTiles = buildOtherTilesForGroup(services || [], group_id, groupMap, DB);
          const allTiles = [...sortedServices, ...otherTiles];
          if (!allTiles.length) {
              container.appendChild(create('div', {
@@ -8517,7 +8818,7 @@ function computeUnifiedQuote(ctx) {
          // your mind, and going to the Catalog instead left the old
          // SmartQuote answers/tags live in the background). Detect an
          // active session the same way the cart overlay's own open/closed
-         // check works (live style.display, not the unused __sqActive
+         // check works (live style.display, not the unused the retired active flag
          // flag) and call sqRestart() — defined later in this file but
          // safe to call here since function declarations hoist — before
          // showing the Catalog grid.
@@ -8541,7 +8842,7 @@ function computeUnifiedQuote(ctx) {
      }
 
 
-     // T64: real, direct port of renderTagAffirmationCard's core mechanism
+     // T64: real, direct port of the legacy affirmation-card renderer's core mechanism
      // into the ResolvedRoute-based renderer family, following the exact
      // same pattern as renderSelfQuoteFromRoute/renderCuratedCardFromRoute
      // (pure ResolvedRoute consumer, no S state).
@@ -8550,7 +8851,7 @@ function computeUnifiedQuote(ctx) {
      // reads route.negationOverride directly (set in executeWorkflow from
      // context._negationOverride, itself computed by
      // collectBookingContext_freeText), picks the pivot-style headline/note
-     // when present, same as renderTagAffirmationCard's own pivotInfo-aware
+     // when present, same as the legacy affirmation-card renderer's own pivotInfo-aware
      // framing. Porting this surfaced and fixed a real, separate,
      // previously-live bug in the underlying negatedTagIds computation
      // itself (a negated tag was being silently discarded by a premature,
@@ -8565,7 +8866,7 @@ function computeUnifiedQuote(ctx) {
      //    needs the raw NLP intent object in a shape route doesn't
      //    currently expose (category/_groupId/_matchConfidence together);
      //    adding it is real, separate, additive work for a follow-up round.
-     // 2. Per-tag removal (sqAffirmRemoveTag, tapping an individual chip to
+     // 2. Per-tag removal (a legacy affirm handler, tapping an individual chip to
      //    drop just that tag before affirming the rest). This version's
      //    chips are informational only; Yes/No affirms or rejects the
      //    complete set.
@@ -8579,7 +8880,7 @@ function computeUnifiedQuote(ctx) {
              const tag = tagDefs[tid] || {};
              const label = (typeof sqTagLabel === 'function') ? sqTagLabel(tag, tid) : tid;
              // T66 follow-up: real port of per-tag removal, matching
-             // sqAffirmRemoveTag's own visible affordance (a trailing ✕).
+             // a legacy affirm handler's own visible affordance (a trailing ✕).
              return `<span class="chip-btn sel affirm-chip" data-tid="${tid}" onclick="orchAffirmRemoveTag('${tid}')">${escapeHtml(label)} ✕</span>`;
          }).join(' ');
 
@@ -8592,7 +8893,7 @@ function computeUnifiedQuote(ctx) {
              `<span class="affirm-price">From $${laborEstimate}</span>` :
              '';
 
-         // T64 follow-up: real port of renderTagAffirmationCard's pivotInfo-aware
+         // T64 follow-up: real port of the legacy affirmation-card renderer's pivotInfo-aware
          // framing -- same component, different headline/note, per the design's
          // own explicit recommendation (see this rule's own _note in btnyc.json).
          const pivotInfo = route.negationOverride;
@@ -8603,7 +8904,7 @@ function computeUnifiedQuote(ctx) {
              `<div class="affirm-pivot-note">You mentioned this isn't quite what we first thought, so we're now looking at <strong>${escapeHtml(pivotToName)}</strong> instead.</div>` :
              '';
 
-         // T66 follow-up: real port of renderTagAffirmationCard's sibling-service
+         // T66 follow-up: real port of the legacy affirmation-card renderer's sibling-service
          // recommendation logic -- offers up to 2 alternates when the match was
          // ambiguous (confidence < 85), using the route fields exposed above.
          const recs = [];
@@ -8703,77 +9004,15 @@ function computeUnifiedQuote(ctx) {
          });
      }
 
-     function orchChooseDivergencePath(path) {
-         // T135+ (PHASE_PLAN.md Phase 2, Stage C, call site 2). Orchestrator
-         // equivalent of sqChooseDivergencePath -- same two paths, same
-         // shared S._divergencePath flag (this one piece of transient
-         // UI-interaction state, "has the customer already answered this
-         // specific fork," is reused across both renderers deliberately;
-         // it is not a pricing or routing decision, so sharing it here
-         // does not reintroduce the business-logic-in-renderers problem
-         // Stage C exists to remove). Requires S._lastRoute to have been
-         // set by the caller (renderCuratedCardFromRoute already does
-         // this on every render) so this function knows which entity/
-         // category to re-resolve against.
-         if (path !== 'remote' && path !== 'onsite') return; // defensive: unknown path, no-op
-         S._divergencePath = path;
-         const prevRoute = S._lastRoute;
-         if (!prevRoute || !prevRoute.entity) return; // defensive: nothing to re-render against
 
-         if (path === 'remote') {
-             // Re-run the real, canonical composition, then splice the
-             // entity's own authored remote_deep_dive_modules onto the
-             // resulting chain -- confirmed directly (computeUnifiedQuote's
-             // own remoteDeepDiveModules, already filtered to real,
-             // existing intake_modules) rather than re-deriving the
-             // filter logic a second time. Post-processing step, not a
-             // change to orch_compose_intake_chain itself, so every
-             // existing caller/test of that shared function is unaffected.
-             const svc = prevRoute.entity;
-             const category_id = prevRoute.context?.category_id || svc.ui_taxonomy?.category_id;
-             const ctx = collectBookingContext_catalog(svc, category_id);
-             // Carry the customer's already-given answers forward -- these
-             // are exactly what got them to the diagnostic dead-end that
-             // triggered this fork in the first place. Without this, the
-             // newly-appended remote_deep_dive module re-competes with
-             // already-answered questions for the same ceiling slot
-             // instead of being the one, new, unanswered question it
-             // should be (confirmed directly: this was a real bug, not a
-             // hypothetical -- attempted_fix silently never rendered
-             // until this fix).
-             ctx.answers = { ...(prevRoute.answers || {}) };
-             const newRoute = executeWorkflow(ctx, DB);
-             const extraModuleKeys = (newRoute.quote?.remoteDeepDiveModules || []);
-             const existingKeys = new Set((newRoute.intakeChain || []).map(m => m.moduleKey || m.module));
-             extraModuleKeys.forEach(mk => {
-                 if (!existingKeys.has(mk) && DB.intake_modules?.[mk]) {
-                     // Full module definition, not a bare reference --
-                     // confirmed directly that real intakeChain entries
-                     // carry question/client_response/type inline (this
-                     // is how orch_compose_intake_chain's own output is
-                     // shaped), and the renderer's own responses.length
-                     // check silently (and correctly, given a bare stub)
-                     // skips anything without them.
-                     newRoute.intakeChain = [...(newRoute.intakeChain || []), { ...DB.intake_modules[mk], moduleKey: mk, then: {} }];
-                 }
-             });
-             S._lastRoute = newRoute;
-             renderCuratedCardFromRoute(newRoute, S._lastContainerId);
-             return;
-         }
-         // Path B (On-Site Pro): nothing new to build -- re-render the
-         // same route; the divergence-choice branch below is skipped
-         // now that S._divergencePath is set, falling through to the
-         // normal, existing diagnostic quote panel.
-         renderCuratedCardFromRoute(prevRoute, S._lastContainerId);
-     }
-
-     function renderCuratedCardFromRoute(route, containerId) {
+     function renderCuratedCardFromRoute(route, containerId, view) {
          const container = document.getElementById(containerId || 'intakeQuestionsContainer');
          if (!container) return;
          const chain = route.intakeChain || [];
          const answers = route.answers || {};
          const entity = route.entity;
+         // Resolved state arrives as an argument (supplied by Glue); a renderer reads no session state.
+         const divergencePath = (view && view.divergencePath) || null;
 
          // T135+ (root-cause fix, WASHER_UI_ISSUES_trace.json -- direct
          // operator instruction: treat the disease, not the symptom).
@@ -8806,8 +9045,7 @@ function computeUnifiedQuote(ctx) {
          }
 
          container.style.display = 'block';
-         S._lastRoute = route;
-         S._lastContainerId = containerId || 'intakeQuestionsContainer';
+         // Route/container bookkeeping (S._lastRoute, S._lastContainerId) is owned by the caller: AppController.sqRenderCuratedCard.
 
          // T135+ (PHASE_PLAN.md Phase 2, Stage C, call site 2): the same
          // "Fork in the Road" check the legacy renderer already has,
@@ -8818,7 +9056,7 @@ function computeUnifiedQuote(ctx) {
          // from computeUnifiedQuote, not something added here). This was
          // a UI-layer gap, not a data gap: the data already reached this
          // renderer, nothing displayed it.
-         if (route.quote?.divergenceEligible && !S._divergencePath) {
+         if (route.quote?.divergenceEligible && !divergencePath) {
              container.innerHTML = buildDivergenceResolutionHtml(route.quote, 'orchChooseDivergencePath');
              return;
          }
@@ -8871,7 +9109,7 @@ function computeUnifiedQuote(ctx) {
          // T135+ FIX (PHASE_PLAN.md Phase 2, Stage B): this loop used to
          // render every authored module in `chain` unconditionally -- the
          // root cause of all 18 non-price divergences the full parity
-         // sweep found against sqBuildCuratedIntake. Confirmed directly
+         // sweep found against the legacy curated-intake builder. Confirmed directly
          // (grep across the whole file) that no ceiling/maxQs enforcement
          // existed anywhere in this render path; the legacy renderer's own
          // `maxQs`-based cap is the ONLY place that logic lived. Ported
@@ -8881,9 +9119,8 @@ function computeUnifiedQuote(ctx) {
          // question never crowds out a branching follow-up); only
          // unanswered modules count against the cap, and once the cap is
          // reached, remaining unanswered modules simply aren't rendered.
-         // confStrat/maxQs resolved via the same canonical
-         // resolveBaseConfidenceStrategy() the legacy path already uses --
-         // not a second, independently-derived value.
+         // The cap itself is not derived here: the orchestrator resolves it once from the canonical confidence strategy and puts it on
+         // the route (route.maxFollowupQuestions, from orch_max_followup_questions) -- not a second, independently-derived value.
          // T135+ FIX (PHASE_PLAN.md Phase 2, Stage B): `chain` (route.intakeChain)
          // is the full, unfiltered composition -- it can include
          // branch-conditional modules (e.g. door_size/door_style_pref,
@@ -8897,8 +9134,7 @@ function computeUnifiedQuote(ctx) {
          const _visibleChain = (typeof _isModVisible === 'function')
              ? chain.filter(m => _isModVisible(m, answers, chain))
              : chain;
-         const _confStrat = (typeof resolveBaseConfidenceStrategy === 'function') ? resolveBaseConfidenceStrategy(entity, null) : {};
-         const _maxQs = _confStrat.maximum_followup_questions || 5;
+         const _maxQs = route.maxFollowupQuestions ?? Infinity; // resolved by the orchestrator (orch_max_followup_questions); Infinity = no cap known
          let _shownCount = 0;
          _visibleChain.forEach((mod, idx) => {
              const modKey = mod.moduleKey || mod.module;
@@ -8910,7 +9146,7 @@ function computeUnifiedQuote(ctx) {
              if (!_isDone) _shownCount++;
 
              html += `<div class="intake-module-step" style="margin-bottom:16px;">
-                    <div class="ims-label" style="font-weight:bold; margin-bottom:8px;">${idx+1}. ${question}</div>
+                    <div class="ims-label" data-mod="${modKey}" style="font-weight:bold; margin-bottom:8px;">${idx+1}. ${question}</div>
                     <div class="ims-chips" style="display:flex; flex-wrap:wrap; gap:8px;">`;
 
              responses.forEach(resp => {
@@ -8929,7 +9165,7 @@ function computeUnifiedQuote(ctx) {
          const q = route.quote;
          // The client chose "Book an on-site diagnostic": the price they are being asked to accept is the
          // flat diagnostic fee they were just shown, not the hourly labor estimate for the repair itself.
-         const onsite = !!(q && q.isDiagnostic && q.divergenceEligible && S._divergencePath === 'onsite');
+         const onsite = !!(q && q.isDiagnostic && q.divergenceEligible && divergencePath === 'onsite');
          const terms = onsite ? onsiteDiagnosticTerms(q) : null;
          if (q && onsite) {
              html += `<div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
@@ -8954,6 +9190,19 @@ function computeUnifiedQuote(ctx) {
 
          html += `</div>`;
          container.innerHTML = html;
+
+         // "This question changes your price" indicator (Principle 7, transparency). Which modules do is SSOT data on the resolved module
+         // (affects_price); the icon arrives as a view argument. Drawn as DOM nodes via _iconContent -- never as another markup string.
+         if (view && view.affectsPriceIcon) {
+             const _priceAffecting = new Set(_visibleChain.filter(m => m.affects_price).map(m => m.moduleKey || m.module));
+             container.querySelectorAll('.ims-label[data-mod]').forEach(label => {
+                 if (!_priceAffecting.has(label.dataset.mod)) return;
+                 const tag = document.createElement('span');
+                 tag.className = 'sq-ic-price-tag';
+                 tag.appendChild(_iconContent(view.affectsPriceIcon));
+                 label.appendChild(tag);
+             });
+         }
 
          // Attach event listeners for chip clicks
          container.querySelectorAll('.ims-chip').forEach(btn => {
@@ -9004,6 +9253,22 @@ function computeUnifiedQuote(ctx) {
                  }
              });
          }
+     }
+
+     // _iconContent -- RENDERER helper. Returns a DOM NODE for an SSOT `icon` value, whichever form it is authored in:
+     //   "ti ti-home"  -> <i class="ti ti-home"></i>      (Tabler: class names only, validated against a strict allowlist)
+     //   "🏠" / text   -> a text node                      (emoji or any plain string; textContent semantics, never markup)
+     // It builds nodes -- it never returns an HTML string -- so no icon value can inject markup and no escaping workaround is needed
+     // (R-SYSTEM-NODOM). A value that claims to be Tabler ("ti ...") but fails the allowlist renders nothing rather than its raw text,
+     // so a malformed SSOT value cannot put arbitrary class names on an element.
+     function _iconContent(value) {
+         if (typeof value === 'string' && value.startsWith('ti ')) {
+             if (!/^ti ti-[a-z0-9-]+$/.test(value)) return document.createTextNode('');
+             const i = document.createElement('i');
+             i.className = value;
+             return i;
+         }
+         return document.createTextNode(value == null ? '' : String(value));
      }
 
      function showGroupsForCategory(category_id, fromBack = false) {
@@ -9524,7 +9789,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              category_id
          });
      }
-     // v9.6 FIX: selectGroupForCategory removed -- confirmed zero real
+     // v9.6 FIX: the retired group-selection helper removed -- confirmed zero real
      // call sites; a thin, unused wrapper around showSubGroups(group,
      // category_id, true). Real back-navigation calls showSubGroups
      // directly (COMPONENT_LAYER_MAP.md).
@@ -9965,143 +10230,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          _renderSimpleConfirm(svc, category_id, container, prof);
      }
 
-     function computeQuoteFromState() {
-         // Safety net: ensures S.answers reflects currently-active tags
-         // even if this is called without render() having just run
-         // (e.g. called directly). render() already calls this too,
-         // but the real, charged price computed here must not depend
-         // on that incidental ordering.
-         syncTagSynthesizedAnswers();
-         // Full display set -- every tag the customer sees (chips etc.)
-         const allTagIds = [...new Set([...(S.detTagIds || []), ...(S.manTagIds || []), ...(S.inherentTagIds || [])])].filter(t => !(S.negatedTagIds || []).includes(t));
 
-         // Chargeable set -- what actually drives price.
-         // detTagIds are gated: only included if the customer has
-         // explicitly affirmed them (S._tagsAffirmed) OR if
-         // meetsConfidenceBar is already true for the current quote.
-         // manTagIds and inherentTagIds are never gated (manual tap
-         // IS affirmation; inherent tags are service facts, not claims).
-         const detAndMan = [...new Set([...S.detTagIds, ...S.manTagIds])];
-         const svc = S._svc || (S.intent?.key ? DB.services.find(s => s.id === S.intent.key) : null);
-         const dynDef = svc ? null : resolveDynamicService(S.intent?.category, S.stype || 'Repair', S.intent?._groupId);
-
-         // Compute a preliminary quote with the full tag set to check meetsConfidenceBar
-         const fullQuote = computeUnifiedQuote({
-             svc,
-             dynDef,
-             activeTagIds: allTagIds,
-             answers: S.answers || {},
-             qty: S.qty || 1,
-             intentKeyword: S.intent?.key || null,
-             formulaId: S.intent?.dynamic_rule || null,
-             ctxAdjFee: S.intent?._ctxBaseAdjFee || 0,
-             ctxAdjMin: S.intent?._ctxBaseAdjMin || 0,
-         });
-
-         // Gate: if not affirmed and not already confident, exclude detTagIds from price
-         const detTagsChargeable = S._tagsAffirmed || fullQuote.meetsConfidenceBar;
-         const activeTagIds = detTagsChargeable ?
-             allTagIds : [...new Set([...(S.manTagIds || []), ...(S.inherentTagIds || [])])].filter(t => !(S.negatedTagIds || []).includes(t));
-
-         // Final quote with correctly gated tag set
-         const u = detTagsChargeable ? fullQuote : computeUnifiedQuote({
-             svc,
-             dynDef,
-             activeTagIds,
-             answers: S.answers || {},
-             qty: S.qty || 1,
-             intentKeyword: S.intent?.key || null,
-             formulaId: S.intent?.dynamic_rule || null,
-             ctxAdjFee: S.intent?._ctxBaseAdjFee || 0,
-             ctxAdjMin: S.intent?._ctxBaseAdjMin || 0,
-         });
-
-         return {
-             laborCalc: u.laborEstimate,
-             dispatchFee: u.dispatchFee,
-             checkoutStateKey: u.checkoutStateKey,
-             activeLabels: u.activeLabels || [],
-             feeBreakdown: u.feeBreakdown || [],
-             isDiagnostic: u.isDiagnostic,
-             activeTagIds,
-             allTagIds,
-             detAndMan,
-             meetsConfidenceBar: fullQuote.meetsConfidenceBar,
-             detTagsChargeable,
-             // Full-set price for affirmation card preview ("price with these tags")
-             laborWithTags: fullQuote.laborEstimate,
-             // v9.6 FIX: these were never forwarded at all, even though
-             // computeUnifiedQuote always correctly computed them --
-             // sqRenderQuote reads them directly and was showing literal
-             // "$undefined"/"undefined min" in the real, customer-facing
-             // quote. Confirmed via real browser trace before fixing.
-             base: u.base,
-             totalMin: u.totalMin,
-             tierKey: u.complexityTier,
-             tierRate: u.tierRate,
-             hideTime: u.hideTime,
-             isProject: u.isProject,
-             // Divergence Resolution: same class of bug as the v9.6 FIX
-             // immediately above (computeUnifiedQuote computes it, this
-             // function's own narrow return contract has to explicitly
-             // forward it or every caller silently sees undefined) --
-             // caught by verify_divergence_resolution.js's real,
-             // end-to-end scenario check, not by static inspection alone.
-             divergenceEligible: u.divergenceEligible,
-             remoteDeepDiveModules: u.remoteDeepDiveModules || [],
-             divergenceFee: u.divergenceFee || 0,
-             divergenceCreditNote: u.divergenceCreditNote || '',
-         };
-     }
-
-     function sqAddToCart() {
-         if (typeof _trace === 'function') _trace('ui_renderer', 'sqAddToCart: invoked', {
-             serviceId: S.intent?.key || null,
-             qty: S.qty,
-             answersCount: Object.keys(S.answers || {}).length
-         });
-         if (!cartLimiter.isAllowed('add')) {
-             toast('Adding too fast.', 'error');
-             return;
-         }
-         const q = computeQuoteFromState();
-         // Divergence Resolution: when the customer booked via the
-         // On-Site Pro path (sqChooseDivergencePath('onsite')), record
-         // the real credit policy + fee on the cart entry itself -- this
-         // is currently disclosure/ops record-keeping, not an automated
-         // credit-at-invoicing mechanism (see global_rules.
-         // divergence_resolution.credit_policy's own schema
-         // description), but it's a real, genuine consumer of the
-         // field, not just business copy nobody reads. v9.5.1: credit_policy
-         // is now authored as a full, real sentence rather than a short
-         // machine key -- appended as its own sentence rather than after
-         // a "credit policy: " label, so this reads correctly either way.
-         const _divergenceNote = (S._divergencePath === 'onsite' && q.isDiagnostic) ?
-             '\n' + onsiteDiagnosticTerms(q).bookingNote :
-             '';
-         addToCart({
-             id: 'sq-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
-             serviceId: S.intent?.key || 'smartquote',
-             category_id: S.intent?.category || 'other',
-             name: (S.intent?.label || 'Service') + (S.intent?.group && S.intent.group !== S.intent.label ? ' – ' + S.intent.group : ''),
-             price: '$' + q.laborCalc,
-             icon: '⚡',
-             detail: S.desc?.substring(0, 80) || 'SmartQuote estimate',
-             notes: 'SmartQuote · ' + (S.desc || '') + (q.activeLabels.length ? '\nConditions: ' + q.activeLabels.join(', ') : '') +
-                 (S._location ? '\nLocation: ' + S._location : '') + (S._objectNoun ? '\nItem: ' + S._objectNoun : '') +
-                 _divergenceNote,
-             materialsNotIncluded: true,
-             materialsEstimateRange: [0, 0]
-         });
-         toast((S.intent?.label || 'Service') + ' added to request!', 'success');
-         sqRestart();
-         if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
-         DOM.serviceRequestSummary?.scrollIntoView({
-             behavior: 'smooth',
-             block: 'start'
-         });
-         renderCart();
-     }
 
      function sqBuilderBack() {
          if (BLD.step > 0) {
@@ -10779,13 +10908,6 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          if (bb) bb.style.display = 'inline-flex';
      }
 
-     function sqHandleStep2() {
-         if (!S.stype) return;
-         sqMarkDone(2, S.stype);
-         sqBuildStep3();
-         sqMarkDone(3, S.stype);
-
-     }
 
      function sqMarkDone(n, val) {
          const sb = document.getElementById('sqSb' + n);
@@ -10808,12 +10930,9 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          if (sn) sn.className = 'snum a';
      }
 
-     function sqOpenBuilderPreseeded({
-         action,
-         groupId,
-         categoryLabel,
-         allowedTypes
-     }) {
+     // sqShowBuilderView -- RENDERER. Switches the SmartQuote region from the text bar to the step builder
+     // (DOM only; reads no session state). Split out of sqOpenBuilderPreseeded, statements unchanged.
+     function sqShowBuilderView() {
          const builder = document.getElementById('sqBuilder');
          const inlineRow = document.querySelector('#sqTextBar .sq-inline-row');
          if (builder) builder.style.display = 'block';
@@ -10827,51 +10946,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          if (sb3) sb3.style.display = 'none';
          const sc3 = document.getElementById('sqSc3');
          if (sc3) sc3.className = 'scard locked sq-stepflow';
-
-         const groupObj = groupId ? groupMap.get(groupId) : null;
-         // Charter (Structural availability): a fact that is structural to the
-         // job -- a stove is always in the kitchen -- is never asked. Groups
-         // declare typical_location in the SSOT; the builder's skip-forward
-         // logic passes any pre-seeded (non-null) step. [v9.5 fix -- same
-         // lost-duplicate story as above.]
-         const typicalLocation = groupObj?.typical_location || null;
-
-         BLD = {
-             step: 0,
-             action,
-             // Group is already known from navigation -- seed it directly as the
-             // object, skipping the redundant "what is it?" step.
-             object: groupId || null,
-             specific: null,
-             condition: null,
-             location: typicalLocation,
-             // qty MUST be null (not 1): the skip-forward logic treats any
-             // non-null field as answered, which silently skipped the qty step
-             // (PENDING_DECISIONS #21, T118). sqBuilderFinish defaults it to 1.
-             qty: null,
-             _stype: S.stype || null,
-             _cat: S.intent?.category || null,
-             // set directly: this pre-seed bypasses the chip tap that normally
-             // sets them (see sqBuilderChoose)
-             _groupId: groupId || null,
-             _keyword: groupId ? bldGroupToKeyword(groupId, S.intent?.category) : null,
-             _fromOtherTile: true,
-             _contextLabel: categoryLabel || null,
-             _objectLabel: groupObj?.display_name || null,
-             // narrows the action step when the tile carried several types
-             _allowedTypes: allowedTypes || null
-         };
-
-         const allSteps = sqBuilderGetSteps();
-         for (let i = 0; i < allSteps.length; i++) {
-             const sid = allSteps[i];
-             if (BLD[sid] !== null && BLD[sid] !== undefined) BLD.step = i + 1;
-             else break;
-         }
-         if (BLD.step >= allSteps.length) BLD.step = allSteps.length - 1;
-
-         sqBuilderRender();
      }
+
 
      function sqOpenStep(n) {
          // Allow tapping a done step header to re-expand it
@@ -10884,52 +10960,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
      }
 
 
-     function sqChooseDivergencePath(path) {
-         // Divergence Resolution ("Fork in the Road" -- PROJECT_GOALS §9/10):
-         // the customer just chose between Path A (answer more, deeper
-         // questions remotely, hidden until now to keep the default intake
-         // short) and Path B (book the on-site diagnostic visit now, fee
-         // credited back if they proceed with the repair). See
-         // buildDivergenceResolutionHtml / global_rules.divergence_resolution.
-         if (path !== 'remote' && path !== 'onsite') return; // defensive: unknown path, no-op
-         S._divergencePath = path;
-         if (path === 'remote' && S._svc) {
-             // Re-render the curated intake card -- sqBuildCuratedIntake
-             // itself reads S._divergencePath to decide whether to append
-             // this service's remote_deep_dive_modules onto the normal
-             // chain. Clear the (now-stale) fork panel from the quote-out
-             // container while the customer answers the new question(s);
-             // the existing "Review Estimate" -> sqConfirmAdlib ->
-             // sqRenderQuote flow naturally re-renders it once they do.
-             sqBuildCuratedIntake(S._svc);
-             const out = document.getElementById('sqQuoteOut');
-             if (out) {
-                 out.innerHTML = '';
-                 out.style.display = 'none';
-             }
-             return;
-         }
-         // Path B (On-Site Pro): nothing new to build -- fall through to
-         // the normal, existing, already-correct diagnostic quote panel
-         // (today's exact single-path behavior, now reached by explicit
-         // choice rather than being the only option).
-         sqRenderQuote();
-     }
 
-     // Path B of the Fork in the Road (Charter: "switch to a FLAT-RATE diagnostic fee ... a bookable,
-     // priced service -- not a white flag ... we credit the fee back if we do the work"). What the client
-     // pays and is promised for that path, from the SSOT, in one place. Pure.
-     function onsiteDiagnosticTerms(q) {
-         const dr = DB.global_rules?.divergence_resolution || {};
-         const fee = (q && q.divergenceFee) || dr.diagnostic_fee || 0;
-         return {
-             fee,
-             label: dr.onsite_price_label || 'On-site diagnostic (flat rate):',
-             creditNote: (q && q.divergenceCreditNote) || dr.credit_policy_note || dr.credit_policy || '',
-             bookingNote: 'On-site diagnostic booked via Fork-in-the-Road: $' + fee + ' diagnostic fee. ' +
-                 (dr.credit_policy || 'No credit policy on file.')
-         };
-     }
 
      function buildDivergenceResolutionHtml(q, handlerFnName) {
          // Pure: takes the already-computed quote object (q, from
@@ -10941,13 +10972,9 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          // See PROJECT_GOALS §9/10 ("Diagnostic Divergence: The Fork in
          // the Road") and global_rules.divergence_resolution for the
          // business terms this renders.
-         // T135+ (PHASE_PLAN.md Phase 2, Stage C, call site 2): handlerFnName
-         // defaults to sqChooseDivergencePath (existing, unchanged
-         // behavior for every current caller) -- the orchestrator path
-         // supplies orchChooseDivergencePath instead, so the exact same
-         // pure HTML-building logic serves both renderers without a
-         // second, drifting copy.
-         const handler = handlerFnName || 'sqChooseDivergencePath';
+         // handlerFnName names the global function the two buttons call: the canonical orchChooseDivergencePath. It is a required
+         // argument -- it used to default to a legacy handler, which is retired.
+         const handler = handlerFnName;
          const dr = DB.global_rules?.divergence_resolution || {};
          const n = (q.remoteDeepDiveModules || []).length;
          const qWord = n === 1 ? 'question' : 'questions';
@@ -10986,43 +11013,13 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          );
      }
 
-     function sqRenderQuote() {
-         const q = computeQuoteFromState();
-         const out = document.getElementById('sqQuoteOut');
-         if (!out) return;
-
-         // Divergence Resolution ("Fork in the Road"): when the route has
-         // genuinely hit the diagnostic dead end AND the entity has real,
-         // authored remote_deep_dive_modules, show the two-path choice
-         // INSTEAD of the normal price panel -- there is no real price
-         // to show yet, on either path, until the customer picks one.
-         // Once S._divergencePath is set (by sqChooseDivergencePath),
-         // this branch is skipped and rendering falls through to the
-         // normal panel below -- unchanged, existing behavior for the
-         // On-Site path, and a normal re-render (now possibly with a
-         // real price, if the deep-dive answers raised confidence
-         // enough) for the Remote path.
-         //
-         // v9.5.4: additionally requires S._svc. Path A (Remote Deep
-         // Dive) only actually works today for the curated-card intake
-         // path (sqBuildCuratedIntake, used when S._svc is a real named
-         // service) -- traced directly: dynamic-service / builder-
-         // originated routes (S._svc unset, resolved via dynDef instead)
-         // render their intake through sqBuildStep3, a structurally
-         // different tag-chip grid, not intake_modules questions at all,
-         // and sqChooseDivergencePath has no integration with it yet.
-         // Without this guard the fork would offer a "Remote Deep Dive"
-         // button that silently did nothing for those routes. The 24
-         // dynamic_services entries' remote_deep_dive_modules data is
-         // real, authored, and schema-valid regardless -- this is a UI
-         // reach limitation, not a data gap -- and computeUnifiedQuote
-         // still correctly reports divergenceEligible for them, so this
-         // is the one place, not the pure layer, that needs the extra
-         // condition. Dynamic-service diagnostic routes keep today's
-         // exact, existing, correct single-path (On-Site Pro only)
-         // behavior until sqBuildStep3 gets the same treatment.
-         if (q.isDiagnostic && q.divergenceEligible && !S._divergencePath && S._svc) {
-             out.innerHTML = buildDivergenceResolutionHtml(q);
+     // renderQuotePanel -- RENDERER. Draws the quote panel from the view-model built by buildQuotePanelModel. Reads no session state
+     // and decides nothing: every price, label, banner and ordering arrives resolved. (Markup is still an HTML string with inline
+     // handlers, as before -- converting it to DOM construction is a separate, later step.)
+     function renderQuotePanel(out, m) {
+         if (m.mode === 'fork') {
+             // The customer chooses between Path A (answer more, remotely) and Path B (book the on-site diagnostic). Handler: the canonical one.
+             out.innerHTML = buildDivergenceResolutionHtml(m.q, 'orchChooseDivergencePath');
              out.style.display = 'block';
              out.scrollIntoView({
                  behavior: 'smooth',
@@ -11030,38 +11027,11 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              });
              return;
          }
-
-         // v9.6 FIX: resolveCheckoutState is the real, existing, correct
-         // source for disclaimerText/isDiag/btnText/btnClass/hideTime --
-         // sqRenderQuote read all of these directly off q (which never
-         // had them; computeQuoteFromState doesn't call this function)
-         // and had been showing them as literal "undefined" in the real,
-         // customer-facing quote. Confirmed via direct browser trace.
-         const cs = resolveCheckoutState(q.checkoutStateKey, q.laborCalc);
-         Object.assign(q, cs);
-
-         // SSOT: badge from checkout_states (single source — see resolveServiceBadge)
-         const badge = resolveServiceBadge({
-             checkout_state: q.checkoutStateKey,
-             pricing_type: S.intent?._pricingType
-         });
-         const badgeKey = resolveServiceBadgeKey({
-             checkout_state: q.checkoutStateKey
-         });
-
-         const svcLabel = S.intent?.label || 'Service';
-         const qtyLabel = S.intent?.qtyLabel || 'item';
-
-         // v9.6 FIX: priceDisplay/priceSub were read (q.priceDisplay,
-         // q.priceSub) but never computed anywhere in the whole file --
-         // confirmed via exhaustive search. Matches the same "From $X"
-         // convention already used elsewhere (e.g. the affirmation
-         // card's own priceDisplay) for the not-yet-fully-confident
-         // case, and a plain "$X" once confident.
-         q.priceDisplay = (q.isDiag || q.isProject) ? ('From $' + q.laborCalc) : ('$' + q.laborCalc);
-         q.priceSub = q.isDiag ? 'Final price confirmed on-site' :
-             q.isProject ? 'Estimate — final price may vary with scope' :
-             (q.hideMaterials ? 'Fixed price' : 'Materials estimated separately');
+         const q = m.q;
+         const badge = m.badge;
+         const badgeKey = m.badgeKey;
+         const svcLabel = m.svcLabel;
+         const qtyLabel = m.qtyLabel;
 
          const timeLine = q.hideTime ? '' :
              '<div class="ql"><span class="qll"><i class="ti ti-clock"></i> Est. labor time</span>' +
@@ -11082,7 +11052,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          //     also try X" prompt, since the generic estimate currently
          //     showing is what should remain visually primary.
          let _recBanner = '';
-         if (S._autoSelectedFrom) {
+         if (m.banner && m.banner.kind === 'auto') {
              _recBanner =
                  '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(45,138,45,.08);border-radius:10px;border:1.5px solid rgba(45,138,45,.3);font-size:13.5px;display:flex;align-items:center;gap:10px;">' +
                  '<i class="ti ti-circle-check-filled" style="color:#2d8a2d;font-size:19px;flex-shrink:0"></i>' +
@@ -11090,19 +11060,12 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
                  '<button type="button" onclick="window._sqRevertAutoSelect()" style="background:none;border:none;color:#888;font-size:12px;text-decoration:underline;cursor:pointer;padding:0;margin-left:8px;">Not this? Use general estimate</button></div>' +
                  '</div>';
          } else {
-             // SSOT: if NLP matched a specific service SKU but confidence
-             // didn't clear the auto-select bar, still offer to switch —
-             // same underlying action (_sqSwitchToRecommended), just framed
-             // as a suggestion rather than something already done for them.
-             const _recSku = S.intent?.recommendedSku;
-             const _recSvc = _recSku ? (DB.services || []).find(sv => sv.id === _recSku) : null;
-             const _recCatId = S.intent?.category || _recSvc?.ui_taxonomy?.category_id || null;
-             _recBanner = _recSvc ?
+             _recBanner = (m.banner && m.banner.kind === 'suggest') ?
                  '<div style="margin-bottom:12px;padding:10px 14px;background:rgba(222,0,0,.06);border-radius:10px;border:1px solid rgba(222,0,0,.2);font-size:13px;display:flex;align-items:center;gap:10px;">' +
                  '<i class="ti ti-star" style="color:var(--clr-red,#de0000);font-size:15px;flex-shrink:0"></i>' +
-                 '<div style="flex:1;min-width:0;"><strong>Possible match:</strong> ' + (_recSvc.ui_taxonomy?.display_name || _recSku) +
+                 '<div style="flex:1;min-width:0;"><strong>Possible match:</strong> ' + m.banner.name +
                  ' <span style="color:#888;font-size:12px;">— may give a more precise quote</span></div>' +
-                 '<button type="button" onclick="window._sqSwitchToRecommended(\'' + _recSku.replace(/'/g, "\\'") + '\',\'' + (_recCatId || '').replace(/'/g, "\\'") + '\')" ' +
+                 '<button type="button" onclick="window._sqSwitchToRecommended(\'' + m.banner.sku.replace(/'/g, "\\'") + '\',\'' + (m.banner.catId || '').replace(/'/g, "\\'") + '\')" ' +
                  'style="flex-shrink:0;background:var(--clr-red-dark,#8a0615);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Use this</button>' +
                  '</div>' :
                  '';
@@ -11118,36 +11081,13 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
                  '<span class="qlv ' + (q.extraFee < 0 ? 'g' : '') + '">' + (q.extraFee >= 0 ? '+' : '') + '$' + q.extraFee + '</span></div>' :
                  '');
 
-         // T118 (Step 6 item 10, per PENDING_DECISIONS.md #26,
-         // explicit operator direction): was a single, flat row of
-         // q.activeLabels in whatever order they happened to
-         // accumulate -- confirmed directly, not a guess, that this
-         // is the real "Special Conditions" chip row the operator's
-         // own testing found unordered and cluttered relative to
-         // the "We understood" summary above it. Reordered by real
-         // fee impact (sqTagFeeImpact, traced from each tag's own
-         // authored answers -- not the mostly-retired effects.fee
-         // field) so the conditions actually affecting price are
-         // what a customer sees first; zero-fee conditions
-         // (display-only, informational) collapse into a single,
-         // small toggle instead of taking the same visual weight
-         // as fee-bearing ones.
-         const _activeTids = [...new Set([...(S.detTagIds || []), ...(S.manTagIds || [])])]
-             .filter(tid => !(S.negatedTagIds || []).includes(tid));
-         const _tidInfo = _activeTids.map(tid => ({
-             tid,
-             label: sqTagLabel(DB.smart_tags?.[tid], tid),
-             fee: sqTagFeeImpact(tid),
-         }));
-         const _feeBearing = _tidInfo.filter(ti => ti.fee > 0).sort((a, b) => b.fee - a.fee);
-         const _zeroFee = _tidInfo.filter(ti => ti.fee <= 0);
          const _chip = t => '<span class="chip gtag" style="cursor:default;font-size:12px;padding:4px 12px"><i class="ti ti-check"></i> ' + t.label + '</span>';
-         const tagsRow = _tidInfo.length ?
+         const tagsRow = m.conditions.count ?
              '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px" id="sqConditionsRow">' +
-             _feeBearing.map(_chip).join('') +
-             (_zeroFee.length ?
-                 '<span class="chip gtag" id="sqZeroFeeToggle" style="cursor:pointer;font-size:12px;padding:4px 12px;opacity:.65" onclick="sqToggleZeroFeeConditions()">+' + _zeroFee.length + ' more detail' + (_zeroFee.length > 1 ? 's' : '') + '</span>' +
-                 '<span id="sqZeroFeeConditions" style="display:none">' + _zeroFee.map(_chip).join('') + '</span>' :
+             m.conditions.feeBearing.map(_chip).join('') +
+             (m.conditions.zeroFee.length ?
+                 '<span class="chip gtag" id="sqZeroFeeToggle" style="cursor:pointer;font-size:12px;padding:4px 12px;opacity:.65" onclick="sqToggleZeroFeeConditions()">+' + m.conditions.zeroFee.length + ' more detail' + (m.conditions.zeroFee.length > 1 ? 's' : '') + '</span>' +
+                 '<span id="sqZeroFeeConditions" style="display:none">' + m.conditions.zeroFee.map(_chip).join('') + '</span>' :
                  '') +
              '</div>' :
              '';
@@ -11158,15 +11098,15 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              '<div class="qitag" data-badge-key="' + badgeKey + '">' + badge + '</div>' +
              '<div class="' + (q.isProject ? 'qpranger' : 'qprice') + '">' + q.priceDisplay + '</div>' +
              '<div class="qpsub">' + q.priceSub + '</div>' +
-             '<div class="qmeta"><i class="ti ti-tool"></i> ' + svcLabel + ' &middot; ' + S.stype + '</div>' +
+             '<div class="qmeta"><i class="ti ti-tool"></i> ' + svcLabel + ' &middot; ' + m.stype + '</div>' +
              '</div>' +
              '<div class="qbody">' +
              '<div class="qlines">' +
-             '<div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ' + (S.stype || 'service').toLowerCase() + '</span><span class="qlv">$' + q.base + '</span></div>' +
+             '<div class="ql"><span class="qll"><i class="ti ti-receipt"></i> Base ' + (m.stype || 'service').toLowerCase() + '</span><span class="qlv">$' + q.base + '</span></div>' +
              extraFeeRow +
              timeLine +
-             '<div class="ql"><span class="qll"><i class="ti ti-stack-2"></i> Quantity</span><span class="qlv">' + S.qty + ' ' + qtyLabel + '</span></div>' +
-             '<div class="ql"><span class="qll"><i class="ti ti-car"></i> ' + (DB.global_rules?.surcharges?.dispatch_label || 'Dispatch fee') + '</span><span class="qlv m">+$' + q.dispatchFee + ' &middot; ' + (DB.global_rules?.surcharges?.dispatch_scope_note || 'once per visit') + '</span></div>' +
+             '<div class="ql"><span class="qll"><i class="ti ti-stack-2"></i> Quantity</span><span class="qlv">' + m.qty + ' ' + qtyLabel + '</span></div>' +
+             '<div class="ql"><span class="qll"><i class="ti ti-car"></i> ' + m.dispatchLabel + '</span><span class="qlv m">+$' + q.dispatchFee + ' &middot; ' + (DB.global_rules?.surcharges?.dispatch_scope_note || 'once per visit') + '</span></div>' +
              '<div class="ql" style="margin-top:8px;border-bottom:none">' +
              '<span class="qll" style="font-weight:600;font-size:15px">Total labor</span>' +
              '<span class="qlv" style="font-size:20px;font-weight:700;color:var(--clr-red-dark,#8a0615)">$' + q.laborCalc + (q.isDiag || q.isProject ? ' (est.)' : '') + '</span>' +
@@ -11206,49 +11146,10 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          toggle.style.display = isHidden ? 'none' : '';
      }
 
-     function sqRestart() {
-         // Full reset — EVERY field either S or BLD can ever carry must be
-         // listed here explicitly. This is the root fix for the cart-collision
-         // bug: several fields (_confidenceStrategy, _escalatedBy, _forceModules,
-         // _fromBuilder, _selfQuoteSvc on S; _groupId, _keyword, _fromOtherTile,
-         // _contextLabel, _objectLabel on BLD) were being SET by various entry
-         // points (Other-tile prefill, builder, free text) but never CLEARED
-         // here, so they silently carried over into the next SmartQuote session
-         // and could leak into a new cart entry's notes/pricing/routing.
-         S = {
-             qty: 1,
-             intent: null,
-             stype: null,
-             detTagIds: [],
-             manTagIds: [],
-             negatedTagIds: [],
-             userTagIds: [],
-             desc: '',
-             adlibConfirmed: false,
-             _suggestedTagIds: [],
-             _svc: null,
-             answers: {},
-             _curatedMode: false,
-             _tagsAffirmed: false,
-             _affirmedTagSet: null,
-             _divergencePath: null,
-             _negationPivotAccepted: false,
-             _pendingPivotInfo: null,
-             _jobNotes: '',
-             _objectNoun: null,
-             _location: null,
-             _sizeHint: null,
-             _notes: null,
-             _confidenceStrategy: null,
-             _escalatedBy: null,
-             _forceModules: null,
-             _fromBuilder: false,
-             _selfQuoteSvc: null,
-             _isOtherTileEntry: false,
-             _autoSelectedFrom: null,
-             _nlpSeedDesc: null,
-             _nlpSeedObject: null
-         };
+     // sqResetView -- RENDERER. Resets the SmartQuote view to its initial DOM state. Reads no session state
+     // (S/BLD): the state reset itself is owned by the sqRestart handler (AppController).
+     // Split out of the former sqRestart, DOM statements unchanged.
+     function sqResetView() {
          window._sqCuratedRender = null;
          const out = document.getElementById('sqQuoteOut');
          if (out) out.innerHTML = '';
@@ -11299,23 +11200,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          const grid = document.getElementById('category-card');
          if (grid) grid.style.display = 'grid';
          if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'none';
-         BLD = {
-             step: 0,
-             action: null,
-             object: null,
-             specific: null,
-             condition: null,
-             location: null,
-             qty: 1,
-             _stype: null,
-             _cat: null,
-             _groupId: null,
-             _keyword: null,
-             _fromOtherTile: false,
-             _contextLabel: null,
-             _objectLabel: null,
-             _allowedTypes: null
-         };
+         
          const bldr = document.getElementById('sqBuilder');
          if (bldr) bldr.style.display = 'none';
          const bBtn = document.getElementById('sqUnifiedActionBtn');
@@ -11324,6 +11209,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          if (inRow) inRow.style.display = 'flex';
          exitFocusedMode?.();
      }
+
 
      function sqToggleBuilder() {
          const builder = document.getElementById('sqBuilder');
@@ -11855,8 +11741,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          if (manageBtn) manageBtn.style.display = show ? 'none' : '';
      }
 
-     // v9.6 FIX: updateSmartQuoteBarVisibility removed -- confirmed zero
-     // real call sites, gated on __sqActive (removed alongside it),
+     // v9.6 FIX: the retired bar-visibility updater removed -- confirmed zero
+     // real call sites, gated on the retired active flag (removed alongside it),
      // which a comment elsewhere in this file already,
      // independently calls "unused". Superseded by T58's fix, which
      // makes the text bar visible throughout catalog browsing
@@ -11914,7 +11800,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
       * belonging here — each independently re-verified against this file's own
       * AST analysis before being included, not simply taken on the document's
       * word (the same document also listed three functions —
-      * showGroupsForCategory, showSubGroups, selectGroupForCategory — that do
+      * showGroupsForCategory, showSubGroups, the retired group-selection helper — that do
       * not exist anywhere in this qr.html; excluded here after confirming zero
       * matches for any of the three).
       *
@@ -11934,7 +11820,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
       * "DOM is not defined" without it); UIRenderer.js's top-level code must run
       * before any function here that touches DOM.* is called.
       *
-      * SECURITY FIX (v9.4): sqBuildCuratedIntake and sqBuildAdlib (the function
+      * SECURITY FIX (v9.4): the legacy curated-intake builder and sqBuildAdlib (the function
       * containing ctxBadge) both had confirmed XSS vulnerabilities — fixed in
       * qr.html itself and re-extracted here. builderDesc (sourced from S.desc,
       * the raw SmartQuote textarea value) and ctxBadge's `text` parameter
@@ -12291,79 +12177,12 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          // Ensure SmartQuote UI exists
          if (!document.getElementById('sqTextBar')) initSmartQuote();
 
-         // Seed S from the service
-         const catObj = categoryMap.get(category_id);
-         const catName = catObj ? (catObj.display_name || catObj.name || category_id) : category_id;
+         // Seed S from the service. Logic derives the seed (buildServiceSessionSeed); this controller installs it.
          // v9.5 FIX: capture dynamic_rule before S reset -- it carries the
          // pricing formula (e.g. tile_repair_formula) from the NLP intent and
          // would be lost when S is reassigned below.
          const preservedDynamicRule = S.intent?.dynamic_rule || null;
-         S = {
-             qty: 1,
-             intent: {
-                 category: category_id,
-                 label: svc.ui_taxonomy?.display_name || svc.display_name || catName,
-                 group: svc.ui_taxonomy?.display_name || svc.id,
-                 base: svc.financial_engine?.base_price ?? 70,
-                 stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
-                 qtyLabel: 'item',
-                 key: svc.id,
-                 _groupId: svc.ui_taxonomy?.group_id || null,
-                 _pricingType: svc.financial_engine?.pricing_type || null,
-                 dynamic_rule: preservedDynamicRule
-             },
-             stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
-             desc: svc.ui_taxonomy?.display_name || svc.id,
-             detTagIds: [],
-             manTagIds: [],
-             negatedTagIds: [],
-             // inherentTagIds: default_tags from the service definition.
-             // These are SERVICE FACTS, not user-detected context -- they must
-             // NOT go into detTagIds which drives the "We understood from your
-             // text" banner. Kept separate so pricing still applies them.
-             inherentTagIds: [],
-             adlibConfirmed: false
-         };
-
-         // Seed default_tags into inherentTagIds (not detTagIds)
-         (svc.default_tags || []).forEach(tagRef => {
-             const tid = (typeof tagRef === 'object' && tagRef.$ref) ? tagRef.$ref : tagRef;
-             if (typeof tid === 'string' && tid.startsWith('#') && !S.negatedTagIds.includes(tid))
-                 S.inherentTagIds.push(tid);
-         });
-
-         // SSOT: dynamic_services — enrich base price and suggested_tags if service lacks them
-         const normStPrefill = (svc.service_type || 'Repair').replace('Install / Mount', 'Install');
-         const dynDefPrefill = resolveDynamicService(category_id, normStPrefill, svc.ui_taxonomy?.group_id);
-         if (dynDefPrefill) {
-             // Use dynamic base price if service base price is 0 or missing
-             if (!S.intent.base && dynDefPrefill.financial_engine?.base_price) {
-                 S.intent.base = dynDefPrefill.financial_engine.base_price;
-             }
-             // Also seed checkout state from dynamic_services operational_metrics
-             if (dynDefPrefill.operational_metrics?.checkout_state) {
-                 S.intent.checkoutState = dynDefPrefill.operational_metrics.checkout_state;
-             }
-             // suggested_tags: store as hints only — NOT pre-selected
-             if (dynDefPrefill.suggested_tags) {
-                 S._suggestedTagIds = S._suggestedTagIds || [];
-                 dynDefPrefill.suggested_tags.forEach(tagObj => {
-                     if (!tagObj || typeof tagObj !== 'object') return;
-                     const segments = tagObj?.$ref ? tagObj.$ref.replace(/^#\//, '').split('/') : null;
-                     const tagId = segments ? '#' + segments[segments.length - 1].replace('#', '') : null;
-                     if (tagId && DB.smart_tags?.[tagId] && !S._suggestedTagIds.includes(tagId))
-                         S._suggestedTagIds.push(tagId);
-                 });
-             }
-         }
-         // Pre-fill intake answers from default_tags (fixes lower-than-expected quotes)
-         S.detTagIds.forEach(tid => {
-             const tagDef = DB.smart_tags?.[tid];
-             if (tagDef?.answers) {
-                 // Merge tag's pre-defined answer hints into S for pricing
-                 // (these do not skip intake questions, they just ensure fees apply)
-             }
-         });
+         S = buildServiceSessionSeed(svc, category_id, preservedDynamicRule, categoryMap, DB);
 
          // Mark step 2 done (type is known from service card)
          const sn2 = document.getElementById('sqSn2'),
@@ -12397,16 +12216,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          // If service has base_price + expected_minutes + complexity_tier and
          // its intake_chain only asks quantity, skip the chip grid and adlib entirely.
          // Just render the adlib with a qty pill and auto-quote on confirm.
-         const om = svc.operational_metrics || {};
-         const de = svc.default_estimates || {};
-         const chain = svc.intake_chain || [];
-         // Match orchestrator's logic: item_count_template needs bypass_intake to be self-quote
-         const _bypassIntake = !!svc.behavior?.bypass_intake;
-         const _isQtyMod = (m) => ['item_count', 'count', 'hybrid_qty', 'global_quantity'].includes(m.module) || (m.module === 'item_count_template' && _bypassIntake);
-         const chainIsQtyOnly = chain.length === 0 || chain.every(_isQtyMod);
-         const hasPricingData = (om.expected_minutes > 0) && om.complexity_tier && (svc.financial_engine?.base_price > 0);
-         const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(svc.financial_engine?.checkout_state);
-         const isSelfQuoting = hasPricingData && isFlatCheckout && chainIsQtyOnly;
+         const intakeClass = classifyServiceIntake(svc);
+         const isSelfQuoting = intakeClass.isSelfQuoting;
 
          if (isSelfQuoting) {
              // Compute price directly from service data (no tags needed)
@@ -12415,8 +12226,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              S._sizeHint = null;
              S._notes = null;
              // Store the exact service minutes on intent for computeSQQuote
-             S.intent._exactMinutes = om.expected_minutes;
-             S.intent._exactTier = om.complexity_tier;
+             S.intent._exactMinutes = intakeClass.exactMinutes;
+             S.intent._exactTier = intakeClass.exactTier;
 
              // Mark step 3 done too — skip the chip view
              const sn3 = document.getElementById('sqSn3'),
@@ -12457,46 +12268,28 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              // ── VIEW TEMPLATE choice only — NOT a confidence/pricing decision ──
              // Both branches below feed the SAME confidence engine
              // (base_confidence + sum of confidence_gain per answered
-             // module, gating the estimate button — see sqBuildCuratedIntake).
+             // module, gating the estimate button — see the legacy curated-intake builder).
              // This only decides which UI template renders: the curated
              // card (real questions to ask) or the bare chip grid
              // (nothing to ask beyond quantity/tags). Renamed from the
              // confusing "hasRealIntake" after an audit correctly flagged
              // that name as reading like a confidence bypass.
-             const needsCuratedCardTemplate = chain.some(m => !_isQtyMod(m));
+             const needsCuratedCardTemplate = intakeClass.needsCuratedCardTemplate;
              if (needsCuratedCardTemplate) {
                  S._svc = svc;
                  S.answers = {};
                  S._jobNotes = '';
                  S._curatedMode = true;
                  S.userTagIds = S.userTagIds || [];
-                 // T135+ (PHASE_PLAN.md Phase 2, Stage C): routes through the
-                 // orchestrator now, matching the self-quote branch's own
-                 // T64/"Phase 6 rewire" precedent above, rather than calling
-                 // the legacy sqBuildCuratedIntake directly. Confirmed safe
-                 // first: a full 74-service parity sweep
-                 // (curated_card_renderer_parity_sweep.js) found and fixed
-                 // the two real gaps renderCuratedCardFromRoute had (missing
-                 // ceiling enforcement, missing branch-visibility filtering)
-                 // and now shows 74/74 agreement, 0 divergences. sqBuildCuratedIntake
-                 // itself is untouched and still reachable from
-                 // sqChooseDivergencePath's own "remote deep-dive" path,
-                 // which has a real, confirmed capability
-                 // (remote_deep_dive_modules) the orchestrator path does not
-                 // yet have ported -- not swept up in this same change.
-                 if (typeof collectBookingContext_catalog === 'function' &&
-                     typeof executeWorkflow === 'function' &&
-                     typeof renderCuratedCardFromRoute === 'function' &&
-                     DB?.workflow) {
-                     const _curatedCtx = collectBookingContext_catalog(svc, category_id);
-                     const _curatedRoute = executeWorkflow(_curatedCtx, DB);
-                     S._lastRoute = _curatedRoute;
-                     renderCuratedCardFromRoute(_curatedRoute, 'sqSb3');
-                     const sb3 = document.getElementById('sqSb3');
-                     if (sb3) sb3.style.display = 'block';
-                 } else {
-                     sqBuildCuratedIntake(svc); // fallback if the orchestrator path isn't available
-                 }
+                 // Curated card via the orchestrator -- the one canonical path. A full 74-service parity sweep found and fixed the two gaps
+                 // renderCuratedCardFromRoute had (ceiling enforcement, branch visibility) and showed 74/74 agreement. The legacy curated-intake
+                 // builder and its "orchestrator unavailable" fallback are retired: the orchestrator is part of this same file, so that
+                 // branch could never be the one that ran.
+                 const _curatedCtx = collectBookingContext_catalog(svc, category_id);
+                 const _curatedRoute = executeWorkflow(_curatedCtx, DB);
+                 sqRenderCuratedCard(_curatedRoute, 'sqSb3'); // records S._lastRoute / S._lastContainerId, then renders
+                 const sb3 = document.getElementById('sqSb3');
+                 if (sb3) sb3.style.display = 'block';
              } else {
                  // Simple service (no questions): seed _svc so curated adlib has service context,
                  // then run chip grid — this is the only step-3 chip path.
@@ -12891,7 +12684,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          pill('verb', verb, verbOpts, verb);
 
          // ── INTAKE ANSWERS (curated-mode): show as answer badges ────────
-         // When called after sqBuildCuratedIntake confirms (sqConfirmAdlib),
+         // When called after the legacy curated-intake builder confirms (sqConfirmAdlib),
          // show answered intake questions inline — matches curated card adlib output.
          if (S._svc && S.answers && Object.keys(S.answers).length > 0) {
              const _QM = new Set([...((typeof _GENERIC_QTY_MODULE_KEYS !== 'undefined') ? _GENERIC_QTY_MODULE_KEYS : ['item_count', 'count', 'hybrid_qty', 'global_quantity']), 'item_count_template']);
@@ -12992,678 +12785,6 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          if (bb) bb.style.display = 'none';
      }
 
-     function sqBuildCuratedIntake(svc) {
-         S._svc = svc;
-         S.answers = S.answers || {};
-         S._jobNotes = S._jobNotes || '';
-         S._curatedMode = true;
-         S.userTagIds = S.userTagIds || [];
-
-         // ── Phase 7 rewire: use orch_compose_intake_chain ──────────
-         // Previously manually resolved chain + looped force-module injection.
-         // orch_compose_intake_chain does both in one authoritative call.
-         const allMods = orch_compose_intake_chain({}, {
-             entity: svc
-         }, DB);
-
-         // Divergence Resolution, Path A ("Remote Deep Dive"): once the
-         // customer has explicitly chosen to answer more, deeper questions
-         // instead of booking an on-site visit (sqChooseDivergencePath),
-         // append this service's real, authored remote_deep_dive_modules
-         // onto the normal chain -- these were deliberately hidden until
-         // now to keep the default intake short (PROJECT_GOALS §9's
-         // "Path A" framing). Additive + deduped: a module already in the
-         // normal chain is never added twice.
-         if (S._divergencePath === 'remote' && Array.isArray(svc.remote_deep_dive_modules)) {
-             const existingKeys = new Set(allMods.map(m => m.moduleKey || m.module));
-             svc.remote_deep_dive_modules.forEach(mk => {
-                 if (existingKeys.has(mk) || !DB.intake_modules?.[mk]) return;
-                 allMods.push({
-                     moduleKey: mk,
-                     module: mk,
-                     then: {},
-                     ...DB.intake_modules[mk],
-                     _deepDive: true
-                 });
-                 existingKeys.add(mk);
-             });
-         }
-
-         // ── JSON-sourced constants ────────────────────────────────────
-         const QTY_MODS = new Set([...((typeof _GENERIC_QTY_MODULE_KEYS !== 'undefined') ? _GENERIC_QTY_MODULE_KEYS : ['item_count', 'count', 'hybrid_qty', 'global_quantity']), 'Install / Mount', 'Install']);
-
-
-
-         const realMods = allMods.filter(m => !QTY_MODS.has(m.moduleKey));
-         if (typeof _trace === 'function') _trace('ui_renderer', 'sqBuildCuratedIntake: quantity-dedup filter applied', {
-             serviceId: svc?.id || null,
-             beforeFilter: allMods.map(m => m.moduleKey || m.module),
-             filteredOut: allMods.filter(m => QTY_MODS.has(m.moduleKey)).map(m => m.moduleKey),
-             finalRenderedModules: realMods.map(m => m.moduleKey || m.module),
-         });
-
-
-         // v9.6 FIX: was a direct, raw `svc.confidence_strategy || {}` read
-         // with its own separate fallbacks (80/5) -- bypassed
-         // resolveBaseConfidenceStrategy entirely, the same real bug class
-         // just fixed in orch_compute_confidence. Confirmed via direct test
-         // this fed maxQs (the live question-cap logic) with the wrong
-         // value for any archetype-inheriting service.
-         const confStrat = resolveBaseConfidenceStrategy(svc, null);
-         const minConf = confStrat.minimum_quote_confidence || 80;
-         const maxQs = confStrat.maximum_followup_questions || 5;
-
-         // checkout_states message for this service
-         const csKey = resolveServiceCheckoutStateKey(svc, null);
-         const csObj = DB.checkout_states?.[csKey] || {};
-
-         // meta.estimate_disclaimers
-         const discKey = svc.default_estimates?.disclaimer || 'flat_fee';
-         const disclaimer = DB.meta?.estimate_disclaimers?.[discKey] || csObj.ui_message || '';
-
-         // service_types base price fallback
-         const stNorm = (svc.service_type || 'Install').replace('Install / Mount', 'Install');
-         const stDef = DB?.service_types?.[stNorm] || {};
-         const basePrice = svc.financial_engine?.base_price || stDef.base_price || 0;
-
-         // v9.2: removed a dead tierKey/hourlyRate calculation here —
-         // confirmed via exhaustive search that neither variable was ever
-         // read anywhere in this file. om (operational_metrics) is still
-         // used below for the live complexity-escalation tracking that
-         // DOES feed the real price (see _exactTier wiring further down).
-
-         const om = svc.operational_metrics || {};
-
-         const tags = DB.smart_tags || {};
-         const catId = S.intent?.category || svc.ui_taxonomy?.category_id || '';
-         const groupId = svc.ui_taxonomy?.group_id || S.intent?._groupId || '';
-         const svcName = svc.ui_taxonomy?.display_name || svc.id;
-         const catObj = categoryMap.get(catId);
-         const grpObj = groupMap.get(groupId);
-         const catName = catObj?.display_name || '';
-         const grpName = grpObj?.display_name || '';
-
-         const svcVerb = (() => {
-             const n = svcName.toLowerCase();
-             if (n.includes('install') || n.includes('mount')) return 'installed';
-             if (n.includes('repair') || n.includes('fix')) return 'repaired';
-             if (n.includes('assembl')) return 'assembled';
-             if (n.includes('replace')) return 'replaced';
-             return 'done';
-         })();
-         const isDoorLike = groupId.includes('door') || svcName.toLowerCase().includes('door');
-         const qtyNoun = isDoorLike ? 'door' : 'item';
-
-         // ── Seed suggested_tags from dynamic_services ─────────────────
-         if (!S._suggestedTagIds?.length) {
-             S._suggestedTagIds = [];
-             const dynDef = resolveDynamicService(catId, stNorm, groupId);
-             (dynDef?.suggested_tags || []).forEach(tagObj => {
-                 if (!tagObj?.$ref) return;
-                 const tagId = '#' + tagObj.$ref.split('/').pop().replace(/^#/, '');
-                 if (tags[tagId] && !S._suggestedTagIds.includes(tagId)) S._suggestedTagIds.push(tagId);
-             });
-         }
-
-         // ── Constraint chips: suggested_tags + universal tags, no noise ─
-         const NOISE = new Set(['#plumbing', '#electrical', '#wall_mount', '#flushometer',
-             '#bidet_attachment', '#flushometer_bidet', '#virus', '#wifi_dead_zone',
-             '#data_recovery', '#cracked_tile', '#broken_leg', '#scratched_surface',
-             '#wobbly', '#furniture_assembly_ikea', '#leaky_faucet', '#clogged_drain',
-             '#toilet_running', '#fan_box_missing'
-         ]);
-         const getCuratedTids = () => {
-             const suggested = new Set(S._suggestedTagIds || []);
-             return Object.keys(tags).filter(tid => {
-                 if (NOISE.has(tid)) return false;
-                 return tagValidForCategory(tid, catId, groupId, svc?.id);
-             }).sort((a, b) => (suggested.has(a) ? 0 : 1) - (suggested.has(b) ? 0 : 1));
-         };
-
-         // ── requires enforcement ──────────────────────────────────────
-         const enforceRequires = (tid) => {
-             (tags[tid]?.requires || []).forEach(r => {
-                 const req = typeof r === 'string' ? r : (r?.$ref ? '#' + r.$ref.split('/').pop().replace(/^#/, '') : null);
-                 if (req && tags[req] && !S.manTagIds.includes(req) && !S.detTagIds.includes(req)) {
-                     S.manTagIds.push(req);
-                     if (!S.userTagIds.includes(req)) S.userTagIds.push(req);
-                 }
-             });
-         };
-
-         // Open step 3
-         sqUnlock(3);
-         sqOpen(3);
-         const sb3 = document.getElementById('sqSb3');
-         if (!sb3) return;
-
-         // ── RENDER ────────────────────────────────────────────────────
-         const render = () => {
-             syncTagSynthesizedAnswers();
-             // v9.6 FIX: a real, confirmed bug found investigating the
-             // "We understood" row directly (prompted by a real
-             // screenshot's apparent tag contradiction that couldn't be
-             // fully verified from the image alone -- now confirmed via
-             // direct, empirical testing: detectTagsNLP genuinely
-             // returns both #brick_wall and #drywall simultaneously when
-             // a customer's text happens to mention both, despite them
-             // being explicitly declared mutually_exclusive).
-             // applySSOTRules already exists, is already correctly
-             // written (manTagIds/user taps win over detTagIds/NLP
-             // detection when they conflict), and was already,
-             // genuinely wired -- but only into sqBuildStep3, a
-             // separate, legacy step-by-step builder flow, never into
-             // this, the main curated-card render path every named
-             // service (including wall_hole_or_crack_repair) actually
-             // uses. Confirmed via direct search this was the only real
-             // call site before this fix.
-             if (typeof applySSOTRules === 'function') applySSOTRules();
-             const answers = S.answers;
-             const exist = new Set([...S.manTagIds, ...S.detTagIds]);
-             const suggested = new Set(S._suggestedTagIds || []);
-             const curTids = getCuratedTids();
-
-             // Compute pricing from intake answers via modifier_ref ->
-             // global_rules.modifiers, matching computeUnifiedQuote's
-             // canonical resolution (v9.6 fix -- this was still reading
-             // the retired effects.fee pattern, which is always
-             // undefined for any answer migrated to modifier_ref,
-             // silently showing $0 impact for real fees like urgency's $50).
-             const _mods = DB.global_rules?.modifiers || {};
-             let intakeFee = 0,
-                 intakeMin = 0;
-             realMods.forEach(mod => {
-                 if (!_isModVisible(mod, answers, allMods)) return;
-                 const chosen = (mod.client_response || []).find(r => r.label === answers[mod.moduleKey]);
-                 if (!chosen) return;
-                 const m = chosen.modifier_ref ? (_mods[chosen.modifier_ref] || {}) : {};
-                 intakeFee += m.fee ?? chosen.effects?.fee ?? 0;
-                 intakeMin += m.minutes ?? chosen.effects?.minutes ?? 0;
-             });
-
-             // ── CONFIDENCE CALCULATION ───────────────────────────────────
-             // T115 FIX (Operator Brief, Session 4, Charter §11 item 3): was
-             // a hand-rolled, third, independent confidence formula
-             // (base_confidence + module gains + NLP match + tag complexity)
-             // that disagreed with the canonical orch_compute_confidence used
-             // everywhere else -- confirmed real and customer-visible: on
-             // minimum_quote_confidence: 90 services, this formula could stay
-             // under 90 even with every question answered (base_confidence is
-             // typically 30-40, and module/NLP/tag bonuses are individually
-             // capped), permanently disabling the Estimate button.
-             // sqBuildCuratedIntake is reached only via catalog taps and the
-             // divergence-path return -- both mean "customer chose this exact
-             // service by name," which is exactly orch_compute_confidence's
-             // own entryType: 'catalog' case: direct taps score confidence 100
-             // unconditionally (see that function's own v9.5 FIX comment),
-             // since intent is certain regardless of how many intake
-             // questions have been answered yet. { entity: svc } matches the
-             // exact resolution shape this same function already passes to
-             // orch_compose_intake_chain a few lines above -- not a new
-             // convention introduced here.
-             const activeTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
-             const conf = orch_compute_confidence({
-                 entity: svc
-             }, activeTagIds, S.intent?._matchConfidence || 0, DB, 'catalog').score;
-             const ready = conf >= minConf;
-
-             // Total tag fee from currently-active tags (detTagIds + manTagIds)
-             // Tags are already in S at this point — include them in the
-             // preview so "from $X" doesn't understate once surcharges apply.
-             const detAndManEarly = [...new Set([...S.detTagIds, ...S.manTagIds])].filter(tid => !S.negatedTagIds.includes(tid));
-             const tagFeeTotal = 0; // Charter ("Chips Are Not Pricing Factors"): chips add no dollars; the quote below prices answers
-             // v9.5.8 FIX (real, severe, customer-facing bug, reported with
-             // screenshots): was `basePrice + intakeFee + tagFeeTotal` -- a
-             // hand-rolled, partial formula that never included the hourly
-             // labor-time component (complexity tier x hourly rate), the
-             // ONE piece of the real price that usually dominates the
-             // total for anything above "routine". intakeMin (directly
-             // above) was already being correctly computed via the real
-             // modifier_ref mechanism and then silently discarded --
-             // computed, never consumed, the same class of bug this
-             // project has found and fixed repeatedly elsewhere.
-             // Confirmed real and reproducible: computer_diagnostic +
-             // "Lost or corrupted files" showed "$105" here, during
-             // intake, then $307 at the real Add to Cart step -- nearly
-             // tripling between the number a customer sees while
-             // answering questions and the number they're actually
-             // charged. Rather than hand-patch this formula to also
-             // account for complexity tier / hourly rate / archetype
-             // formulas / etc. (re-deriving computeUnifiedQuote's own
-             // logic a second time, which is how it drifted out of sync
-             // in the first place), call the real, same,
-             // already-loaded, already-authoritative computeUnifiedQuote
-             // directly -- the exact function the real Add to Cart step
-             // uses -- so this preview is now structurally guaranteed to
-             // match the final price, not just currently consistent
-             // with it.
-             const _liveQuote = computeUnifiedQuote({
-                 svc,
-                 activeTagIds: detAndManEarly,
-                 answers,
-                 qty: S.qty || 1
-             });
-             const livePrice = _liveQuote.laborEstimate;
-             const visibleMods = realMods.filter(m =>
-                 _isModVisible(m, answers, allMods) && !S._tagSynthesizedModules?.[m.moduleKey]);
-             const answered = visibleMods.filter(m => answers[m.moduleKey]).length;
-             const total = visibleMods.length;
-             const remaining = total - answered;
-             const allQsDone = answered === total;
-             // "from" is only accurate when the price can still go up due
-             // to unanswered modules. Once all questions are answered (or
-             // there are none), show the exact current total instead.
-             const pricePrefix = (remaining > 0 && tagFeeTotal === 0) ? 'from ' : '';
-
-             // ── Preserve hidden anchor elements for engine compatibility ─
-             sb3.innerHTML = `
-        <div id="sqDetTags"  style="display:none"></div>
-        <div id="sqDynGroups" style="display:none"></div>
-        <span id="sqQtyV"    style="display:none">${S.qty}</span>
-        <span id="sqQtyLbl"  style="display:none"></span>
-        <div  id="sqAdlibBox" style="display:none"><div id="sqAdlibSentence"></div></div>`;
-
-             const card = document.createElement('div');
-             card.className = 'sq-ic';
-
-             // ─── SERVICE HEADER ─────────────────────────────────────────
-             // From: ui_taxonomy, financial_engine, operational_metrics, checkout_states
-             // v9.4 SECURITY FIX: builderDesc is sourced from S.desc, which
-             // is set directly from the raw SmartQuote textarea value
-             // elsewhere (sqAnalyze) — escaped here before interpolation
-             // into the innerHTML template literal below. See the
-             // escapeHtml() definition's comment for the full vulnerability
-             // this closes (CodeQL: "DOM text reinterpreted as HTML").
-             const builderDesc = (S._fromBuilder && S.desc && S.desc !== svcName) ? escapeHtml(S.desc) : null;
-             const dots = realMods.map(m =>
-                 `<span class="sq-ic-dot ${answers[m.moduleKey]?'done':''}"></span>`).join('');
-             card.innerHTML += `
-        <div class="sq-ic-hdr">
-          <div class="sq-ic-hdr-icon">${svc.ui_taxonomy?.icon || '🔧'}</div>
-          <div class="sq-ic-hdr-body">
-            <h2 class="sq-ic-hdr-name">${svcName}</h2>
-            <p class="sq-ic-hdr-desc">${svc.ui_taxonomy?.description || ''}</p>
-            ${builderDesc ? `<div class="sq-ic-builder-note"><i class="ti ti-sparkles" style="font-size:.85em;margin-right:4px;opacity:.6"></i><em>"${builderDesc}"</em></div>` : ''}
-            <div class="sq-ic-hdr-foot">
-              <span class="sq-ic-price"><i style="font-style:italic;font-size:.72em">${pricePrefix}</i>$${livePrice}${(intakeFee+tagFeeTotal)>0?`<span style="font-size:.72em;opacity:.75;margin-left:2px">(+$${intakeFee+tagFeeTotal})</span>`:''}</span>
-              <span class="sq-ic-prog">${dots}<span>${answered} of ${total} answered</span></span>
-            </div>
-          </div>
-        </div>`;
-
-             // ─── BREADCRUMB (category › group › service) ────────────────
-             if (catName || grpName) {
-                 const parts = [];
-                 if (catName) parts.push(`<span>${catName}</span>`);
-                 if (grpName) parts.push(`<span>${grpName}</span>`);
-                 parts.push(`<span class="cur">${svcName}</span>`);
-                 card.innerHTML += `<div class="sq-ic-crumb">${parts.join('<span class="arr">›</span>')}</div>`;
-             }
-
-             // ─── NLP DETECTED TAGS ROW ────────────────────────────────────
-             // Shows detected tags (and negations) from description/notes above
-             // the intake questions — bridges old chip-grid UX and curated card.
-             // These are read-only confirmations ("we understood this from your text").
-             const detAndMan = [...new Set([...S.detTagIds, ...S.manTagIds])];
-             if (detAndMan.length > 0 || S.negatedTagIds.length > 0) {
-                 let nlpRow = `<div class="sq-ic-nlp-row">
-              <span class="sq-ic-nlp-lbl">We understood:</span>`;
-                 S.negatedTagIds.forEach(tid => {
-                     if (!tags[tid]) return;
-                     nlpRow += `<span class="sq-ic-nlp-chip neg" title="Confirmed absent — no surcharge"><i class="ti ti-check"></i> ✓ not ${sqTagLabel(tags[tid],tid)}</span>`;
-                 });
-                 detAndMan.forEach(tid => {
-                     if (!tags[tid]) return;
-                     nlpRow += `<span class="sq-ic-nlp-chip pos" data-tid="${tid}" title="Tap to remove">
-                  ${sqTagLabel(tags[tid],tid)}
-                  <i class="ti ti-x" style="font-size:.6rem;margin-left:3px;opacity:.55"></i>
-                </span>`;
-                 });
-                 nlpRow += `</div>`;
-                 card.innerHTML += nlpRow;
-             }
-
-             // ─── INTAKE QUESTIONS ─────────────────────────────────────────
-             // Sourced from intake_modules via _resolveIntakeChain
-             // Only show maximum_followup_questions at a time (from confidence_strategy)
-             if (realMods.length > 0) {
-                 let qHtml = `<div class="sq-ic-qs">
-          <div class="sq-ic-qs-hdr">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-            Job specifics
-          </div>`;
-                 let shown = 0;
-                 // v9.5.15 FIX: real, severe, reported bug -- the ${shown} variable
-                 // above is purely an internal counter for maxQs capping (how many
-                 // MORE unanswered questions to reveal) and was never meant to be a
-                 // customer-facing question number. It only increments for
-                 // unanswered modules, so an answered module displays whatever
-                 // `shown` happened to be at that moment, without ever advancing --
-                 // producing exactly the reported "0, 1, 1, 2, 2, 2" pattern instead
-                 // of a real 1-6 sequence. questionIndex is a separate, dedicated
-                 // counter that advances for every visible module regardless of
-                 // answered status, used only for display -- shown's own, real,
-                 // correct capping behavior is completely untouched.
-                 let questionIndex = 0;
-                 visibleMods.forEach(mod => {
-                     questionIndex++;
-                     const isDone = !!answers[mod.moduleKey];
-                     // FIXED: cap counts only UNANSWERED questions, not total
-                     // visible modules. An answered module doesn't consume a cap
-                     // slot — this was hiding branching follow-up modules when
-                     // the parent question (already answered) had already used
-                     // up a slot (e.g. wall_type answered → masonry_anchor
-                     // appeared but maxQs=2 was already reached by counting
-                     // the answered wall_type itself as slot 1).
-                     if (!isDone && shown >= maxQs) return;
-                     if (!isDone) shown++;
-                     qHtml += `
-          <div class="sq-ic-q">
-            <div class="sq-ic-q-lbl">
-              <span><span class="sq-ic-q-num ${isDone?'done':''}">${questionIndex}</span>${mod.question}</span>
-              ${mod.affects_price ? `<span class="sq-ic-price-tag"><i class="ti ${DB.ui_config?.affects_price_icon||'ti-currency-dollar'}"></i></span>` : ''}
-            </div>
-            <div class="sq-ic-grid">`;
-                     (mod.client_response || []).forEach(resp => {
-                         const isSel = answers[mod.moduleKey] === resp.label;
-                         const _m = resp.modifier_ref ? (_mods[resp.modifier_ref] || {}) : {};
-                         const fee = _m.fee ?? resp.effects?.fee ?? 0;
-                         const mins = _m.minutes ?? resp.effects?.minutes ?? 0;
-                         // v9.5.15 FIX: real, severe, reported bug -- "+Xmin" was shown
-                         // for ANY mins > 0, regardless of whether minutes actually
-                         // translate to price for this service. For flat_simple/
-                         // diagnostic_open archetypes (confirmed via direct test:
-                         // laborEstimate is completely unaffected by minutes-only
-                         // modifiers), this told the customer "+45min" on a button
-                         // that had zero real effect on the price they'd be charged --
-                         // a customer reasonably reads "+Xmin" as implying "+some $",
-                         // which was false. hourly_timed (and formula/tiered_per_unit,
-                         // where a real formula may genuinely use minutes) keep
-                         // showing it, since minutes are real, meaningful signal there.
-                         const _archetype = svc?.financial_engine?.pricing_archetype;
-                         const minsAffectPrice = _archetype === 'hourly_timed' || _archetype === 'formula' || _archetype === 'tiered_per_unit';
-                         // Show time impact too if significant (from global_rules.modifiers)
-                         const impact = fee > 0 ? `+$${fee}` : (mins > 0 && minsAffectPrice ? `+${mins}min` : '');
-                         qHtml += `<button type="button" class="sq-ic-btn${isSel?' sel':''}"
-              data-mod="${mod.moduleKey}" data-label="${resp.label.replace(/"/g,'&quot;')}">
-              <span>${resp.label}</span>${impact ? `<span class="sq-ic-fee">${impact}</span>` : ''}
-            </button>`;
-                     });
-                     qHtml += `</div></div>`;
-                 });
-                 qHtml += '</div>';
-                 card.innerHTML += qHtml;
-             }
-
-             // ─── CONSTRAINT CHIPS + NOTES (only after all questions answered) ─
-             // Shows suggested_tags prominently, then other valid tags
-             // Avoids cluttering the Q-focused screen
-             if (allQsDone) {
-                 const curTids = getCuratedTids();
-                 let extHtml = `<div class="sq-ic-extra">
-          <div class="sq-ic-extra-title">Any special conditions?
-            <span style="font-weight:400;font-size:.72rem;color:#9ca3af;margin-left:6px">optional — tap to add</span>
-          </div>
-          <div class="sq-ic-chips-row">`;
-                 curTids.forEach(tid => {
-                     const t = tags[tid];
-                     const sel = exist.has(tid) && !S.negatedTagIds.includes(tid);
-                     const isSug = suggested.has(tid);
-                     const lbl = sqTagLabel(t, tid);
-                     extHtml += `<span class="sq-ic-chip${sel?' sel':isSug&&!sel?' hint':''}" data-tid="${tid}">
-            ${sel ? '' : isSug ? '✦ ' : '+ '}${lbl}
-          </span>`;
-                 });
-                 extHtml += `</div>
-          <textarea class="sq-ic-notes" placeholder="Add details (e.g. rough opening is 30×80, door swings left)…">${S._jobNotes||''}</textarea>
-        </div>`;
-                 card.innerHTML += extHtml;
-             }
-
-             // ─── ADLIB SUMMARY SENTENCE ──────────────────────────────────
-             // "In [Category] › [Group] I need [qty▾] [ServiceName] [verb▾]
-             //  · [✓ AnswerA] and [✓ AnswerB] · [tag ×]"
-             const answeredMods = visibleMods.filter(m => answers[m.moduleKey]);
-             const activeCons = [...exist].filter(tid => tags[tid] && getCuratedTids().includes(tid));
-
-             let adlibHtml = `<div class="sq-ic-adlib" id="sqCuratedAdlib">`;
-             if (catName) adlibHtml += `<span class="aw">In</span><span class="ab">${catName}</span>`;
-             if (grpName) adlibHtml += `<span class="aw">›</span><span class="ab">${grpName}</span>`;
-             adlibHtml += `<span class="aw"> I need </span>
-        <span class="ap"><span>${S.qty}</span><i class="ti ti-chevron-down"></i>
-          <select id="sqCurQtySel">${['1','2','3','4','5','6','8','10'].map(v=>`<option${v==S.qty?' selected':''}>${v}</option>`).join('')}</select>
-        </span>
-        <span style="font-weight:800;color:var(--clr-red-dark,#8a0615)">${svcName}</span>
-        <span class="ap"><span>${svcVerb}</span><i class="ti ti-chevron-down"></i>
-          <select id="sqCurVerbSel">${['installed','repaired','replaced','assembled','adjusted','set up'].map(v=>`<option${v===svcVerb?' selected':''}>${v}</option>`).join('')}</select>
-        </span>`;
-             if (answeredMods.length > 0) {
-                 adlibHtml += `<span class="aw"> · </span>`;
-                 answeredMods.forEach((mod, i) => {
-                     const label = answers[mod.moduleKey];
-                     if (i > 0) adlibHtml += `<span class="aw"> and </span>`;
-                     adlibHtml += `<span class="ans"><i class="ti ti-check" style="font-size:.62rem"></i>${label.length>26?label.slice(0,24)+'…':label}</span>`;
-                 });
-             }
-             if (activeCons.length > 0) {
-                 adlibHtml += `<span class="aw"> · </span>`;
-                 activeCons.slice(0, 3).forEach(tid => {
-                     adlibHtml += `<span class="cond" data-tid="${tid}">${sqTagLabel(tags[tid],tid)}<i class="ti ti-x" style="font-size:.6rem;margin-left:3px;opacity:.55"></i></span>`;
-                 });
-             }
-             adlibHtml += `</div>`;
-
-             const sumHtml = `<div class="sq-ic-summary">
-        <div class="sq-ic-sum-hdr">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/></svg>
-          Summary of request
-        </div>
-        <div class="sq-ic-qty">
-          <button class="sq-ic-qty-btn" id="sqCurQtyDec">−</button>
-          <span class="sq-ic-qty-val" id="sqCurQtyVal">${S.qty}</span>
-          <button class="sq-ic-qty-btn" id="sqCurQtyInc">+</button>
-          <span class="sq-ic-qty-lbl">${qtyNoun}${S.qty!==1?'s':''}</span>
-        </div>
-        ${adlibHtml}
-        <div class="sq-ic-cta">
-          <button class="sq-ic-est ${ready?'ready':'locked'}" id="sqCurEstBtn" ${ready?'':'disabled'}>
-            ${ready
-              // v9.5.8 FIX: was `livePrice * S.qty`. livePrice is now
-              // computeUnifiedQuote's own laborEstimate, which already
-              // applies qty internally (qtyMultiplier) -- multiplying by
-              // S.qty again here would double-apply it (qty=2 would 4x
-              // the price instead of 2x). Found while fixing the price
-              // this button's own live-preview mismatched -- same root
-              // cause, same fix (use the real function's real qty
-              // handling instead of a second, separate one).
-              ? `<i class="ti ti-calculator"></i> Review Estimate — $${livePrice}`
-              : remaining > 0
-                ? `<span style="font-size:.82rem">Answer ${remaining} more question${remaining!==1?'s':''} to continue</span>`
-                : `<span style="font-size:.82rem">Add more detail in the notes to continue</span>`}
-          </button>
-          <button class="sq-ic-back" id="sqCurBackBtn">← Back</button>
-        </div>
-        ${disclaimer ? `<p style="font-size:.68rem;color:#9ca3af;margin-top:10px;line-height:1.4">${disclaimer}</p>` : ''}
-      </div>`;
-             card.innerHTML += sumHtml;
-             sb3.appendChild(card);
-
-             // ── WIRE EVENTS ──────────────────────────────────────────────
-
-             // Question buttons — feed S.answers + apply tag effects
-             card.querySelectorAll('.sq-ic-btn[data-mod]').forEach(btn => {
-                 btn.addEventListener('click', () => {
-                     S.answers[btn.dataset.mod] = btn.dataset.label;
-                     const mod = realMods.find(m => m.moduleKey === btn.dataset.mod);
-                     const resp = (mod?.client_response || []).find(r => r.label === btn.dataset.label);
-                     // complexity_override: update session if response escalates/de-escalates
-                     const _respOverride = resp?.complexity_override ?? resp?.effects?.complexity_override;
-                     if (_respOverride && S.intent) {
-                         const TIER = {
-                             routine: 0,
-                             skilled: 1,
-                             specialized: 2
-                         };
-                         const cur = TIER[S.intent._exactTier || 'skilled'] || 1;
-                         const nxt = TIER[_respOverride] || 1;
-                         if (nxt > cur) S.intent._exactTier = _respOverride;
-                     }
-                     // Apply response tags to detTagIds
-                     (resp?.tags || []).forEach(tagRef => {
-                         const tid = typeof tagRef === 'string' ? tagRef :
-                             (tagRef?.$ref ? '#' + tagRef.$ref.split('/').pop().replace(/^#/, '') : null);
-                         if (tid && tags[tid] && !S.detTagIds.includes(tid) && !S.manTagIds.includes(tid))
-                             S.detTagIds.push(tid);
-                     });
-                     render();
-                 });
-             });
-
-             // Constraint chips
-             card.querySelectorAll('.sq-ic-chip[data-tid]').forEach(chip => {
-                 chip.addEventListener('click', () => {
-                     const tid = chip.dataset.tid;
-                     if (chip.classList.contains('sel')) {
-                         S.manTagIds = S.manTagIds.filter(x => x !== tid);
-                         S.detTagIds = S.detTagIds.filter(x => x !== tid);
-                         S.userTagIds = S.userTagIds.filter(x => x !== tid);
-                     } else {
-                         S.negatedTagIds = S.negatedTagIds.filter(x => x !== tid);
-                         (tags[tid]?.mutually_exclusive || []).forEach(sib => {
-                             S.manTagIds = S.manTagIds.filter(x => x !== sib);
-                             S.detTagIds = S.detTagIds.filter(x => x !== sib);
-                             S.userTagIds = S.userTagIds.filter(x => x !== sib);
-                         });
-                         if (!S.manTagIds.includes(tid)) S.manTagIds.push(tid);
-                         if (!S.userTagIds.includes(tid)) S.userTagIds.push(tid);
-                         enforceRequires(tid);
-                     }
-                     render();
-                 });
-             });
-
-             // NLP row chip removal — user removes a detected tag
-             card.querySelectorAll('.sq-ic-nlp-chip.pos[data-tid]').forEach(el => {
-                 el.addEventListener('click', () => {
-                     const tid = el.dataset.tid;
-                     S.manTagIds = S.manTagIds.filter(x => x !== tid);
-                     S.detTagIds = S.detTagIds.filter(x => x !== tid);
-                     S.userTagIds = (S.userTagIds || []).filter(x => x !== tid);
-                     render();
-                 });
-             });
-
-             // Adlib cond chip removal
-             card.querySelectorAll('.sq-ic-adlib .cond[data-tid]').forEach(el => {
-                 el.addEventListener('click', () => {
-                     const tid = el.dataset.tid;
-                     S.manTagIds = S.manTagIds.filter(x => x !== tid);
-                     S.detTagIds = S.detTagIds.filter(x => x !== tid);
-                     S.userTagIds = S.userTagIds.filter(x => x !== tid);
-                     render();
-                 });
-             });
-
-             // Notes: immediate state update, debounced NLP + re-render.
-             // The slowness came from calling render() on every keystroke —
-             // re-rendering the full intake card (questions, confidence,
-             // adlib, price) is expensive. Now: S._jobNotes updates
-             // immediately (user sees their text at native speed), NLP
-             // suggestion detection + card re-render are debounced 400ms
-             // (fires only after typing pauses, not during every character).
-             const ta = card.querySelector('.sq-ic-notes');
-             let _notesTid;
-             if (ta) ta.addEventListener('input', () => {
-                 S._jobNotes = ta.value; // immediate — no lag on text entry
-                 clearTimeout(_notesTid);
-                 _notesTid = setTimeout(() => {
-                     if (ta.value.length > 5) {
-                         const nlp = detectTagsNLP(ta.value);
-                         nlp.found.forEach(tid => {
-                             if (tagValidForCategory(tid, catId, groupId, svc?.id) &&
-                                 !S.detTagIds.includes(tid) &&
-                                 !S.manTagIds.includes(tid) &&
-                                 !S.negatedTagIds.includes(tid) &&
-                                 !(S._suggestedTagIds || []).includes(tid))
-                                 (S._suggestedTagIds = S._suggestedTagIds || []).push(tid);
-                         });
-                     }
-                     // v9.6 FIX: a real, confirmed bug -- the debounce
-                     // above only reduced how OFTEN this problem hit,
-                     // it never actually fixed it. render() fully
-                     // rebuilds the intake card's DOM, which destroys
-                     // and recreates this very textarea -- the
-                     // browser's focus was on the OLD element, which
-                     // no longer exists once render() returns,
-                     // dropping focus every single time the customer
-                     // pauses mid-thought while writing a longer note
-                     // (confirmed directly against a real, user
-                     // -reported trace: 39 near-identical
-                     // computeUnifiedQuote calls over ~3 minutes, one
-                     // per debounced pause while writing one long
-                     // note). Notes genuinely don't affect price,
-                     // questions, or confidence -- only the suggested
-                     // -tags display actually needs this re-render --
-                     // so rather than restructure render() itself,
-                     // save this field's real focus/cursor state
-                     // first and restore it to the new element render()
-                     // creates, immediately after.
-                     const _wasFocused = document.activeElement === ta;
-                     const _selStart = ta.selectionStart,
-                         _selEnd = ta.selectionEnd;
-                     render(); // full re-render only after 400ms pause
-                     if (_wasFocused) {
-                         const _newTa = card.querySelector('.sq-ic-notes');
-                         if (_newTa) {
-                             _newTa.focus();
-                             try {
-                                 _newTa.setSelectionRange(_selStart, _selEnd);
-                             } catch (e) {
-                                 /* best-effort only */
-                             }
-                         }
-                     }
-                 }, 400);
-             });
-
-             // Qty stepper
-             card.querySelector('#sqCurQtyDec')?.addEventListener('click', () => {
-                 S.qty = Math.max(1, S.qty - 1);
-                 render();
-             });
-             card.querySelector('#sqCurQtyInc')?.addEventListener('click', () => {
-                 S.qty = Math.min(99, S.qty + 1);
-                 render();
-             });
-             card.querySelector('#sqCurQtySel')?.addEventListener('change', e => {
-                 S.qty = parseInt(e.target.value) || 1;
-                 render();
-             });
-
-             // Estimate CTA — uses checkout_states to determine button label
-             const estBtn = card.querySelector('#sqCurEstBtn');
-             if (estBtn && ready) {
-                 estBtn.addEventListener('click', () => {
-                     S._objectNoun = svcName;
-                     S.adlibConfirmed = false;
-                     // Sync hidden elements
-                     const hs = document.getElementById('sqAdlibSentence');
-                     if (hs) hs.innerHTML = card.querySelector('#sqCuratedAdlib')?.innerHTML || '';
-                     document.getElementById('sqQtyV').textContent = S.qty;
-                     sqConfirmAdlib();
-                 });
-             }
-
-             // Back button
-             card.querySelector('#sqCurBackBtn')?.addEventListener('click', sqRestart);
-             if (typeof _traceDomSnapshot === 'function') _traceDomSnapshot('render: curated card settled');
-         };
-
-         window._sqCuratedRender = render;
-         render();
-     }
 
      function sqBuildStep2() {
          const flow = document.getElementById('sqStepFlow');
@@ -14345,37 +13466,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
 
      function sqToggleTag(el, tid) {
          if (el.classList.contains('locked')) return;
-         const tag = (DB.smart_tags || {})[tid] || {};
-         const mutuallyExclusive = tag.mutually_exclusive || [];
-
-         if (el.classList.contains('sel')) {
-             // ── DE-SELECT: remove from all active sets ─────────────────
-             S.manTagIds = S.manTagIds.filter(x => x !== tid);
-             S.detTagIds = S.detTagIds.filter(x => x !== tid);
-             S.userTagIds = (S.userTagIds || []).filter(x => x !== tid);
-             // Do NOT re-add to negatedTagIds — user explicitly removed it → neutral state
-         } else {
-             // ── SELECT: user is explicitly choosing this tag ────────────
-
-             // 1. Remove from negatedTagIds — user is overriding any NLP negation
-             S.negatedTagIds = S.negatedTagIds.filter(x => x !== tid);
-
-             // 2. Remove mutually exclusive siblings from ALL state arrays
-             //    and also clear their negation (can't show "not heavy" if user picked "very heavy")
-             mutuallyExclusive.forEach(sibId => {
-                 S.manTagIds = S.manTagIds.filter(x => x !== sibId);
-                 S.detTagIds = S.detTagIds.filter(x => x !== sibId);
-                 S.userTagIds = (S.userTagIds || []).filter(x => x !== sibId);
-                 S.negatedTagIds = S.negatedTagIds.filter(x => x !== sibId);
-             });
-
-             // 3. Add to active sets
-             if (!S.manTagIds.includes(tid)) S.manTagIds.push(tid);
-             if (!(S.userTagIds || []).includes(tid)) {
-                 S.userTagIds = S.userTagIds || [];
-                 S.userTagIds.push(tid); // explicit user tap → 100% confidence
-             }
-         }
+         // The selection rules (mutual exclusion, SSOT `requires`) are Logic -- toggleTagState; this handler only wires the tap to it.
+         toggleTagState(S, tid, el.classList.contains('sel'), DB);
          sqBuildStep3();
      }
 
@@ -14600,8 +13692,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
 
          // T64: orchestrator-native tag-affirmation handlers, following
          // handleIntakeAnswer's exact, established re-invocation pattern
-         // immediately above. Real port of sqAffirmYes/sqAffirmNo's core
-         // behavior -- the negation-pivot branch (sqAffirmYes's other real
+         // immediately above. Real port of a legacy affirm handlers's core
+         // behavior -- the negation-pivot branch (a legacy affirm handler's other real
          // case) is deliberately not included here, matching this
          // mechanism's own documented, narrower scope (see the
          // has_unaffirmed_detected_tags rule's own _note in btnyc.json).
@@ -14611,10 +13703,10 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
                  return;
              }
              const ctx = window._currentContext;
-             // T64 follow-up: real port of sqAffirmYes's own pivot branch --
+             // T64 follow-up: real port of a legacy affirm handler's own pivot branch --
              // when a negation pivot is pending, confirming it accepts the
              // pivot specifically, distinct from affirming a plain detected-tag
-             // set. Matches sqAffirmYes's exact real behavior: only one of the
+             // set. Matches a legacy affirm handler's exact real behavior: only one of the
              // two fields is set per click, whichever this specific card was
              // actually confirming.
              if (window._currentRoute?.negationOverride) {
@@ -14629,7 +13721,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          };
 
          window.orchAffirmNo = function() {
-             // Real port of sqAffirmNo's actual behavior: let the customer
+             // Real port of a legacy affirm handler's actual behavior: let the customer
              // retype rather than force a specific correction. Clears the
              // stored route/context so the next free-text submission starts
              // genuinely fresh, not layered on a rejected prior resolution.
@@ -14650,7 +13742,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              }
          };
 
-         // T66 follow-up: real port of sqAffirmRemoveTag. The legacy version
+         // T66 follow-up: real port of a legacy affirm handler. The legacy version
          // does an in-place DOM patch (remove the chip element, update the
          // price text directly) rather than a full re-render -- deliberately
          // not replicated here; this reuses the same full re-render pattern
@@ -14679,7 +13771,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              renderRoute(newRoute);
          };
 
-         // T66 follow-up: real port of sqAffirmSelectService, for the new
+         // T66 follow-up: real port of a legacy affirm handler, for the new
          // sibling-service recommendation cards. Deliberately reuses
          // prefillSmartQuoteFromService directly rather than building a new,
          // orchestrator-native re-selection path -- that function already,
@@ -14719,6 +13811,237 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
                  }
              }
          });
+     }
+
+     function orchChooseDivergencePath(path) {
+         // T135+ (PHASE_PLAN.md Phase 2, Stage C, call site 2). Orchestrator
+         // equivalent of the legacy divergence handler -- same two paths, same
+         // shared S._divergencePath flag (this one piece of transient
+         // UI-interaction state, "has the customer already answered this
+         // specific fork," is reused across both renderers deliberately;
+         // it is not a pricing or routing decision, so sharing it here
+         // does not reintroduce the business-logic-in-renderers problem
+         // Stage C exists to remove). Requires S._lastRoute to have been
+         // set by the caller (renderCuratedCardFromRoute already does
+         // this on every render) so this function knows which entity/
+         // category to re-resolve against.
+         if (path !== 'remote' && path !== 'onsite') return; // defensive: unknown path, no-op
+         S._divergencePath = path;
+         const prevRoute = S._lastRoute;
+         if (!prevRoute || !prevRoute.entity) return; // defensive: nothing to re-render against
+
+         if (path === 'remote') {
+               // Logic owns the composition (orch_apply_remote_divergence, orchestrator).
+               // This handler records the choice, keeps the route, and hands it to the renderer.
+               const newRoute = orch_apply_remote_divergence(prevRoute, DB);
+             sqRenderCuratedCard(newRoute, S._lastContainerId);
+             return;
+         }
+         // Path B (On-Site Pro): nothing new to build -- re-render the
+         // same route; the divergence-choice branch below is skipped
+         // now that S._divergencePath is set, falling through to the
+         // normal, existing diagnostic quote panel.
+         sqRenderCuratedCard(prevRoute, S._lastContainerId);
+     }
+
+     // sqRenderCuratedCard -- GLUE. The one place that records "the route currently on screen" (S._lastRoute /
+     // S._lastContainerId, which the divergence handler reads) and hands the renderer the resolved state it needs.
+     // renderCuratedCardFromRoute itself is a renderer: it reads and writes no session state.
+     function sqRenderCuratedCard(route, containerId) {
+         S._lastRoute = route;
+         S._lastContainerId = containerId || 'intakeQuestionsContainer';
+         // ui_config.affects_price_icon is authored as a bare Tabler suffix ("ti-currency-dollar"); normalise to the "ti ti-..." form _iconContent takes.
+         const _ap = DB.ui_config?.affects_price_icon;
+         const affectsPriceIcon = _ap ? (_ap.startsWith('ti ') ? _ap : 'ti ' + _ap) : null;
+         renderCuratedCardFromRoute(route, containerId, { divergencePath: S._divergencePath, affectsPriceIcon });
+     }
+
+     function _sqSwitchToRecommended(sku, categoryId) {
+         const svc = (DB.services || []).find(sv => sv.id === sku);
+         if (!svc) return;
+         const catId = categoryId || svc.ui_taxonomy?.category_id || S.intent?.category || null;
+         prefillSmartQuoteFromService(svc, catId);
+     }
+
+     function sqHandleStep2() {
+         if (!S.stype) return;
+         sqMarkDone(2, S.stype);
+         sqBuildStep3();
+         sqMarkDone(3, S.stype);
+
+     }
+
+     function sqAddToCart() {
+         if (typeof _trace === 'function') _trace('ui_renderer', 'sqAddToCart: invoked', {
+             serviceId: S.intent?.key || null,
+             qty: S.qty,
+             answersCount: Object.keys(S.answers || {}).length
+         });
+         if (!cartLimiter.isAllowed('add')) {
+             toast('Adding too fast.', 'error');
+             return;
+         }
+         const q = computeQuoteFromState(S);
+         // Divergence Resolution: when the customer booked via the
+         // On-Site Pro path (the legacy divergence handler('onsite')), record
+         // the real credit policy + fee on the cart entry itself -- this
+         // is currently disclosure/ops record-keeping, not an automated
+         // credit-at-invoicing mechanism (see global_rules.
+         // divergence_resolution.credit_policy's own schema
+         // description), but it's a real, genuine consumer of the
+         // field, not just business copy nobody reads. v9.5.1: credit_policy
+         // is now authored as a full, real sentence rather than a short
+         // machine key -- appended as its own sentence rather than after
+         // a "credit policy: " label, so this reads correctly either way.
+         const _divergenceNote = (S._divergencePath === 'onsite' && q.isDiagnostic) ?
+             '\n' + onsiteDiagnosticTerms(q).bookingNote :
+             '';
+         addToCart({
+             id: 'sq-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+             serviceId: S.intent?.key || 'smartquote',
+             category_id: S.intent?.category || 'other',
+             name: (S.intent?.label || 'Service') + (S.intent?.group && S.intent.group !== S.intent.label ? ' – ' + S.intent.group : ''),
+             price: '$' + q.laborCalc,
+             icon: '⚡',
+             detail: S.desc?.substring(0, 80) || 'SmartQuote estimate',
+             notes: 'SmartQuote · ' + (S.desc || '') + (q.activeLabels.length ? '\nConditions: ' + q.activeLabels.join(', ') : '') +
+                 (S._location ? '\nLocation: ' + S._location : '') + (S._objectNoun ? '\nItem: ' + S._objectNoun : '') +
+                 _divergenceNote,
+             materialsNotIncluded: true,
+             materialsEstimateRange: [0, 0]
+         });
+         toast((S.intent?.label || 'Service') + ' added to request!', 'success');
+         sqRestart();
+         if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = 'block';
+         DOM.serviceRequestSummary?.scrollIntoView({
+             behavior: 'smooth',
+             block: 'start'
+         });
+         renderCart();
+     }
+
+     function sqRestart() {
+         // Full reset — EVERY field either S or BLD can ever carry must be
+         // listed here explicitly. This is the root fix for the cart-collision
+         // bug: several fields (_confidenceStrategy, _escalatedBy, _forceModules,
+         // _fromBuilder, _selfQuoteSvc on S; _groupId, _keyword, _fromOtherTile,
+         // _contextLabel, _objectLabel on BLD) were being SET by various entry
+         // points (Other-tile prefill, builder, free text) but never CLEARED
+         // here, so they silently carried over into the next SmartQuote session
+         // and could leak into a new cart entry's notes/pricing/routing.
+         S = {
+             qty: 1,
+             intent: null,
+             stype: null,
+             detTagIds: [],
+             manTagIds: [],
+             negatedTagIds: [],
+             userTagIds: [],
+             desc: '',
+             adlibConfirmed: false,
+             _suggestedTagIds: [],
+             _svc: null,
+             answers: {},
+             _curatedMode: false,
+             _tagsAffirmed: false,
+             _affirmedTagSet: null,
+             _divergencePath: null,
+             _negationPivotAccepted: false,
+             _pendingPivotInfo: null,
+             _jobNotes: '',
+             _objectNoun: null,
+             _location: null,
+             _sizeHint: null,
+             _notes: null,
+             _confidenceStrategy: null,
+             _escalatedBy: null,
+             _forceModules: null,
+             _fromBuilder: false,
+             _selfQuoteSvc: null,
+             _isOtherTileEntry: false,
+             _autoSelectedFrom: null,
+             _nlpSeedDesc: null,
+             _nlpSeedObject: null
+         };
+         BLD = {
+             step: 0,
+             action: null,
+             object: null,
+             specific: null,
+             condition: null,
+             location: null,
+             qty: 1,
+             _stype: null,
+             _cat: null,
+             _groupId: null,
+             _keyword: null,
+             _fromOtherTile: false,
+             _contextLabel: null,
+             _objectLabel: null,
+             _allowedTypes: null
+         };
+         // Everything below touches only the DOM -- the view reset is a renderer (UIRenderer.sqResetView).
+         sqResetView();
+     }
+
+     function sqOpenBuilderPreseeded({
+         action,
+         groupId,
+         categoryLabel,
+         allowedTypes
+     }) {
+         sqShowBuilderView();
+const groupObj = groupId ? groupMap.get(groupId) : null;
+         // Charter (Structural availability): a fact that is structural to the
+         // job -- a stove is always in the kitchen -- is never asked. Groups
+         // declare typical_location in the SSOT; the builder's skip-forward
+         // logic passes any pre-seeded (non-null) step. [v9.5 fix -- same
+         // lost-duplicate story as above.]
+         const typicalLocation = groupObj?.typical_location || null;
+
+         BLD = {
+             step: 0,
+             action,
+             // Group is already known from navigation -- seed it directly as the
+             // object, skipping the redundant "what is it?" step.
+             object: groupId || null,
+             specific: null,
+             condition: null,
+             location: typicalLocation,
+             // qty MUST be null (not 1): the skip-forward logic treats any
+             // non-null field as answered, which silently skipped the qty step
+             // (PENDING_DECISIONS #21, T118). sqBuilderFinish defaults it to 1.
+             qty: null,
+             _stype: S.stype || null,
+             _cat: S.intent?.category || null,
+             // set directly: this pre-seed bypasses the chip tap that normally
+             // sets them (see sqBuilderChoose)
+             _groupId: groupId || null,
+             _keyword: groupId ? bldGroupToKeyword(groupId, S.intent?.category) : null,
+             _fromOtherTile: true,
+             _contextLabel: categoryLabel || null,
+             _objectLabel: groupObj?.display_name || null,
+             // narrows the action step when the tile carried several types
+             _allowedTypes: allowedTypes || null
+         };
+
+         const allSteps = sqBuilderGetSteps();
+         for (let i = 0; i < allSteps.length; i++) {
+             const sid = allSteps[i];
+             if (BLD[sid] !== null && BLD[sid] !== undefined) BLD.step = i + 1;
+             else break;
+         }
+         if (BLD.step >= allSteps.length) BLD.step = allSteps.length - 1;
+
+         sqBuilderRender();
+     }
+
+     // sqRenderQuote -- GLUE. Builds the quote view-model (Logic) for the current session and hands it to the renderer.
+     function sqRenderQuote() {
+         const model = buildQuotePanelModel(S, DB);
+         const out = document.getElementById('sqQuoteOut');
+         if (!out) return;
+         renderQuotePanel(out, model);
      }
  </script>
 
@@ -15787,8 +15110,8 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
 
              // ─── 10. EXPOSE SMARQUOTE FUNCTIONS (global for inline onclick) ─
              window.sqAnalyze = sqAnalyze;
-             // T119: sqAffirmYes/sqAffirmNo/sqAffirmRemoveTag/sqAffirmSelectService/
-             // renderTagAffirmationCard deleted (confirmed genuinely unreachable
+             // T119: a legacy affirm handlers/
+             // the legacy affirmation-card renderer deleted (confirmed genuinely unreachable
              // since T70; these 5 window assignments would otherwise throw
              // ReferenceError now that the definitions are gone).
              window.sqToggleBuilder = sqToggleBuilder;
@@ -15847,7 +15170,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
                          renderSelfQuoteFromRoute(route);
                          break;
                      case 'curated_card':
-                         renderCuratedCardFromRoute(route);
+                         sqRenderCuratedCard(route);
                          if (summaryContainer) summaryContainer.style.display = 'block';
                          break;
                      case 'tag_affirmation':
@@ -15883,11 +15206,11 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
      console-debugging code ("Paste this into the console or include as a
      script"), not application source: they caused a real HTML parse error
      (a literal opening script element embedded inside JS, missing its own
-     closing tag), and monkey-patched sqBuildCuratedIntake with a ~700-line
+     closing tag), and monkey-patched the legacy curated-intake builder with a ~700-line
      verbatim copy of the real function that doesn't even achieve its own
      stated goal (the rAF throttling isn't wired to the actual chip-click
      handlers, only the initial render). The real, correct, tested
-     sqBuildCuratedIntake earlier in this file was never the problem. -->
+     the legacy curated-intake builder earlier in this file was never the problem. -->
 
  <script>
      if ('serviceWorker' in navigator) {
