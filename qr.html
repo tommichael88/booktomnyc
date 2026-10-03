@@ -3479,15 +3479,17 @@ function computeUnifiedQuote(ctx) {
       * through that session.)
       *
       * T143/T144 UPDATE: the stop-the-line layer migration changed qr.html substantially across two ledger entries; this value follows the newest
-      * (T144), which is what verify_qr_build_version_freshness.js reads from TIMELINE.md. Bumped to 'T144'. (The entries are numbered T143/T144
-      * because trace.js carries its own revisions T137-T142; renumber and re-bump if the live ledger already uses T143/T144.)
+      * (T144), which is what verify_qr_build_version_freshness.js reads from TIMELINE.md. Bumped to 'T144'. (Numbered T143/T144
+      * because trace.js carries its own revisions T137-T142.)
+      *
+      * T145 UPDATE: answer chips work on every entry path (the route carries its context; orch_apply_answer). Bumped to 'T145'.
       */
 
      // QR_BUILD_VERSION stays live in THIS file, not trace.js: the component-layer
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T144';
+     const QR_BUILD_VERSION = 'T145';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -5777,6 +5779,9 @@ function computeUnifiedQuote(ctx) {
              // and recompute calls got [] -- tags had no effect on pricing
              // in any path that went through the UI renderer.
              activeTags: activeTagIds,
+             // T145: the route carries the context that produced it (a copy -- its answers are an own object), so ANY entry path can answer a question
+             // on it: orch_apply_answer is route in, route out, and nothing has to hold "the current context" in a window global.
+             context: Object.assign({}, context, { answers: Object.assign({}, context.answers || {}) }),
              // T64: the raw, NLP-detected set specifically (not merged with
              // manuallyToggledTagIds like activeTags is) -- renderTagAffirmationFromRoute
              // needs exactly this set, matching sqAnalyze's own real use of
@@ -6505,44 +6510,50 @@ function computeUnifiedQuote(ctx) {
      // flag, calls this, and hands the result to the renderer. Split out of the former
      // UIRenderer function of the same name, text preserved (R-SYSTEM-LAYERS: one role per function).
      // ---------------------------------------------------------------------
+     // orch_splice_remote_deep_dive -- LOGIC. Appends the entity's own authored remote_deep_dive_modules to a route's intake chain and marks the
+     // route as diverged ('remote'). Confirmed directly (computeUnifiedQuote's own remoteDeepDiveModules, already filtered to real, existing
+     // intake_modules) rather than re-deriving the filter logic a second time. A post-processing step, not a change to orch_compose_intake_chain
+     // itself, so every existing caller/test of that shared function is unaffected. Shared by the fork (orch_apply_remote_divergence) and by
+     // answering a question afterwards (orch_apply_answer), so the extra questions are never silently dropped by a re-run.
+     function orch_splice_remote_deep_dive(route, DB) {
+         const extraModuleKeys = (route.quote?.remoteDeepDiveModules || []);
+         const existingKeys = new Set((route.intakeChain || []).map(m => m.moduleKey || m.module));
+         extraModuleKeys.forEach(mk => {
+             if (!existingKeys.has(mk) && DB.intake_modules?.[mk]) {
+                 // Full module definition, not a bare reference -- confirmed directly that real intakeChain entries carry
+                 // question/client_response/type inline (this is how orch_compose_intake_chain's own output is shaped), and the
+                 // renderer's own responses.length check silently (and correctly, given a bare stub) skips anything without them.
+                 route.intakeChain = [...(route.intakeChain || []), { ...DB.intake_modules[mk], moduleKey: mk, then: {} }];
+             }
+         });
+         route.divergenceApplied = 'remote';
+         return route;
+     }
+
      function orch_apply_remote_divergence(prevRoute, DB) {
-         // Re-run the real, canonical composition, then splice the
-         // entity's own authored remote_deep_dive_modules onto the
-         // resulting chain -- confirmed directly (computeUnifiedQuote's
-         // own remoteDeepDiveModules, already filtered to real,
-         // existing intake_modules) rather than re-deriving the
-         // filter logic a second time. Post-processing step, not a
-         // change to orch_compose_intake_chain itself, so every
-         // existing caller/test of that shared function is unaffected.
+         // Re-run the real, canonical composition, then splice the entity's own authored remote_deep_dive_modules onto the resulting chain
+         // (orch_splice_remote_deep_dive).
          const svc = prevRoute.entity;
          const category_id = prevRoute.context?.category_id || svc.ui_taxonomy?.category_id;
          const ctx = collectBookingContext_catalog(svc, category_id);
-         // Carry the customer's already-given answers forward -- these
-         // are exactly what got them to the diagnostic dead-end that
-         // triggered this fork in the first place. Without this, the
-         // newly-appended remote_deep_dive module re-competes with
-         // already-answered questions for the same ceiling slot
-         // instead of being the one, new, unanswered question it
-         // should be (confirmed directly: this was a real bug, not a
-         // hypothetical -- attempted_fix silently never rendered
-         // until this fix).
+         // Carry the customer's already-given answers forward -- these are exactly what got them to the diagnostic dead-end that triggered
+         // this fork in the first place. Without this, the newly-appended remote_deep_dive module re-competes with already-answered
+         // questions for the same ceiling slot instead of being the one, new, unanswered question it should be (confirmed directly: this
+         // was a real bug, not a hypothetical -- attempted_fix silently never rendered until this fix).
          ctx.answers = { ...(prevRoute.answers || {}) };
-         const newRoute = executeWorkflow(ctx, DB);
-         const extraModuleKeys = (newRoute.quote?.remoteDeepDiveModules || []);
-         const existingKeys = new Set((newRoute.intakeChain || []).map(m => m.moduleKey || m.module));
-         extraModuleKeys.forEach(mk => {
-             if (!existingKeys.has(mk) && DB.intake_modules?.[mk]) {
-                 // Full module definition, not a bare reference --
-                 // confirmed directly that real intakeChain entries
-                 // carry question/client_response/type inline (this
-                 // is how orch_compose_intake_chain's own output is
-                 // shaped), and the renderer's own responses.length
-                 // check silently (and correctly, given a bare stub)
-                 // skips anything without them.
-                 newRoute.intakeChain = [...(newRoute.intakeChain || []), { ...DB.intake_modules[mk], moduleKey: mk, then: {} }];
-             }
-         });
-         return newRoute;
+         return orch_splice_remote_deep_dive(executeWorkflow(ctx, DB), DB);
+     }
+
+     // orch_apply_answer -- LOGIC. The customer answered one question on a route: route in, route out. The route carries the context that produced
+     // it (route.context), so this serves EVERY entry path -- catalog tap, other tile, free text -- with one function and no global holding "the
+     // current context". The answer is carried with everything already given; a route that was diverged to the remote deep-dive keeps its extra
+     // questions (orch_splice_remote_deep_dive), so answering one never makes the next disappear. The previous route is never mutated.
+     // A route that does not carry its context (the catastrophic fallback) cannot be answered: it is returned unchanged.
+     function orch_apply_answer(prevRoute, moduleKey, label, DB) {
+         if (!prevRoute || !prevRoute.context) return prevRoute;
+         const ctx = Object.assign({}, prevRoute.context, { answers: Object.assign({}, prevRoute.context.answers || {}, { [moduleKey]: label }) });
+         const next = executeWorkflow(ctx, DB);
+         return prevRoute.divergenceApplied === 'remote' ? orch_splice_remote_deep_dive(next, DB) : next;
      }
 
      function buildOtherTilesForGroup(realServices, groupId, groupMap, DB) {
@@ -13663,31 +13674,19 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          // charter and Phase 7's own design documents describe. sqAnalyze
          // via the inline onclick is now the one, real handler.
 
-         // 8. ✨ NEW: Global handler for intake answers (called from curated card chips) ✨
+         // 8. Answer handler (called from the curated-card chips). The route on screen carries the context that produced it, so ONE route-in /
+         // route-out Logic function (orch_apply_answer) answers on every gateway, and the card is re-rendered where it lives (S._lastContainerId).
+         // Before T145 this read window._currentRoute / window._currentContext, which only the free-text path ever set: on a catalog tap the chips
+         // selected nothing and recorded nothing. (The affirmation handlers below still use those globals -- PENDING_DECISIONS #92.)
          window.handleIntakeAnswer = function(moduleKey, label) {
-             // We need to update the current route's answers and re-run the orchestrator.
-             // We'll store the current route in a global variable for simplicity.
-             if (window._currentRoute) {
-                 const route = window._currentRoute;
-                 route.answers[moduleKey] = label;
-                 // Re-run execution with updated answers? Actually the orchestrator's workflow
-                 // is designed to be run once. For dynamic updates, we need to re-collect.
-                 // Easiest: rebuild context from the route and re-run.
-                 // But since we have the original context, we can store it.
-                 // For simplicity, we'll assume we stored the original context in a global.
-                 if (window._currentContext) {
-                     const ctx = window._currentContext;
-                     // Update answers in context
-                     ctx.answers = ctx.answers || {};
-                     ctx.answers[moduleKey] = label;
-                     const newRoute = executeWorkflow(ctx, DB);
-                     window._currentRoute = newRoute;
-                     window._currentContext = ctx;
-                     renderRoute(newRoute);
-                 } else {
-                     toast('Cannot update answers – context lost.', 'error');
-                 }
+             const prev = S._lastRoute;
+             if (!prev || !prev.context) {
+                 toast('Cannot update answers - context lost.', 'error');
+                 return;
              }
+             const next = orch_apply_answer(prev, moduleKey, label, DB);
+             if (next.uiTemplate === 'curated_card') sqRenderCuratedCard(next, S._lastContainerId);
+             else renderRoute(next); // the dispatcher owns a change of template
          };
 
          // T64: orchestrator-native tag-affirmation handlers, following
