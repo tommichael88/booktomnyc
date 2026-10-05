@@ -8632,28 +8632,15 @@ info.appendChild(create('div', {
      }
 
      function enterFocusedMode(hideTextBar = false) {
-    if (typeof _traceFn === 'function') _traceFn('enterFocusedMode', {
-        hideTextBar
-    });
-    const card = document.querySelector('.main-card-schedule-service');
-    if (!card) return;
-
-    // ── PORTAL TO <body> ──────────────────────────────────────────────
-    // backdrop-filter / filter / transform / will-change anywhere in the
-    // ancestor chain becomes the containing block for position:fixed on
-    // real mobile browsers, so the "full-screen" overlay renders as a
-    // small panel in the corner instead. Reparenting directly under
-    // <body> guarantees the initial containing block (viewport) is used,
-    // regardless of what any ancestor CSS does.
-    if (!card._focusPortaled) {
-        card._focusOrigParent = card.parentNode;
-        card._focusOrigNext   = card.nextSibling;
-        document.body.appendChild(card);
-        card._focusPortaled = true;
-    }
-    // ─────────────────────────────────────────────────────────────────
-
-    card.classList.add('focused-mode');
+         if (typeof _traceFn === 'function') _traceFn('enterFocusedMode', {
+             hideTextBar
+         });
+         const card = document.querySelector('.main-card-schedule-service');
+         if (!card) return;
+         card.classList.add('focused-mode');
+         document.body.classList.add('modal-active');
+         ensureFocusedModeInner(card);
+         const inner = card.querySelector('.focused-mode-inner');
          if (inner) inner.scrollTop = 0;
          // Explicitly hide viewport-wasting elements (CSS covers them too,
          // but JS inline display overrides CSS so we set important here).
@@ -8710,31 +8697,17 @@ info.appendChild(create('div', {
          }
      }
 
-function exitFocusedMode() {
-    if (typeof _traceFn === 'function') _traceFn('exitFocusedMode');
-    const card = document.querySelector('.main-card-schedule-service');
-    if (!card) return;
-    card.classList.remove('focused-mode');
-    const inner = card.querySelector('.focused-mode-inner');
-    if (inner) {
-        Array.from(inner.children).forEach(c => card.insertBefore(c, inner));
-        inner.remove();
-    }
-    document.body.classList.remove('modal-active');
-
-    // ── UN-PORTAL: restore the card to its original slot ─────────────
-    if (card._focusPortaled) {
-        const parent = card._focusOrigParent;
-        const next   = card._focusOrigNext;
-        if (parent) {
-            if (next && next.parentNode === parent) parent.insertBefore(card, next);
-            else parent.appendChild(card);
-        }
-        card._focusPortaled = false;
-        card._focusOrigParent = null;
-        card._focusOrigNext   = null;
-    }
-    // ─────────────────────────────────────────────────────────────────
+     function exitFocusedMode() {
+         if (typeof _traceFn === 'function') _traceFn('exitFocusedMode');
+         const card = document.querySelector('.main-card-schedule-service');
+         if (!card) return;
+         card.classList.remove('focused-mode');
+         const inner = card.querySelector('.focused-mode-inner');
+         if (inner) {
+             Array.from(inner.children).forEach(c => card.insertBefore(c, inner));
+             inner.remove();
+         }
+         document.body.classList.remove('modal-active');
          // Restore elements hidden during focused mode
          const sqTB = document.getElementById('sqTextBar');
          if (sqTB) sqTB.style.removeProperty('display');
@@ -15557,4 +15530,3 @@ const groupObj = groupId ? groupMap.get(groupId) : null;
  </script> 
 </body>
 </html>
-
