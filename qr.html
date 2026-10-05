@@ -1018,16 +1018,10 @@ body.modal-active{overflow:hidden}
          return resolveQuantityUnits({ entity: resolveDynamicService(category, stype, groupId), entityType: 'dynamic', requestedQty });
      }
 
-     function resolveServiceBadge(fe, svc) {
-         // v9.6 FIX: added optional svc param -- fe alone (just the financial_engine
-         // sub-object) has no access to ui_taxonomy.group_id, so an archetype-inheriting
-         // service (checkout_state genuinely absent from fe) could never resolve its
-         // real, inherited value from here. When svc is provided, resolves via the
-         // canonical, archetype-aware resolver; falls back to the original raw read
-         // when it isn't (the synthetic-object call sites already pass an
-         // already-resolved checkout_state directly, so this fallback path is never
-         // actually exercised there).
-         const csKey = svc ? resolveServiceCheckoutStateKey(svc, null) : fe?.checkout_state;
+     function resolveServiceBadge(fe, csKey) {
+         // T150: takes the RESOLVED checkout-state key, not the entity. It used to take an optional svc and fall back to a raw read of fe.checkout_state, so one signature had two
+         // modes (an entity to resolve, or an already-resolved key smuggled in as a fake financial_engine). Callers now resolve first -- resolveServiceCheckoutStateKey for an entity,
+         // the quote's own checkoutStateKey for a quote -- and pass the key; fe supplies only the pricing-type fallback label.
          const fromCS = window.DB?.checkout_states?.[csKey]?.ui_badge_label;
          if (fromCS) return fromCS;
          const pt = (fe?.type || fe?.pricing_type || 'flat_rate').toLowerCase();
@@ -1035,15 +1029,9 @@ body.modal-active{overflow:hidden}
              '✅ Fixed price';
      }
 
-     function resolveServiceBadgeKey(fe, svc) {
-         // v9.6: wires in checkout_states.*.quote_badge_key -- a real, fully-authored
-         // machine-friendly counterpart to ui_badge_label (standard_flat_rate:"ok",
-         // diagnostic:"diag", project_based:"proj", database_summation:"asm"),
-         // ready to consume but never wired to anything. Used as a stable
-         // data-attribute on the badge element for CSS/analytics hooks that
-         // shouldn't depend on the human-readable label text.
-         // v9.6 FIX: same archetype-awareness gap and fix as resolveServiceBadge above.
-         const csKey = svc ? resolveServiceCheckoutStateKey(svc, null) : fe?.checkout_state;
+     function resolveServiceBadgeKey(csKey) {
+         // v9.6: wires in checkout_states.*.quote_badge_key -- the machine-friendly counterpart to ui_badge_label, used as a stable data-attribute on the badge element.
+         // T150: takes the RESOLVED checkout-state key (same change as resolveServiceBadge).
          return window.DB?.checkout_states?.[csKey]?.quote_badge_key || '';
      }
 
@@ -1450,19 +1438,19 @@ body.modal-active{overflow:hidden}
           //  startingPrice   -- the service's listed starting price, 0 when it has none.
           //  diagnosticPrice -- same, but a service with no listed price falls back to the SSOT-owned diagnostic rate
           //                     (service_types.Diagnostic.base_price). This replaces a hardcoded 85 that two renderers carried (R-SYSTEM-NODATA).
-          const startingPrice = fe.base_price || svc.base_price || 0;
+          const startingPrice = fe.base_price || 0;
           const diagnosticPrice = fe.base_price || DB.service_types?.Diagnostic?.base_price || 0;
           //  badge             -- the resolved display badge label (SSOT checkout_states / ui_config), so a card never has to read `fe`.
           //  isHourlyPricingType -- literally `fe.pricing_type === 'hourly'` (narrower than isHourly, which also accepts fe.type);
           //                       kept distinct because the card's historical behavior depended on that exact check.
-          const badge = resolveServiceBadge(fe, svc);
+          const csKey = resolveServiceCheckoutStateKey(svc, null).key; // the one resolution of this entity's checkout state; the badge and the diagnostic flag are read from it
+          const badge = resolveServiceBadge(fe, csKey);
           const isHourlyPricingType = fe.pricing_type === 'hourly';
-         const checkoutState = fe.checkout_state || 'standard_flat_rate';
          const chain = svc.intake_chain || [];
          const defaultTags = svc.default_tags || [];
          const requiresSiteVisit = defaultTags.some(t => t === '#site_visit_required');
          const isOther = defaultTags.some(t => t === '#adhoc' || t === '#manual_review');
-         const isDiagnostic = isDiagnosticService(fe, svc); // SSOT: checkout_state is badge authority
+         const isDiagnostic = isDiagnosticService(fe, csKey); // SSOT: checkout_state is badge authority
          const isProject = basePrice >= 150 || (svc.default_estimates?.disclaimer === 'project_based');
          const isHourly = fe.type === 'hourly' || fe.pricing_type === 'hourly';
          const chainLen = chain.length;
@@ -1480,7 +1468,6 @@ body.modal-active{overflow:hidden}
              diagnosticPrice,
              badge,
              isHourlyPricingType,
-             checkoutState,
              isDiagnostic,
              isProject,
              isHourly,
@@ -1505,9 +1492,16 @@ body.modal-active{overflow:hidden}
          const _isQtyMod = (m) => ['item_count', 'count', 'hybrid_qty', 'global_quantity'].includes(m.module) || (m.module === 'item_count_template' && _bypassIntake);
          const chainIsQtyOnly = chain.length === 0 || chain.every(_isQtyMod);
          const hasPricingData = (om.expected_minutes > 0) && om.complexity_tier && (svc.financial_engine?.base_price > 0);
-         const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(svc.financial_engine?.checkout_state);
+         const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(resolveServiceCheckoutStateKey(svc, null).key);
+         // T150: the card-tap path may only self-quote a service whose price the self-quote card can EXPRESS. The card shows ONE price for ONE unit and has no quantity control, so a service whose
+         // quantity moves its price (it has a quantity question and is not single-unit) keeps the guided builder, which captures the count. Before this rule that outcome was an accident of
+         // reading the raw checkout_state field (blind to archetype inheritance); making the classification inheritance-aware without it would have shown a one-bulb price to a customer with five
+         // bulbs. The orchestrator route does NOT apply this rule today (see PENDING_DECISIONS #108), so for such services the route and the card tap disagree by design until that is decided.
+         const _hasQtyQuestion = chain.some(m => ['item_count', 'count', 'hybrid_qty', 'global_quantity', 'item_count_template'].includes(m.module));
+         let _quantityIsFixed = true; // no quantity question: nothing the card cannot express
+         if (_hasQtyQuestion) _quantityIsFixed = resolveQuantityUnits({ entity: svc, entityType: 'service', requestedQty: 2 }).stance === 'single_unit'; // the resolver alone decides when there is one
          return {
-             isSelfQuoting: !!(hasPricingData && isFlatCheckout && chainIsQtyOnly),
+             isSelfQuoting: !!(hasPricingData && isFlatCheckout && chainIsQtyOnly && _quantityIsFixed),
              needsCuratedCardTemplate: chain.some(m => !_isQtyMod(m)),
              exactMinutes: om.expected_minutes,
              exactTier: om.complexity_tier
@@ -1565,17 +1559,12 @@ body.modal-active{overflow:hidden}
          // had them; computeQuoteFromState doesn't call this function)
          // and had been showing them as literal "undefined" in the real,
          // customer-facing quote. Confirmed via direct browser trace.
-         const cs = resolveCheckoutState(q.checkoutStateKey, q.laborCalc, state._svc);
+         const cs = buildCheckoutStateModel(q.checkoutStateKey, q.laborCalc, state._svc);
          Object.assign(q, cs);
 
          // SSOT: badge from checkout_states (single source — see resolveServiceBadge)
-         const badge = resolveServiceBadge({
-             checkout_state: q.checkoutStateKey,
-             pricing_type: state.intent?._pricingType
-         });
-         const badgeKey = resolveServiceBadgeKey({
-             checkout_state: q.checkoutStateKey
-         });
+         const badge = resolveServiceBadge({ pricing_type: state.intent?._pricingType }, q.checkoutStateKey);
+         const badgeKey = resolveServiceBadgeKey(q.checkoutStateKey);
 
          const svcLabel = state.intent?.label || 'Service';
          const qtyLabel = state.intent?.qtyLabel || 'item';
@@ -1726,7 +1715,7 @@ body.modal-active{overflow:hidden}
              qty: 1,
              intent: {
                  category: category_id,
-                 label: svc.ui_taxonomy?.display_name || svc.display_name || catName,
+                 label: svc.ui_taxonomy?.display_name || catName,
                  group: svc.ui_taxonomy?.display_name || svc.id,
                  base: svc.financial_engine?.base_price ?? 70, // NOTE: hard-coded default carried over unchanged -- a business number in code (R-SYSTEM-NODATA); the SSOT should own it
                  stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
@@ -1764,10 +1753,7 @@ body.modal-active{overflow:hidden}
              if (!seed.intent.base && dynDefPrefill.financial_engine?.base_price) {
                  seed.intent.base = dynDefPrefill.financial_engine.base_price;
              }
-             // Also seed checkout state from dynamic_services operational_metrics
-             if (dynDefPrefill.operational_metrics?.checkout_state) {
-                 seed.intent.checkoutState = dynDefPrefill.operational_metrics.checkout_state;
-             }
+             // T150: the checkout-state seed that lived here wrote a field nothing read (see resolveServiceCheckoutStateKey); deleted.
              // suggested_tags: store as hints only — NOT pre-selected
              if (dynDefPrefill.suggested_tags) {
                  seed._suggestedTagIds = seed._suggestedTagIds || [];
@@ -1798,7 +1784,7 @@ body.modal-active{overflow:hidden}
          // -- would incorrectly return false for an archetype-inheriting service
          // (real value standard_flat_rate, but undefined on the raw field), wrongly
          // disqualifying it from self-quote eligibility.
-         const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(resolveServiceCheckoutStateKey(svc, null));
+         const isFlatCheckout = ['standard_flat_rate', 'database_summation'].includes(resolveServiceCheckoutStateKey(svc, null).key);
          return hasPricingData && isFlatCheckout && chainIsQtyOnly;
      }
 
@@ -1827,7 +1813,7 @@ body.modal-active{overflow:hidden}
          if (strategy.display_enabled === false) return 'Call for Quote';
 
          // 2. Extract base price safely
-         let displayTotal = svc.financial_engine?.base_price || svc.base_price || 0;
+         let displayTotal = svc.financial_engine?.base_price || 0;
 
          // 3. Apply Tag Math (if JSON allows)
          if (strategy.calculation_basis === "base_plus_tags") {
@@ -2122,14 +2108,9 @@ body.modal-active{overflow:hidden}
          return true;
      }
 
-     function isDiagnosticService(fe, svc) {
-         // v9.6 FIX: added optional svc param -- same archetype-awareness gap as
-         // resolveServiceBadge. Safe-by-coincidence today (migration only ever
-         // removes checkout_state when the value is standard_flat_rate, never
-         // diagnostic, so the raw-read fallback happens to still be correct) --
-         // fixed anyway rather than relied upon, since that safety is an
-         // artifact of the current migration's scope, not a real guarantee.
-         const csKey = svc ? resolveServiceCheckoutStateKey(svc, null) : fe?.checkout_state;
+     function isDiagnosticService(fe, csKey) {
+         // T150: takes the RESOLVED checkout-state key (resolveServiceCheckoutStateKey for an entity, the quote's own key for a quote), not the entity. It used to take an
+         // optional svc and fall back to a raw read of fe.checkout_state: two modes in one signature, one of which could not see archetype inheritance.
          return (csKey === 'diagnostic') || (fe?.pricing_type === 'Diagnostic');
      }
 
@@ -2222,6 +2203,10 @@ function resolveServiceCheckoutStateKey(svc, dynDef) {
     // migrated, archetype-inheriting service (e.g. an exact
     // `=== 'standard_flat_rate'` filter would incorrectly exclude
     // an inherited value it can no longer see).
+    // T150 (R-INVARIANT-PROVENANCE): returns { key, source } -- the key AND the rung of the precedence that supplied it:
+    //   service_override > archetype_default > dynamic_engine (the dynamic entry's own state, or its operational_metrics') > fallback  -- the Charter's R-INVARIANT-PROVENANCE vocabulary.
+    // EVERY reader of an entity's checkout state asks here. None re-derives the precedence or reads financial_engine.checkout_state itself (the
+    // direct reads were exactly the "broken silently for an archetype-inheriting service" failure described above: 69 of 76 services inherit).
     const groupId = svc?.ui_taxonomy?.group_id;
     let archetypeDefault = null;
     if (groupId && window.DB?.archetypes) {
@@ -2232,14 +2217,16 @@ function resolveServiceCheckoutStateKey(svc, dynDef) {
             }
         }
     }
-    if (svc && svc.financial_engine?.checkout_state) return svc.financial_engine.checkout_state;
-    if (archetypeDefault) return archetypeDefault;
-    if (dynDef && dynDef.financial_engine?.checkout_state) return dynDef.financial_engine.checkout_state;
-    if (dynDef && dynDef.operational_metrics?.checkout_state) return dynDef.operational_metrics.checkout_state;
-    return 'standard_flat_rate';
+    if (svc && svc.financial_engine?.checkout_state) return { key: svc.financial_engine.checkout_state, source: 'service_override' };
+    if (archetypeDefault) return { key: archetypeDefault, source: 'archetype_default' };
+    if (dynDef && dynDef.financial_engine?.checkout_state) return { key: dynDef.financial_engine.checkout_state, source: 'dynamic_engine' };
+    if (dynDef && dynDef.operational_metrics?.checkout_state) return { key: dynDef.operational_metrics.checkout_state, source: 'dynamic_engine' };
+    return { key: 'standard_flat_rate', source: 'fallback' };
 }
 
-function resolveCheckoutState(checkoutStateKey, laborTotal, svc) {
+// T150: renamed from resolveCheckoutState. It never decided WHICH state applies (resolveServiceCheckoutStateKey does that); it turns an already-resolved key into the presentation
+// model (button text, disclaimer, flags): a view-model builder, named like buildQuotePanelModel.
+function buildCheckoutStateModel(checkoutStateKey, laborTotal, svc) {
     const cs = DB.checkout_states?.[checkoutStateKey] || {};
     const discs = DB.meta?.estimate_disclaimers || {};
     const isDiag = checkoutStateKey === 'diagnostic';
@@ -2260,7 +2247,7 @@ function resolveCheckoutState(checkoutStateKey, laborTotal, svc) {
 
     // An explicit param with NO default: a Logic function must not read the global session state (R-SYSTEM-LAYERS).
     // The caller (the quote view-model builder) passes state._svc; two calls with identical args now always agree.
-    const svcDiscKey = svc?.default_estimates?.disclaimer || svc?.estimate_disclaimer || null;
+    const svcDiscKey = svc?.default_estimates?.disclaimer || null;
 
     // Note: the original ternary here was `isDiag ? 'flat_fee' : isProject ? 'project_based' : 'flat_fee'`,
     // which collapses -- both the isDiag branch and the else return
@@ -2910,28 +2897,22 @@ function computeUnifiedQuote(ctx) {
          // protects against a FUTURE data-entry error, which is the rule's
          // explicitly stated purpose.
          const variabilityTierIsDiag = variabilityTier === 'diagnostic';
-         // v9.6 FIX: was `fe.checkout_state || enrichment?.checkoutState || <generic
-         // fallback>` -- a direct read chain that never accounted for archetype
-         // inheritance. Replaced with the real, canonical resolver
-         // (resolveServiceCheckoutStateKey), which correctly checks the entity's
-         // own value, then its real archetype default, before ever reaching
-         // enrichment or the generic pricingType/variabilityTier fallback --
-         // matching the same real precedence this comment already documented,
-         // now genuinely enforced in one place rather than reimplemented here.
-         let staticCheckoutStateKey = resolveServiceCheckoutStateKey(svc, dynDef) ||
-             enrichment?.checkoutState ||
-             (pricingType === 'diagnostic' ? 'diagnostic' : (variabilityTierIsDiag ? 'diagnostic' : 'standard_flat_rate'));
-         if (fe.checkout_state && variabilityTierIsDiag !== (staticCheckoutStateKey === 'diagnostic')) {
+         // T150 (R-INVARIANT-PROVENANCE): ONE question, ONE resolver. resolveServiceCheckoutStateKey always answers (its last rung is the fallback), so the alternates that used to be
+         // chained after it (`|| enrichment?.checkoutState || <pricingType / variability-tier guess>`) could never run: dead composition, deleted. The answer-level override below is the
+         // only other rung, and the quote names the rung that won in checkoutStateSource.
+         const _checkoutState = resolveServiceCheckoutStateKey(svc, dynDef);
+         const staticCheckoutStateKey = _checkoutState.key;
+         if ((_checkoutState.source === 'service_override' || _checkoutState.source === 'dynamic_engine') && variabilityTierIsDiag !== (staticCheckoutStateKey === 'diagnostic')) {
              console.warn(
                  `[diagnostic_governance violation] ${svc?.id || dynDef?.id || '(unnamed)'}: ` +
-                 `checkout_state="${fe.checkout_state}" contradicts confidence_strategy._variability_tier="${variabilityTier}". ` +
-                 `Per global_rules.diagnostic_governance, variability_tier is the single source of truth — this is a data error to fix in btnyc.json, not a runtime override.`
+                 `checkout_state="${staticCheckoutStateKey}" contradicts confidence_strategy._variability_tier="${variabilityTier}". ` +
+                 `Per global_rules.diagnostic_governance, variability_tier is the single source of truth ? this is a data error to fix in btnyc.json, not a runtime override.`
              );
          }
-         const checkoutStateKey = (answerCheckoutOverride &&
-                 (CS_RESTRICTIVENESS[answerCheckoutOverride] || 0) > (CS_RESTRICTIVENESS[staticCheckoutStateKey] || 0)) ?
-             answerCheckoutOverride :
-             staticCheckoutStateKey;
+         const _answerOverrideWins = !!(answerCheckoutOverride &&
+             (CS_RESTRICTIVENESS[answerCheckoutOverride] || 0) > (CS_RESTRICTIVENESS[staticCheckoutStateKey] || 0));
+         const checkoutStateKey = _answerOverrideWins ? answerCheckoutOverride : staticCheckoutStateKey;
+         const checkoutStateSource = _answerOverrideWins ? 'answer_override' : _checkoutState.source;
          const cs = DB.checkout_states?.[checkoutStateKey] || {};
          const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
          let btnText = (cs[btnKey] || cs.button_text || 'Add to Request').replace('${labor_total}', '$' + laborEstimate);
@@ -3045,6 +3026,7 @@ function computeUnifiedQuote(ctx) {
              laborEstimate,
              dispatchFee,
              checkoutStateKey,
+             checkoutStateSource,
              activeLabels,
              feeBreakdown,
              meetsConfidenceBar,
@@ -3078,6 +3060,7 @@ function computeUnifiedQuote(ctx) {
              feeBreakdown,
              dispatchFee,
              checkoutStateKey,
+             checkoutStateSource,
              badgeLabel: cs.ui_badge_label || '',
              badgeIcon: cs.ui_badge_icon || '',
              btnText,
@@ -3310,6 +3293,7 @@ function computeUnifiedQuote(ctx) {
              dispatchFee: u.dispatchFee,
              divergenceTerms: u.divergenceTerms,
              checkoutStateKey: u.checkoutStateKey,
+             checkoutStateSource: u.checkoutStateSource,
              activeLabels: u.activeLabels || [],
              feeBreakdown: u.feeBreakdown || [],
              isDiagnostic: u.isDiagnostic,
@@ -3518,13 +3502,17 @@ function computeUnifiedQuote(ctx) {
       * T147 UPDATE: quantity is decided in ONE resolver pair that names its source (resolveQuantityUnits / resolveQuantityMultiplier; eight arbiter sites retired); the overflow formula carries the flat top-band price; the strategy and follow-up ceiling resolvers name their source. Bumped to 'T147'.
       *
       * T148 UPDATE: the strategy resolver returns a literal `source` plus per-field `fieldSources`; the renderer is handed the SSOT copy it needs (divergenceTerms, dispatchScopeNote) instead of reading the SSOT; the route carries basePrice; resolveBuilderQuantity replaces Glue's direct lookup. Bumped to 'T148'.
+      *
+      * T149 UPDATE: eight readers that still fell back to the retired flat legacy shape (`|| svc.base_price`, `|| svc.display_name`, `|| svc.estimate_disclaimer`, `|| svc.group_id`, `|| s.group_id || s.group`) were deleted after the running page proved no entity carries a flat field (verify_entity_shape_single.js). Behavior-neutral: 836 renders and 1380 price points unchanged. Bumped to 'T149'.
+      *
+      * T150 UPDATE: ONE checkout-state resolver. resolveServiceCheckoutStateKey returns { key, source } (the Charter's vocabulary); every reader asks it and none reads financial_engine.checkout_state itself, so the card-tap path and the route path now agree on which services self-quote (two did not: LED bulb upgrade, standard shelf mounting). resolveCheckoutState, which never resolved anything, is buildCheckoutStateModel. A write-only checkoutState thread (four writers, no live reader) and the unreachable operands chained after the resolver are deleted. Bumped to 'T150'.
       */
 
      // QR_BUILD_VERSION stays live in THIS file, not trace.js: the component-layer
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T148';
+     const QR_BUILD_VERSION = 'T150';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -6208,25 +6196,14 @@ function computeUnifiedQuote(ctx) {
      function orch_enrich_from_dynamic_service(entity, dynDef) {
          const enrichment = {
              suggestedTagIds: [],
-             checkoutState: null,
              enrichedBase: null
          };
          if (!dynDef) return enrichment;
          if (dynDef.financial_engine?.base_price && !(entity?.financial_engine?.base_price)) {
              enrichment.enrichedBase = dynDef.financial_engine.base_price;
          }
-         // v9.6 FIX: was `!(entity?.financial_engine?.checkout_state)` -- would
-         // incorrectly treat an archetype-inheriting entity (real field
-         // genuinely absent, but a real, resolvable value exists) the same as
-         // an entity with no real checkout_state signal at all, overwriting a
-         // correct, inherited value with dynDef's instead. Checks the entity's
-         // own value OR its real archetype default before falling through.
-         const entityHasOwnCheckoutState = !!entity?.financial_engine?.checkout_state ||
-             !!(entity?.ui_taxonomy?.group_id && window.DB?.archetypes &&
-                 Object.values(window.DB.archetypes).some(a => a.member_group_ids?.includes(entity.ui_taxonomy.group_id) && a.default_checkout_state));
-         if (dynDef.operational_metrics?.checkout_state && !entityHasOwnCheckoutState) {
-             enrichment.checkoutState = dynDef.operational_metrics.checkout_state;
-         }
+         // T150: enrichment.checkoutState (and the archetype re-derivation that guarded it) is gone. Nothing read it except an operand chained after the resolver, which always answers,
+         // so it could never run; and no dynamic entry carries operational_metrics.checkout_state. One question, one resolver: resolveServiceCheckoutStateKey.
          (dynDef.suggested_tags || []).forEach(tagObj => {
              if (!tagObj || typeof tagObj !== 'object') return;
              const segments = tagObj?.$ref ? tagObj.$ref.replace(/^#\//, '').split('/') : null;
@@ -7414,7 +7391,7 @@ function computeUnifiedQuote(ctx) {
      }
 
      function _makePanelShell(svc, category_id, livePriceText, startingPrice) {
-         const displayName = svc.ui_taxonomy?.display_name || svc.display_name || 'Service';
+         const displayName = svc.ui_taxonomy?.display_name || 'Service';
          const navCrumbs = _buildNavCrumbs(category_id);
          const startP = startingPrice;
          const panel = create('div', {
@@ -7755,7 +7732,7 @@ function computeUnifiedQuote(ctx) {
          const allModules = _resolveIntakeChain(svc);
          const answers = {};
          let qty = 1;
-         const discKey = svc.default_estimates?.disclaimer || svc.estimate_disclaimer;
+         const discKey = svc.default_estimates?.disclaimer;
          const discText = (SERVICE_DATA.meta?.estimate_disclaimers || {})[discKey];
          const mMin = svc.default_estimates?.materials?.min || 0;
          const mMax = svc.default_estimates?.materials?.max || 0;
@@ -8118,7 +8095,7 @@ function computeUnifiedQuote(ctx) {
          });
 
          (data.services || []).forEach(s => {
-             const parent = s.ui_taxonomy?.group_id || s.group_id || s.group;
+             const parent = s.ui_taxonomy?.group_id;
              if (!parent) return;
              if (!servicesByGroup.has(parent)) servicesByGroup.set(parent, []);
              servicesByGroup.get(parent).push(s);
@@ -8273,7 +8250,7 @@ function computeUnifiedQuote(ctx) {
          }
          let iconText;
          if (isOtherSvc) {
-             const groupId = svc.ui_taxonomy?.group_id || svc.group_id;
+             const groupId = svc.ui_taxonomy?.group_id;
              const group = groupMap.get(groupId);
              iconText = group?.icon || svc.ui_taxonomy?.icon || '🔧';
          } else {
@@ -8980,7 +8957,7 @@ function computeUnifiedQuote(ctx) {
                  s.ui_taxonomy?.group_id === route.intentGroupId &&
                  s.id !== recSku &&
                  (() => {
-                     const csk = resolveServiceCheckoutStateKey(s, null);
+                     const csk = resolveServiceCheckoutStateKey(s, null).key;
                      return csk === 'standard_flat_rate' || csk === 'database_summation';
                  })()
              ).slice(0, 2);
@@ -10659,7 +10636,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              // Find services in this group and check their intake_chain for symptom/issue modules
              const grpServices = (DB.services || []).filter(s =>
                  s.ui_taxonomy?.group_id === groupId &&
-                 resolveServiceCheckoutStateKey(s, null) !== 'diagnostic'
+                 resolveServiceCheckoutStateKey(s, null).key !== 'diagnostic'
              );
              for (const svc of grpServices) {
                  const chain = svc.intake_chain || [];
@@ -12134,8 +12111,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
                  qtyLabel: 'item',
                  key: tile.id,
                  _groupId: groupId,
-                 _pricingType: dynDef?.financial_engine?.pricing_type || 'flat_rate',
-                 checkoutState: dynDef?.financial_engine?.checkout_state || null
+                 _pricingType: dynDef?.financial_engine?.pricing_type || 'flat_rate'
              },
              stype: singleType,
              // Carry NLP-seeded context when entering from sqAnalyze
@@ -13501,7 +13477,7 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
              // would have incorrectly defaulted to 'diagnostic' the moment the raw
              // field was genuinely absent, even though the real, correct, resolved
              // value is standard_flat_rate.
-             const _csKey = resolveServiceCheckoutStateKey(svc, null);
+             const _csKey = resolveServiceCheckoutStateKey(svc, null).key;
              const _csDef = DB.checkout_states?.[_csKey] || {};
              let estLabel, dispatchNote;
              if (isHourly) {
@@ -14242,6 +14218,7 @@ const groupObj = groupId ? groupMap.get(groupId) : null;
                  laborEstimate: null, // number (USD)
                  dispatchFee: null, // number; defaults to 45 live
                  checkoutStateKey: null, // one of: database_summation|diagnostic|project_based|standard_flat_rate
+                 checkoutStateSource: null, // which rung supplied it: the resolver's service_override|archetype_default|dynamic_engine|fallback, or answer_override when the customer's answer won (quote level)
                  badgeLabel: '',
                  badgeIcon: '',
                  btnText: '',
