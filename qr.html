@@ -618,7 +618,292 @@ body.modal-active{overflow:hidden}
 <style id="t136-slot-ghost">
 .sq-live-preview .slot-ghost{display:inline-block;padding:0 .55em;margin:0 .1em;border:1.5px dashed currentColor;border-radius:999px;opacity:.55;font-weight:600;font-size:.92em;line-height:1.5}
 </style>
+<style id="v9.7-red-mono-theme">
+/* ═══════════════════════════════════════════════════════════════════
+   v9.7 THEME — RED / WHITE / BLACK / GREY / SMOKED GLASS ONLY
+   Appended last → overrides every blue/green/yellow that existed.
+   ═══════════════════════════════════════════════════════════════════ */
 
+/* ── 1. New token map ─────────────────────────────────────────── */
+:root{
+  --gold:   #ffffff;      /* was #ffd166 (yellow) */
+  --ok:     #f5f6f8;      /* was #22c55e (green)  */
+  --warn:   #c8ccd2;      /* was #f59e0b (amber)  */
+  --blue:   #9aa0a8;      /* was #60a5fa (blue)   */
+  --purple: #a0a4ac;      /* was #a78bfa (purple) */
+  --bad:    #de0000;      /* unchanged — red */
+  --glass-smoke: rgba(15,15,18,.72);
+}
+
+/* ── 2. Gauges ────────────────────────────────────────────────── */
+.gauge.ok   .val{ color:#fff;    text-shadow:0 0 10px rgba(255,255,255,.35); }
+.gauge.warn .val{ color:#c8ccd2; text-shadow:0 0 10px rgba(255,255,255,.15); }
+.gauge.bad  .val{ color:#de0000; text-shadow:0 0 10px rgba(222,0,0,.5); }
+.gauge.ok::after  { background:#fff;    box-shadow:0 0 8px #fff; }
+.gauge.warn::after{ background:#c8ccd2; box-shadow:0 0 8px rgba(255,255,255,.4); }
+.gauge.bad::after { background:#de0000; box-shadow:0 0 8px #de0000; }
+
+/* ── 3. Progress bar + threshold ──────────────────────────────── */
+.progress .fill.ok{ background:linear-gradient(90deg,#8a0615,#fff); box-shadow:0 0 10px rgba(255,255,255,.5); }
+.progress .thresh{ background:#fff; box-shadow:0 0 8px #fff; }
+.progress .thresh::after{ color:#fff; text-shadow:0 0 5px rgba(255,255,255,.6); }
+
+/* ── 4. Retired / open chips ──────────────────────────────────── */
+.cl.retired{ background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.2); color:#e5e7eb; }
+.cl.open   { background:rgba(222,0,0,.12);     border-color:rgba(222,0,0,.35);    color:#ff9ba4; }
+
+/* ── 5. Escalation banner ─────────────────────────────────────── */
+.escalation  { background:rgba(222,0,0,.08); border-color:rgba(222,0,0,.25); border-left-color:#de0000; }
+.escalation b{ color:#fff; text-shadow:0 0 8px rgba(255,255,255,.35); }
+
+/* ── 6. Complexity-vector rows ────────────────────────────────── */
+.cx-row .cx-state.low     { color:#9aa0a8; text-shadow:0 0 6px rgba(255,255,255,.2); }
+.cx-row .cx-state.med     { color:#c8ccd2; text-shadow:0 0 6px rgba(255,255,255,.22); }
+.cx-row .cx-state.high    { color:#de0000; text-shadow:0 0 6px rgba(222,0,0,.5); }
+.cx-row .cx-state.resolved{ color:#fff;    text-shadow:0 0 6px rgba(255,255,255,.4); }
+.cx-row .cx-bar .cx-fill.low     { background:#9aa0a8; box-shadow:0 0 8px rgba(255,255,255,.25); }
+.cx-row .cx-bar .cx-fill.med     { background:#c8ccd2; box-shadow:0 0 8px rgba(255,255,255,.3); }
+.cx-row .cx-bar .cx-fill.high    { background:#de0000; box-shadow:0 0 8px rgba(222,0,0,.5); }
+.cx-row .cx-bar .cx-fill.resolved{ background:#fff;    box-shadow:0 0 8px rgba(255,255,255,.5); }
+
+/* ── 7. Audit arm chips ───────────────────────────────────────── */
+.audit-row .arm.Price { background:rgba(255,255,255,.06); color:#e5e7eb; border-color:rgba(255,255,255,.18); }
+.audit-row .arm.Time  { background:rgba(255,255,255,.06); color:#c8ccd2; border-color:rgba(255,255,255,.14); }
+.audit-row .arm.Branch{ background:rgba(255,255,255,.06); color:#a0a4ac; border-color:rgba(255,255,255,.12); }
+.audit-row .arm.Prep  { background:rgba(222,0,0,.10);     color:#ff9ba4; border-color:rgba(222,0,0,.28);    }
+.audit-row.ok{ border-left-color:rgba(255,255,255,.4); background:rgba(255,255,255,.03); }
+
+/* ── 8. Tile badges (left-side preview grid) ──────────────────── */
+.tile.svc .badge      { background:rgba(222,0,0,.18);      border-color:rgba(222,0,0,.35);      color:#ff9ba4; }
+.tile.svc .badge.diag { background:rgba(255,255,255,.08);  border-color:rgba(255,255,255,.2);   color:#e5e7eb; }
+.tile.svc .badge.proj { background:rgba(138,6,21,.35);     border-color:rgba(138,6,21,.55);     color:#ffb0b8; }
+.tile.dyn .badge      { background:rgba(255,255,255,.07);  border-color:rgba(255,255,255,.2);   color:#d1d5db; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   v9.7 FOCUSED-MODE TILE REDESIGN
+   Compact Bento cards — same language for TYPE and SERVICE steps.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Grid container ───────────────────────────────────────────── */
+.focused-mode .group-grid,
+.focused-mode #serviceContainer{
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:12px !important;
+  margin-top:10px !important;
+  margin-bottom:12px !important;
+  align-content:start;
+}
+@media (min-width:720px){
+  .focused-mode .group-grid,
+  .focused-mode #serviceContainer{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  }
+}
+
+/* ── Base card (shared by group + service) ────────────────────── */
+.focused-mode .group-tile,
+.focused-mode .service-tile{
+  position:relative !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-start !important;
+  justify-content:flex-start !important;
+  gap:10px !important;
+  padding:16px 14px !important;
+  min-height:136px !important;
+  aspect-ratio:auto !important;
+  width:100% !important;
+  text-align:left !important;
+  background:linear-gradient(155deg,
+      rgba(255,255,255,.075),
+      rgba(255,255,255,.022) 55%,
+      rgba(255,255,255,.045)) !important;
+  backdrop-filter:blur(18px) saturate(140%) !important;
+  -webkit-backdrop-filter:blur(18px) saturate(140%) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  border-radius:18px !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),
+             0 10px 30px -22px rgba(0,0,0,.9) !important;
+  transition:transform .25s cubic-bezier(.22,.8,.28,1),
+             border-color .25s,
+             box-shadow .25s !important;
+  overflow:hidden;
+  isolation:isolate;
+  cursor:pointer;
+}
+
+/* red hairline on hover */
+.focused-mode .group-tile::after,
+.focused-mode .service-tile::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(222,0,0,.6),transparent);
+  opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.focused-mode .group-tile:hover,
+.focused-mode .service-tile:hover{
+  transform:translateY(-2px);
+  border-color:rgba(222,0,0,.45) !important;
+  background:linear-gradient(155deg,
+      rgba(255,255,255,.10),
+      rgba(255,255,255,.035) 55%,
+      rgba(255,255,255,.06)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),
+             0 22px 44px -24px rgba(222,0,0,.55) !important;
+}
+.focused-mode .group-tile:hover::after,
+.focused-mode .service-tile:hover::after{opacity:1;}
+.focused-mode .group-tile:active,
+.focused-mode .service-tile:active{transform:scale(.975);}
+
+/* ── Icon container (shared) ──────────────────────────────────── */
+.focused-mode .group-tile .tile-icon,
+.focused-mode .service-tile .service-item-icon{
+  flex:0 0 auto !important;
+  width:44px !important;
+  height:44px !important;
+  border-radius:14px !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:22px !important;
+  line-height:1 !important;
+  background:linear-gradient(150deg,
+      rgba(222,0,0,.22),
+      rgba(222,0,0,.05)) !important;
+  border:1px solid rgba(222,0,0,.28) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14) !important;
+  margin:0 !important;
+  filter:none !important;
+  opacity:1 !important;
+  text-align:center !important;
+}
+
+/* ── Title (shared) ───────────────────────────────────────────── */
+.focused-mode .group-tile .tile-name,
+.focused-mode .service-tile h4{
+  font-size:14px !important;
+  font-weight:750 !important;
+  letter-spacing:-.012em !important;
+  line-height:1.22 !important;
+  color:#fff !important;
+  margin:0 !important;
+  text-align:left !important;
+  word-break:break-word !important;
+  display:block !important;
+}
+
+/* ── Service tile inner wrapper (the inline-styled div) ───────── */
+.focused-mode .service-tile > div[style*="flex-direction: column"],
+.focused-mode .group-tile > div{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-start !important;
+  gap:6px !important;
+  min-width:0 !important;
+  flex:1 !important;
+  position:relative !important;
+  width:100% !important;
+}
+
+/* ── Service description ──────────────────────────────────────── */
+.focused-mode .service-tile-expanded{
+  font-size:11.5px !important;
+  color:#8b9199 !important;
+  line-height:1.4 !important;
+  text-align:left !important;
+  margin:0 !important;
+  display:block !important;
+}
+
+/* ── Price pill (was absolutely positioned bottom-right) ──────── */
+.focused-mode .service-tile .service-price{
+  position:static !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:4px !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+  letter-spacing:.02em !important;
+  padding:5px 11px !important;
+  border-radius:999px !important;
+  background:rgba(222,0,0,.18) !important;
+  border:1px solid rgba(222,0,0,.38) !important;
+  color:#fff !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1) !important;
+  margin:auto 0 0 !important;      /* pushes it to bottom of card */
+  bottom:auto !important;
+  right:auto !important;
+  z-index:1 !important;
+  align-self:flex-start !important;
+  white-space:nowrap;
+}
+.focused-mode .service-tile .service-price .price-prefix{
+  font-style:normal !important;
+  font-size:10px !important;
+  font-weight:500 !important;
+  opacity:.55 !important;
+  margin-right:3px !important;
+}
+
+/* ── Materials badge ──────────────────────────────────────────── */
+.focused-mode .materials-badge{
+  align-self:flex-start !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  padding:3px 9px !important;
+  border-radius:999px !important;
+  background:rgba(138,6,21,.35) !important;
+  border:1px solid rgba(138,6,21,.55) !important;
+  color:#ffb0b8 !important;
+  margin:0 !important;
+  box-shadow:none !important;
+  background-image:none !important; /* kills the orange gradient inline style */
+}
+
+/* ── Inline badges (Smart Quote, Project, Hourly, etc.) ───────── */
+.focused-mode .service-tile .badge,
+.focused-mode .service-tile > div > span[style*="border-radius"]{
+  font-size:9px !important;
+  font-weight:800 !important;
+  letter-spacing:.06em !important;
+  padding:3px 9px !important;
+  border-radius:999px !important;
+  display:inline-block !important;
+  margin:0 !important;
+  line-height:1.35 !important;
+}
+
+/* ── Picker prompt row ────────────────────────────────────────── */
+.focused-mode .picker-prompt{
+  color:#c8ccd2 !important;
+  font-weight:700 !important;
+  letter-spacing:-.005em !important;
+}
+
+/* ── "Other" tile (dashed) keeps visual distinctness ─────────── */
+.focused-mode .service-tile.service-tile-other{
+  background:linear-gradient(155deg,
+      rgba(255,255,255,.04),
+      rgba(255,255,255,.015) 55%,
+      rgba(255,255,255,.03)) !important;
+  border-style:dashed !important;
+  border-color:rgba(255,255,255,.18) !important;
+}
+.focused-mode .service-tile.service-tile-other:hover{
+  border-color:rgba(222,0,0,.45) !important;
+  border-style:dashed !important;
+}
+
+/* ── service-group-header label ───────────────────────────────── */
+.focused-mode .service-group-header{
+  background:rgba(255,255,255,.05) !important;
+  color:#c8ccd2 !important;
+  border:1px solid rgba(255,255,255,.10);
+  padding:6px 12px;
+  border-radius:999px;
+  margin:14px 0 8px;
+  display:inline-block;
+}
+</style>
     </head>
 
 <body>
@@ -8188,44 +8473,19 @@ function computeUnifiedQuote(ctx) {
          const isProjectSvc = prof.isProject; // one definition of "project" -- getServiceProfile (Logic)
          const isHourlySvc = prof.isHourlyPricingType;
          let complexityBadge = null;
-         if (requiresSiteVisit) {
-             complexityBadge = {
-                 text: '🔍 Quote on site',
-                 bg: '#374151',
-                 color: '#e5e7eb'
-             };
-         } else if (isOtherSvc) {
-             complexityBadge = {
-                 text: '⚡ Smart Quote',
-                 bg: '#1e40af',
-                 color: '#dbeafe'
-             };
-         } else if (isDiagSvc) {
-             // SSOT: badge text from checkout_states[cs].ui_badge_label
-             complexityBadge = {
-                 text: prof.badge,
-                 bg: '#374151',
-                 color: '#e5e7eb'
-             };
-         } else if (isProjectSvc) {
-             complexityBadge = {
-                 text: DB.ui_config?.badge_labels?.['project_based'] || '📐 Project est.',
-                 bg: '#7c2d12',
-                 color: '#fed7aa'
-             };
-         } else if (isHourlySvc) {
-             complexityBadge = {
-                 text: DB.ui_config?.badge_labels?.['hourly'] || '⏰ Hourly',
-                 bg: '#000',
-                 color: '#d1fae5'
-             };
-         } else if (chain.length === 0) {
-             complexityBadge = {
-                 text: prof.badge,
-                 bg: '#166534',
-                 color: '#dcfce7'
-             };
-         }
+if (requiresSiteVisit) {
+    complexityBadge = { text: '🔍 Quote on site', bg: 'rgba(255,255,255,.08)', color: '#e5e7eb' };
+} else if (isOtherSvc) {
+    complexityBadge = { text: '⚡ Smart Quote', bg: 'rgba(138,6,21,.35)', color: '#ffb0b8' };
+} else if (isDiagSvc) {
+    complexityBadge = { text: prof.badge, bg: 'rgba(255,255,255,.08)', color: '#e5e7eb' };
+} else if (isProjectSvc) {
+    complexityBadge = { text: DB.ui_config?.badge_labels?.['project_based'] || '📐 Project est.', bg: 'rgba(138,6,21,.35)', color: '#ffb0b8' };
+} else if (isHourlySvc) {
+    complexityBadge = { text: DB.ui_config?.badge_labels?.['hourly'] || '⏰ Hourly', bg: 'rgba(0,0,0,.6)', color: '#e5e7eb' };
+} else if (chain.length === 0) {
+    complexityBadge = { text: prof.badge, bg: 'rgba(222,0,0,.18)', color: '#ff9ba4' };
+}
          let iconText;
          if (isOtherSvc) {
              const groupId = svc.ui_taxonomy?.group_id;
@@ -8243,36 +8503,44 @@ function computeUnifiedQuote(ctx) {
          const titleRow = create('h4', {
              text: svc.ui_taxonomy?.display_name
          });
-         info.appendChild(titleRow);
-         if (complexityBadge) {
-             const badge = create('span', {
-                 text: complexityBadge.text,
-                 style: `font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:${complexityBadge.bg};color:${complexityBadge.color};display:inline-block;margin-bottom:3px;`
-             });
-             info.appendChild(badge);
-         }
-         info.appendChild(create('div', {
-             class: 'service-price',
-             html: formatServicePrice(svc)
-         }));
-         if (svc.default_estimates?.materials && !svc.materials_included) {
-             const matMin = svc.default_estimates.materials.min || 0;
-             const matMax = svc.default_estimates.materials.max || 0;
-             if (matMax > 0) {
-                 info.appendChild(create('div', {
-                     class: 'materials-badge',
-                     text: `+ Materials $${matMin}‑$${matMax}`,
-                     style: 'background: linear-gradient(135deg, #f97316, #ea580c); font-size: 0.7rem; margin-top: 4px;'
-                 }));
-             }
-         }
-         let desc = svc.ui_taxonomy?.description || svc.description || 'Tap to customise.';
-         if (svc.materials_included) desc += ' ✓ Materials included.';
-         info.appendChild(create('div', {
-             class: 'service-tile-expanded',
-             text: desc,
-             style: 'display:block;'
-         }));
+// Title
+info.appendChild(create('h4', { text: svc.ui_taxonomy?.display_name }));
+
+// Description (moved up so it lives right under the title)
+let desc = svc.ui_taxonomy?.description || svc.description || 'Tap to customise.';
+if (svc.materials_included) desc += ' · Materials included';
+info.appendChild(create('div', {
+    class: 'service-tile-expanded',
+    text: desc,
+    style: 'display:block;'
+}));
+
+// Inline badge (Smart Quote / Project / Hourly / etc.)
+if (complexityBadge) {
+    const badge = create('span', {
+        text: complexityBadge.text,
+        style: `font-size:9px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:${complexityBadge.bg};color:${complexityBadge.color};display:inline-block;`
+    });
+    info.appendChild(badge);
+}
+
+// Materials badge (if any)
+if (svc.default_estimates?.materials && !svc.materials_included) {
+    const matMin = svc.default_estimates.materials.min || 0;
+    const matMax = svc.default_estimates.materials.max || 0;
+    if (matMax > 0) {
+        info.appendChild(create('div', {
+            class: 'materials-badge',
+            text: `+ Materials $${matMin}‑$${matMax}`
+        }));
+    }
+}
+
+// Price pill — pushed to bottom of the card by margin:auto in the CSS
+info.appendChild(create('div', {
+    class: 'service-price',
+    html: formatServicePrice(svc)
+}));
          card.appendChild(iconEl);
          card.appendChild(info);
          card.addEventListener('click', () => prefillSmartQuoteFromService(svc, category_id));
@@ -9310,25 +9578,38 @@ function computeUnifiedQuote(ctx) {
              return;
          }
 
-         groups.forEach(g => {
-             const tile = document.createElement('div');
-             tile.className = 'group-tile';
-             tile.tabIndex = 0;
-             tile.role = 'button';
+groups.forEach(g => {
+    const tile = document.createElement('div');
+    tile.className = 'group-tile';
+    tile.tabIndex = 0;
+    tile.role = 'button';
 
-             const icon = document.createElement('span');
-             icon.className = 'tile-icon';
-             icon.textContent = g.icon || '📂';
+    const icon = document.createElement('span');
+    icon.className = 'tile-icon';
+    icon.textContent = g.icon || '📂';
 
-             const name = document.createElement('span');
-             name.className = 'tile-name';
-             name.textContent = g.display_name || g.name;
+    const info = document.createElement('div');
+    info.style.cssText = 'display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;';
 
-             tile.appendChild(icon);
-             tile.appendChild(name);
-             tile.addEventListener('click', () => showSubGroups(g, category_id));
-             container.appendChild(tile);
-         });
+    info.appendChild(Object.assign(document.createElement('span'), {
+        className: 'tile-name',
+        textContent: g.display_name || g.name
+    }));
+
+    const descText = g.description || g.blurb || g.ui_taxonomy?.description;
+    if (descText) {
+        info.appendChild(Object.assign(document.createElement('span'), {
+            className: 'service-tile-expanded',
+            textContent: descText
+        }));
+    }
+
+    tile.appendChild(icon);
+    tile.appendChild(info);
+    tile.addEventListener('click', () => showSubGroups(g, category_id));
+    container.appendChild(tile);
+});
+
 
          container.style.display = 'block';
          DOM.categoriesGrid.style.display = 'none';
@@ -9756,20 +10037,43 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          if (subGroups.length > 0) {
              // Render sub-groups if they exist
              subGroups.forEach(sg => {
-                 const tile = document.createElement('div');
-                 tile.className = 'group-tile';
-                 tile.tabIndex = 0;
-                 tile.role = 'button';
-                 tile.innerHTML = `<span class="tile-icon">${sg.icon || '📂'}</span><span class="tile-name">${sg.display_name || sg.name}</span>`;
-                 tile.addEventListener('click', () => showSubGroups(sg, category_id));
-                 tile.addEventListener('keydown', e => {
-                     if (e.key === 'Enter' || e.key === ' ') {
-                         e.preventDefault();
-                         showSubGroups(sg, category_id);
-                     }
-                 });
-                 container.appendChild(tile);
-             });
+    const tile = document.createElement('div');
+    tile.className = 'group-tile';
+    tile.tabIndex = 0;
+    tile.role = 'button';
+
+    const icon = document.createElement('span');
+    icon.className = 'tile-icon';
+    icon.textContent = sg.icon || '📂';
+
+    const info = document.createElement('div');
+    info.style.cssText = 'display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;';
+
+    info.appendChild(Object.assign(document.createElement('span'), {
+        className: 'tile-name',
+        textContent: sg.display_name || sg.name
+    }));
+
+    const descText = sg.description || sg.blurb || sg.ui_taxonomy?.description;
+    if (descText) {
+        info.appendChild(Object.assign(document.createElement('span'), {
+            className: 'service-tile-expanded',
+            textContent: descText
+        }));
+    }
+
+    tile.appendChild(icon);
+    tile.appendChild(info);
+    const handler = () => showSubGroups(sg, category_id);
+    tile.addEventListener('click', handler);
+    tile.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handler();
+        }
+    });
+    container.appendChild(tile);
+});
          } else {
              // Leaf node: render actual services -- or, for groups with real,
              // verified component/symptom data, the new Action -> Component/
@@ -15226,3 +15530,4 @@ const groupObj = groupId ? groupMap.get(groupId) : null;
  </script> 
 </body>
 </html>
+
