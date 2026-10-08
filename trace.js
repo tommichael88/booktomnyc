@@ -1,5 +1,26 @@
 /**
- * trace.js (T142)
+ * trace.js (T142; recorder made non-optional in T155)
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * trace is observation-only per #77; a trace code path that affects results is a defect.
+ * ─────────────────────────────────────────────────────────────────
+ * Trace calls are permitted anywhere. Trace CODE PATHS must not change a result: no trace
+ * function may mutate the data it is handed (payloads are cloned before they are stored), throw
+ * to its caller, or be read by anything that decides a price, a route or a render. Every failure
+ * inside the tracer is swallowed. Tracing must stay deletable without changing a single output;
+ * test_harness/verify_trace_observation_only.js runs every service through the workflow with and
+ * without the tracer and requires identical routes.
+ *
+ * T155 (PHASE_PLAN A4) -- RECORDING IS NON-OPTIONAL:
+ *   - Every `_trace` call is written to a bounded ring buffer (`window._traceLog`, capacity
+ *     window._traceRingCapacity; when full, the OLDEST entry is dropped) whether or not the overlay is
+ *     open. Before T155 a closed overlay meant `_trace` returned immediately and nothing was kept,
+ *     so a defect could not be examined after the fact.
+ *   - What the overlay being open adds is only what reads the page: the breadcrumb-driven
+ *     entryPath, the `_observable` snapshot on session / fn_call / fn_return entries, idle_pause
+ *     markers, DOM snapshots and the repaint. Entries recorded with the overlay closed carry the
+ *     payload but no `_observable`.
+ *   - `window.__traceLast()` returns the most recent entry.
  *
  * Component-level tracing overlay. Captures user interactions, DOM states,
  * internal function executions, and pricing engine logic.
@@ -68,11 +89,14 @@
  * - `btnycJsonHash` fingerprints `window.DB`, guarded for absence.
  */
 
-const TRACE_BUILD_VERSION = 'T142';
+const TRACE_BUILD_VERSION = 'T155';
 
 // ─── Persistent State ───────────────────────────────────────────────
 window._traceEnabled         = false;
 window._traceLog             = [];
+// The recorder is a bounded ring: capacity entries, oldest dropped first (T155 / A4). `window._traceLog` stays a plain array so the overlay and the export read it unchanged.
+window._traceRingCapacity    = 2000;
+window.__traceLast           = () => window._traceLog?.[window._traceLog.length - 1];
 window._traceInput           = null;
 window._traceEntryPath       = null;
 window._editingFlagNoteId    = null;
@@ -381,31 +405,37 @@ function _traceStart(input, entryPath, options = {}) {
 }
 
 function _trace(layer, label, data, explicitParentId) {
-    if (!window._traceEnabled) return null;
+    // Recording is NON-OPTIONAL (T155 / A4): every call lands in the ring buffer whether or not the overlay is open.
+    // Observation-only (#77): nothing below may change a result. The payload is cloned before it is stored, and every failure is swallowed.
+    const overlayOn = !!window._traceEnabled;
     try {
-        // Auto-update entryPath whenever the breadcrumb signature moves.
-        const bcSig = _breadcrumbSignature();
-        if (bcSig && bcSig !== _lastBreadcrumbSig) {
-            _lastBreadcrumbSig = bcSig;
-            try {
-                if (typeof Breadcrumbs !== 'undefined' && Array.isArray(Breadcrumbs.stack)) {
-                    window._traceEntryPath = 'catalog:' + Breadcrumbs.stack
-                        .map(f => f.type + (f.group ? ':' + f.group : ''))
-                        .join(' > ');
-                }
-            } catch (e) { /* best-effort */ }
-        }
-
-        const enriched = (['session', 'fn_call', 'fn_return'].includes(layer))
-            ? Object.assign({}, data || {}, { _observable: _readObservableState() })
-            : data;
-
-        try {
-            const _prevEntry = window._traceLog[window._traceLog.length - 1];
-            if (_prevEntry && (Date.now() - _prevEntry.t) > 8000) {
-                window._traceLog.push({ id: _traceNextId++, t: Date.now() - 1, layer: "session", label: "idle_pause", data: { gapMs: Date.now() - _prevEntry.t, afterEntryId: _prevEntry.id } });
+        let enriched = data;
+        if (overlayOn) {
+            // The extras that read the page: only while the overlay is open.
+            // Auto-update entryPath whenever the breadcrumb signature moves.
+            const bcSig = _breadcrumbSignature();
+            if (bcSig && bcSig !== _lastBreadcrumbSig) {
+                _lastBreadcrumbSig = bcSig;
+                try {
+                    if (typeof Breadcrumbs !== 'undefined' && Array.isArray(Breadcrumbs.stack)) {
+                        window._traceEntryPath = 'catalog:' + Breadcrumbs.stack
+                            .map(f => f.type + (f.group ? ':' + f.group : ''))
+                            .join(' > ');
+                    }
+                } catch (e) { /* best-effort */ }
             }
-        } catch (_err) { /* best-effort */ }
+
+            enriched = (['session', 'fn_call', 'fn_return'].includes(layer))
+                ? Object.assign({}, data || {}, { _observable: _readObservableState() })
+                : data;
+
+            try {
+                const _prevEntry = window._traceLog[window._traceLog.length - 1];
+                if (_prevEntry && (Date.now() - _prevEntry.t) > 8000) {
+                    window._traceLog.push({ id: _traceNextId++, t: Date.now() - 1, layer: "session", label: "idle_pause", data: { gapMs: Date.now() - _prevEntry.t, afterEntryId: _prevEntry.id } });
+                }
+            } catch (_err) { /* best-effort */ }
+        }
         const entryId = _traceNextId++;
         const entry = {
             id: entryId,
@@ -423,39 +453,37 @@ function _trace(layer, label, data, explicitParentId) {
 
         window._traceLog.push(entry);
 
-        const MAX_ENTRIES = 2000;
-        if (window._traceLog.length > MAX_ENTRIES) {
-            window._traceLog = window._traceLog.slice(-Math.floor(MAX_ENTRIES / 2));
-            if (_lastInteractionId != null
-                && !window._traceLog.some(e => e.id === _lastInteractionId)) {
+        // The ring: drop the oldest entries, in place, so the array reference other code holds stays valid.
+        if (window._traceLog.length > window._traceRingCapacity) {
+            const dropped = window._traceLog.splice(0, window._traceLog.length - window._traceRingCapacity);
+            if (_lastInteractionId != null && dropped.some(e => e.id === _lastInteractionId)) {
                 _lastInteractionId = null;
             }
         }
 
-        _scheduleRender();
+        if (overlayOn) _scheduleRender();
         return entryId;
     } catch (e) {
-        console.warn('[trace] entry failed:', e);
+        try { console.warn('[trace] entry failed:', e); } catch (_) { /* nothing left to do */ }
         return null;
     }
 }
 
 function _traceFn(name, args) {
     const startId = _trace('fn_call', name, args || {});
-    const enabled = window._traceEnabled;
     let closed = false;
     const _nowAtEntry = Date.now();
 
     return {
         branch: (branchName, branchData) => {
-            if (!enabled || closed) return;
+            if (closed) return;
             _trace('fn_call', name + ':branch', Object.assign(
                 { branch: branchName, _entryId: startId },
                 branchData || {}
             ));
         },
         return: (returnData) => {
-            if (!enabled || closed) return;
+            if (closed) return;
             closed = true;
             _trace('fn_return', name, Object.assign(
                 { _entryId: startId, durationMs: Date.now() - _nowAtEntry },
@@ -463,7 +491,7 @@ function _traceFn(name, args) {
             ));
         },
         error: (err) => {
-            if (!enabled || closed) return;
+            if (closed) return;
             closed = true;
             _trace('fn_return', name + ':error', {
                 _entryId: startId,
