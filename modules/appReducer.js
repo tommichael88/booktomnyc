@@ -1,5 +1,3 @@
- <!-- appReducer -->
- <script>
      /**
       * appReducer.js
       *
@@ -755,4 +753,3 @@
              _makeLegacyS: makeLegacyS,
          };
      });
- </script>
