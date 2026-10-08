@@ -847,7 +847,7 @@ body.modal-active{overflow:hidden}
                     if (prev.category_id) showGroupsForCategory(prev.category_id, true);
                     else restoreCategoryView();
                     if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
-                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = 'block';
+                    if (DOM.serviceContainer) DOM.serviceContainer.style.display = '';
                 } else restoreCategoryView();
             }
         };
@@ -7395,19 +7395,20 @@ body.modal-active{overflow:hidden}
             const addBtn = container.querySelector('#btn-curated-add');
             if (addBtn && q) {
                 addBtn.addEventListener('click', function() {
-                    const entry = {
-                        id: 'curated-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
-                        serviceId: entity.id,
-                        category_id: entity.ui_taxonomy?.category_id || 'other',
-                        name: (entity.ui_taxonomy?.display_name || 'Service') + (onsite ? ' – On-site diagnostic' : ''),
-                        price: '$' + (onsite ? terms.fee : q.laborEstimate),
-                        icon: entity.ui_taxonomy?.icon || '🔧',
-                        detail: onsite ? 'On-site diagnostic (flat rate)' : 'Curated intake',
-                        notes: 'Answers: ' + JSON.stringify(answers) + (onsite ? '\n' + terms.bookingNote : ''),
-                        materialsNotIncluded: true,
-                        materialsEstimateRange: [0, 0]
-                    };
-                    if (typeof addToCart === 'function') {
+            const entry = {
+                id: 'curated-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                serviceId: entity.id,
+                category_id: entity.ui_taxonomy?.category_id || 'other',
+                name: (entity.ui_taxonomy?.display_name || 'Service') + (onsite ? ' – On-site diagnostic' : ''),
+                price: '$' + (onsite ? terms.fee : q.laborEstimate),
+                icon: entity.ui_taxonomy?.icon || '🔧',
+                detail: onsite ? 'On-site diagnostic (flat rate)' : 'Curated intake',
+                notes: 'Answers: ' + JSON.stringify(answers) + (onsite ? '\n' + terms.bookingNote : ''),
+                intakeAnswers: { ...answers },        // NEW — structured; the merge key reads this
+                _variant: onsite ? 'onsite' : null,    // NEW — discriminates the Fork-B line
+                materialsNotIncluded: true,
+                materialsEstimateRange: [0, 0]
+            };                    if (typeof addToCart === 'function') {
                         addToCart(entry);
                     }
                     if (typeof _afterAdd === 'function') {
@@ -7950,7 +7951,7 @@ body.modal-active{overflow:hidden}
                 }
             }
 
-            container.style.display = 'block';
+            container.style.display = '';
             DOM.categoriesGrid.style.display = 'none';
             setStep(3);
             if (!fromBack) Breadcrumbs.push({
@@ -9984,6 +9985,137 @@ body.modal-active{overflow:hidden}
 
         // ─── NEW RENDER FUNCTIONS FOR ORCHESTRATOR ROUTES ───────────────────────
     </script>
+    
+    <!-- cart_logic.js — LOGIC layer for cart-line identity and merge decisions -->
+    <script>
+/**
+ * cart_logic.js — LOGIC. The one canonical cart-line identity and merge
+ * rule. Pure: no DOM, no store, no session state. addToCart (Glue) calls
+ * resolveCartTransition and dispatches the record it returns.
+ *
+ * Why this module exists (R-DOMAIN-SHAPE, R-SYSTEM-SHAPE):
+ * The previous merge key was composed from presentation strings
+ *   (name + formatted price + 'Answers: ' + JSON.stringify(answers)).
+ * JSON key order is not stable across re-renders, formatted prices differ
+ * by whitespace, and the name field carries a presentation suffix. Two
+ * identical taps landed as two lines. A cart line's identity is a
+ * business fact, not a formatted string; it belongs in Logic, derived
+ * from the entry's own structured fields, in exactly one place
+ * (R-INVARIANT-CANONICAL).
+ *
+ * Ledger entry: TIMELINE §T158.
+ * Named defect class: DEFECT-PRESENTATION-IDENTITY.
+ */
+
+// canonicalAnswerKey -- LOGIC. Order-independent signature of an answers
+// object. Two objects with the same key/value pairs in any order produce
+// the same string. Nested plain objects are sorted too. Never throws.
+function canonicalAnswerKey(answers) {
+    if (!answers || typeof answers !== 'object') return '';
+    return Object.keys(answers).sort().map(k => {
+        const v = answers[k];
+        if (v && typeof v === 'object' && !Array.isArray(v)) {
+            return k + '=' + canonicalAnswerKey(v);
+        }
+        return k + '=' + String(v);
+    }).join('|');
+}
+
+// cartLineKey -- LOGIC. Stable identity of a cart line, from the entry's
+// own business facts. Never from entry.id (a UI-instance artefact), never
+// from entry.name (presentation), never from entry.price (display string).
+//
+// Components, in order:
+//   serviceId  -- strongest identity signal (a service id, not a name).
+//   category_id -- kept explicit for parity with the historical furniture
+//                  rule and for ad-hoc entries whose serviceId is synthetic.
+//   _variant   -- a discriminator for named variants of the same service
+//                  (e.g. 'onsite' for the Fork-in-the-Road diagnostic path,
+//                  which is a different line item from the standard repair
+//                  quote even though both resolve through the same service).
+//   answersPart -- the intake answers, canonically serialized when present
+//                  (intakeAnswers / _answers); otherwise the renderer's own
+//                  opaque notes string, preserving historical behaviour for
+//                  renderers that disambiguate by free text.
+function cartLineKey(entry) {
+    if (!entry || typeof entry !== 'object') return '';
+    const answers = entry.intakeAnswers || entry._answers || null;
+    const answersPart = answers ? canonicalAnswerKey(answers) : (entry.notes || '');
+    return [
+        entry.serviceId || entry.serviceKey || '',
+        entry.category_id || '',
+        entry._variant || '',
+        answersPart,
+    ].join('::');
+}
+
+// resolveCartTransition -- LOGIC. The one canonical cart-merge rule.
+// Given a proposed entry and the current cart, returns:
+//   { action, cart, targetId, source }
+// action  -- 'append' | 'merge-furniture' | 'increment-qty' | 'no-op'
+// cart    -- the resulting cart (a new array; inputs are never mutated)
+// source  -- which branch decided ('furniture-match' | 'line-key-match' |
+//            'new-furniture-line' | 'new-line' | 'invalid-entry'),
+//            consistent with the provenance vocabulary of
+//            R-INVARIANT-PROVENANCE so callers never re-derive why.
+//
+// Furniture lines are keyed by name+category, matching the historical,
+// deliberate rule (two furniture assemblies under different categories
+// are different jobs). Non-furniture lines are keyed by cartLineKey.
+function resolveCartTransition(entry, currentCart) {
+    const cart = Array.isArray(currentCart) ? currentCart : [];
+    if (!entry || !entry.id) {
+        return { action: 'no-op', cart, targetId: null, source: 'invalid-entry' };
+    }
+
+    // ---- Furniture merge (keyed by name + category) ----
+    if (Array.isArray(entry.furnitureItems) && entry.furnitureItems.length) {
+        const idx = cart.findIndex(it =>
+            it.furnitureItems &&
+            it.name === entry.name &&
+            it.category_id === entry.category_id
+        );
+        if (idx !== -1) {
+            const existing = cart[idx];
+            const merged = [...existing.furnitureItems, ...entry.furnitureItems];
+            const charge = (typeof mathFurnitureAssembly === 'function')
+                ? mathFurnitureAssembly(merged.map(f => f.minutes))
+                : { hours: 0, price: 0 };
+            const price = Number(charge.price).toFixed(2);
+            const hours = Number(charge.hours).toFixed(2);
+            const updated = {
+                ...existing,
+                furnitureItems: merged,
+                estimatedHours: charge.hours,
+                estimatedPrice: charge.price,
+                price: '$' + price,
+                notes: 'Furniture Items: ' + merged.map(f => f.label).join(', ') +
+                       ' • Est: ' + hours + ' hr • $' + price,
+            };
+            const next = cart.map((it, i) => i === idx ? updated : it);
+            return { action: 'merge-furniture', cart: next, targetId: existing.id, source: 'furniture-match' };
+        }
+        return { action: 'append', cart: [...cart, { ...entry, qty: entry.qty || 1 }], targetId: entry.id, source: 'new-furniture-line' };
+    }
+
+    // ---- Non-furniture: match by the entry's own business identity ----
+    const key = cartLineKey(entry);
+    // Guard against an empty key (a degenerate entry with no identity at
+    // all) — never match on '' because that would merge every anonymous
+    // entry into one line.
+    if (key && key !== '::') {
+        const idx = cart.findIndex(it => !it.furnitureItems && cartLineKey(it) === key);
+        if (idx !== -1) {
+            const existing = cart[idx];
+            const updated = { ...existing, qty: (existing.qty || 1) + 1 };
+            const next = cart.map((it, i) => i === idx ? updated : it);
+            return { action: 'increment-qty', cart: next, targetId: existing.id, source: 'line-key-match' };
+        }
+    }
+
+    return { action: 'append', cart: [...cart, { ...entry, qty: entry.qty || 1 }], targetId: entry.id, source: 'new-line' };
+}
+</script>
 
     <!-- AppController.js -->
     <script>
@@ -10097,89 +10229,39 @@ body.modal-active{overflow:hidden}
             sqPrepareFlow(true); // type/object already known from the saved intent
         }
 
-        function addToCart(entry) {
-            if (!entry?.id) return;
+// addToCart -- GLUE. Reads the current cart, asks Logic (resolveCartTransition)
+// what to do, dispatches the resulting cart, updates labels, plays the FAB.
+// All merge/append decisions live in cart_logic.js (R-SYSTEM-LAYERS,
+// P-INVARIANT-HANDLERS). This function decides nothing.
+function addToCart(entry) {
+    if (!entry?.id) return;
 
-            // Get current cart from the store (not State)
-            const currentCart = window.__store.getState().cart.serviceRequest;
-            let newCart;
+    const currentCart = window.__store.getState().cart.serviceRequest;
+    const transition = resolveCartTransition(entry, currentCart);
 
-            // ---- Furniture merge ----
-            if (entry.furnitureItems?.length) {
-                const existingIndex = currentCart.findIndex(
-                    item => item.name === entry.name && item.category_id === entry.category_id
-                );
-                if (existingIndex !== -1) {
-                    const existing = currentCart[existingIndex];
-                    const newFurnitureItems = [...existing.furnitureItems, ...entry.furnitureItems];
-                    const mins = newFurnitureItems.map(f => f.minutes);
-                    const charge = mathFurnitureAssembly(mins);
-                    const updatedEntry = {
-                        ...existing,
-                        furnitureItems: newFurnitureItems,
-                        estimatedHours: charge.hours,
-                        estimatedPrice: charge.price,
-                        price: `$${charge.price.toFixed(2)}`,
-                        notes: `Furniture Items: ${newFurnitureItems.map(f => f.label).join(', ')} • Est: ${charge.hours.toFixed(2)} hr • $${charge.price.toFixed(2)}`
-                    };
-                    newCart = currentCart.map((item, i) => i === existingIndex ? updatedEntry : item);
-                    window.__store.dispatch({
-                        type: 'cart/SET',
-                        payload: {
-                            serviceRequest: newCart
-                        }
-                    });
-                    _recomputeInstanceLabels();
-                    toast('Merged with existing furniture request', 'success');
-                    return;
-                }
-            }
+    if (transition.action === 'no-op') return;
 
-            // ---- Duplicate detection (same name, category, price, and notes) ----
-            const notesMatch = (a, b) => (a || '') === (b || '');
-            const dupeIndex = currentCart.findIndex(item =>
-                item.name === entry.name &&
-                item.category_id === entry.category_id &&
-                item.price === entry.price &&
-                notesMatch(item.notes, entry.notes) &&
-                !item.furnitureItems
-            );
-            if (dupeIndex !== -1) {
-                const dupe = currentCart[dupeIndex];
-                const newQty = (dupe.qty || 1) + 1;
-                const updatedEntry = {
-                    ...dupe,
-                    qty: newQty
-                };
-                newCart = currentCart.map((item, i) => i === dupeIndex ? updatedEntry : item);
-                window.__store.dispatch({
-                    type: 'cart/SET',
-                    payload: {
-                        serviceRequest: newCart
-                    }
-                });
-                _recomputeInstanceLabels();
-                toast(`${entry.name} — qty updated to ${newQty}`, 'success');
-                return;
-            }
+    window.__store.dispatch({
+        type: 'cart/SET',
+        payload: { serviceRequest: transition.cart }
+    });
+    _recomputeInstanceLabels();
 
-            // ---- Append new entry ----
-            entry.qty = entry.qty || 1;
-            newCart = [...currentCart, entry];
-            window.__store.dispatch({
-                type: 'cart/SET',
-                payload: {
-                    serviceRequest: newCart
-                }
-            });
-            _recomputeInstanceLabels();
-
-
-            if (DOM.cartFab) {
-                DOM.cartFab.style.animation = 'none';
-                requestAnimationFrame(() => DOM.cartFab.style.animation = 'cartBounce .4s ease');
-            }
-        }
+    if (transition.action === 'merge-furniture') {
+        toast('Merged with existing furniture request', 'success');
+        return;
+    }
+    if (transition.action === 'increment-qty') {
+        const updated = transition.cart.find(it => it.id === transition.targetId);
+        toast(`${entry.name} — qty updated to ${updated?.qty ?? 2}`, 'success');
+        return;
+    }
+    // 'append'
+    if (DOM.cartFab) {
+        DOM.cartFab.style.animation = 'none';
+        requestAnimationFrame(() => DOM.cartFab.style.animation = 'cartBounce .4s ease');
+    }
+}
 
         function applySSOTRules() {
             const tags = DB.smart_tags || {};
@@ -10525,7 +10607,7 @@ body.modal-active{overflow:hidden}
                     const _curatedRoute = executeWorkflow(_curatedCtx, DB);
                     sqRenderCuratedCard(_curatedRoute, 'sqCardHost'); // records S._lastRoute / S._lastContainerId, then renders into the card's own host (#114: the step-3 skeleton is not its to overwrite)
                     const sb3 = document.getElementById('sqSb3');
-                    if (sb3) sb3.style.display = 'block';
+                    if (sb3) sb3.style.display = 'block'; const sc3 = document.getElementById('sqSc3'); if (sc3) sc3.className = 'scard active sq-stepflow'; const sn3 = document.getElementById('sqSn3'); if (sn3) sn3.className = 'snum a';
                 } else {
                     // Simple service (no questions): seed _svc so curated adlib has service context,
                     // then run chip grid — this is the only step-3 chip path.
