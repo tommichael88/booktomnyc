@@ -955,7 +955,23 @@ body.modal-active{overflow:hidden}
          * landmine baked in. See CHANGELOG_v9.4.md.
          * 
          */
-
+        // R-SYSTEM-NODATA pending. These are the last remaining hardcoded business
+        // numbers the SSOT does not yet own. They are collected here so the fallback
+        // surface is one place instead of twelve, and so the eventual migration to
+        // btnyc.json (e.g. DB.global_rules.fallbacks.*) is a mechanical search for
+        // FALLBACKS. and a one-block replacement. Every value below is the exact
+        // literal it replaces — no behavior change is introduced by this block.
+        const FALLBACKS = Object.freeze({
+            base_price: 70,             // buildServiceSessionSeed, prefillSmartQuoteFromOtherTile, sqAnalyze fallback, sqRenderSelfQuoteAdlib
+            tier_rate: 85,              // computeUnifiedQuote, sqRenderSelfQuoteAdlib
+            dispatch_fee: 45,           // computeUnifiedQuote, sqRenderSelfQuoteAdlib
+            standard_labor: 40,         // mathFurnitureAssembly
+            default_minutes: 60,        // sqRenderSelfQuoteAdlib per-job default
+            no_estimate_minutes: 45,    // computeUnifiedQuote when no estimate exists at all (distinct from above; preserve 45)
+            badge_label: '✅ Fixed price',
+            call_for_quote: 'Call',
+            disclaimer_text: 'Labor estimate. Materials extra.',
+        });
         function resolveDynamicService(category, stype, groupId) {
             if (!window.DB?.dynamic_services) return null;
             const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
@@ -1070,7 +1086,7 @@ body.modal-active{overflow:hidden}
             if (fromCS) return fromCS;
             const pt = (fe?.type || fe?.pricing_type || 'flat_rate').toLowerCase();
             return window.DB?.ui_config?.pricing_type_badges?.[pt]?.label ||
-                '✅ Fixed price';
+                FALLBACKS.badge_label;
         }
 
         function resolveServiceBadgeKey(csKey) {
@@ -1829,7 +1845,7 @@ body.modal-active{overflow:hidden}
                     category: category_id,
                     label: svc.ui_taxonomy?.display_name || catName,
                     group: svc.ui_taxonomy?.display_name || svc.id,
-                    base: svc.financial_engine?.base_price ?? 70, // NOTE: hard-coded default carried over unchanged -- a business number in code (R-SYSTEM-NODATA); the SSOT should own it
+                    base: svc.financial_engine?.base_price ?? FALLBACKS.base_price, // NOTE: hard-coded default carried over unchanged -- a business number in code (R-SYSTEM-NODATA); the SSOT should own it
                     stype: (svc.service_type || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'),
                     qtyLabel: 'item',
                     key: svc.id,
@@ -1938,7 +1954,7 @@ body.modal-active{overflow:hidden}
                 if (rate) return `from $${rate}/hr`;
             }
 
-            return svc.price || 'Call';
+            return svc.price || FALLBACKS.call_for_quote;
         }
 
         function _resolveIntakeChain(svc) {
@@ -2286,7 +2302,7 @@ body.modal-active{overflow:hidden}
             // itself is no longer summed into the price at all.
             const minutesArr = items.map(it => (typeof it === 'number') ? it : (it.minutes || 0));
             const totalMinutes = minutesArr.reduce((a, b) => a + b, 0);
-            const rate = SERVICE_DATA?.meta?.global_rates?.standard_labor || 40;
+            const rate = SERVICE_DATA?.meta?.global_rates?.standard_labor || FALLBACKS.standard_labor;
             const rawPrice = (totalMinutes / 60) * rate;
             const price = Math.max(rate, rawPrice); // $40 minimum, matching the 1-hour-minimum job floor
             const hours = totalMinutes / 60;
@@ -2380,7 +2396,7 @@ body.modal-active{overflow:hidden}
             // lost and this line is the place to fix it.
             const discKey = svcDiscKey || (isProject ? 'project_based' : 'flat_fee');
 
-            const disclaimerText = discs[discKey] || cs.ui_message || 'Labor estimate. Materials extra.';
+            const disclaimerText = discs[discKey] || cs.ui_message || FALLBACKS.disclaimer_text;
             return {
                 btnText,
                 disclaimerText,
@@ -2458,7 +2474,7 @@ body.modal-active{overflow:hidden}
             // burdening larger jobs with a visible surcharge line.
             // Business decision on threshold deferred -- toggle is live now.
             const dispatchEnabled = surcharges.dispatch_fee_enabled !== false; // default true
-            const dispatchFeeRaw = surcharges.dispatch_fee || 45;
+            const dispatchFeeRaw = surcharges.dispatch_fee || FALLBACKS.dispatch_fee;
             const dispatchFee = dispatchEnabled ? dispatchFeeRaw : 0;
 
             // v9.5 GAP 2 FIX: route entities with financial_engine.pricing_archetype
@@ -2863,7 +2879,7 @@ body.modal-active{overflow:hidden}
             const tm = svc?.default_estimates?.total_minutes || dynDef?.default_estimate?.total_minutes;
             const baseMinutes = tm && tm.min != null && tm.max != null ?
                 Math.round((tm.min + tm.max) / 2) :
-                (svc?.operational_metrics?.expected_minutes ?? dynDef?.operational_metrics?.minimum_minutes ?? 45);
+                (svc?.operational_metrics?.expected_minutes ?? dynDef?.operational_metrics?.minimum_minutes ?? FALLBACKS.no_estimate_minutes);
             let totalMin = Math.max(baseMinutes + extraMin, 30);
             // SSOT: ANY active pricing_formula already determines its own
             // "how much work" sizing from its own inputs — tile_repair_formula
@@ -2959,7 +2975,7 @@ body.modal-active{overflow:hidden}
             }
             const exactTier = svc?.operational_metrics?.complexity_tier || null;
             const complexityTier = deriveComplexityTier(totalMin, tagOverrideTier, exactTier);
-            const tierRate = DB.global_rules?.complexity_tiers?.[complexityTier]?.hourly_rate || 85;
+            const tierRate = DB.global_rules?.complexity_tiers?.[complexityTier]?.hourly_rate || FALLBACKS.tier_rate;
             const effectiveHourlyRate = (formulaResult && formulaResult.overrideHourlyRate != null) ? formulaResult.overrideHourlyRate : tierRate;
 
             // isFlatRate: either the service's own financial_engine.type says so,
@@ -3249,7 +3265,7 @@ body.modal-active{overflow:hidden}
         function computeArchetypeQuote(entity, archetype, answers, qty, db, formulaId) {
             const fe = entity.financial_engine || {};
             const om = entity.operational_metrics || {};
-            const rate = (db.global_rules?.complexity_tiers?.[om.complexity_tier || 'skilled']?.hourly_rate) || 85;
+            const rate = (db.global_rules?.complexity_tiers?.[om.complexity_tier || 'skilled']?.hourly_rate) || FALLBACKS.tier_rate;
 
             if (archetype === 'flat_simple') {
                 return {
@@ -3319,7 +3335,7 @@ body.modal-active{overflow:hidden}
                 // baseMinutes on top would double-count setup time.
                 const baseMinutes = hasRealTm ?
                     Math.round((tm.min + tm.max) / 2) :
-                    (formulaResult ? 0 : (om.expected_minutes ?? om.minimum_minutes ?? 45));
+                    (formulaResult ? 0 : (om.expected_minutes ?? om.minimum_minutes ?? FALLBACKS.no_estimate_minutes));
                 const totalMin = baseMinutes + (formulaResult ? formulaResult.extraMin : 0);
                 const extraFee = formulaResult ? formulaResult.extraFee : 0;
                 const realTier = typeof deriveComplexityTier === 'function' ?
@@ -3534,7 +3550,29 @@ body.modal-active{overflow:hidden}
         };
         const KNOWN_UI_TEMPLATES = new Set(['self_quote', 'curated_card', 'chip_grid', 'legacy_flow', 'tag_affirmation']);
 
-
+        // orch_recommended_service_ids -- LOGIC. The ordered list of service ids the
+        // tag-affirmation card may recommend: the recommendedSku (if any) first, then
+        // up to two other flat-checkout services in the same category+group. Computed
+        // here, at the resolution boundary, so the renderer never reads the pricing
+        // engine (R-INVARIANT-BOUNDARY). Returns an array of service ids; may be empty.
+        function orch_recommended_service_ids(route, db) {
+            const ids = [];
+            const recSku = route.recommendedSku;
+            if (recSku) ids.push(recSku);
+            if ((route.matchConfidence || 0) < 85 && route.intentCategory) {
+                const siblings = (db.services || []).filter(s =>
+                    s.ui_taxonomy?.category_id === route.intentCategory &&
+                    s.ui_taxonomy?.group_id === route.intentGroupId &&
+                    s.id !== recSku &&
+                    isFlatCheckoutState(resolveServiceCheckoutStateKey(s, null).key)
+                ).slice(0, 2);
+                siblings.forEach(s => {
+                    if (!ids.includes(s.id)) ids.push(s.id);
+                });
+            }
+            return ids;
+        }
+        
         function executeWorkflow(context, db) {
             const workflow = db.workflow;
             if (!workflow || !Array.isArray(workflow.steps)) {
@@ -3695,7 +3733,17 @@ body.modal-active{overflow:hidden}
                 preseededAction: intakeBypass.preseededAction || null,
                 materialsEstimate,
                 quote,
-                // v9.5: expose activeTagIds on the route so downstream
+                // Fork-in-the-Road Path-B terms, resolved here so the renderer reads a fact
+                // rather than calling the pricing engine (R-INVARIANT-BOUNDARY).
+                onsiteTerms: (quote && quote.isDiagnostic && quote.divergenceEligible)
+                    ? onsiteDiagnosticTerms(quote)
+                    : null,
+                // The branch-visible subset of the composed chain, resolved here so the
+                // renderer reads a fact rather than calling _isModVisible itself
+                // (R-INVARIANT-BOUNDARY). Same filter the legacy curated path applies.
+                visibleChain: (typeof _isModVisible === 'function')
+                    ? intakeChain.filter(m => _isModVisible(m, answers, intakeChain))
+                    : intakeChain,                // v9.5: expose activeTagIds on the route so downstream
                 // renderers (renderCuratedCardFromRoute, renderSelfQuoteFromRoute)
                 // can pass the same tags to computeUnifiedQuote for live
                 // recompute. Without this, route.activeTags was always undefined
@@ -3722,10 +3770,18 @@ body.modal-active{overflow:hidden}
                 recommendedSku: context.nlpIntent?.recommendedSku || null,
                 matchConfidence: context.nlpIntent?._matchConfidence || 0,
                 intentCategory: context.nlpIntent?.category || null,
-                intentGroupId: context.nlpIntent?._groupId || null,
+                    intentGroupId: context.nlpIntent?._groupId || null,
+                // The tag-affirmation card's recommendation list, resolved here so the
+                // renderer reads a fact rather than calling the pricing engine.
+                recommendedServiceIds: orch_recommended_service_ids({
+                    recommendedSku: context.nlpIntent?.recommendedSku || null,
+                    matchConfidence: context.nlpIntent?._matchConfidence || 0,
+                    intentCategory: context.nlpIntent?.category || null,
+                    intentGroupId: context.nlpIntent?._groupId || null,
+                }, db),
                 enrichment: resolution?.enrichment || null,
-                trace,
-            };
+                            trace,
+                        };
 
             // The Veto (Master Blueprint Phase 4): never hand a broken route
             // to whatever consumes it next. Validate, and if genuinely
@@ -5407,10 +5463,10 @@ body.modal-active{overflow:hidden}
         // sets them either -- a fully self-contained, fully dead
         // "ready callback" system (COMPONENT_LAYER_MAP.md).
 
-        function _buildNavCrumbs(catId) {
+        function _buildNavCrumbs(catId, breadcrumbs) {
             const catObj = categoryMap.get(catId);
             const parts = catObj ? [(catObj.icon || '') + ' ' + catObj.display_name] : [];
-            Breadcrumbs.stack.forEach(f => {
+            (breadcrumbs || []).forEach(f => {
                 if (f.type === 'subgroup' || f.type === 'subgroups') {
                     const g = groupMap.get(f.groups || f.group);
                     if (g) parts.push(g.display_name || g.name);
@@ -5484,9 +5540,9 @@ body.modal-active{overflow:hidden}
             };
         }
 
-        function _makePanelShell(svc, category_id, livePriceText, startingPrice) {
+        function _makePanelShell(svc, category_id, livePriceText, startingPrice, breadcrumbs) {
             const displayName = svc.ui_taxonomy?.display_name || 'Service';
-            const navCrumbs = _buildNavCrumbs(category_id);
+            const navCrumbs = _buildNavCrumbs(category_id, breadcrumbs);
             const startP = startingPrice;
             const panel = create('div', {
                 class: 'intake-panel'
@@ -5584,13 +5640,13 @@ body.modal-active{overflow:hidden}
             return row;
         }
 
-        function _renderDiagnosticFlow(svc, category_id, container, prof) {
+        function _renderDiagnosticFlow(svc, category_id, container, prof, breadcrumbs) {
             const basePrice = prof.diagnosticPrice;
             const {
                 panel,
                 navCrumbs,
                 displayName
-            } = _makePanelShell(svc, category_id, `$${basePrice}+`, prof.startingPrice);
+} = _makePanelShell(svc, category_id, `$${basePrice}+ `, prof.startingPrice, breadcrumbs);
             const body = create('div', {
                 class: 'intake-panel-body'
             });
@@ -5644,8 +5700,7 @@ body.modal-active{overflow:hidden}
             container.appendChild(panel);
         }
 
-        function _renderOtherFlow(svc, category_id, container, prof) {
-            const basePrice = prof.diagnosticPrice;
+        function _renderOtherFlow(svc, category_id, container, prof, breadcrumbs) {            const basePrice = prof.diagnosticPrice;
             const groupName = (() => {
                 const lastFrame = [...Breadcrumbs.stack].reverse().find(f => f.type === 'subgroup' || f.type === 'subgroups');
                 if (lastFrame) {
@@ -5659,8 +5714,7 @@ body.modal-active{overflow:hidden}
                 panel,
                 navCrumbs,
                 displayName
-            } = _makePanelShell(svc, category_id, `$${basePrice}+`, prof.startingPrice);
-            const body = create('div', {
+            } = _makePanelShell(svc, category_id, `$${basePrice}+`, prof.startingPrice, breadcrumbs);            const body = create('div', {
                 class: 'intake-panel-body'
             });
             const banner = create('div', {
@@ -5731,7 +5785,7 @@ body.modal-active{overflow:hidden}
             container.appendChild(panel);
         }
 
-        function _renderSimpleConfirm(svc, category_id, container, prof) {
+        function _renderSimpleConfirm(svc, category_id, container, prof, breadcrumbs, resolveQuote) {
             let qty = 1;
             const startP = prof.startingPrice;
             const {
@@ -5739,7 +5793,7 @@ body.modal-active{overflow:hidden}
                 livePriceEl,
                 navCrumbs,
                 displayName
-            } = _makePanelShell(svc, category_id, startP ? `$${startP}` : '—', prof.startingPrice);
+            } = _makePanelShell(svc, category_id, startP ? `$${startP}` : '—', prof.startingPrice, breadcrumbs);
             const body = create('div', {
                 class: 'intake-panel-body'
             });
@@ -5764,7 +5818,7 @@ body.modal-active{overflow:hidden}
             }));
             body.appendChild(_makeQtyStepper(qty, newQty => {
                 qty = newQty;
-                const r = _computePrice(svc, {}, qty);
+                const r = resolveQuote(svc, {}, qty);
                 livePriceEl.textContent = '$' + r.laborEstimate;
                 addBtn.textContent = `Add to Request — $${r.laborEstimate}`;
             }));
@@ -5784,7 +5838,7 @@ body.modal-active{overflow:hidden}
                 cta,
                 addBtn
             } = _makeCTARow(container, category_id);
-            const r0 = _computePrice(svc, {}, 1);
+            const r0 = resolveQuote(svc, {}, 1);
             addBtn.disabled = false;
             addBtn.textContent = `Add to Request — $${r0.laborEstimate}`;
             addBtn.addEventListener('click', () => {
@@ -5792,7 +5846,7 @@ body.modal-active{overflow:hidden}
                     toast('Adding too fast.', 'error');
                     return;
                 }
-                const r = _computePrice(svc, {}, qty);
+                const r = resolveQuote(svc, {}, qty);
                 const nav = navCrumbs.concat([displayName]).join(' > ');
                 let notes = nav;
                 if (qty > 1) notes += '\nQuantity: ' + qty;
@@ -5822,8 +5876,8 @@ body.modal-active{overflow:hidden}
             container.appendChild(panel);
         }
 
-        function _renderStructuredIntake(svc, category_id, container, prof) {
-            const allModules = _resolveIntakeChain(svc);
+        function _renderStructuredIntake(svc, category_id, container, prof, breadcrumbs, resolveQuote) {
+    const allModules = _resolveIntakeChain(svc);
             const answers = {};
             let qty = 1;
             const discKey = svc.default_estimates?.disclaimer;
@@ -5837,7 +5891,7 @@ body.modal-active{overflow:hidden}
                 livePriceEl,
                 navCrumbs,
                 displayName
-            } = _makePanelShell(svc, category_id, initPrice, prof.startingPrice);
+            } = _makePanelShell(svc, category_id, initPrice, prof.startingPrice, breadcrumbs);
             const body = create('div', {
                 class: 'intake-panel-body'
             });
@@ -5929,7 +5983,7 @@ body.modal-active{overflow:hidden}
             addBtn.textContent = chipMods.length > 0 ? `Answer ${chipMods.length} question${chipMods.length>1?'s':''} above` : 'Add to Request';
             if (chipMods.length === 0 && !numericMod) {
                 addBtn.disabled = false;
-                const r0 = _computePrice(svc, {}, 1);
+                const r0 = resolveQuote(svc, {}, 1);
                 if (r0.laborEstimate) addBtn.textContent = `Add to Request — $${r0.laborEstimate}`;
             }
             panel.appendChild(cta);
@@ -6009,7 +6063,7 @@ body.modal-active{overflow:hidden}
                 const visible = chipMods.filter(m => _isModVisible(m, answers, chipMods));
                 const allDone = visible.every(m => !!answers[m.moduleKey]);
                 if (allDone) {
-                    const r = _computePrice(svc, answers, qty);
+                    const r = resolveQuote(svc, answers, qty);
                     livePriceEl.textContent = (discKey === 'project_based' ? 'from ' : '') + '$' + r.laborEstimate;
                 } else {
                     livePriceEl.textContent = '—';
@@ -6034,7 +6088,7 @@ body.modal-active{overflow:hidden}
                     addBtn.disabled = true;
                     addBtn.textContent = `Answer ${remaining} question${remaining > 1 ? 's' : ''} above`;
                 } else {
-                    const r = _computePrice(svc, answers, qty);
+                    const r = resolveQuote(svc, answers, qty);
                     addBtn.disabled = false;
                     const sfx = (prof.isDiagnostic || discKey === 'project_based') ? ' (est.)' : '';
                     addBtn.textContent = `Add to Request — $${r.laborEstimate}${sfx}`;
@@ -6049,7 +6103,7 @@ body.modal-active{overflow:hidden}
                     toast('Adding too fast.', 'error');
                     return;
                 }
-                const r = _computePrice(svc, answers, qty);
+                                const r = resolveQuote(svc, answers, qty);
                 const nav = navCrumbs.concat([displayName]).join(' > ');
                 let notes = nav;
                 chipMods.filter(m => _isModVisible(m, answers, chipMods)).forEach(mod => {
@@ -7037,28 +7091,12 @@ body.modal-active{overflow:hidden}
                 '';
 
             // T66 follow-up: real port of the legacy affirmation-card renderer's sibling-service
-            // recommendation logic -- offers up to 2 alternates when the match was
-            // ambiguous (confidence < 85), using the route fields exposed above.
-            const recs = [];
-            const recSku = route.recommendedSku;
-            if (recSku) {
-                const primary = DB.services.find(s => s.id === recSku);
-                if (primary) recs.push(primary);
-            }
-            if ((route.matchConfidence || 0) < 85 && route.intentCategory) {
-                const siblings = (DB.services || []).filter(s =>
-                    s.ui_taxonomy?.category_id === route.intentCategory &&
-                    s.ui_taxonomy?.group_id === route.intentGroupId &&
-                    s.id !== recSku &&
-                    (() => {
-                        const csk = resolveServiceCheckoutStateKey(s, null).key;
-                        return isFlatCheckoutState(csk);
-                    })()
-                ).slice(0, 2);
-                siblings.forEach(s => {
-                    if (!recs.find(r => r.id === s.id)) recs.push(s);
-                });
-            }
+            // recommendation logic. The id list (primary + up to 2 alternates) is resolved by the
+            // orchestrator (orch_recommended_service_ids) and carried on the route, so this
+            // renderer never reads the pricing engine (R-INVARIANT-BOUNDARY).
+            const recs = (route.recommendedServiceIds || [])
+                .map(id => DB.services.find(s => s.id === id))
+                .filter(Boolean);
             const recHtml = recs.length > 0 ? `
         <div class="affirm-recs">
             <div class="affirm-recs-label">Suggested service${recs.length > 1 ? 's' : ''}:</div>
@@ -7267,9 +7305,8 @@ body.modal-active{overflow:hidden}
             // render prematurely -- confirmed directly as the exact cause of
             // this session's last remaining parity-sweep divergence
             // (prehung_interior_door_install: 4 rendered vs. the real 2).
-            const _visibleChain = (typeof _isModVisible === 'function') ?
-                chain.filter(m => _isModVisible(m, answers, chain)) :
-                chain;
+                        // Resolved by the orchestrator (route.visibleChain); the renderer reads the fact.
+            const _visibleChain = route.visibleChain || chain;
             const _maxQs = route.maxFollowupQuestions ?? Infinity; // resolved by the orchestrator (orch_max_followup_questions); Infinity = no cap known
             let _shownCount = 0;
             _visibleChain.forEach((mod, idx) => {
@@ -7317,7 +7354,8 @@ body.modal-active{overflow:hidden}
             // The client chose "Book an on-site diagnostic": the price they are being asked to accept is the
             // flat diagnostic fee they were just shown, not the hourly labor estimate for the repair itself.
             const onsite = !!(q && q.isDiagnostic && q.divergenceEligible && divergencePath === 'onsite');
-            const terms = onsite ? onsiteDiagnosticTerms(q) : null;
+            // Terms resolved by the orchestrator (route.onsiteTerms); the renderer reads the fact.
+            const terms = onsite ? (route.onsiteTerms || null) : null;
             if (q && onsite) {
                 html += `<div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
                     <span>${escapeHtml(terms.label)}</span>
@@ -8385,21 +8423,30 @@ body.modal-active{overflow:hidden}
                 renderFurnitureSelection(container, svc, category_id);
                 return;
             }
+            // Captured once here (the dispatcher) and passed down as a fact -- the
+            // panel renderers read no session state (_buildNavCrumbs takes it in).
+            const breadcrumbs = Breadcrumbs.stack.slice();
             const prof = getServiceProfile(svc);
+                        // The price resolver is injected, not named by the renderers
+            // (P-INVARIANT-HANDLERS, R-INVARIANT-BOUNDARY). Provided here
+            // because this function is the dispatcher that owns the
+            // legacy intake path; the renderers only call what they were handed.
+            const resolveQuote = (s, a, q) => _computePrice(s, a, q);
             if (prof.requiresSiteVisit) {
-                _renderDiagnosticFlow(svc, category_id, container, prof);
+                _renderDiagnosticFlow(svc, category_id, container, prof, breadcrumbs);
                 return;
             }
             if (prof.isOther) {
-                _renderOtherFlow(svc, category_id, container, prof);
+                _renderOtherFlow(svc, category_id, container, prof, breadcrumbs);
                 return;
             }
             if (svc.intake_chain && svc.intake_chain.length > 0) {
-                _renderStructuredIntake(svc, category_id, container, prof);
+                _renderStructuredIntake(svc, category_id, container, prof, breadcrumbs, resolveQuote);
                 return;
             }
-            _renderSimpleConfirm(svc, category_id, container, prof);
+            _renderSimpleConfirm(svc, category_id, container, prof, breadcrumbs, resolveQuote);
         }
+
 
 
 
@@ -10382,7 +10429,7 @@ function addToCart(entry) {
                     category: category_id,
                     label: (catObj?.display_name || category_id) + (singleType ? ' \u2014 ' + singleType : ''),
                     group: groupObj?.display_name || groupId,
-                    base: dynDef?.financial_engine?.base_price ?? 70,
+                    base: dynDef?.financial_engine?.base_price ?? FALLBACKS.base_price,
                     stype: singleType, // null when ambiguous — set for real once the builder's action step is answered
                     qtyLabel: 'item',
                     key: tile.id,
@@ -10741,7 +10788,7 @@ function addToCart(entry) {
             const baseIntent = ctx.nlpIntent || {
                 category: 'other',
                 label: 'General',
-                base: 70,
+                base: FALLBACKS.base_price,
                 stype: 'Repair',
                 qtyLabel: 'item',
                 key: 'other',
@@ -11312,6 +11359,41 @@ function addToCart(entry) {
         //  (2) the "escDef" block is a SECOND copy of applyLiveConfidenceEscalation (PE) and it has DRIFTED: it reads smart_tags.*.effects.complexity_override, which no tag in the SSOT has
         //      (0 of 43), while the engine reads escalate_complexity (#brick_wall, #fragile_item). So this path never escalates and the route does. Delegating would change what the
         //      builder shows for those two tags (a behavior change Phase A forbids), so it is held.
+        // _sqPrepareFlowLegacyEscalation -- LEGACY, held (PHASE_B_FOLLOWUP C-05).
+        // This is a second copy of applyLiveConfidenceEscalation (pricing_engine.js)
+        // and it has drifted: it reads smart_tags.*.effects.complexity_override, which
+        // no tag in the SSOT has (0 of 43), while the engine reads escalate_complexity.
+        // So this path never escalates and the orchestrator does. Delegating would
+        // change what the guided builder shows for #brick_wall / #fragile_item, which
+        // Phase A forbids; held until the builder is retired or reconciled.
+        //
+        // Extracted from sqPrepareFlow so the duplicate is one named thing rather than
+        // an inline block: the eventual retirement is a single-function delete under
+        // R-INVARIANT-DELETION, and the drift is visible at one call site.
+        function _sqPrepareFlowLegacyEscalation(baseStrategy, activeTagIds, escDef) {
+            if (!escDef) return { strategy: baseStrategy, escalatedBy: null };
+            const RANK = { skilled: 1, specialized: 2 };
+            let worst = null, worstRank = 0;
+            for (const tid of activeTagIds) {
+                const ov = DB.smart_tags?.[tid]?.effects?.complexity_override;
+                if (ov && (RANK[ov] || 0) > worstRank) {
+                    worst = ov;
+                    worstRank = RANK[ov];
+                }
+            }
+            if (!worst || !escDef[worst]) return { strategy: baseStrategy, escalatedBy: null };
+            const capConf = escDef.max_minimum_quote_confidence ?? 95;
+            const capQ = escDef.max_followup_questions_absolute ?? 6;
+            return {
+                strategy: {
+                    ...baseStrategy,
+                    minimum_quote_confidence: Math.min(capConf, (baseStrategy.minimum_quote_confidence || 0) + (escDef[worst].minimum_quote_confidence_delta || 0)),
+                    maximum_followup_questions: Math.min(capQ, (baseStrategy.maximum_followup_questions || 0) + (escDef[worst].maximum_followup_questions_delta || 0)),
+                },
+                escalatedBy: worst
+            };
+        }
+
         function sqPrepareFlow(skipStep2) {
             const desc = S.desc || '';
             const detCat = S.intent?.category || 'other';
@@ -11465,34 +11547,14 @@ function addToCart(entry) {
             const baseStrategy = resolveBaseConfidenceStrategy(svcForStrategy, dynDefForStrategy);
 
             const allActiveTagIds = [...new Set([...S.detTagIds, ...S.manTagIds])];
-            const escDef = DB.global_rules?.confidence_escalation;
-            let liveStrategy = baseStrategy;
-            let escalatedBy = null;
-            if (escDef) {
-                const RANK = {
-                    skilled: 1,
-                    specialized: 2
-                };
-                let worst = null,
-                    worstRank = 0;
-                for (const tid of allActiveTagIds) {
-                    const ov = DB.smart_tags?.[tid]?.effects?.complexity_override;
-                    if (ov && (RANK[ov] || 0) > worstRank) {
-                        worst = ov;
-                        worstRank = RANK[ov];
-                    }
-                }
-                if (worst && escDef[worst]) {
-                    const capConf = escDef.max_minimum_quote_confidence ?? 95;
-                    const capQ = escDef.max_followup_questions_absolute ?? 6;
-                    liveStrategy = {
-                        ...baseStrategy,
-                        minimum_quote_confidence: Math.min(capConf, (baseStrategy.minimum_quote_confidence || 0) + (escDef[worst].minimum_quote_confidence_delta || 0)),
-                        maximum_followup_questions: Math.min(capQ, (baseStrategy.maximum_followup_questions || 0) + (escDef[worst].maximum_followup_questions_delta || 0)),
-                    };
-                    escalatedBy = worst;
-                }
-            }
+            // Held duplicate of applyLiveConfidenceEscalation, now a named function
+            // (_sqPrepareFlowLegacyEscalation) -- see its header comment for the drift
+            // and the reason it is not yet delegated. Behavior here is unchanged.
+            const _legacyEsc = _sqPrepareFlowLegacyEscalation(
+                baseStrategy, allActiveTagIds, DB.global_rules?.confidence_escalation
+            );
+            const liveStrategy = _legacyEsc.strategy;
+            const escalatedBy = _legacyEsc.escalatedBy;
             S._confidenceStrategy = liveStrategy;
             S._escalatedBy = escalatedBy;
             // T118 FIX: was force_modules_by_variability[tier], unconditional.
@@ -11576,18 +11638,18 @@ function addToCart(entry) {
             // hourly:    formula_components = ['calculated_labor','intake_fees'] → base + (mins/60)*rate
             const om = svc.operational_metrics || {};
             const fe = svc.financial_engine || {};
+            // R-SYSTEM-NODATA pending: the tier default block is still a code
+            // literal, but it is now visibly a fallback beside the FALLBACKS
+            // constants above and reads the same tier_rate fallback. The
+            // remaining 65/110 values are the tiered variants of the same
+            // SSOT-owned rate table; migrating them is part of the same
+            // pending SSOT move.
             const tiers = DB.global_rules?.complexity_tiers || {
-                routine: {
-                    hourly_rate: 65
-                },
-                skilled: {
-                    hourly_rate: 85
-                },
-                specialized: {
-                    hourly_rate: 110
-                }
+                routine:     { hourly_rate: 65 },
+                skilled:     { hourly_rate: FALLBACKS.tier_rate },
+                specialized: { hourly_rate: 110 }
             };
-            const dispatch = DB.global_rules?.surcharges?.dispatch_fee || 45;
+            const dispatch = DB.global_rules?.surcharges?.dispatch_fee || FALLBACKS.dispatch_fee;
             // T118 (operator-directed, real user trace,
             // 2026-09-12): was `fe.pricing_type` -- confirmed
             // directly this field does not exist anywhere in the
@@ -11605,7 +11667,7 @@ function addToCart(entry) {
             // narrow: exactly one currently self-quoting service
             // has type: "hourly" today.
             const pricingType = fe.type || 'flat_rate';
-            const basePrice = fe.base_price || 70;
+            const basePrice = fe.base_price || FALLBACKS.base_price;
 
             // Read pricing engine formula_components from SSOT
             const engineDef = DB.global_rules?.pricing_engines?.[resolveEngineKey(pricingType)] || {};
@@ -11645,7 +11707,7 @@ function addToCart(entry) {
                 // accidental floor from expected_minutes happening
                 // to equal 60.
                 const minHours = DB.global_rules?.pricing_engines?.hourly_estimate?.minimum_billable_hours || 1;
-                const mins = om.expected_minutes || 60;
+                const mins = om.expected_minutes || FALLBACKS.default_minutes;
                 const billableHours = Math.max(mins / 60, minHours);
                 perItemLabor = Math.round(basePrice * billableHours);
             } else if (isFormula) {
@@ -11665,7 +11727,7 @@ function addToCart(entry) {
                 // formula — sum-of-items-then-1hr-minimum — when there's
                 // only one item and no furniture-item list available in
                 // this scope) rather than silently zeroing the price.
-                const mins = om.expected_minutes || 60;
+                const mins = om.expected_minutes || FALLBACKS.default_minutes;
                 perItemLabor = mathFurnitureAssembly([mins]).price || basePrice;
             } else {
                 // flat_rate: base_price IS the labor total — no hourly on top
@@ -12638,3 +12700,4 @@ function addToCart(entry) {
 </body>
 
 </html>
+
