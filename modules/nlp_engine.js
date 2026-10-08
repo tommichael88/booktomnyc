@@ -1,5 +1,3 @@
- <!-- nlp_engine.js -->
- <script>
      /**
       * nlp_engine.js
       *
@@ -2237,4 +2235,3 @@
          }
          return false;
      }
- </script>
