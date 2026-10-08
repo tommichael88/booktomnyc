@@ -214,34 +214,24 @@
         "intake_defaults": {
           "type": "object",
           "_note": "T118: replaces force_modules_by_variability_DEPRECATED. Precedence: service's own authored intake_chain > group_defaults > category_defaults > universal.",
-          "required": [
-            "universal",
-            "category_defaults",
-            "group_defaults"
-          ],
+          "required": ["universal", "category_defaults", "group_defaults"],
           "properties": {
             "universal": {
               "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "items": { "type": "string" }
             },
             "category_defaults": {
               "type": "object",
               "additionalProperties": {
                 "type": "array",
-                "items": {
-                  "type": "string"
-                }
+                "items": { "type": "string" }
               }
             },
             "group_defaults": {
               "type": "object",
               "additionalProperties": {
                 "type": "array",
-                "items": {
-                  "type": "string"
-                }
+                "items": { "type": "string" }
               }
             },
             "excluded_services": {
@@ -249,15 +239,8 @@
               "_note": "T118: optional, targeted opt-out for specific services within an otherwise-correct category/group default. Mixed shape: '_note' is a string, every other key is a service_id -> array of excluded module keys.",
               "additionalProperties": {
                 "oneOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
+                  { "type": "string" },
+                  { "type": "array", "items": { "type": "string" } }
                 ]
               }
             }
@@ -370,10 +353,6 @@
             "hub_heading": {
               "type": "string",
               "description": "Heading text for the two-option 'Information Resolution Hub' card."
-            },
-            "onsite_price_label": {
-              "type": "string",
-              "description": "T136: label beside the flat diagnostic fee on the curated card once the client has chosen Path B (Book an on-site diagnostic). Charter: Path B is a bookable, PRICED service at a flat-rate diagnostic fee, credited back if the work goes ahead."
             }
           }
         }
@@ -452,6 +431,53 @@
             "hourly_rate",
             "complexity_multiplier"
           ]
+        },
+        "hardware_install_formula": {
+          "type": "object",
+          "description": "T156 (PENDING_DECISIONS #112, operator ruling): cabinet knob / pull install. Price = the higher of (visit_minimum, the graduated tier total, the old flat price for the install type). Used only by cabinet_knob_or_pull_install.",
+          "properties": {
+            "swap": {
+              "type": "object",
+              "description": "Install type: swapping existing hardware (same holes). The old flat price, kept as the floor under the tiers.",
+              "properties": {
+                "included_units": { "type": "integer" },
+                "flat_rate": { "type": "number" },
+                "overflow_per_unit": { "type": "number" },
+                "minutes_per_unit": { "type": "number" }
+              },
+              "required": ["included_units", "flat_rate", "overflow_per_unit", "minutes_per_unit"]
+            },
+            "new_holes": {
+              "type": "object",
+              "description": "Install type: new holes needed (measure, drill, mark). The old flat price, kept as the floor under the tiers.",
+              "properties": {
+                "included_units": { "type": "integer" },
+                "flat_rate": { "type": "number" },
+                "overflow_per_unit": { "type": "number" },
+                "minutes_per_unit": { "type": "number" }
+              },
+              "required": ["included_units", "flat_rate", "overflow_per_unit", "minutes_per_unit"]
+            },
+            "tiers": {
+              "type": "array",
+              "description": "Graduated (marginal) bands in ascending order: each band prices only the units that fall inside it. up_to_units is the band's inclusive upper bound; null means no upper bound (the last band). The engine reads this in order; a band table that is not ascending is a data error, caught by verify_knob_pull_tiered_pricing.js.",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "up_to_units": { "type": ["integer", "null"] },
+                  "rate_per_unit": { "type": "number" }
+                },
+                "required": ["up_to_units", "rate_per_unit"],
+                "additionalProperties": false
+              }
+            },
+            "visit_minimum": {
+              "type": "number",
+              "description": "The least this service ever quotes, in dollars (a non-negative number; the checker has no 'minimum' keyword, so the test holds the sign)."
+            }
+          },
+          "required": ["swap", "new_holes", "tiers", "visit_minimum"]
         },
         "pax_wardrobe_formula": {
           "type": "object",
@@ -1532,9 +1558,7 @@
           },
           "related_services": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
+            "items": { "type": "string" },
             "description": "T118 (PENDING_DECISIONS.md #25): service IDs of other, real services this one is commonly confused with, most often via catalog navigation rather than free text (where NLP intent-matching already disambiguates better). Surfaced as a direct cross-link on the curated intake card so a customer who landed on the wrong one can switch without re-navigating the whole catalog. A targeted mitigation for confirmed, real confusion between two specific services -- not a general recommendation/upsell mechanism."
           }
         }
