@@ -10213,3 +10213,59 @@ New baselines: `archive/suite_baseline_T156.tsv` (this run, with a browser; what
 ### 7. Not started (by instruction)
 
 **Phase B** (layer moves, the `#61` gate-held sampler, the `intake_chain` concept migration and then `resolvePricingPath`), **Phase C**, and the work held under #95, #115-#118 and D-C11 / D-A2b. The gate-held functions (`sqPrepareFlow`, `sqRenderSelfQuoteAdlib`, `prefillSmartQuoteFromOtherTile`) were not touched. Say "start Phase B" and I begin with `intake_chain`.
+
+
+## T157 — The live site showed the category grid and no SmartQuote text input: the boot gate was reading a stale schema file. It now reads the schema where the SSOT says it lives, and a boot failure is drawn on the page
+
+Governing message: yours ("the smartquote text input is totally absent under the category grid in the live site"). Everything below is about that one report. The T156 rulings (#111(4), #115(C), #120, #121, #125, #123) are **not** in this package; see section 7.
+
+### 1. What was wrong (reproduced from the files that are deployed)
+
+I could not load the live URL from here (the sandbox blocks `github.io`), so I read the repository the site is published from (`tommichael88/booktomnyc`, `e2dff6a`, pushed 2026-10-07 21:59 -0400) and booted exactly those files in Chromium. **The deployed `qr.html` and `btnyc.json` are byte-identical to the T156 package** (sha256 prefixes `0ab693f0a26e`, `ca22cbf8bb1a`), `trace.js` is the T156 one, and **the schema is in two places**: `schema/btnyc_schema.json` (85,453 bytes, byte-identical to T156's; uploaded in `78d0bc2`) and `btnyc_schema.json` at the root (63,656 bytes, untouched since 2026-09-25, a different generation of the schema). The T155 boot gate (A3) fetched `./btnyc_schema.json`, i.e. the root, because I hard-coded "beside the data". The T156 data fails that stale schema with **907 problems** (first: `/global_rules` missing `force_modules_by_variability`), so `init()` threw at step 1b, before `renderCategoryCards()` and `initSmartQuote()`.
+
+What a visitor saw follows from how the page is built: **the category grid is static HTML** in `qr.html` (so it shows even when `init` never ran, but its tiles have no handlers), and **the text bar is injected only by `initSmartQuote()`**. Result: a grid that does nothing, no text input, and a toast for three seconds. Booting the same deployed files with the right schema (`schema/`) gives `status: 'valid'`, six live tiles, and the text input under the grid.
+
+Two faults, one yours-to-see and one mine: (1) **the page and the SSOT disagreed about where the schema lives.** `btnyc.json` declares `"$schema": ".../schema/btnyc_schema.json"` (and the schema's own `$id` is that URL); you published it there, as declared. My T156 hand-off (PENDING_DECISIONS #119) told you to deploy it "next to `btnyc.json`", which contradicted the SSOT. (2) **A boot failure was silent.** Nothing on the page said anything was wrong.
+
+### 2. What changed
+
+- **`orch_resolve_schema_location(data) -> { path, source }`** (orchestrator block, pure; R-INVARIANT-PROVENANCE). The schema path is `$schema` relative to `$id` (`./schema/btnyc_schema.json` for the real data, `source: 'ssot.$schema'`); with nothing usable declared it is the old default (`./btnyc_schema.json`, `source: 'default'`). "Usable" is narrow: same origin as `$id`, under `$id`'s directory, plain path segments, a `.json` file. A document cannot send the page to another host, up a directory, or to another kind of file. One location per document, no fallback chain: if it cannot be read the gate says `unavailable` (#119, unchanged and tested).
+- **`init`** reads the schema from that location, keeps its verdict in a local (`_ssot`) and publishes it as `window.__ssotValidation = { status, errors, schema: { path, source } }`, so anyone can ask which schema was used and why.
+- **`renderBootFailure({ stage, message, details })`** (UIRenderer block, next to `toast`; DOM only, `textContent` only). On a failed boot the visitor sees a panel where the text bar would be ("We couldn't load our services right now. Please refresh the page ..."), a **Technical details** disclosure for whoever has to fix it (the error, the schema path and what chose it, the first eight problems, the build and URL) and a Refresh link. If boot failed **before** the live grid existed, the dead static grid is hidden; if it failed **after**, the working grid is left alone. `init` tracks how far it got (`_bootStage`).
+- **The package layout follows the SSOT:** `schema/btnyc_schema.json` (the file moved from the package root; the eleven tests that read it and the integrity tool's source list follow). **There is no longer a root copy in the package**; the stale root copy on GitHub is yours to delete (#126).
+- `QR_BUILD_VERSION` -> `T157`.
+
+### 3. What you need to do on GitHub (nothing here can be done from the sandbox)
+
+The site is fixed **today, without any code**, by making the root file match: upload the package's `schema/btnyc_schema.json` over **`btnyc_schema.json` at the repository root** (same bytes as the one already in `schema/`). Then deploy this package's `qr.html` when you like; after that the root file is never read and should be deleted (#126). The service worker is network-first for `.json` and for pages, so the corrected file is picked up without anyone clearing a cache.
+
+### 4. What a customer sees now that they did not
+
+(1) With the deployed layout the text input is there. (2) If a future deploy breaks boot for any reason, the visitor gets a clear message and a refresh link instead of a grid that does nothing, and you get the reason on the page, not only in the console.
+
+### 5. Verification
+
+New: `verify_boot_failure_visible.js` (36 checks; **red before the change**, with the reported symptom reproduced in its section 2). It checks the resolver on twelve inputs (including a foreign host, a directory escape, a `..` traversal, a non-`.json` target and non-string fields), the real data resolving to `schema/`, a real-browser boot of the **exact deployed layout** (right schema in `schema/`, a stale one at the root), an unreadable schema (boots, `unavailable`, a warning that names the path, no second location tried), bad data and an unfetchable `btnyc.json` (panel visible with the reason in its details, dead grid hidden, no text input pretended), a late failure (panel shown, working grid and input left alone), and **three source mutants**: the old hard-coded path, a catch that is a toast only, and a panel that hides the grid whatever the stage. Per-change protocol, same as Phase A:
+
+| Measure | T156 baseline | T157 |
+|---|---|---|
+| Price golden master (extended inputs) | 2,988 points | 2,988, **0 differ** |
+| Real-browser differential (T156 `qr.html` vs this one) | 1,146 entries | 1,146, **0 different** |
+| Full suite (with a browser), pass -> fail | 110 pass / 74 fail (184 tests) | **111 pass / 74 fail (185 tests)**: the new test is the one added pass; **pass -> fail: none; fail -> pass: none** |
+| Unified Charter suite | 282 / 20 | 283 / 20 (+1: the new function's signature check; the same twenty known failures) |
+| `tsc` errors (TypeScript 5.9.3) | 605 | 602 (three `window.__ssotValidation` accesses became one) |
+
+5a. Full suite: recorded by `test_harness/tools/suite_snapshot.js` (new; it lives in the repo this time, with `--compare` giving pass -> fail and fail -> pass; result in `archive/suite_T157.tsv`). Two tests are marked `[GAP]` (their browser halves skipped even with Chrome present; see the #125 addendum). Along the way one test went red from the build-version bump (`verify_qr_build_version_freshness.js`, which requires this entry) and is green with it; the unified suite's R-SYSTEM-LAYERS check on undeclared orchestrator members went red for `orch_resolve_schema_location` and is green with it declared in the module API table (as `orch_validate_ssot` was in A3). Retargeted, not loosened: `verify_ssot_boot_validation.js` (the "schema is published beside the data" check now derives the location from the SSOT; the gate mutant's anchor follows the renamed local), and the eleven tests that read the schema file (this one included) now read `schema/btnyc_schema.json`.
+
+### 6. Found on the way
+
+- **The T155 gate was only ever tested on a layout I invented.** Every test served the schema at the path the code wanted. None served the layout that was deployed, so none could have caught this. The new test serves the deployed layout, with a stale copy at the old location.
+- **`verify_charter_rules.js` and `verify_charter_rule_index_v2.js` ran in every suite but were not acknowledged in `MASTER_TEST_SUITE.json`** (the integrity check said so since T156). Both are now listed and stamped.
+- **Two more silent browser skips** (`verify_builder_preseeded_context.js`, `verify_quote_template_complete_fields.js`: their Chrome finder ignores `CHROME_PATH`), added to #125 as an addendum, not fixed here.
+- **#126** (which schema is canonical; default: `schema/`) and **#127** (the gate cannot tell a stale schema from bad data; default: leave it strict, now with a visible reason) are filed with their defaults; #119 carries a correction.
+
+### 7. Not in this package (lost with the container, not decided against)
+
+This session's sandbox was reset after the T156 delivery, and the working tree went with it: the repository history was rebuilt from the T156 package (one baseline commit). The T156 addendum rulings were being implemented and **none of that is in this tree**: #125 (the runner fails a silent browser skip), #111(4) (the 26 legacy-pipeline tests retired, 17 retargeted to the engine), #127's eleven restored harness files, #115(C) (the cart-only reducer), plus the #121 retargets and the #120 Charter edits (those two were still to do). I will redo them in that order from my own record of the work; nothing about the rulings has changed. **Phase B has not started.**
+
+**Files modified:** `qr.html` (`QR_BUILD_VERSION` -> `T157`; `orch_resolve_schema_location`; `init` step 1b, `_bootStage`, `_ssot`, the catch; `renderBootFailure`), `schema/btnyc_schema.json` (moved from the package root, unchanged), `PENDING_DECISIONS.md` (#119 correction, #126, #127), `TIMELINE.md`, `test_harness/verify_boot_failure_visible.js` (new), `test_harness/tools/suite_snapshot.js` (new), `test_harness/tools/master_edit.js` (new), `test_harness/verify_file_integrity.js` (the source list names `schema/btnyc_schema.json`), `test_harness/verify_ssot_boot_validation.js`, `test_harness/verify_charter_rule_index_v10.js` (the declared module API), the other ten tests that read the schema (`verify_booking_context_phase1.js`, `verify_btnyc_v10_compiler.py`, `verify_compiled_output_against_real_schema.js` / `.py`, `verify_divergence_resolution.js`, `verify_invariants_rulebook.js`, `verify_knob_pull_tiered_pricing.js`, `verify_matrix_phase3.js`, `verify_pricing_archetype_consolidation.js`, `verify_trace_observation_only.js`), `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json`, `archive/types_T157.txt`, `archive/suite_T157.tsv`.

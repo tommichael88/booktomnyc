@@ -169,7 +169,7 @@ console.log('\n=== 5. The property checker can fail (non-vacuity) ===');
 console.log('\n=== 6. The schema guards the tier table (the page refuses to boot on a malformed one) ===');
 {
     // The in-page checker (orch_validate_ssot) over the real schema. A tier table the engine would mis-read must be refused at boot, not discovered in a quote.
-    const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, 'btnyc_schema.json'), 'utf8'));
+    const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
     const W = world();
     const validate = (alter) => { const DB = JSON.parse(JSON.stringify(DB0)); if (alter) alter(DB.pricing_formulas.hardware_install_formula); return W.sb.orch_validate_ssot(DB, SCHEMA); };
     const real = validate(null);

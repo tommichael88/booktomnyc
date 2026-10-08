@@ -123,7 +123,7 @@ const freeTextRouteOf = (w, text) => JSON.stringify(w.executeWorkflow(w.collectB
   console.log('\n=== 4b. observation-only at the page level: the real page renders the same with the tracer absent, closed and open ===');
   {
     const HTML = fs.readFileSync(process.env.QR_HTML || path.join(REPO_ROOT, 'qr.html'), 'utf8');
-    const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc_schema.json'), 'utf8'));
+    const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
     const TAG = '<script src="https://tommichael88.github.io/booktomnyc/trace.js"></script>';
     const wait = ms => new Promise(r => setTimeout(r, ms));
     async function page({ tracerSrc, open }) {

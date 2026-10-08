@@ -24,7 +24,7 @@ const path = require('path');
 const REPO_ROOT = path.dirname(__dirname);
 const QR_HTML = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
 const DB = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
-const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc_schema.json'), 'utf8'));
+const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
 
 let pass = 0, fail = 0;
 function check(label, condition) {

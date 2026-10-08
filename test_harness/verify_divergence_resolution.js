@@ -121,7 +121,7 @@ check('toilet_install: laborEstimate is a real positive number (no regression in
 // ─────────────────────────────────────────────────────────────────────
 console.log('\n=== Layer 2: data + schema ===');
 
-const schema = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc_schema.json'), 'utf8'));
+const schema = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
 check('global_rules schema declares divergence_resolution',
     !!schema.properties.global_rules.properties.divergence_resolution);
 check('services item schema declares remote_deep_dive_modules',

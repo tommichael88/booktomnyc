@@ -30,7 +30,7 @@ const REPO_ROOT = path.dirname(__dirname);
 const QR = process.env.QR_HTML || path.join(REPO_ROOT, 'qr.html');
 const HTML = fs.readFileSync(QR, 'utf8');
 const BASE = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
-const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc_schema.json'), 'utf8'));
+const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
 const clone = o => JSON.parse(JSON.stringify(o));
 
 let pass = 0, fail = 0;
@@ -53,7 +53,7 @@ const mine = (d, s) => HAS_CHECKER ? sandbox.orch_validate_ssot(d, s || SCHEMA) 
   console.log('=== 1. the page\'s checker gives the same verdict as the reference validator (ajv) ===');
   check('the orchestrator module carries the checker (orch_validate_ssot)', HAS_CHECKER);
   check('the real catalog conforms, per both', ajvVerdict(BASE).ok === true && mine(BASE).valid === true, JSON.stringify(mine(BASE).errors.slice(0, 3)));
-  check('btnyc_schema.json is published beside btnyc.json and qr.html (the page fetches it by relative path)', fs.existsSync(path.join(REPO_ROOT, 'btnyc_schema.json')));
+  check('the schema is published where btnyc.json\'s own $schema says it is, and the page reads it from there (T157: orch_resolve_schema_location)', (() => { const loc = typeof sandbox.orch_resolve_schema_location === 'function' ? sandbox.orch_resolve_schema_location(BASE) : null; return !!loc && loc.source === 'ssot.$schema' && fs.existsSync(path.join(REPO_ROOT, loc.path)); })());
 
   const mismatches = []; let invalidByAjv = 0, total = 0, pathAgree = 0, pathCases = 0;
   function compare(label, doc) {
@@ -134,7 +134,7 @@ const mine = (d, s) => HAS_CHECKER ? sandbox.orch_validate_ssot(d, s || SCHEMA) 
   check('... and the console says why (every problem, then the boot failure)', bad.logs.error.some(l => /does not conform/.test(l) && /invariants/.test(l)) && bad.logs.error.some(l => /failed to initialize/.test(l)), bad.logs.error.slice(0, 2).join(' | ').slice(0, 300));
   bad.dom.window.close();
 
-  const GATE = "if (window.__ssotValidation.status === 'invalid') {";
+  const GATE = "if (_ssot.status === 'invalid') {";   // T157: init keeps its verdict in a local (_ssot) and publishes it as window.__ssotValidation; the gate reads the local
   const ungated = world({ mutateDb: dropKey, mutateHtml: h => { if (!h.includes(GATE)) throw new Error('mutant anchor missing (the boot gate)'); return h.replace(GATE, 'if (false) {'); } }); await wait(2500);
   check('MUTANT (the gate cut out of the source): the same invalid catalog boots, so the check above can fail', booted(ungated.dom.window), 'the page did not boot even without the gate');
   ungated.dom.window.close();

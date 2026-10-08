@@ -29,7 +29,7 @@ function check(label, condition) {
     }
 }
 
-const schema = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "btnyc_schema.json"), 'utf-8'));
+const schema = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "schema", "btnyc_schema.json"), 'utf-8'));
 const ajv = new Ajv({ allErrors: true, strict: false });
 addFormats(ajv); // Enforces "date-time" and other formats to match Python's jsonschema
 const validate = ajv.compile(schema);

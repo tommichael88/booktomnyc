@@ -123,7 +123,7 @@ if (process.argv.includes('--update')) {
         fs.existsSync(path.join(REPO_ROOT, name))
     );
     const sourceFiles = [...new Set([
-        'qr.html', 'btnyc.json', 'btnyc_schema.json',
+        'qr.html', 'btnyc.json', 'schema/btnyc_schema.json',
         'pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js',
         'UIRenderer.js', 'AppController.js', 'cms_bridge.js',
         'btnyc_v10_compiler.py', 'btnyc_v8_compiler.py', 'btnyc_v7_compiler.py', 'btnyc_master_deprecated.py',

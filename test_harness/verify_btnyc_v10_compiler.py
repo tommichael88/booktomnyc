@@ -47,7 +47,7 @@ import tempfile
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COMPILER_PATH = os.path.join(REPO_ROOT, "btnyc_v10_compiler.py")
 CATALOG_PATH = os.path.join(REPO_ROOT, "btnyc.json")
-SCHEMA_PATH = os.path.join(REPO_ROOT, "btnyc_schema.json")
+SCHEMA_PATH = os.path.join(REPO_ROOT, "schema", "btnyc_schema.json")
 
 pass_count, fail_count = 0, 0
 

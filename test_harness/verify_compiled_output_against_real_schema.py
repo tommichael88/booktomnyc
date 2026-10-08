@@ -64,7 +64,7 @@ def check(label, condition):
         print(f"  ✗ {label}")
 
 
-schema = json.load(open(os.path.join(REPO_ROOT, "btnyc_schema.json")))
+schema = json.load(open(os.path.join(REPO_ROOT, "schema", "btnyc_schema.json")))
 validator = jsonschema.Draft7Validator(schema)
 
 print("=== The real, original, hand-authored catalog still validates cleanly ===")

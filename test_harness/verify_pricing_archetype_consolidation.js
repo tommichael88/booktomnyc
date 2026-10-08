@@ -71,7 +71,7 @@ vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'archetype_consolidation' });
 
 console.log('=== The real schema correctly defines pricing_archetype as an enum of exactly the 5 real, confirmed archetypes ===');
-const schema = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc_schema.json'), 'utf8'));
+const schema = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
 const enumValues = schema.properties.services.items.properties.financial_engine.properties.pricing_archetype.enum;
 check('the real schema enum has exactly 5 values', enumValues.length === 5);
 check('all 5 real archetypes are present', ['flat_simple', 'hourly_timed', 'diagnostic_open', 'tiered_per_unit', 'formula'].every(a => enumValues.includes(a)));
