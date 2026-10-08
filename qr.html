@@ -10591,8 +10591,6 @@ function addToCart(entry) {
                 S._sizeHint = null;
                 S._notes = null;
                 // Store the exact service minutes on intent for computeSQQuote
-                S.intent._exactMinutes = intakeClass.exactMinutes;
-                S.intent._exactTier = intakeClass.exactTier;
 
                 // Mark step 3 done too — skip the chip view
                 const sn3 = document.getElementById('sqSn3'),
@@ -10610,26 +10608,12 @@ function addToCart(entry) {
                 // Phase 6 rewire: route through the orchestrator instead of
                 // sqRenderSelfQuoteAdlib directly. Ensures consistent pricing
                 // (pricing_archetype dispatch), activeTags, and confidence.
-                if (typeof collectBookingContext_catalog === 'function' &&
-                    typeof executeWorkflow === 'function' &&
-                    typeof renderSelfQuoteFromRoute === 'function' &&
-                    DB?.workflow) {
-                    const _selfQuoteCtx = collectBookingContext_catalog(svc, category_id);
-                    const _selfQuoteRoute = executeWorkflow(_selfQuoteCtx, DB);
-                    // T64: store so any future re-invocation (handleIntakeAnswer,
-                    // orchAffirmYes/orchAffirmNo) has a real context to work
-                    // with -- confirmed via direct check this was a real, pre-
-                    // existing gap: no confirmed-live path to executeWorkflow
-                    // set this before, so both handleIntakeAnswer and the new
-                    // tag-affirmation handlers would have silently hit their
-                    // own "context lost" fallback.
-                    window._currentContext = _selfQuoteCtx;
-                    window._currentRoute = _selfQuoteRoute;
-                    renderSelfQuoteFromRoute(_selfQuoteRoute, svc);
-                } else {
-                    sqRenderSelfQuoteAdlib(svc);
-                }
-            } else {
+                const _selfQuoteCtx = collectBookingContext_catalog(svc, category_id);
+                const _selfQuoteRoute = executeWorkflow(_selfQuoteCtx, DB);
+                window._currentContext = _selfQuoteCtx;
+                window._currentRoute = _selfQuoteRoute;
+                renderSelfQuoteFromRoute(_selfQuoteRoute, svc);
+               } else {
                 // ── VIEW TEMPLATE choice only — NOT a confidence/pricing decision ──
                 // Both branches below feed the SAME confidence engine
                 // (base_confidence + sum of confidence_gain per answered
@@ -11599,271 +11583,7 @@ function addToCart(entry) {
             }
         }
 
-        // PHASE_B_FOLLOWUP (C-10, PENDING_DECISIONS #117) -- recorded above the function, not inside it (a comment inside would count as a touch for the R-INVARIANT-COMPLY gate):
-        // the labor figure below (perItemLabor / totalLabor, with its own tier-rate fallback table, 70 default and dispatch default) is a SECOND implementation of the engine's price
-        // (computeUnifiedQuote / computeQuoteFromState). Measured at qty 1 against the engine for all 76 services it differs for 16 (12 of 13 hourly, both formula, 2 flat), so delegating
-        // changes the number shown. No catalog service reaches this function today (PENDING_DECISIONS #113: none self-quotes on the card tap or the route), so the divergence is latent.
-        function sqRenderSelfQuoteAdlib(svc) {
-            const flow = document.getElementById('sqStepFlow');
-            if (flow) flow.style.display = 'flex';
 
-            // Scroll to show the panel
-            const sqEl = document.getElementById('smartQuoteEngine');
-
-            // Get the adlib box and show it directly inside sqSb3
-            const sb3 = document.getElementById('sqSb3');
-            if (!sb3) return;
-            sb3.style.display = 'block';
-            const sc3 = document.getElementById('sqSc3');
-            if (sc3) sc3.className = 'scard active';
-            const sn3 = document.getElementById('sqSn3');
-            if (sn3) {
-                sn3.className = 'snum a';
-                sn3.innerHTML = '3';
-            }
-
-            // SSOT: verb_natural set on every service by Python amendment script
-            const svcType = svc.service_type || '';
-            const svcName = svc.ui_taxonomy?.display_name || svc.id;
-            const verb = svc.verb_natural ||
-                DB?.service_types?.[svcType]?.verb_natural ||
-                'done';
-
-            // Detect whether this service charges per item or is a fixed visit
-            const chain = svc.intake_chain || [];
-            const hasQtyChain = chain.some(m => ['item_count', 'count', 'hybrid_qty', 'global_quantity'].includes(m.module));
-
-            // Compute the price using the correct pricing_type from the JSON
-            // flat_rate: formula_components = ['base_price','intake_fees'] → no hourly multiplication
-            // hourly:    formula_components = ['calculated_labor','intake_fees'] → base + (mins/60)*rate
-            const om = svc.operational_metrics || {};
-            const fe = svc.financial_engine || {};
-            // R-SYSTEM-NODATA pending: the tier default block is still a code
-            // literal, but it is now visibly a fallback beside the FALLBACKS
-            // constants above and reads the same tier_rate fallback. The
-            // remaining 65/110 values are the tiered variants of the same
-            // SSOT-owned rate table; migrating them is part of the same
-            // pending SSOT move.
-            const tiers = DB.global_rules?.complexity_tiers || {
-                routine:     { hourly_rate: 65 },
-                skilled:     { hourly_rate: FALLBACKS.tier_rate },
-                specialized: { hourly_rate: 110 }
-            };
-            const dispatch = DB.global_rules?.surcharges?.dispatch_fee || FALLBACKS.dispatch_fee;
-            // T118 (operator-directed, real user trace,
-            // 2026-09-12): was `fe.pricing_type` -- confirmed
-            // directly this field does not exist anywhere in the
-            // real data (grepped every service's financial_engine);
-            // the real field is `fe.type`. This meant isHourly and
-            // isFormula below were structurally unreachable --
-            // pricingType always fell back to 'flat_rate' --
-            // regardless of a service's real, configured type,
-            // silently masking the double-counting bug this same
-            // fix corrects just below (shelf_mounting_standard_buy_the_hour
-            // was accidentally landing on a closer-to-correct price
-            // via the flat_rate branch it should never have reached,
-            // not because either bug was actually fixed). Confirmed
-            // the real blast radius before fixing, not assumed
-            // narrow: exactly one currently self-quoting service
-            // has type: "hourly" today.
-            const pricingType = fe.type || 'flat_rate';
-            const basePrice = fe.base_price || FALLBACKS.base_price;
-
-            // Read pricing engine formula_components from SSOT
-            const engineDef = DB.global_rules?.pricing_engines?.[resolveEngineKey(pricingType)] || {};
-            const components = engineDef.formula_components || ['base_price'];
-            const isHourly = components.includes('calculated_labor') || pricingType === 'hourly';
-            const isFormula = pricingType === 'assembly_formula';
-
-            let perItemLabor;
-            if (isHourly) {
-                // T118 (operator-directed, real user trace,
-                // 2026-09-12): was `basePrice + (mins/60)*tierRate`
-                // -- adding the service's own base_price AND a
-                // separately-computed hourly-time cost together,
-                // double-counting the same dollar amount. Confirmed
-                // this is a real, live, CURRENT bug, not just a risk
-                // in new code: shelf_mounting_standard_buy_the_hour
-                // (the original #22 complaint service, still
-                // self-quoting today, unchanged by that earlier fix
-                // since #22 only removed extra QUESTIONS, never
-                // touched this calculation) has been pricing at
-                // base_price+tierRate ($145 for a $60 base at the
-                // skilled tier's $85/hr) instead of the intended,
-                // correct rate this whole session confirms directly:
-                // $60 for a 1-hour job at a $60/hr rate.
-                //
-                // basePrice IS the hourly rate here (matching the
-                // flat_rate branch below, where basePrice IS the
-                // whole labor total -- the same number means the
-                // same thing in both branches, deliberately, so a
-                // 1-hour hourly job and an equivalent flat job cost
-                // the same). global_rules.pricing_engines.hourly_estimate's
-                // own minimum_billable_hours (real, structured data
-                // that existed with zero consuming code anywhere in
-                // qr.html before this fix -- confirmed via an
-                // exhaustive grep, not assumed) now actually
-                // determines the real minimum, rather than an
-                // accidental floor from expected_minutes happening
-                // to equal 60.
-                const minHours = DB.global_rules?.pricing_engines?.hourly_estimate?.minimum_billable_hours || 1;
-                const mins = om.expected_minutes || FALLBACKS.default_minutes;
-                const billableHours = Math.max(mins / 60, minHours);
-                perItemLabor = Math.round(basePrice * billableHours);
-            } else if (isFormula) {
-                // v9.2 FIX: this previously fell back to a flat `basePrice`
-                // (the dead-code comment referenced the now-removed
-                // applyFormula — see CHANGELOG_v9.2.md). basePrice is 0 for
-                // furniture_assembly_flat_pack, the only assembly_formula
-                // service today, which would have quoted $0 labor for any
-                // assembly_formula service that reached this branch. It
-                // doesn't currently — requires_furniture_selection:true on
-                // that service correctly routes it to showIntakeQuestions/
-                // _computePrice before this function ever runs — but a
-                // future assembly_formula service WITHOUT that flag would
-                // hit this exact $0 landmine. Use mathFurnitureAssembly with
-                // this service's own curated expected_minutes as a single
-                // "item" (the correct degenerate case of the real assembly
-                // formula — sum-of-items-then-1hr-minimum — when there's
-                // only one item and no furniture-item list available in
-                // this scope) rather than silently zeroing the price.
-                const mins = om.expected_minutes || FALLBACKS.default_minutes;
-                perItemLabor = mathFurnitureAssembly([mins]).price || basePrice;
-            } else {
-                // flat_rate: base_price IS the labor total — no hourly on top
-                perItemLabor = basePrice;
-            }
-            const totalLabor = Math.round(perItemLabor * S.qty);
-
-            // Build minimal adlib inside sqAdlibBox
-            const box = document.getElementById('sqAdlibBox');
-            if (!box) return;
-
-            // Replace sqDynGroups with empty (no chips for self-quoting)
-            const dyn = document.getElementById('sqDynGroups');
-            if (dyn) dyn.innerHTML = '';
-            const det = document.getElementById('sqDetTags');
-            if (det) det.innerHTML = '';
-
-            // Hide the auto-detected and qty labels (qty is in the adlib pill)
-            const detLabel = sb3.querySelector('div[style*="Auto-detected"]');
-            if (detLabel) detLabel.style.display = 'none';
-
-            box.style.display = 'block';
-            const sent = document.getElementById('sqAdlibSentence');
-            if (!sent) return;
-            sent.innerHTML = '';
-
-            const w = txt => {
-                const s = document.createElement('span');
-                s.className = 'adlib-word';
-                s.textContent = txt;
-                sent.appendChild(s);
-            };
-            const pill = (key, displayText, opts, currentVal) => {
-                const p = document.createElement('span');
-                p.className = 'adlib-pill';
-                const lbl = document.createElement('span');
-                lbl.textContent = displayText;
-                const ico = document.createElement('i');
-                ico.className = 'ti ti-chevron-down';
-                const sel = document.createElement('select');
-                sel.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;';
-                opts.forEach(o => {
-                    const op = document.createElement('option');
-                    op.value = o;
-                    op.textContent = o;
-                    if (o === currentVal || o === String(S.qty)) op.selected = true;
-                    sel.appendChild(op);
-                });
-                sel.addEventListener('change', function() {
-                    lbl.textContent = this.value + (key === 'qty' ? ' item' + (this.value !== '1' ? 's' : '') : '');
-                    S.qty = parseInt(this.value) || 1;
-                    document.getElementById('sqQtyV').textContent = S.qty;
-                    // Update price in confirm button — flat_rate shows labor only; hourly shows labor+dispatch
-                    const newTotal = Math.round(perItemLabor * S.qty);
-                    const confirmBtn = document.querySelector('#sqAdlibBox .adlib-yes');
-                    if (confirmBtn) {
-                        if (isHourly) {
-                            confirmBtn.innerHTML = `<i class="ti ti-calculator"></i> Confirm · Est. $${newTotal + dispatch}`;
-                        } else {
-                            const qLabel = S.qty > 1 ? S.qty + '× $' + perItemLabor + ' = $' + newTotal : '$' + perItemLabor;
-                            confirmBtn.innerHTML = `<i class="ti ti-calculator"></i> Confirm · ${qLabel} <span style="font-size:11px;opacity:.6">+ $${dispatch} dispatch</span>`;
-                        }
-                    }
-                });
-                p.appendChild(lbl);
-                p.appendChild(ico);
-                p.appendChild(sel);
-                sent.appendChild(p);
-            };
-
-            // Grammatically correct structure:
-            // "I need [service name] [verb]"  (qty=1, fixed)
-            // "I need [service name] × [qty pill]" (qty variable)
-            // The service name is the object — it already implies what's being done.
-            // Verb is only added when it adds meaning (e.g. "adjusted", "installed").
-            w('I need');
-
-            // Service name — the confirmed thing being worked on
-            const nameSpan = document.createElement('span');
-            nameSpan.style.cssText = 'font-weight:700;color:var(--clr-red-dark,#8a0615);padding:0 4px;font-size:15px;';
-            nameSpan.textContent = svcName;
-            sent.appendChild(nameSpan);
-
-            // Qty: only show pill if the service has a qty intake chain
-            if (hasQtyChain) {
-                const timesSpan = document.createElement('span');
-                timesSpan.className = 'adlib-word';
-                timesSpan.style.color = '#999';
-                timesSpan.textContent = '×';
-                sent.appendChild(timesSpan);
-                pill('qty', String(S.qty), ['1', '2', '3', '4', '5', '6', '8', '10', '12'], String(S.qty));
-            }
-
-            // Verb — only when it adds meaning beyond the service name
-            // e.g. "Cabinet Door Adjustment" → skip verb (name is self-explaining)
-            // e.g. "Shower Head" → add "replaced"
-            const nameImpliesAction = ['adjustment', 'replacement', 'install', 'removal', 'repair',
-                'clearing', 'cleaning', 'restore', 'setup', 'configuration', 'management'
-            ].some(w => svcName.toLowerCase().includes(w));
-            if (!nameImpliesAction) {
-                w(verb);
-            }
-
-            // Price display: for flat_rate show labor only in confirm button (dispatch always separate)
-            // For hourly, include dispatch in button total since it's part of the predictable total.
-            // This prevents the double-count: button says $120, quote shows $120 + $45 dispatch.
-            const confirmRow = document.getElementById('sqAdlibBox').querySelector('.adlib-confirm-row');
-            if (confirmRow) {
-                // SSOT: button text from checkout_states[cs].button_text_labor_only
-                // v9.6 FIX: was `svc.financial_engine?.checkout_state || (isHourly ?
-                // 'diagnostic' : 'standard_flat_rate')` -- for an archetype-inheriting
-                // service that is also hourly-priced (checkout_state and pricing type
-                // are separate concerns, confirmed throughout this project), this
-                // would have incorrectly defaulted to 'diagnostic' the moment the raw
-                // field was genuinely absent, even though the real, correct, resolved
-                // value is standard_flat_rate.
-                const _csKey = resolveServiceCheckoutStateKey(svc, null).key;
-                const _csDef = DB.checkout_states?.[_csKey] || {};
-                let estLabel, dispatchNote;
-                if (isHourly) {
-                    estLabel = 'Est. $' + (totalLabor + dispatch);
-                    dispatchNote = '';
-                } else {
-                    estLabel = S.qty > 1 ?
-                        S.qty + '× $' + perItemLabor + ' = $' + totalLabor :
-                        '$' + perItemLabor;
-                    dispatchNote = ' <span style="font-size:11px;opacity:.6">+ $' + (DB.global_rules?.surcharges?.dispatch_fee || 45) + ' ' + (DB.global_rules?.surcharges?.dispatch_label || 'dispatch') + '</span>';
-                }
-                confirmRow.innerHTML =
-                    '<button class="adlib-yes" onclick="sqConfirmAdlib()"><i class="ti ti-calculator"></i> Confirm · ' + estLabel + dispatchNote + '</button>' +
-                    '<button class="adlib-no" onclick="sqRestart()"><i class="ti ti-arrow-left"></i> Back</button>';
-            }
-
-            // Store for computeSQQuote
-            S._selfQuoteSvc = svc;
-        }
 
         function sqToggleTag(el, tid) {
             if (el.classList.contains('locked')) return;
@@ -12361,7 +12081,6 @@ function addToCart(entry) {
                 _escalatedBy: null,
                 _forceModules: null,
                 _fromBuilder: false,
-                _selfQuoteSvc: null,
                 _isOtherTileEntry: false,
                 _autoSelectedFrom: null,
                 _nlpSeedDesc: null,
@@ -12700,4 +12419,5 @@ function addToCart(entry) {
 </body>
 
 </html>
+
 
