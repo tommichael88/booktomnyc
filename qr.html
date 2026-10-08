@@ -3521,7 +3521,7 @@ function computeUnifiedQuote(ctx) {
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T156';
+     const QR_BUILD_VERSION = 'T157';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -6619,6 +6619,25 @@ function computeUnifiedQuote(ctx) {
                  base_price: primaryStDef.base_price || 0
              }
          }];
+     }
+
+     // T157 (live-site report: grid shown, SmartQuote text input absent): WHERE the schema lives is the SSOT's to say. btnyc.json declares `$schema` (the schema's published URL) and `$id` (its
+     // own); the schema is read from the path of the first RELATIVE to the second, so a schema published in schema/ is read from schema/, and moving it is a data edit, not a code edit. The
+     // T155 gate hard-coded "beside the data" instead; the deploy kept the schema in schema/ (as `$schema` says) and a stale copy from another generation sat at the root, so the gate
+     // rejected correct data and `init` stopped before the text bar existed. Returns { path, source } (R-INVARIANT-PROVENANCE): source 'ssot.$schema' when the data named a usable
+     // location, 'default' (beside the data) when it named none. "Usable" is deliberately narrow -- same origin as `$id`, under `$id`'s own directory, plain path segments, a .json
+     // file -- so a document can never send the page to another host, up a directory, or to a file of another kind. No fallback chain: one location per document; if it cannot be
+     // read the gate reports 'unavailable' (PENDING_DECISIONS #119) instead of quietly trying a second source. Pure: no platform globals, no DOM.
+     function orch_resolve_schema_location(data) {
+         const DEFAULT = { path: './btnyc_schema.json', source: 'default' };
+         const parse = u => { const m = typeof u === 'string' ? /^(https?:\/\/[A-Za-z0-9.-]+(?::\d+)?)(\/[A-Za-z0-9_.\/-]*)$/.exec(u) : null; return m ? { origin: m[1].toLowerCase(), pathname: m[2] } : null; };
+         const id = parse(data && data.$id), decl = parse(data && data.$schema);
+         if (!id || !decl || id.origin !== decl.origin) return DEFAULT;
+         const dir = id.pathname.slice(0, id.pathname.lastIndexOf('/') + 1);
+         if (!decl.pathname.startsWith(dir)) return DEFAULT;
+         const rel = decl.pathname.slice(dir.length);
+         if (!rel.endsWith('.json') || rel.split('/').some(seg => seg === '' || seg === '.' || seg === '..')) return DEFAULT;
+         return { path: './' + rel, source: 'ssot.$schema' };
      }
 
      // PHASE_PLAN A3 (T155): the SSOT's boot gate. A pure checker of a loaded document against btnyc_schema.json: it imports nothing, reads no globals and touches no DOM,
@@ -11527,6 +11546,52 @@ function renderComponentSymptomPicker(container, group, category_id, chosenActio
          }, 3000);
      }
 
+     // T157: a boot that fails must be SEEN. The category grid is static markup (visible even when `init` never ran) and the text bar is injected late in `init`, so a failure used to leave an
+     // inert grid, no input and a three-second toast: a dead page with no explanation. This draws the explanation where the text bar would be -- a plain line for the visitor, and the reason,
+     // in a collapsed <details>, for whoever has to fix it. `info` = { stage, message, details[] }: plain data, written with textContent only (the details can carry text from a fetched
+     // file). `stage` says how far boot got: before 'running' the grid on screen is still the static markup (its tiles have no handlers), so it is hidden; at 'running' the live grid
+     // exists and is left alone. Reads no state and decides nothing -- `init` (Glue) says what happened and how far it got.
+     function renderBootFailure(info) {
+         info = info || {};
+         const grid = document.getElementById('category-card');
+         let panel = document.getElementById('bootFailure');
+         if (!panel) {
+             panel = document.createElement('div');
+             panel.id = 'bootFailure';
+             panel.setAttribute('role', 'alert');
+             panel.style.cssText = 'margin:14px 0;padding:16px 18px;border-radius:12px;border:1.5px solid #de0000;background:#fff5f5;color:#1a1a1a;font-size:14px;line-height:1.5;';
+             if (grid && grid.parentNode) grid.insertAdjacentElement('afterend', panel);
+             else document.body.insertBefore(panel, document.body.firstChild);
+         }
+         panel.replaceChildren();
+         const head = document.createElement('div');
+         head.style.cssText = 'font-weight:700;margin-bottom:6px;';
+         head.textContent = info.message || 'We couldn’t load our services right now.';
+         const body = document.createElement('div');
+         body.textContent = 'Please refresh the page. If this keeps happening, the details below tell the site owner what went wrong.';
+         panel.append(head, body);
+         const lines = Array.isArray(info.details) ? info.details : [];
+         if (lines.length) {
+             const det = document.createElement('details');
+             det.style.cssText = 'margin-top:10px;font-size:12px;color:#444;';
+             const sum = document.createElement('summary');
+             sum.textContent = 'Technical details';
+             const pre = document.createElement('pre');
+             pre.style.cssText = 'white-space:pre-wrap;margin:6px 0 0;';
+             pre.textContent = lines.join('\n');
+             det.append(sum, pre);
+             panel.appendChild(det);
+         }
+         const again = document.createElement('a');
+         again.href = '';
+         again.textContent = 'Refresh';
+         again.style.cssText = 'display:inline-block;margin-top:10px;font-weight:700;color:#8a0615;';
+         panel.appendChild(again);
+         if (info.stage !== 'running') {
+             if (grid) grid.style.display = 'none';
+         }
+     }
+
      function updateCartOverlayIfOpen(cart) {
          if (!DOM.cartOverlay || DOM.cartOverlay.style.display !== 'flex') return;
          const items = cart || window.__store.getState().cart.serviceRequest;
@@ -15183,6 +15248,9 @@ const groupObj = groupId ? groupMap.get(groupId) : null;
 
  <script>
      (async function init() {
+         // T157: how far boot got, so a failure can be drawn truthfully (renderBootFailure): 'loading' = nothing live yet (the grid on screen is static markup);
+         // 'running' = the live grid has been rendered. Set below, read only in the catch.
+         let _bootStage = 'loading', _ssot = null; // _ssot: this boot's verdict on the SSOT (also published as window.__ssotValidation)
          try {
              // ─── 1. LOAD SSOT ───────────────────────────────────────────────
              // btnyc.json is the SSOT -- it lives alongside qr.html as a separate
@@ -15193,24 +15261,27 @@ const groupObj = groupId ? groupMap.get(groupId) : null;
              SERVICE_DATA = await _r.json();
 
              // ─── 1b. VALIDATE THE SSOT AGAINST ITS SCHEMA (the boot gate; PHASE_PLAN A3) ─────────
-             // btnyc_schema.json is published beside btnyc.json. Data that does not conform stops the boot here, with every reason in the console, instead of failing later
-             // and somewhere else; it never becomes DB. If the schema file itself cannot be fetched the boot continues, loudly (console.warn and status 'unavailable'): that
-             // is a deployment fault, not a fault in the data (PENDING_DECISIONS #119). `window.__ssotValidation` records what happened, for tests and for anyone asking.
-             window.__ssotValidation = { status: 'unavailable', errors: [] };
+             // The schema is read from where the SSOT itself says it lives (`$schema`, relative to `$id`: orch_resolve_schema_location; T157). Data that does not conform stops the boot
+             // here, with every reason in the console and on the page (renderBootFailure), instead of failing later and somewhere else; it never becomes DB. If the schema file
+             // itself cannot be fetched the boot continues, loudly (console.warn and status 'unavailable'): that is a deployment fault, not a fault in the data (PENDING_DECISIONS
+             // #119). `window.__ssotValidation` records what happened and which schema location was used (and why), for tests and for anyone asking.
+             const _loc = orch_resolve_schema_location(SERVICE_DATA);
+             _ssot = { status: 'unavailable', errors: [], schema: _loc };
              try {
-                 const _sr = await fetch('./btnyc_schema.json');
+                 const _sr = await fetch(_loc.path);
                  if (_sr.ok) {
                      const _verdict = orch_validate_ssot(SERVICE_DATA, await _sr.json());
-                     window.__ssotValidation = { status: _verdict.valid ? 'valid' : 'invalid', errors: _verdict.errors };
+                     _ssot = { status: _verdict.valid ? 'valid' : 'invalid', errors: _verdict.errors, schema: _loc };
                  } else {
-                     console.warn('⚠️ btnyc_schema.json could not be fetched (HTTP ' + _sr.status + '): the SSOT was NOT validated.');
+                     console.warn('⚠️ ' + _loc.path + ' (the schema btnyc.json declares) could not be fetched (HTTP ' + _sr.status + '): the SSOT was NOT validated.');
                  }
              } catch (_e) {
-                 console.warn('⚠️ btnyc_schema.json could not be read (' + (_e && _e.message) + '): the SSOT was NOT validated.');
+                 console.warn('⚠️ ' + _loc.path + ' (the schema btnyc.json declares) could not be read (' + (_e && _e.message) + '): the SSOT was NOT validated.');
              }
-             if (window.__ssotValidation.status === 'invalid') {
-                 const _errs = window.__ssotValidation.errors;
-                 console.error('❌ btnyc.json does not conform to btnyc_schema.json (' + _errs.length + ' problem(s)):', _errs);
+             window.__ssotValidation = _ssot;
+             if (_ssot.status === 'invalid') {
+                 const _errs = _ssot.errors;
+                 console.error('❌ btnyc.json does not conform to ' + _loc.path + ' (' + _errs.length + ' problem(s)):', _errs);
                  throw new Error('btnyc.json failed schema validation (' + _errs.length + ' problem(s)); first: ' + (_errs[0].path || '/') + ' ' + _errs[0].message);
              }
 
@@ -15223,6 +15294,7 @@ const groupObj = groupId ? groupMap.get(groupId) : null;
              cacheDOM();
              buildDataMaps(SERVICE_DATA);
              renderCategoryCards();
+             _bootStage = 'running'; // the live grid exists from here on
              initSmartQuote(); // inject text bar on page load
              wireGlobalEvents();
 
@@ -15368,6 +15440,15 @@ const groupObj = groupId ? groupMap.get(groupId) : null;
 
          } catch (err) {
              console.error('❌ BookTOM failed to initialize:', err);
+             // T157: say it on the page, not only in the console and a three-second toast. `init` is the one place that knows what failed and how far boot got.
+             const _v = _ssot, _lines = [String((err && err.message) || err)];
+             if (_v) {
+                 _lines.push('SSOT check: ' + _v.status + (_v.schema ? ' (schema ' + _v.schema.path + ', chosen by ' + _v.schema.source + ')' : ''));
+                 (_v.errors || []).slice(0, 8).forEach(e => _lines.push('  ' + (e.path || '/') + ' ' + e.message));
+                 if ((_v.errors || []).length > 8) _lines.push('  \u2026 and ' + (_v.errors.length - 8) + ' more');
+             }
+             _lines.push('Build ' + (typeof QR_BUILD_VERSION !== 'undefined' ? QR_BUILD_VERSION : '?') + ' \u00b7 ' + location.href);
+             renderBootFailure({ stage: _bootStage, message: 'We couldn\u2019t load our services right now.', details: _lines });
              toast('Could not load services. Please refresh.', 'error');
          }
      })();
