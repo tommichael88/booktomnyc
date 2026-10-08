@@ -1,5 +1,3 @@
- <!-- store.js -->
- <script>
      /**
       * store.js
       *
@@ -224,4 +222,3 @@
              store: store
          };
      });
- </script>
