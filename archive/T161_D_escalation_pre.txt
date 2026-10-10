@@ -1,0 +1,47 @@
+
+=== 1. the escalation arithmetic exists once ===
+  ✓ the page parses (an unparsed block would hide a copy)
+  ✗ `minimum_quote_confidence_delta` is read in exactly one function, applyLiveConfidenceEscalation
+      read in: ["applyLiveConfidenceEscalation (block 2 L1230)","_sqPrepareFlowLegacyEscalation (block 7 L13780)"]
+  ✗ `maximum_followup_questions_delta` is read in exactly one function, applyLiveConfidenceEscalation
+      read in: ["applyLiveConfidenceEscalation (block 2 L1233)","_sqPrepareFlowLegacyEscalation (block 7 L13781)"]
+
+=== 2. who reads a tag's tier (a filed ratchet) ===
+  ✓ every reader of `escalate_complexity` is filed (a new one is a new copy of the selection loop)
+  ✓ every filed reader still reads it (the list only shrinks: delete the entry when the reader goes)
+
+=== 3. nothing reads a field no tag has ===
+  ✗ no read of `<x>.effects.complexity_override` (the retired nested shape) anywhere in the page
+      read in: ["_sqPrepareFlowLegacyEscalation (block 7 L13768)"]
+  ✓ the scanner SEES the live `complexity_override` read of an intake answer and does not count it as the retired shape
+
+=== 4. the SSOT agrees with itself ===
+  ✓ the SSOT: no authored field that nothing reads, every declared tier defined, deltas and caps are numbers
+  (2 of 43 tags declare escalate_complexity)
+
+=== 5. the retired thing is gone ===
+  ✗ the page has no `_sqPrepareFlowLegacyEscalation` (R-INVARIANT-DELETION: deleted, not deprecated)
+      2 occurrences
+  ✗ the page has no "PHASE_B_FOLLOWUP ... C-05" held note (the note that kept it was released by D)
+      3 lines
+
+=== 6. the real guided builder escalates exactly as the SSOT says ===
+  ✓ the page booted
+  (50 cells: single-action "Other" groups x [none, #brick_wall, #fragile_item, all together, neutral #bidet_attachment]; 30 of them carry an escalating tag)
+  ✓ at least one escalating cell was driven (a sweep with no escalating tag proves nothing)
+  ✓ escalatedBy, the bar and the question cap match the SSOT in every cell
+
+=== 7. non-vacuity: each leg is shown able to fail ===
+  ✓ leg 1 flags an injected third copy of the arithmetic
+  ✓ leg 1 flags the arithmetic read through a destructuring pattern
+  ✓ leg 3 flags an injected `.effects?.complexity_override` read (the exact shape the deleted copy had)
+  ✓ leg 3 does NOT flag the live `chosen.complexity_override` read of an intake answer (not over-broad)
+  ✓ leg 2 sees an injected reader of `escalate_complexity`
+  ✓ leg 3 / 4 flag an SSOT whose tag carries `effects.complexity_override`
+  ✓ leg 4 flags a tag declaring a tier the escalation block does not define
+  ✓ leg 4 flags a missing cap
+  ✓ the mutant edit applied exactly once, inside the engine's function
+  ✓ leg 6 goes red when the engine can no longer escalate (the behavioural leg can see a builder that does not)
+  ✓ ...and only the cells that carry an escalating tag are red, not the plain ones
+
+[single escalation path] 19 passed, 5 failed (of 24 checks)

@@ -1,0 +1,286 @@
+# COMPONENT_LAYER_MAP.md
+
+Authored `T135`. Referenced by name since `T60` but never actually present
+in this project's tracked files before now — `verify_file_integrity.js`
+and `verify_tag_affirmation_route.js` both reference it defensively (the
+former skips it gracefully if absent; the latter only mentions it in a
+comment), so its absence broke nothing, but the charter's own `#ecosystem`
+table (Zone 4) names it as the authoritative owner of "canonical
+vs. legacy module map · BookingContext field contract · layer
+assignments" -- confirmed directly against the operator's `T135`+ charter
+rewrite, which restructured the charter into 5 Zones and moved this kind
+of current-state content out of the charter itself and into exactly this
+file. This is that record,
+built by direct inspection of the current `qr.html` (line numbers current
+as of `T135`; re-verify before trusting them in a much later session —
+this file drifts the same way any other derived-from-code document does).
+
+## How to use this file
+
+Per the charter's own `#pre-change-checklist` (Zone 4): **before touching anything that looks like legacy
+code, read this file.** It exists specifically because a "clearly safe"
+legacy function once turned out to be the only real implementation of a
+charter-level feature (`T59`). Before extending, fixing, or deleting
+anything below, confirm its status here is still accurate — a status
+recorded once can go stale exactly like any other claim in this project.
+
+## The four layers, and where they actually live
+
+`qr.html` is one file whose `<script>` blocks each correspond to one of the charter's module names, plus `<script>` blocks that carry no module header (the `inline` row). Some modules are inline in `qr.html`; others are loaded from `modules/` by a `<script src>` under the deployed base (`test_harness/_page.js` assembles the page from them, so a structural test reads the page the browser runs). Verified boundaries, `T158` (line numbers are `qr.html` source lines):
+
+| Module | Layer | Source in the page | `qr.html` block starts (as of T163; it moves with every edit above it) |
+|---|---|---|---|
+| `trace.js` | -- (observation tool, never assembled) | external: `modules/trace.js` | line 909 |
+| `pricing_engine.js` | Logic/Engine | inline | line 912 |
+| `nlp_engine.js` | Logic/Engine | external: `modules/nlp_engine.js` | line 3634 |
+| `orchestrator_engine.js` | Logic/Engine | inline | line 3637 |
+| `UIRenderer.js` | UI/Renderer | inline | line 5401 |
+| `cart_logic.js` | Logic/Engine | inline | line 10152 |
+| `AppController.js` | Controller/Glue | inline | line 10339 |
+| `appReducer.js` | Logic/Engine | external: `modules/appReducer.js` | line 12172 |
+| `store.js` | Logic/Engine | external: `modules/store.js` | line 12175 |
+| `inline` | Controller/Glue | inline | -- |
+| `btnyc.json` | Knowledge (SSOT) | the catalog | -- |
+
+**Where a module lives (`T163`).** A module has one home. Five are inline blocks of `qr.html` (`pricing_engine`, `orchestrator_engine`, `UIRenderer`, `cart_logic`, `AppController`) and four are files in `modules/` that the page loads by `<script src>` (`trace`, `nlp_engine`, `appReducer`, `store`). For an inline module the page is the deployment unit and the block is the source: its header carries a `Deployment:` statement saying so, and a `<name>.js` at the repo root is a git-ignored reference copy that `test_harness/extract_modules.js` generates. For a loaded module the file in `modules/` IS the deployed artifact. `modules/` holds nothing the page does not load, and no file in it shares a name with an inline block (that was `cart_logic`, T163); `verify_module_deployment_shape.js` fails on a second home, on an unloaded file in `modules/`, on a header that claims a load shape the page does not have, on a "load X before this file" that the page's order contradicts, and on a row of the table above that states a different source than the page has. Moving an inline module to `modules/` is one change: add the file and its `<script src>`, delete the block.
+
+**How the structural tests read this table (`T144`).** `verify_r-system-layers_full_matrix.js`,
+`verify_r-invariant-comply_ship_gate.js` and `verify_r-invariant-boundary_ui_renderer_layer.js` read the
+**Layer** column: every function in a module belongs to that module's layer (`Logic/Engine`, `UI/Renderer`,
+`Controller/Glue`; `Knowledge (SSOT)` for `btnyc.json`). `inline` covers the `<script>` blocks with no module
+header (the bootstrap IIFE, the route dispatcher, service-worker registration). **The assignments here are the
+authority**: a test never reclassifies a module to improve its own number (`R-GOVERN-GOODHART`) -- `store.js`
+stays `Logic/Engine`, so its legacy-globals bridge is counted as Logic debt (see violation 6) until it is
+ported away or the operator reassigns the module.
+
+The standalone `.js` files of the same names (at the project root, beside
+`qr.html`) are **generated, not hand-maintained** — `test_harness/extract_modules.js`
+regenerates all 8 from the page's own script blocks (the inline ones from `qr.html`, the external ones from `modules/`) by header-anchored
+matching. Run it after any `qr.html` edit, before trusting the standalone
+copies; `check_module_parity.js` (wired into `verify_pricing_engine_module.js`,
+`verify_orchestrator_engine_module.js`, and `verify_extracted_engine_module.js`;
+`verify_nlp_engine_module.js` was retired in `T136` -- see `test_harness/retired/README.md`) catches drift if this is
+forgotten, but only on the next full suite run — a real, easy-to-repeat
+mistake this session made once (edited `qr.html`, ran the suite, got a
+confusing "stale module" failure before remembering to re-extract).
+
+## The `BookingContext` field contract
+
+The rewritten charter (Zone 4, Document Ecosystem table) assigns this
+contract's authoritative copy to this file specifically — the charter
+"commits to the *concept* — one canonical convergence point between
+resolution and rendering — not to the specific field names or shapes,
+which will evolve." This is the current shape, verified directly against
+`qr.html`, `T135`.
+
+### Input side — `makeBookingContext(entry, overrides)`, `orchestrator_engine.js`
+
+The one, shared constructor every real entry path (`collectBookingContext_catalog`,
+`collectBookingContext_otherTile`, `collectBookingContext_freeText`) funnels
+through via `Object.assign`. Confirmed fields and their defaults:
+
+| Field | Default | Notes |
+|---|---|---|
+| `entry` | *(required)* | `'catalog'` \| `'other_tile'` \| `'free_text'` |
+| `selectedServiceId` | `null` | Set by catalog/self-quote taps |
+| `selectedCategoryId` | `null` | |
+| `selectedGroupId` | `null` | |
+| `rawText` | `null` | Free-text entry only |
+| `nlpIntent` | `null` | NLP extraction result, free-text entry |
+| `extractedQty` | `null` | |
+| `extractedObject` | `null` | |
+| `extractedLocation` | `null` | |
+| `manuallyToggledTagIds` | `[]` | Customer-chosen, needs no affirmation |
+| `negatedTagIds` | `[]` | |
+| `_negationOverride` | `null` | `{from, to, negatedTagIds}` shape when set |
+| `uncoveredServiceTypes` | `null` | Only meaningful for `entry='other_tile'` |
+| `answers` | `{}` | Fixed at `T118` (`PENDING_DECISIONS.md #33`) — previously absent from the defaults entirely; every consumer that reads `context.answers` without an `|| {}` guard depends on this default actually being present |
+
+### Output side — the built `ResolvedRoute`, `executeWorkflow`'s return, `orchestrator_engine.js`
+
+| Field | Source | Notes |
+|---|---|---|
+| `entityType` | `resolution?.entityType \|\| 'fallback'` | |
+| `entity` | `resolution?.entity \|\| null` | |
+| `intakeChain` | workflow step output | |
+| `answers` | carried from context, plus the answers the tags in force synthesize (`T146`, `synthesizeAnswersFromTags`, shared with the state path) | |
+| `flags` | `orch_compute_variability_flags` | Includes `has_unaffirmed_detected_tags`, `has_unconfirmed_negation_pivot` (`T64`) |
+| `confidence` | `confidenceState` | Built by `orch_compute_confidence` — the one, canonical confidence function, `T115` |
+| `uiTemplate` | `uiTemplate?.ui_template \|\| 'curated_card'` | |
+| `bypassIntake` | `!!uiTemplate?.bypass_intake` | |
+| `skipTypeSelection` | `!!intakeBypass.skip_type_selection` | `other_tile` entry only |
+| `preseededAction` | `intakeBypass.preseededAction \|\| null` | |
+| `materialsEstimate` | pricing step output | |
+| `quote` | pricing step output | |
+| `activeTags` | merged detected + manual, minus negated | `v9.5` — without this, `route.activeTags` was always `undefined` and recompute calls silently got `[]`; tags had no pricing effect through any UI-renderer path; `T144` — closed over the SSOT's `requires` relations by `closeTagsOverRequires` (one definition, used by every path that assembles a tag set; the customer's explicit negations win) |
+| `detectedTagIds` | `context.detectedTagIds \|\| []` | NLP-detected only, not merged with manual — `renderTagAffirmationFromRoute`'s specific need |
+| `negationOverride` | `context._negationOverride \|\| null` | |
+| `recommendedSku`, `matchConfidence`, `intentCategory`, `intentGroupId` | `context.nlpIntent?.*` | `T66` follow-up |
+| `context` | the `BookingContext` the route was built from (a copy) | `T145` — the route says what produced it, so `orch_apply_answer` can answer a question on any gateway's route; `divergenceApplied: 'remote'` marks a route the fork extended with deep-dive questions |
+| `maxFollowupQuestions` | `orch_max_followup_questions(entity, entityType)` | `T143`/`T147` — the follow-up-question window, the `value` of the ceiling record below (a progressive-disclosure window: answered questions plus up to this many unanswered ones); renderers read this |
+| `followupCeiling` | `orch_max_followup_questions(entity, entityType)` | `T147` — the ceiling's record `{ value, source }`, `source` in the Charter's vocabulary (`service_override` / `archetype_default` / `dynamic_engine` / `fallback`), read from `resolveBaseConfidenceStrategy`'s per-field `fieldSources` (its record also carries a scalar `source`: the most specific branch that supplied any field) |
+| `quantity` | `resolveQuantityUnits` | `T147` — the quantity record `{ units, requestedQty, stance, source }`: `stance` `single_unit` (the service declares `per_unit_answers_vary`) or `batched`; the card reads it for the book-each-separately guidance; the quote that reaches pricing carries the same record plus `multiplier` and `multiplierSource` |
+| `basePrice` | `executeWorkflow` | `T148` — the entity's base price (or null): Glue seeds `S.intent.base` from it instead of reading `financial_engine` itself |
+| `quote.divergenceTerms` | `computeUnifiedQuote` | `T148` — the diagnostic-fork copy and terms from the SSOT, handed to the renderer (carried by the unified quote and the state-path quote) so `buildDivergenceResolutionHtml` never reads the SSOT; `renderQuotePanel` likewise reads `dispatchScopeNote` from the panel model |
+| `enrichment` | `resolution?.enrichment \|\| null` | |
+| `trace` | step-by-step execution log | Consumed by the tracing tool, not customer-facing |
+
+**The veto**: before this is returned, `validateRoute(builtRoute, db, db.routing_archetypes)`
+runs; a genuinely broken route is replaced with `catastrophicFallbackRoute`
+rather than handed to a renderer, with the reason logged to `trace` — "The
+Veto," per the code's own inline naming.
+
+**Convergence, confirmed**: this is the *one* object `renderCuratedCardFromRoute` and `renderSelfQuoteFromRoute` render from (the legacy builder that used to be a second consumer was retired at `T144`) —
+the charter's own invariant ("different entry paths... must ultimately
+resolve to the same underlying scope, the same confidence state, the same
+pricing logic, and the same customer-facing outcome") is a direct,
+checkable claim about this contract specifically.
+
+
+
+## Known, tracked violations
+
+### 1. `sqBuildCuratedIntake` — **retired, `T144`** (kept here as a closed item, per this project's own "don't erase the history of what was wrong" discipline)
+
+Deleted from `AppController.js` (672 lines, 40,262 bytes) together with its only remaining callers
+(`sqChooseDivergencePath` and the "orchestrator unavailable" fallback in `prefillSmartQuoteFromService`).
+Before removal, the curated-card parity sweep was run against the original file, which still had both
+renderers: 74 services, 73 agree, 1 differs (`dishwasher_repair`, `T136`'s documented Path B change). It had
+mutated the legacy `S.*` global from inside a renderer-shaped function and called the engine directly; its
+*correctness* was never the problem (it delegated to `orch_compose_intake_chain` and, from `T115`, to
+`orch_compute_confidence`). What it carried that the live path lacked was **restored through the canonical
+architecture, not copied**: the SSOT `requires` relation (`closeTagsOverRequires`) and the price-affecting
+indicator (`_iconContent`). Full account: `TIMELINE.md` `T144`; decisions `PENDING_DECISIONS.md` #78-#79.
+
+### 2. Two more curated-card-shaped renderers, same family
+
+- **`renderSelfQuoteFromRoute`** — `UIRenderer.js`, `qr.html` line 8960,
+  ~48 lines. Self-quote catalog taps (qty-only chains). Clean, short,
+  matches `renderCuratedCardFromRoute`'s own style.
+- **`sqBuildStep3`** — `AppController.js`, `qr.html` line 12808. The "uncommon chip-grid" step-3 path. **Still live and
+  load-bearing** after `T144`: it is the only step-3 chip renderer, so it may not simply be deleted
+  (`R-INVARIANT-DELETION`, *compliance before deletion*). It needs a compliant port first -- a Logic chip selector, a DOM
+  renderer, thin Glue -- then deletion. `PENDING_DECISIONS.md` #83.
+
+### 3. Third confidence formula — genuinely closed, `T115` (the function it lived in was retired at `T144`)
+
+No longer a live violation. Verified directly this session:
+`sqBuildCuratedIntake` calls `orch_compute_confidence({ entity: svc },
+activeTagIds, matchConfidence, DB, 'catalog')` — the real, canonical
+function, not a local reimplementation. `verify_curated_intake_confidence_agreement.js`
+(39 checks) is the permanent regression guard. Left in this file as a
+closed item, not removed, matching this project's own "don't erase the
+history of what was wrong" discipline (`TIMELINE.md`'s own stated
+convention).
+
+### 4. `resolveForceModules` — a deliberate, documented stub, not a violation
+
+`pricing_engine.js` block, `qr.html` line 1067. Kept as a real, callable
+function returning `[]` after `T118`'s force-injection removal, *not*
+deleted, because deleting it broke `extract_engine.py`'s own hardcoded
+function list, `automated_path_sweep.js`'s real call site, and ~30 test
+files that defensively reference it. This is intentional, documented
+reversibility (a Zone 4 governance principle), not dead code left by accident —
+confirmed by reading its own inline comment before recording it here.
+
+### 5. Smart Quote Adlib Builder prototype — not a violation, tracked for completeness
+
+Rendered live in `PROJECT_CHARTER.html`'s Appendix A. Real, working,
+**entirely unwired** to `detectIntentNLP`/`executeWorkflow`/any pricing
+path. See the charter's Zone 3 "Path B" section and Appendix A for the
+full account of what it does and doesn't demonstrate.
+
+### 6. `store.js` legacy-globals bridge — Logic debt, counted, `T144`
+
+This map assigns `store.js` to `Logic/Engine`. `bindLegacyGlobals` (the migration bridge) mirrors store state into the
+legacy `State` global, which the Logic role may not touch: six `logic-global-ui-state` violations, all inside that
+one function. They are **counted, not reassigned away** -- moving the module to `Controller/Glue` would improve the
+number without changing the code (`R-GOVERN-GOODHART`). The honest exits are to port the bridge away (the migration
+it exists for) or for the operator to reassign the module deliberately. `PENDING_DECISIONS.md` #84.
+
+## Zero `// DEPRECATED` markers currently in `qr.html`
+
+Confirmed by direct grep, `T135`: none. The last tracked deprecated
+functions (`renderTagAffirmationCard` and its 4 siblings) were physically
+deleted at `T119`, not just marked. `global_rules.force_modules_by_variability`
+was renamed with a `_DEPRECATED` suffix in the *data* (not code) at
+`T118` — see `D-force-injection-deprecated` in `test_harness/decisions.json`
+for the current, honest state of whether anything still reads it (flagged
+`needs_review`, not resolved, as of `T135`).
+
+## Maintenance
+
+Re-verify this file's line numbers and mutation counts whenever a
+`qr.html` edit touches any of the functions named above — they will drift,
+the same way every other line-number reference in this project's own
+documents does. When in doubt, `grep -n "function <name>"` directly rather
+than trusting this file's numbers past a few real sessions old.
+
+`T144` refresh: the module table's line ranges were re-measured and the `inline` and `btnyc.json` rows added; the contract's output table gained `maxFollowupQuestions`; the violations section was brought current (violation 1 closed, 2 updated, 6 added). Zero `// DEPRECATED` markers remain in `qr.html` (re-confirmed by grep).
+
+## Where natural-language parsing lives (`T136`)
+
+All parsing of a client's typed words lives in the `nlp_engine` block and nowhere else:
+`understandRequest()` is the ONE parse (intent, grounded item noun, quantity, location, completeness,
+confidence) and `composeAdlibParts()` / `composeAdlibSentence()` are the ONE composer of the
+"I need to ___ my ___" sentence. The live preview, the confirm button, the guided builder's close-sync and
+`sqBuilderFinish()` all call them. `UIRenderer.js` contains **zero** parsing functions (a renderer only renders
+what the engine returns). `verify_single_parse_pipeline.js` enforces this structurally: it fails if any
+module-level function is declared twice (the later copy silently shadows the earlier), if `UIRenderer.js` gains
+a parsing function, or if a module-level IIFE reads SSOT state at script-load time (the SSOT does not exist
+yet then). Tests load the engine modules whole through `test_harness/_engine.js` rather than cherry-picking
+functions by name out of `qr.html`, so adding a helper next to a function can no longer break unrelated tests.
+
+
+
+## The cart (`T158`)
+
+The cart's identity, merge and total rules are Logic and live in one module, `cart_logic.js`: an inline block of `qr.html`, and nowhere else (T163 deleted the unloaded twin `modules/cart_logic.js`). Glue and Renderer read them and decide nothing.
+
+| ID | Function | Layer | Purpose |
+|---|---|---|---|
+| CL-01 | `canonicalAnswerKey` | Logic | Order-independent signature of an answers object. |
+| CL-02 | `cartLineKey` | Logic | A cart line's identity, from its own structured facts: service, category, `_variant`, canonical answers (or the notes string when there are none), and the **quoted amount**. Never the entry's id, name or the price's formatting. |
+| CL-03 | `resolveCartTransition` | Logic | The one merge rule: `append` / `merge-furniture` / `increment-qty` / `no-op`, with the `source` that decided. An entry that names no service never merges. |
+| CL-04 | `cartLineAmount` | Logic | The dollars a line quotes (the first number in its price, rounded). The one price-string reader for the cart; it replaced `parsePriceToInt`, whose only callers were the two cart totals. |
+| CL-05 | `cartLineQty` | Logic | How many times a line was requested (a whole number, at least 1). The one reader of `qty`. |
+| CL-06 | `cartTotal` | Logic | The cart total: the sum of amount x qty over every line. The summary and the overlay read it; no renderer sums prices. |
+| -- | `addToCart` | Glue | Reads the cart, asks `resolveCartTransition`, dispatches `cart/SET`, toasts. Decides nothing. |
+| -- | `formatCartLinePrice` | Rendering | The one place a line's price is worded: the price as authored, or `<price> × n` when requested n times. |
+| -- | `updateCartSummary`, `updateCartOverlayTotal`, `updateCartOverlayIfOpen` | Rendering | Draw lines and totals from `cartTotal` / `formatCartLinePrice`. |
+
+Named defect classes (proposed in `cart_logic.js`; **neither is in the Charter's defect-class list yet** -- surfaced in `PENDING_DECISIONS.md`, the Charter is not edited here): **DEFECT-PRESENTATION-IDENTITY** (a line's identity was composed of what the customer saw) and **DEFECT-UNPRICED-IDENTITY** (an identity that left out a priced fact -- three shelves and one shelf merged into the first price -- and a stored `qty` nothing read, so two taps were quoted once). Held by `verify_cart_logic.js` (the rule, with mutants) and `verify_cart_merge_behavior.js` (the same rule through the real cart, with mutants of the page).
+
+A curated card records the quantity it priced on its cart line (`intakeAnswers.__qty`, and a `Quantity: n` line in the notes when n > 1), as the guided builders already did. Two things are NOT yet recorded the same way and are tracked in `PENDING_DECISIONS.md`: the free-text SmartQuote entry and the self-quote bypass entry carry no structured quantity (the quoted-amount part of the identity keeps them from merging at the wrong price, but the count is not on the line).
+
+## Where confidence is computed (`T159`)
+
+`resolveConfidence(evidence, DB)` (pricing_engine, Logic) is the one place a score, a bar and an escalation are produced (`R-CONF-ONEFORMULA`). The bar and the escalation come from `applyLiveConfidenceEscalation` alone, called only from there. Every gateway builds its evidence and reads the record:
+
+| Id | Function | Layer | Role |
+|---|---|---|---|
+| CF-01 | `resolveConfidence` | Logic | The one confidence function: `{score, minConf, escalatedBy, source, strategy}` from `{baseStrategy, entry, matchConfidence, intentKeyword, activeTagIds}`. |
+| CF-02 | `intentKeywordWeight` | Logic | The authored weight of an intent keyword; the match strength when the caller measured none. |
+| CF-03 | `resolveSessionEntry`, `otherTileId` | Logic | The customer's way in (`catalog` / `other_tile` / `free_text`) for a session; an explicit `intent.entry` wins, otherwise the intent's own identity says. |
+| CF-04 | `resolveSessionTagIds` | Logic | The tags in force for a session (the full set, or the chargeable set before the customer affirms what the words detected). |
+| CF-05 | `resolveSessionConfidence` | Logic | A session's confidence from its own evidence; the guided builder's gateway. |
+| -- | `computeUnifiedQuote`, `orch_compute_confidence` | Logic | Gateways for the state path and the orchestrator; neither holds confidence arithmetic. |
+| -- | `sqPrepareFlow` | Glue | Stores what `resolveSessionConfidence` answered (`S._confidenceStrategy`, `S._escalatedBy`); its tag detection and dynamic-service defaults moved to `resolveBuilderTags` and `resolveBuilderDynamicDefaults` (Logic). |
+
+`verify_confidence_convergence.js` holds it: it drives the three real gateways with the same request and asserts they agree. It is a **class detector** (it freezes no output and asserts no number), so it is not a golden, parity or equivalence test in the sense of PHASE_PLAN's standing rule; that is recorded here once, as the operator-accepted default (`SESSION_PLAN.md` v-a 6). What the one function does not settle (`R-CONF-ACCOUNTING`, the Cᵢ / Cₓ split, bars the questions cannot clear) is `PENDING_DECISIONS.md` #140.
+
+**Where the escalation lives (`T161`).** The arithmetic that raises the bar and the question cap when a tag is in force exists in one function, `applyLiveConfidenceEscalation` (it reads the SSOT's `confidence_escalation` deltas and caps). The guided builder's private copy of it is deleted. A tag names its tier in `smart_tags.<tag>.escalate_complexity`; `complexity_override` is a different field, on an intake **answer**. Two functions read a tag's tier, for two purposes: `applyLiveConfidenceEscalation` (the confidence bar) and `computeUnifiedQuote` (the pricing tier); that pair is filed (`PENDING_DECISIONS.md` #149) and `verify_single_escalation_path.js` fails on a third reader, a second copy of the arithmetic, or a read of `effects.complexity_override`.
+
+**Where the complexity-tier ranking lives (`T162`).** One constant, `TIER_RANK` (`Object.freeze({routine: 0, skilled: 1, specialized: 2})`), in the Logic section of the page; the confidence escalation, the pricing tier and `deriveComplexityTier` all read it, and callers write `(TIER_RANK[tier] || 0)` so an absent tier is the lowest. Its names and order are the SSOT's (`global_rules.complexity_tiers`, by `min_minutes`); `verify_no_duplicate_registries.js` fails if a second ranking appears, if the order disagrees with the SSOT, or if two constant tables in the page become structurally equal without a filed ledger entry. Five other lookup tables hold catalog vocabulary in code (one of them inside a Rendering function): `PENDING_DECISIONS.md` #156.
+
+## Where the last-resort numbers live (`T160`)
+
+The nine values the pricing code falls back to (a starting price, a tier rate, a dispatch fee, a labor rate, two "minutes of a job nobody estimated", three pieces of card text) are in `btnyc.json` at `global_rules.fallbacks`, each with its reasoning in the block's `_notes` (`R-SYSTEM-NODATA`). The schema requires the block and closes it (`additionalProperties: false`), so the boot gate refuses a document that lacks it or carries another key.
+
+| Id | Thing | Layer | Role |
+|---|---|---|---|
+| FB-01 | `FALLBACKS` (top-level `const`, pricing_engine block) | Logic (read by Logic, Rendering and Glue) | A read-only **view** of `DB.global_rules.fallbacks`; it holds no value of its own. Reads `DB` at the moment of the read; throws, naming what is missing, before the SSOT is loaded, when the block is absent, or for a key nobody defined; cannot be written, deleted or redefined. |
+| FB-02 | `global_rules.fallbacks` (btnyc.json, schema) | SSOT | The nine values and their `_notes`. Five repeat a number the catalog holds elsewhere (`PENDING_DECISIONS.md` #142). |
+| FB-03 | `verify_fallbacks_live_in_ssot.js` | Test | The class detector: SSOT, schema and read sites agree; no copy in code; the guard; zero reads before `DB` is set on a real boot; every numeric `??` / `||` default in every layer is filed (#143, #144) and the list only shrinks. |
+
+Deploy order (#145): `btnyc.json` and `schema/btnyc_schema.json` first; then `qr.html`; then `modules/nlp_engine.js`. **`nlp_engine.js` -> `qr.html` is a new edge in the deploy graph:** the module reads `FALLBACKS`, a binding declared in `qr.html`'s pricing block (two reads, `buildCandidate` and the `default_fallback` branch of `detectIntentNLP`). It works against any `qr.html` in this repository's history; against one with no `FALLBACKS` binding it throws on free text.
