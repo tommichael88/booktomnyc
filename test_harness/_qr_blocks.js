@@ -27,6 +27,7 @@
 const fs = require('fs');
 const path = require('path');
 const acorn = require('acorn');
+const page = require('./_page.js');   // T158: the page's external <script src> files are part of "the page" (see _page.js)
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 // BTNYC_QR_FILE lets the structural tests analyse any copy (a historical commit, a renamed file) without touching qr.html.
@@ -35,6 +36,7 @@ const QR_PATH = process.env.BTNYC_QR_FILE ? path.resolve(process.env.BTNYC_QR_FI
 const MODULE_NAMES = [
     'pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js',
     'UIRenderer.js', 'AppController.js', 'appReducer.js', 'store.js',
+    'cart_logic.js',   // T158: the cart-line identity, merge and total rules (Logic); an inline block until the page loads modules/cart_logic.js
 ];
 
 function headerRegex(moduleFile) {
@@ -62,9 +64,20 @@ function splitScriptBlocks(html) {
     return blocks;
 }
 
+// T158: `html` is the ASSEMBLED document -- each external <script src> under the deployed base replaced in place by the repo file it names (_page.js). Line numbers
+// (startLine, absLine) are therefore lines of the assembled document; a block that came from an external file also carries `external` = its repo-relative path.
 function loadQr(qrPath) {
-    const html = fs.readFileSync(qrPath || QR_PATH, 'utf8');
-    return { html, blocks: splitScriptBlocks(html) };
+    const raw = fs.readFileSync(qrPath || QR_PATH, 'utf8');
+    const html = page.assemble(raw);
+    const blocks = splitScriptBlocks(html);
+    const ext = page.externalScripts(raw).filter(s => s.repoPath);
+    // an assembled external block is the one whose text equals the repo file's text; tag it so a report can name the real file
+    for (const s of ext) {
+        const text = fs.readFileSync(path.join(page.REPO_ROOT, s.repoPath), 'utf8');
+        const b = blocks.find(x => x.src === '\n' + text + '\n');
+        if (b) b.external = s.repoPath;
+    }
+    return { html, blocks };
 }
 
 /** Returns the block whose own header names `moduleFile`, or null. */

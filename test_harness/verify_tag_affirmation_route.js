@@ -30,7 +30,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const REPO_ROOT = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const html = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const btnycJson = fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8');
 
 let pass_count = 0, fail_count = 0;
@@ -253,6 +253,9 @@ setTimeout(() => {
             intentCategory: 'plumbing_help', intentGroupId: 'plumbing_help_sinks',
             quote: { laborEstimate: 125 },
         };
+        // T158: the renderer reads route.recommendedServiceIds, which the orchestrator resolves (orch_recommended_service_ids, Logic) so the renderer never reads the
+        // pricing engine (R-INVARIANT-BOUNDARY). This hand-built route therefore gets its ids from that same Logic function, exactly as executeWorkflow would put them there.
+        directRoute.recommendedServiceIds = w.orch_recommended_service_ids(directRoute, DB);
         w.renderTagAffirmationFromRoute(directRoute);
         const c2 = doc.getElementById('routeCardHost');
         const recCount = (c2.innerHTML.match(/affirm-rec-card/g) || []).length;

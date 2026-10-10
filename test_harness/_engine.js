@@ -15,6 +15,7 @@
  *   test's own extractor.
  */
 const fs = require('fs'), path = require('path');
+const page = require('./_page.js');   // T158: a module that moved out of qr.html is still part of the page (see _page.js)
 const ROOT = process.env.QR_ROOT || path.dirname(__dirname);
 const MODULES = ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js'];
 
@@ -32,7 +33,7 @@ function scriptBlocks(html) {
 let cache = null;
 function engine(qrPath = path.join(ROOT, 'qr.html')) {
   if (cache && cache.path === qrPath) return cache;
-  const blocks = scriptBlocks(fs.readFileSync(qrPath, 'utf8'));
+  const blocks = scriptBlocks(page.readPage(qrPath, ROOT));
   const parts = MODULES.map(marker => {
     const re = new RegExp('^\\s*/\\*\\*\\s*\\r?\\n\\s*\\*\\s*' + marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
     const b = blocks.find(x => re.test(x));
@@ -40,10 +41,20 @@ function engine(qrPath = path.join(ROOT, 'qr.html')) {
     return b;
   });
   const code = parts.join('\n\n');
-  // Top-level declarations only (0-5 spaces of indent: the pricing module keeps three at column 0), and never one inside a block comment -- a function preserved
-  // "for historical reference" in a comment is not defined, and exporting it would claim the wrapper provides a name it cannot.
-  const live = code.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '));
-  const names = [...new Set([...live.matchAll(/^ {0,5}(?:async )?function ([A-Za-z_$][\w$]*)\s*\(/gm)].map(m => m[1]))];
+  // Top-level function declarations only -- found by PARSING each module (acorn), never by indentation. (T158: the old rule, "0-5 spaces of indent", silently
+  // dropped every function once the operator's formatter re-indented the module to 8; a name that is missing here is "X is not defined" in forty tests.) A function
+  // inside another function is not exported, and a function preserved "for historical reference" in a comment is not a declaration at all, so the parse needs no
+  // comment-blanking pass.
+  const acorn = require('acorn');
+  const nameSet = new Set();
+  const scan = n => {   // declarations at the module's own level, including those inside top-level blocks/if/try (sloppy-mode hoisting), never inside a function
+    if (!n || typeof n.type !== 'string') return;
+    if (n.type === 'FunctionDeclaration') { if (n.id) nameSet.add(n.id.name); return; }
+    if (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression' || n.type === 'ClassDeclaration' || n.type === 'ClassExpression') return;
+    for (const k of Object.keys(n)) { const v = n[k]; if (Array.isArray(v)) v.forEach(scan); else if (v && typeof v.type === 'string') scan(v); }
+  };
+  for (const part of parts) acorn.parse(part, { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true, allowAwaitOutsideFunction: true }).body.forEach(scan);
+  const names = [...nameSet];
   const wrapper = `(function(){
 const __g = globalThis;
 const window = __g.window || __g;

@@ -25,7 +25,7 @@
 const fs = require('fs'), path = require('path'), os = require('os'), vm = require('vm'), { execSync } = require('child_process');
 const ROOT = process.env.QR_ROOT || path.resolve(__dirname, '..');
 const QR = process.env.QR_HTML || path.join(ROOT, 'qr.html');
-const SRC = fs.readFileSync(QR, 'utf8');
+const SRC = require('./_page.js').readPage(QR);
 const DATA = fs.readFileSync(path.join(ROOT, 'btnyc.json'), 'utf8');
 const SCHEMA = fs.readFileSync(path.join(ROOT, 'schema', 'btnyc_schema.json'), 'utf8');
 let pass = 0, fail = 0;
@@ -44,7 +44,7 @@ async function boot(puppeteer, chromePath, htmlPath, files, after) {
     const page = await browser.newPage(); await page.setViewport({ width: 1280, height: 2200 }); await page.setRequestInterception(true);
     page.on('request', r => {
       const u = r.url();
-      if (!u.startsWith('file://')) return r.abort();               // no network: everything external is out of the test
+      const _d = require('./_page.js').documentResponse(u); if (_d) return r.respond(_d); if (!u.startsWith('file://')) return r.abort();               // no network: everything external is out of the test
       const rel = decodeURIComponent(u.replace(/^file:\/\/.*?\/__site__\//, '')).split('?')[0];
       if (u.includes('/__site__/')) { if (rel === path.basename(htmlPath)) return r.continue(); out.requests.push(rel); const f = files[rel]; if (f === undefined || f === null) return r.respond({ status: 404, contentType: 'text/plain', body: 'nf' }); if (typeof f === 'number') return r.respond({ status: f, contentType: 'text/plain', body: 'x' }); return r.respond({ status: 200, contentType: 'application/json', body: f }); }
       return r.continue();

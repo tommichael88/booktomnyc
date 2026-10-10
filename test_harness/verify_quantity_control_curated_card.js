@@ -61,7 +61,7 @@ async function drive(puppeteer, chromePath, htmlPath) {
   const browser = await puppeteer.launch({ headless: 'new', executablePath: chromePath, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   try {
     const page = await browser.newPage(); await page.setViewport({ width: 1280, height: 2400 }); await page.setRequestInterception(true);
-    page.on('request', r => r.url().includes('btnyc.json') ? r.respond({ status: 200, contentType: 'application/json', body: data }) : r.continue());
+    page.on('request', r => { const _d = require('./_page.js').documentResponse(r.url()); if (_d) return r.respond(_d); r.url().includes('btnyc.json') ? r.respond({ status: 200, contentType: 'application/json', body: data }) : r.continue(); });
     page.on('pageerror', e => out.errors.add(String(e.message).slice(0, 120)));
     await page.goto('file://' + htmlPath, { waitUntil: 'networkidle0', timeout: 60000 }); await page.waitForFunction(() => window.DB && window.DB.services, { timeout: 20000 });
     const read = () => page.evaluate(`(()=>{ const vis=${VIS}; const b=[...document.querySelectorAll('.ims-qty-btn')], v=document.querySelector('.ims-qty-value'), pv=document.querySelector('#intakeQuestionsContainer .price-value');
@@ -109,7 +109,7 @@ async function drive(puppeteer, chromePath, htmlPath) {
   const c = real.cart;
   check('after setting three on shelf mounting, Add to Request puts one item in the cart priced as the card says', !!c && c.n === 1 && c.shown && c.shown.qty === 3 && Number(String(c.price).replace(/[^0-9]/g, '')) === c.shown.price, JSON.stringify(c));
   console.log('\n=== 5. mutant: a renderer that does not draw the control is caught ===');
-  const src = fs.readFileSync(HTML, 'utf8'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qty-')); const a = "if (_qtyModule && route.quantity && route.quantity.stance === 'batched') {";
+  const src = require('./_page.js').readPage(HTML), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qty-')); const a = "if (_qtyModule && route.quantity && route.quantity.stance === 'batched') {";
   if (!src.includes(a)) throw new Error('mutant anchor missing');
   const f = path.join(tmp, 'nocontrol.html'); fs.writeFileSync(f, src.replace(a, 'if (false) {'));
   const m = await drive(puppeteer, chromePath, f);

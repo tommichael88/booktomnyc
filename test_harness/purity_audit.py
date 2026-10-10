@@ -14,8 +14,9 @@ calls renderCart(), which is saturated with document.createElement calls.
 import re
 import json
 
-with open("../qr.html", encoding="utf-8") as f:
-    html = f.read()
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from _page import read_page   # T158: the page with its external modules in place
+html = read_page(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "qr.html"))
 scripts = re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", html, re.DOTALL)
 
 

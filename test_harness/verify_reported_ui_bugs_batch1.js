@@ -45,7 +45,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-const html = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const html = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const btnycJson = fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8');
 
 const dom = new JSDOM(html, {

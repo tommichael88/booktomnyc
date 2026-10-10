@@ -52,7 +52,7 @@ function buildSandbox(dbPath) {
         documentElement: { style: {}, classList: { add() {}, remove() {} } },
     };
     vm.createContext(sandbox);
-    for (const f of ['pricing_engine.js', 'nlp_engine.js', 'UIRenderer.js', 'AppController.js']) {
+    for (const f of ['pricing_engine.js', 'nlp_engine.js', 'UIRenderer.js', 'cart_logic.js', 'AppController.js']   /* T158: cart merge is Logic in cart_logic.js; AppController.addToCart (Glue) calls resolveCartTransition */) {
         vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, f), 'utf8'), sandbox, { filename: f });
     }
     // v9.6: addToCart/removeServiceFromCart/removeFurnitureEntry now dispatch

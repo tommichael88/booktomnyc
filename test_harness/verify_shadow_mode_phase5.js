@@ -51,7 +51,7 @@ for (const f of FILES_TO_CHECK) {
 
 console.log('\n=== The thing shadow mode used to safety-net is still true without it: the orchestrator is the real, live, primary path ===');
 {
-    const qrHtml = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+    const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
     const m = qrHtml.match(/function\s+computeQuoteFromState\s*\([^)]*\)\s*\{/);
     check('computeQuoteFromState exists in qr.html', !!m);
     if (m) {

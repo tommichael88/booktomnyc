@@ -98,7 +98,7 @@ function loadRealQrHtmlFunctions(dbPath, functionSpecs, constNames = []) {
     // like extractObject (preview pipeline = occurrence 0, analysis pipeline
     // = occurrence 1).
     const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    const html = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+    const html = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
     const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m => m[1]);
     const allScripts = scripts.join('\n');
     const sandbox = makeStubGlobal(db);

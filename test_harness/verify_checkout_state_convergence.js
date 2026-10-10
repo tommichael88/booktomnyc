@@ -122,7 +122,8 @@ const WM2 = world({ mutateDb: db => { for (const a of Object.values(db.archetype
 const hiddenInRealWorld = census(world({ mutateSrc: { 'pricing_engine.js': blindProfile } })).every((r, i) => r.diag === rows[i].diag);
 check('MUTANT 2 (the profile reads the raw field and ignores inheritance) is INVISIBLE on real data...', hiddenInRealWorld, 'the real data was expected to hide this defect');
 check('...and caught in the counterfactual world, which is why that world exists', WM2.DB.services.filter(s => !(s.financial_engine && s.financial_engine.checkout_state)).some(s => WM2.sb.getServiceProfile(s).isDiagnostic !== true));
-const noArch = src => { const a = "if (archetypeDefault) return { key: archetypeDefault, source: 'archetype_default' };"; if (!src.includes(a)) throw new Error('mutant anchor missing (resolver)'); return src.replace(a, ''); };
+// T158: matched by shape, not by whitespace: the operator's formatter lays this statement out over several lines, and an anchor that depends on the layout fails when the layout changes (the mutant is unchanged: the archetype branch is removed)
+const noArch = src => { const a = /if \(archetypeDefault\) return \{\s*key: archetypeDefault,\s*source: 'archetype_default'\s*\};/; if (!a.test(src)) throw new Error('mutant anchor missing (resolver)'); return src.replace(a, ''); };
 const M3 = census(world({ mutateSrc: { 'pricing_engine.js': noArch } }));
 check('MUTANT 3 (the resolver loses its archetype rung) is caught: inheritors now report source \'fallback\' on the resolver and on the quote', M3.filter(r => r.R.source === 'fallback').length >= 60 && M3.filter(r => r.rs === 'fallback').length >= 60);
 

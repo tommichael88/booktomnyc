@@ -157,7 +157,8 @@ function extractEngine(qrHtmlPath) {
     if (!fs.existsSync(qrHtmlPath)) {
         throw new Error(`qr.html not found at ${qrHtmlPath}`);
     }
-    const html = fs.readFileSync(qrHtmlPath, 'utf8');
+    // T158: the page as a browser runs it -- its external <script src> modules (modules/*.js) in place. The URL-to-file rule is stated once, in _page.js.
+    const html = require('./test_harness/_page.js').readPage(qrHtmlPath);
 
     // Fix for bug #1 above: search EVERY <script>...</script> block, not
     // just the first one. computeUnifiedQuote and most of the engine live

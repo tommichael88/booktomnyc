@@ -515,8 +515,13 @@ def main():
         print(f"ERROR: qr.html not found at {QR_HTML}", file=sys.stderr)
         return 1
 
-    with open(QR_HTML, "r", encoding="utf-8") as f:
-        html = f.read()
+    # T158: "qr.html" is the page as a browser runs it -- its external <script src> files (modules/*.js) in place. The URL-to-file rule is stated once, in
+    # _page.js; this asks it (a missing file is an error there, never a silent skip).
+    page = subprocess.run(["node", os.path.join(os.path.dirname(os.path.abspath(__file__)), "_page.js"), QR_HTML], capture_output=True, text=True, encoding="utf-8")
+    if page.returncode != 0:
+        print(f"ERROR: could not assemble the page: {page.stderr.strip()}", file=sys.stderr)
+        return 1
+    html = page.stdout
 
     bodies = extract_inline_scripts(html)
     if not bodies:

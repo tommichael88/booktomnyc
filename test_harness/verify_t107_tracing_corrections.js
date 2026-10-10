@@ -28,7 +28,7 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO_ROOT = path.join(__dirname, '..');
-const QR_HTML = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const QR_HTML = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 
 let pass = 0, fail = 0;
 function check(label, condition) {

@@ -108,7 +108,7 @@ for (const arr of Object.values(db.global_rules?.intake_defaults?.group_defaults
 // a genuine positive: appearing as a fallback default
 // (`|| ['module_name']`) or inside one of the small, specific,
 // hardcoded quantity-module sets it's known to live in.
-const qrHtml = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const codeReferenced = new Set();
 for (const mod of allModules) {
     if (referenced.has(mod)) continue; // already confirmed live, no need to re-check

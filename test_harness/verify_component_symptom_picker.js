@@ -48,7 +48,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-const html = fs.readFileSync(QR_HTML_PATH, 'utf8');
+const html = require('./_page.js').readPage(QR_HTML_PATH);
 const btnycJson = fs.readFileSync(BTNYC_JSON_PATH, 'utf8');
 const consoleErrors = [];
 const windowErrors = [];

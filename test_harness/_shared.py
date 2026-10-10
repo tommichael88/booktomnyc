@@ -45,8 +45,10 @@ def _load_decisions():
 
 def get_qr_build_version():
     try:
-        with open(os.path.join(REPO_ROOT, "qr.html"), encoding="utf-8") as f:
-            qr = f.read()
+        # T158: QR_BUILD_VERSION lives in an external module now; read the page as the browser runs it (the one URL-to-file rule is in _page.js)
+        import subprocess
+        qr = subprocess.run(["node", os.path.join(REPO_ROOT, "test_harness", "_page.js"), os.path.join(REPO_ROOT, "qr.html")],
+                            capture_output=True, text=True, encoding="utf-8", check=True).stdout
         m = re.search(r"QR_BUILD_VERSION\s*=\s*'([^']+)'", qr)
         return m.group(1) if m else "unknown"
     except Exception:

@@ -26,20 +26,21 @@ recorded once can go stale exactly like any other claim in this project.
 
 ## The four layers, and where they actually live
 
-`qr.html` is one file with 7 named `<script>` blocks, each corresponding
-to one of the charter's module names, plus `<script>` blocks that carry no module header (the `inline` row). Verified boundaries, `T144`:
+`qr.html` is one file whose `<script>` blocks each correspond to one of the charter's module names, plus `<script>` blocks that carry no module header (the `inline` row). Some modules are inline in `qr.html`; others are loaded from `modules/` by a `<script src>` under the deployed base (`test_harness/_page.js` assembles the page from them, so a structural test reads the page the browser runs). Verified boundaries, `T158` (line numbers are `qr.html` source lines):
 
-| Module | Layer | `qr.html` block starts | Ends (next block) |
+| Module | Layer | Source in the page | `qr.html` block starts |
 |---|---|---|---|
-| `pricing_engine.js` | Logic/Engine | line 907 | 3335 |
-| `nlp_engine.js` | Logic/Engine | line 3335 | 5605 |
-| `orchestrator_engine.js` | Logic/Engine | line 5605 | 7108 |
-| `UIRenderer.js` | UI/Renderer | line 7108 | 11756 |
-| `AppController.js` | Controller/Glue | line 11756 | 14049 |
-| `appReducer.js` | Logic/Engine | line 14049 | 14807 |
-| `store.js` | Logic/Engine | line 14807 | 15034 |
-| `inline` | Controller/Glue | -- | -- |
-| `btnyc.json` | Knowledge (SSOT) | -- | -- |
+| `trace.js` | -- (observation tool, never assembled) | external: `modules/trace.js` | line 909 |
+| `pricing_engine.js` | Logic/Engine | inline | line 912 |
+| `nlp_engine.js` | Logic/Engine | external: `modules/nlp_engine.js` | line 3507 |
+| `orchestrator_engine.js` | Logic/Engine | inline | line 3510 |
+| `UIRenderer.js` | UI/Renderer | inline | line 5290 |
+| `cart_logic.js` | Logic/Engine | inline (a copy of `modules/cart_logic.js`, not yet loaded from it) | line 10041 |
+| `AppController.js` | Controller/Glue | inline | line 10223 |
+| `appReducer.js` | Logic/Engine | external: `modules/appReducer.js` | line 12227 |
+| `store.js` | Logic/Engine | external: `modules/store.js` | line 12230 |
+| `inline` | Controller/Glue | inline | -- |
+| `btnyc.json` | Knowledge (SSOT) | the catalog | -- |
 
 **How the structural tests read this table (`T144`).** `verify_r-system-layers_full_matrix.js`,
 `verify_r-invariant-comply_ship_gate.js` and `verify_r-invariant-boundary_ui_renderer_layer.js` read the
@@ -52,7 +53,7 @@ ported away or the operator reassigns the module.
 
 The standalone `.js` files of the same names (at the project root, beside
 `qr.html`) are **generated, not hand-maintained** — `test_harness/extract_modules.js`
-regenerates all 7 from `qr.html`'s own script blocks by header-anchored
+regenerates all 8 from the page's own script blocks (the inline ones from `qr.html`, the external ones from `modules/`) by header-anchored
 matching. Run it after any `qr.html` edit, before trusting the standalone
 copies; `check_module_parity.js` (wired into `verify_pricing_engine_module.js`,
 `verify_orchestrator_engine_module.js`, and `verify_extracted_engine_module.js`;
@@ -228,3 +229,24 @@ a parsing function, or if a module-level IIFE reads SSOT state at script-load ti
 yet then). Tests load the engine modules whole through `test_harness/_engine.js` rather than cherry-picking
 functions by name out of `qr.html`, so adding a helper next to a function can no longer break unrelated tests.
 
+
+
+## The cart (`T158`)
+
+The cart's identity, merge and total rules are Logic and live in one module, `cart_logic.js` (an inline block of `qr.html` today; `modules/cart_logic.js` is the same text, ready to be loaded). Glue and Renderer read them and decide nothing.
+
+| ID | Function | Layer | Purpose |
+|---|---|---|---|
+| CL-01 | `canonicalAnswerKey` | Logic | Order-independent signature of an answers object. |
+| CL-02 | `cartLineKey` | Logic | A cart line's identity, from its own structured facts: service, category, `_variant`, canonical answers (or the notes string when there are none), and the **quoted amount**. Never the entry's id, name or the price's formatting. |
+| CL-03 | `resolveCartTransition` | Logic | The one merge rule: `append` / `merge-furniture` / `increment-qty` / `no-op`, with the `source` that decided. An entry that names no service never merges. |
+| CL-04 | `cartLineAmount` | Logic | The dollars a line quotes (the first number in its price, rounded). The one price-string reader for the cart; it replaced `parsePriceToInt`, whose only callers were the two cart totals. |
+| CL-05 | `cartLineQty` | Logic | How many times a line was requested (a whole number, at least 1). The one reader of `qty`. |
+| CL-06 | `cartTotal` | Logic | The cart total: the sum of amount x qty over every line. The summary and the overlay read it; no renderer sums prices. |
+| -- | `addToCart` | Glue | Reads the cart, asks `resolveCartTransition`, dispatches `cart/SET`, toasts. Decides nothing. |
+| -- | `formatCartLinePrice` | Rendering | The one place a line's price is worded: the price as authored, or `<price> × n` when requested n times. |
+| -- | `updateCartSummary`, `updateCartOverlayTotal`, `updateCartOverlayIfOpen` | Rendering | Draw lines and totals from `cartTotal` / `formatCartLinePrice`. |
+
+Named defect classes (proposed in `cart_logic.js`; **neither is in the Charter's defect-class list yet** -- surfaced in `PENDING_DECISIONS.md`, the Charter is not edited here): **DEFECT-PRESENTATION-IDENTITY** (a line's identity was composed of what the customer saw) and **DEFECT-UNPRICED-IDENTITY** (an identity that left out a priced fact -- three shelves and one shelf merged into the first price -- and a stored `qty` nothing read, so two taps were quoted once). Held by `verify_cart_logic.js` (the rule, with mutants) and `verify_cart_merge_behavior.js` (the same rule through the real cart, with mutants of the page).
+
+A curated card records the quantity it priced on its cart line (`intakeAnswers.__qty`, and a `Quantity: n` line in the notes when n > 1), as the guided builders already did. Two things are NOT yet recorded the same way and are tracked in `PENDING_DECISIONS.md`: the free-text SmartQuote entry and the self-quote bypass entry carry no structured quantity (the quoted-amount part of the identity keeps them from merging at the wrong price, but the count is not on the line).

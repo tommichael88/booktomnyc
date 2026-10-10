@@ -54,7 +54,7 @@ const servicesById = new Map((db.services || []).map(s => [s.id, s]));
 // services grid instead, which already shows every named service
 // regardless of any component/symptom mapping) -- so an orphan there
 // is a real, latent data issue, but not YET a customer-facing one.
-const qrHtml = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const allowlistMatch = qrHtml.match(/PICKER_ENABLED_GROUPS\s*=\s*new Set\(\[([^\]]+)\]\)/);
 if (!allowlistMatch) throw new Error('PICKER_ENABLED_GROUPS not found in qr.html -- has it been renamed or restructured?');
 const pickerEnabledGroups = new Set(

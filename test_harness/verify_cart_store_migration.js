@@ -35,7 +35,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-const html = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const html = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const btnycJson = fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8');
 
 const dom = new JSDOM(html, {
@@ -82,9 +82,11 @@ function run() { return new Promise((resolve) => setTimeout(() => resolve(dom.wi
         // the store and correctly persists across a session restart) --
         // clear it explicitly so this scenario starts from a known state.
         w.__store.dispatch({ type: 'cart/SET', payload: { serviceRequest: [] } });
-        w.addToCart({ id: 'a', name: 'Svc', category_id: 'x', price: '$10', qty: 1 });
-        w.addToCart({ id: 'a-dup', name: 'Svc', category_id: 'x', price: '$10', qty: 1 }); // should merge to qty:2
-        w.addToCart({ id: 'b', name: 'Other', category_id: 'x', price: '$20', qty: 1 });
+        // T158: a cart line's identity is its business facts (cart_logic.js cartLineKey: serviceId, category, variant, answers), not its name or formatted price,
+        // so these entries carry the serviceId every real entry carries. Two taps on the same service merge; a different service in the same category does not.
+        w.addToCart({ id: 'a', serviceId: 'svc_a', name: 'Svc', category_id: 'x', price: '$10', qty: 1 });
+        w.addToCart({ id: 'a-dup', serviceId: 'svc_a', name: 'Svc', category_id: 'x', price: '$10', qty: 1 }); // should merge to qty:2
+        w.addToCart({ id: 'b', serviceId: 'svc_b', name: 'Other', category_id: 'x', price: '$20', qty: 1 });
         w.removeServiceFromCart('b');
         const script2 = w.document.createElement('script');
         script2.textContent = `window.__DEBUG_final = JSON.stringify(State.serviceRequest);`;

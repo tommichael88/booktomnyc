@@ -28,7 +28,7 @@ const addFormats = require(path.join(__dirname, 'node_modules', 'ajv-formats'));
 
 const REPO_ROOT = path.dirname(__dirname);
 const QR = process.env.QR_HTML || path.join(REPO_ROOT, 'qr.html');
-const HTML = fs.readFileSync(QR, 'utf8');
+const HTML = require('./_page.js').readPage(QR);
 const BASE = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
 const clone = o => JSON.parse(JSON.stringify(o));

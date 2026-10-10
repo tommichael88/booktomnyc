@@ -41,7 +41,8 @@ function loadDecisions() {
 
 function getQrBuildVersion() {
     try {
-        const qr = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+        // T158: QR_BUILD_VERSION now lives in an external module (modules/nlp_engine.js), so read the page as the browser runs it (see _page.js)
+        const qr = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
         const m = qr.match(/QR_BUILD_VERSION\s*=\s*'([^']+)'/);
         return m ? m[1] : 'unknown';
     } catch (e) {

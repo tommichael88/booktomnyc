@@ -123,7 +123,7 @@ console.log('\n=== resolveBaseConfidenceStrategy and qr.html/pricing_engine.js p
         }
         return null;
     }
-    const qrHtml = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+    const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
     const pe = fs.readFileSync(path.join(REPO_ROOT, 'pricing_engine.js'), 'utf8');
     const a = extractFn(qrHtml, 'resolveBaseConfidenceStrategy');
     const b = extractFn(pe, 'resolveBaseConfidenceStrategy');
@@ -157,7 +157,7 @@ console.log('\n=== Real bugs found DURING verification: three separate, parallel
             return route.confidence.minConf === 80;
         })());
 
-    const qrHtmlContent = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+    const qrHtmlContent = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
     function extractFnBodyEarly(text, name) {
         const m = text.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
         if (!m) return '';
@@ -171,9 +171,9 @@ console.log('\n=== Real bugs found DURING verification: three separate, parallel
     check('orch_compute_confidence now calls resolveBaseConfidenceStrategy (qr.html)',
         /resolveBaseConfidenceStrategy\(entity, null\)/.test(extractFnBodyEarly(qrHtmlContent, 'orch_compute_confidence')));
     check('sqBuildCuratedIntake\'s maxQs/minConf now call resolveBaseConfidenceStrategy (qr.html)',
-        /const confStrat = resolveBaseConfidenceStrategy\(svc, null\);/.test(fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8')));
+        /const confStrat = resolveBaseConfidenceStrategy\(svc, null\);/.test(require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'))));
     check('sqPrepareFlow\'s baseStrategy now calls resolveBaseConfidenceStrategy, not an inline duplicate (qr.html)',
-        /const baseStrategy = resolveBaseConfidenceStrategy\(svcForStrategy, dynDefForStrategy\);/.test(fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8')));
+        /const baseStrategy = resolveBaseConfidenceStrategy\(svcForStrategy, dynDefForStrategy\);/.test(require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'))));
 
     function extractFnBody(text, name) {
         const m = text.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));

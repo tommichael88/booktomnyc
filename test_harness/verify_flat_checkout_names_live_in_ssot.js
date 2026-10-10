@@ -36,7 +36,7 @@ check('the declared flat states are EXACTLY the old hardcoded pair (the move pre
 check('the helper agrees with the data for every state', Object.keys(DB.checkout_states).every(k => real.sb.isFlatCheckoutState(k) === !!DB.checkout_states[k].is_flat_checkout) && real.sb.isFlatCheckoutState('no_such_state') === false);
 
 console.log('\n=== 2. no code line names the flat states as a list ===');
-const code = fs.readFileSync(path.join(ROOT, 'qr.html'), 'utf8'), hits = namesBoth(code);
+const code = require('./_page.js').readPage(path.join(ROOT, 'qr.html')), hits = namesBoth(code);
 check('qr.html has no non-comment line naming both flat states (the three hardcoded lists are gone)', hits.length === 0, hits.map(h => 'L' + h.i).join(', '));
 
 console.log('\n=== 3. counterfactual world: flip the data, and the readers follow ===');

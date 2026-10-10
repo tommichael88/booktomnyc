@@ -64,7 +64,7 @@ const path = require('path');
 
 const REPO_ROOT = path.dirname(__dirname);
 const DB = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
-const QR_HTML = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const QR_HTML = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const SCRIPTS = [...QR_HTML.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 const SRC = SCRIPTS.join('\n');
 

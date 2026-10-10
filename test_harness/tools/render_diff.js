@@ -61,6 +61,7 @@ function findChrome() {
 // The page's Content-Security-Policy allows scripts only from 'self' (the deployed origin), so a file:// page can never load trace.js -- the
 // request is blocked before it is made. A --trace run therefore serves BOTH pages from the deployed origin (virtual: intercepted, nothing
 // leaves the machine); the run without trace.js aborts that one request, i.e. trace.js genuinely absent.
+const PAGE = require('../_page.js');
 const VIRTUAL_URL = 'https://tommichael88.github.io/booktomnyc/qr.html';
 async function probe(browser, file, traceFile, virtual) {
     const page = await browser.newPage();
@@ -70,7 +71,9 @@ async function probe(browser, file, traceFile, virtual) {
     page.on('request', r => {
         if (virtual && r.url().split('?')[0] === VIRTUAL_URL) r.respond({ status: 200, contentType: 'text/html; charset=utf-8', body: fs.readFileSync(file, 'utf8') });
         else if (r.url().includes('btnyc.json')) r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(ssot, 'utf8') });
-        else if (traceFile && /trace\.js(\?|$)/.test(r.url())) r.respond({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(traceFile, 'utf8') });
+        else if (/trace\.js(\?|$)/.test(r.url())) { if (traceFile) r.respond({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(traceFile, 'utf8') }); else r.abort(); }   // the tracer is present only when --trace asks for it
+        else if (!virtual && PAGE.documentResponse(r.url())) r.respond(PAGE.documentResponse(r.url()));   // file mode: the page with its external modules assembled in (CSP blocks them from file://)
+        else if (virtual && PAGE.localFileForUrl(r.url())) r.respond({ status: 200, contentType: 'application/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(PAGE.localFileForUrl(r.url()), 'utf8') });   // virtual mode: the deployed origin's own module files
         else if (/^https?:/.test(r.url())) r.abort(); else r.continue();
     });
     await page.goto(virtual ? VIRTUAL_URL : 'file://' + file, { waitUntil: 'load' });

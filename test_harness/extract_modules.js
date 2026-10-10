@@ -1,13 +1,20 @@
 /**
  * extract_modules.js
  *
- * Extracts each JavaScript module from qr.html and writes it to a separate
+ * Extracts each JavaScript module from the PAGE and writes it to a separate
  * .js file in the project root, so the existing tests can require() them.
+ *
+ * T158: "the page" is qr.html with its external <script src> files in place (see _page.js:
+ * a URL under the deployed base IS the repo file at the rest of the URL, e.g. modules/nlp_engine.js).
+ * The root files this writes are generated, gitignored copies; modules/*.js and qr.html are the sources.
+ * A module that cannot be found by its own header is an ERROR (the earlier "bare substring" fallback
+ * silently wrote the orchestrator block under the name nlp_engine.js once nlp_engine moved out of qr.html).
  *
  * Run with: node test_harness/extract_modules.js
  */
 const fs = require('fs');
 const path = require('path');
+const page = require('./_page.js');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const QR_PATH = path.join(PROJECT_ROOT, 'qr.html');
@@ -22,10 +29,11 @@ const MODULE_MARKERS = {
     'AppController.js':         'AppController.js',
     'appReducer.js':            'appReducer.js',
     'store.js':                 'store.js',
+    'cart_logic.js':            'cart_logic.js',
 };
 
-// Read the entire HTML file
-const html = fs.readFileSync(QR_PATH, 'utf8');
+// Read the page as a browser runs it: external scripts assembled in place (throws if a named file is missing)
+const html = page.readPage(QR_PATH);
 
 // Extract all <script> blocks, stripping outer IIFE wrappers if present
 function extractScriptBlocks(html) {
@@ -61,22 +69,16 @@ const blocks = extractScriptBlocks(html);
 // block's own self-identifying header line.
 function findOwnBlock(blocks, marker) {
     const headerRe = new RegExp('^\\s*/\\*\\*\\s*\\r?\\n\\s*\\*\\s*' + marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
-    const byHeader = blocks.find(b => headerRe.test(b));
-    if (byHeader) return byHeader;
-    // Defensive fallback (should not trigger for any of the 7 known modules
-    // today, given the header convention above holds for all of them) --
-    // last resort only, not the primary path.
-    console.warn(`⚠️ No header-anchored match for "${marker}" -- falling back to bare substring match (unreliable if multiple blocks mention it).`);
-    return blocks.find(b => b.includes(marker));
+    return blocks.find(b => headerRe.test(b)) || null;
 }
 
 // For each module, find the block that contains its marker
 let extractedCount = 0;
 for (const [filename, marker] of Object.entries(MODULE_MARKERS)) {
     const block = findOwnBlock(blocks, marker);
-    if (!block) {
-        console.warn(`⚠️ Could not find marker "${marker}" for ${filename} – skipping.`);
-        continue;
+    if (block === null) {
+        console.error(`❌ No <script> block opens with a header naming "${marker}" (page: ${QR_PATH}). Not guessing: fix the page or MODULE_MARKERS.`);
+        process.exit(1);
     }
     const outPath = path.join(PROJECT_ROOT, filename);
     fs.writeFileSync(outPath, block, 'utf8');

@@ -44,12 +44,15 @@ USAGE: run from the repo root: python3 test_harness/find_orphaned_functions.py
 import re
 import glob
 import os
+import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def get_qr_html_source():
-    html = open(os.path.join(REPO_ROOT, 'qr.html')).read()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from _page import read_page   # T158: the page with its external modules in place
+    html = read_page(os.path.join(REPO_ROOT, 'qr.html'))
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.DOTALL)
     return '\n'.join(scripts)
 

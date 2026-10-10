@@ -39,7 +39,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-const html = fs.readFileSync(QR_HTML_PATH, 'utf8');
+const html = require('./_page.js').readPage(QR_HTML_PATH);
 const btnycJson = fs.readFileSync(BTNYC_JSON_PATH, 'utf8');
 
 const dom = new JSDOM(html, {
@@ -69,7 +69,7 @@ function resolveFreeText(w, phrase) {
 
     console.log('=== The real field name is used, not the one that never existed ===');
     {
-        const qrHtmlContent = fs.readFileSync(QR_HTML_PATH, 'utf8');
+        const qrHtmlContent = require('./_page.js').readPage(QR_HTML_PATH);
         const orchContent = fs.readFileSync(path.join(REPO_ROOT, 'orchestrator_engine.js'), 'utf8');
         check('qr.html uses the real field name (component_id_to_service_ids)', /ra\.component_id_to_service_ids/.test(qrHtmlContent));
         check('qr.html uses the real field name (symptom_id_to_service_ids)', /ra\.symptom_id_to_service_ids/.test(qrHtmlContent));

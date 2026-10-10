@@ -18,7 +18,7 @@ const OUT = path.resolve(ROOT, arg('--out', 'archive/types_baseline.txt')), TSC 
 
 execSync(`node ${JSON.stringify(path.join(ROOT, 'test_harness', 'extract_modules.js'))}`, { stdio: 'ignore' });
 const html = fs.readFileSync(path.join(ROOT, 'qr.html'), 'utf8');
-const NAMED = ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js', 'UIRenderer.js', 'AppController.js', 'appReducer.js', 'store.js'];
+const NAMED = ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js', 'UIRenderer.js', 'AppController.js', 'appReducer.js', 'store.js', 'cart_logic.js'];
 const dir = path.join(ROOT, 'archive', '_tsblocks'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
 const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/g; let m, i = -1; const table = [];
 while ((m = re.exec(html))) {

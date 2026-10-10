@@ -20,7 +20,9 @@
  *        - Non-vacuity: the three headline instances the operator's audit named MUST be found, or this detector is not seeing the class.
  *   2. BEHAVIOUR, because "source travels on the return value" is a runtime fact: every migrated resolver is called for EVERY service and dynamic service, and the
  *      record it returns must carry a source from the Charter's vocabulary that matches where the data says the value came from.
- * Scope limit, stated: variable tracing is within one function; a value passed to ANOTHER function that composes it is not seen. Inline re-derivation of the same
+ * Scope limit, stated: variable tracing is within one function PLUS one hop through a direct call: a resolver's result passed as an argument to a named function taints that
+ * function's parameter (T158: the operator extracted the guided builder's escalation block into _sqPrepareFlowLegacyEscalation(baseStrategy, ...), and without the hop two
+ * frozen compositions simply vanished from the count while still existing in the source -- relocation read as migration). A value passed further than that is not seen. Inline re-derivation of the same
  * concept with no resolver call (a second implementation) is DEFECT-DUPLICATE-REGISTRY / R-INVARIANT-DUPLICATION-TICKET territory and has its own detectors.
  */
 'use strict';
@@ -49,30 +51,37 @@ function root(e) { // peel a value expression down to the thing it ultimately re
     if (e.type === 'CallExpression') return { call: calleeName(e) }; if (e.type === 'Identifier') return { name: e.name }; return {};
 }
 const compositions = []; // { fn, resolver, op, line }
+const SEEDS = new Map(); // T158 one-hop: callee name -> Map(parameter index -> resolver whose result the caller passes in)
+let FINAL = false, SEEDS_GREW = false; // pass 1 only discovers the seeds; pass 2 records the compositions
 function analyze(fnNode, fnName, startLine) {
-    const traced = new Map(); // variable -> resolver it was assigned from, within this function only
+    const traced = new Map(); // variable -> resolver it was assigned from, within this function (and, via SEEDS, its parameters)
     const bind = (pat, resolver) => { if (!pat) return; if (pat.type === 'Identifier') traced.set(pat.name, resolver); else if (pat.type === 'ObjectPattern') pat.properties.forEach(p => bind(p.value || p.argument, resolver)); else if (pat.type === 'ArrayPattern') pat.elements.forEach(el => bind(el, resolver)); };
+    if (SEEDS.has(fnName)) SEEDS.get(fnName).forEach((res, i) => bind(fnNode.params[i], res));
     Q.walkAst(fnNode.body, (n, _p, _g, fns) => { if (fns.length) return;
         if (n.type === 'VariableDeclarator' && n.init) { const r = root(n.init); if (r.call && RESOLVERS.has(r.call)) bind(n.id, r.call); }
         if (n.type === 'AssignmentExpression' && n.operator === '=') { const r = root(n.right); if (r.call && RESOLVERS.has(r.call)) bind(n.left, r.call); } });
     const derived = e => { const r = root(e); if (r.call && RESOLVERS.has(r.call)) return r.call; if (r.name && traced.has(r.name)) return traced.get(r.name); return null; };
+    Q.walkAst(fnNode.body, (n, _p, _g, fns) => { if (fns.length || n.type !== 'CallExpression' || n.callee.type !== 'Identifier' || RESOLVERS.has(n.callee.name)) return;
+        n.arguments.forEach((a, i) => { const res = derived(a); if (!res) return; const m = SEEDS.get(n.callee.name) || new Map(); if (m.get(i) !== res) { m.set(i, res); SEEDS.set(n.callee.name, m); SEEDS_GREW = true; } }); });
     const isLit = e => e && (e.type === 'Literal' || (e.type === 'TemplateLiteral' && !e.expressions.length));
     const flatten = (e, op) => (e.type === 'LogicalExpression' && e.operator === op) ? [...flatten(e.left, op), ...flatten(e.right, op)] : [e];
     Q.walkAst(fnNode.body, (n, parent, _g, fns) => { if (fns.length) return; const line = startLine + n.loc.start.line - 1;
         if (n.type === 'LogicalExpression' && (n.operator === '||' || n.operator === '??') && !(parent && parent.type === 'LogicalExpression' && parent.operator === n.operator)) {
-            const ops = flatten(n, n.operator), hit = ops.map(derived).find(Boolean); if (hit && ops.length >= 2) compositions.push({ fn: fnName, resolver: hit, op: n.operator, line }); }
-        if (n.type === 'ConditionalExpression') { const a = derived(n.consequent), b = derived(n.alternate); if (a && a === b) return; const hit = a || b; const other = a ? n.alternate : n.consequent; if (hit && !isLit(other)) compositions.push({ fn: fnName, resolver: hit, op: '?:', line }); } });
+            const ops = flatten(n, n.operator), hit = ops.map(derived).find(Boolean); if (FINAL && hit && ops.length >= 2) compositions.push({ fn: fnName, resolver: hit, op: n.operator, line }); }
+        if (n.type === 'ConditionalExpression') { const a = derived(n.consequent), b = derived(n.alternate); if (a && a === b) return; const hit = a || b; const other = a ? n.alternate : n.consequent; if (FINAL && hit && !isLit(other)) compositions.push({ fn: fnName, resolver: hit, op: '?:', line }); } });
 }
 const refs = []; // references to retired arbiters: { name, fn, line }
 const ARBITERS = { entityHasOwnQtyQuestion: new Set(['resolveQuantityUnits']), QTY_AWARE_FORMULAS: new Set(['resolveQuantityMultiplier']) }; // may be read only inside these
-asts.forEach(({ ast, startLine }) => {
+function runPass() { asts.forEach(({ ast, startLine }) => {
     Q.walkAst(ast, (n, parent, _g, fns) => {
         const named = fns.filter(f => f.type === 'FunctionDeclaration' && f.id).map(f => f.id.name);
         if (isFnNode(n) && n.body && n.body.type === 'BlockStatement') { const nm = n.type === 'FunctionDeclaration' && n.id ? n.id.name : (named[named.length - 1] || '(anonymous)'); if (n.type === 'FunctionDeclaration' || !named.length) analyze(n, nm, startLine); }
         if (n.type === 'Identifier' && Object.prototype.hasOwnProperty.call(ARBITERS, n.name) && !(parent && ((parent.type === 'FunctionDeclaration' && parent.id === n) || (parent.type === 'VariableDeclarator' && parent.id === n) || (parent.type === 'MemberExpression' && parent.property === n && !parent.computed) || (parent.type === 'Property' && parent.key === n && !parent.computed))))
-            refs.push({ name: n.name, fn: named[0] || '(module)', line: startLine + n.loc.start.line - 1 });
+            FINAL && refs.push({ name: n.name, fn: named[0] || '(module)', line: startLine + n.loc.start.line - 1 });
     });
-});
+});}
+for (let i = 0; i < 4; i++) { SEEDS_GREW = false; runPass(); if (!SEEDS_GREW) break; }   // discovery passes until no new parameter is tainted (bounded: one hop is the stated scope)
+FINAL = true; runPass();
 const keyOf = c => `${c.fn} | ${c.resolver} | ${c.op}`; const counts = {}; compositions.forEach(c => { counts[keyOf(c)] = (counts[keyOf(c)] || 0) + 1; });
 
 // 1a. STRICT resolvers are composed nowhere
@@ -85,8 +94,8 @@ check('the retired quantity arbiters (entityHasOwnQtyQuestion, QTY_AWARE_FORMULA
 // two (the minimum-quote-confidence chain in orch_compute_confidence, the archetype-result `??` in computeUnifiedQuote) were deleted in T155 (A2b: their second sources were
 // unreachable), so "the detector saw them once" no longer proves it still CAN. For each deleted one, inject a composition of exactly that kind into a synthetic function and
 // require the detector to flag it, then discard it so the frozen counts are untouched (the T150 method).
-const CANARY = ['sqPrepareFlow | resolveBaseConfidenceStrategy | ||', 'executeWorkflow | orch_resolve_entity | ||'];
-check('non-vacuity: the detector SEES the headline instances that remain in the source (the strategy chain in sqPrepareFlow, the entity chain in executeWorkflow)', CANARY.every(k => counts[k] >= 1), { expected: 'both present', got: CANARY.filter(k => !counts[k]) });
+const CANARY = ['_sqPrepareFlowLegacyEscalation | resolveBaseConfidenceStrategy | ||', 'executeWorkflow | orch_resolve_entity | ||'];   // T158: the strategy chain moved from sqPrepareFlow into the helper the operator extracted; the one-hop trace follows it
+check('non-vacuity: the detector SEES the headline instances that remain in the source (the strategy chain in _sqPrepareFlowLegacyEscalation, the entity chain in executeWorkflow)', CANARY.every(k => counts[k] >= 1), { expected: 'both present', got: CANARY.filter(k => !counts[k]) });
 { const probes = [
     ['probeConfidenceChain', 'function probeConfidenceChain(e) { const s = resolveBaseConfidenceStrategy(e, null); const m = s.minimum_quote_confidence || 80; return m; }', 'resolveBaseConfidenceStrategy', '||'],
     ['probeArchetypeResult', 'function probeArchetypeResult(e) { const r = computeArchetypeQuote(e, "formula", {}, 1, DB, null); let l = 0; l = r.laborEstimate ?? l; return l; }', 'computeArchetypeQuote', '??'],
@@ -101,7 +110,9 @@ const LEGACY = {
     "orch_resolve_entity | resolveDynamicService | ||": 1,
     "prefillSmartQuoteFromOtherTile | resolveDynamicService | ??": 1,
     "prefillSmartQuoteFromOtherTile | resolveDynamicService | ||": 1,
-    "sqPrepareFlow | resolveBaseConfidenceStrategy | ||": 2,
+    "_sqPrepareFlowLegacyEscalation | resolveBaseConfidenceStrategy | ||": 2, // T158: RELOCATED, not migrated -- these two sites were in sqPrepareFlow (2 there before, 0 now); the operator extracted the block into this helper and the one-hop trace follows the argument into it
+    "orch_enrich_from_dynamic_service | resolveDynamicService | ||": 1, // T158: first SEEN by the one-hop trace (the entity arrives as a parameter); present in the source before it, frozen at the count found
+    "orch_compute_quote | orch_resolve_entity | ||": 1, // T158: same
     "sqPrepareFlow | resolveDynamicService | ||": 1
 }; // FROZEN T147 (T150: the four checkout-state entries are gone -- that resolver is STRICT now; T155 A2b: the six computeUnifiedQuote / orch_compute_confidence entries and the collectBookingContext_freeText entry are gone -- their second sources were unreachable and are deleted) -- the unmigrated arbitration the Charter's audit named; lower or delete an entry as each resolver is migrated
 const cur = Object.keys(counts).filter(k => !STRICT.has(k.split(' | ')[1]));

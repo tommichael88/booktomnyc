@@ -105,7 +105,9 @@ if __name__ == '__main__':
         idx = sys.argv.index('--min-shared')
         min_shared = int(sys.argv[idx + 1])
 
-    html = open(os.path.join(REPO_ROOT, 'qr.html')).read()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from _page import read_page   # T158: the page with its external modules in place
+    html = read_page(os.path.join(REPO_ROOT, 'qr.html'))
     scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.DOTALL)
     joined = '\n'.join(scripts)
 

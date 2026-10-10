@@ -28,7 +28,7 @@ const { engineAwareFindFn } = require('./_engine.js');
 const findFn = engineAwareFindFn(_cherryPickFn);
 
 const REPO_ROOT = path.dirname(__dirname);
-const QR_HTML = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const QR_HTML = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const DB = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
 
 let pass = 0, fail = 0;

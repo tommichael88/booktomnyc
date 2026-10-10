@@ -146,7 +146,7 @@ if (!fs.existsSync(QR_HTML_PATH) || !fs.existsSync(BTNYC_JSON_PATH)) {
   return;
 }
 
-const qrHtmlContent = fs.readFileSync(QR_HTML_PATH, 'utf8');
+const qrHtmlContent = require('./_page.js').readPage(QR_HTML_PATH);
 let btnycData;
 try {
   btnycData = JSON.parse(fs.readFileSync(BTNYC_JSON_PATH, 'utf8'));

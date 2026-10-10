@@ -26,7 +26,7 @@ const vm = require('vm');
 
 const REPO_ROOT = path.dirname(__dirname);
 const DB = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
-const QR_HTML_FOR_FNS = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const QR_HTML_FOR_FNS = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 function findFn(name) {
     const m = QR_HTML_FOR_FNS.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return null;

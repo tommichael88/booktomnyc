@@ -91,7 +91,7 @@ check('no real, dedicated painting service exists anywhere in the catalog (confi
     !DB.services.some(s => s.ui_taxonomy.display_name.toLowerCase().includes('paint')));
 
 console.log('\n=== Real, pre-existing "bulb" group-routing inconsistency found and fixed ===');
-const QR_HTML = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const QR_HTML = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 check('the cross-category rule set no longer sends "bulb" to the less-precise light_fixtures group',
     !/keywords: \['light','fixture','chandelier','pendant','sconce','bulb'\]/.test(QR_HTML));
 check('the per-category rule correctly still sends bulb to the dedicated electric_lighting_bulbs group',

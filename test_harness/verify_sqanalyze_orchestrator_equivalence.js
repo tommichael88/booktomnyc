@@ -75,7 +75,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const REPO_ROOT = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const html = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const btnycJson = fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8');
 
 let pass_count = 0, fail_count = 0;

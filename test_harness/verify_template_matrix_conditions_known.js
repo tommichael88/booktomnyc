@@ -2,7 +2,9 @@
 /**
  * verify_template_matrix_conditions_known.js -- the route's template decision must not silently ignore a condition it does not understand (DEFECT-SILENT-SKIP).
  *
- * @detects DEFECT-SILENT-SKIP
+ *
+ * T158: the Charter's 2026-10-09 revision no longer names DEFECT-SILENT-SKIP (it was added at T156 under operator ruling #105, and the new Charter does not carry that amendment), so this test
+ * carries no `@detects` tag for it: a tag naming a class the Charter does not declare is an orphan. The detector keeps running; PENDING_DECISIONS asks whether the class was dropped on purpose.
  *
  * workflow.ui_template_matrix.rules is DATA, but orch_select_ui_template evaluates it with one hand-written `if ('key' in cond && ...)` line per condition it knows. A condition key
  * it did not know used to be IGNORED, so a rule carrying one still matched on its other conditions: add a new condition to the data without a matching line in the evaluator and

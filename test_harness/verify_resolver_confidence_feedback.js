@@ -135,7 +135,7 @@ console.log('\n=== qr.html and nlp_engine.js are byte-identical for detectIntent
         }
         return null;
     }
-    const qrHtml = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+    const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
     const nlpEngine = fs.readFileSync(path.join(REPO_ROOT, 'nlp_engine.js'), 'utf8');
     const fnQr = extractFn(qrHtml, 'detectIntentNLP');
     const fnModule = extractFn(nlpEngine, 'detectIntentNLP');

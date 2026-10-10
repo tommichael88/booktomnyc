@@ -68,6 +68,7 @@ function findChrome() {
         fs.readFile(filePath, (err, data) => {
             if (err) { res.writeHead(404); res.end(); return; }
             const ext = path.extname(filePath);
+            if (ext === '.html') data = Buffer.from(require('./_page.js').assemble(data.toString('utf8')));   // T158: the page with its external modules assembled in (the page's CSP only allows scripts from its own origin)
             res.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.json': 'application/json' }[ext] || 'text/plain' });
             res.end(data);
         });

@@ -74,6 +74,7 @@ function findChrome() {
   // Intercept btnyc.json
   await page.setRequestInterception(true);
   page.on('request', (req) => {
+    const _d = require('./_page.js').documentResponse(req.url()); if (_d) return req.respond(_d);
     if (req.url().includes('btnyc.json')) {
       req.respond({
         status: 200,

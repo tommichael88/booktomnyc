@@ -58,6 +58,7 @@ async function drive(puppeteer, chrome, file, limit) {
         page.on('pageerror', e => pageErrors.add(String(e.message).slice(0, 140)));
         await page.setRequestInterception(true);
         page.on('request', r => {
+            const _d = require('./_page.js').documentResponse(r.url()); if (_d) return r.respond(_d); 
             if (r.url().includes('btnyc.json')) r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: SSOT });
             else if (/^https?:/.test(r.url())) r.abort(); else r.continue();
         });
@@ -216,7 +217,7 @@ const passes = (v, k) => (Array.isArray(v[k]) ? v[k][0] : v[k]);
     check(passes(v, 'quoteHasAPrice'), 'the real "Calculate Estimate" button renders a quote with a price, for every service', 'no quote with a price after the builder', v.quoteHasAPrice[1]);
 
     console.log('\n=== 4. Non-vacuity: the same journey FAILS on a page with the defect ===');
-    const src = fs.readFileSync(QR, 'utf8'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'host-'));
+    const src = require('./_page.js').readPage(QR), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'host-'));
     const mutants = [
         ['the card rendered back into #sqSb3 (the defect)', "sqRenderCuratedCard(_curatedRoute, 'sqCardHost');", "sqRenderCuratedCard(_curatedRoute, 'sqSb3');", ['skeletonSurvivesTap', 'builderFinishes']],
         ['the card host not emptied on restart', "sqClearCardHost();   // #114: a previous service's card must not survive a restart", '', ['backRestoresSkeleton']],
@@ -224,9 +225,12 @@ const passes = (v, k) => (Array.isArray(v[k]) ? v[k][0] : v[k]);
         ['the card host not emptied by a catalog tap', 'sqClearCardHost();   // #114: every catalog tap starts from an empty card host, even one that is routed to the older intake panel below (a service that draws no card must not show the previous service\'s)', '', ['inheritsNothing']],
     ];
     for (const [label, from, to, mustBreak] of mutants) {
-        if (!src.includes(from)) { bad(`mutant anchor missing: ${label}`, from); continue; }
+        // T158: the anchor is matched by its tokens, not by the whitespace between them: the operator's formatter re-spaces statements and their trailing comments, and an
+        // anchor that depends on the spacing fails when the spacing changes. The anchor must still exist exactly once-or-more (missing is an error), and the mutant is unchanged.
+        const anchorRe = new RegExp(from.split(/\s+/).filter(Boolean).map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*'));
+        if (!anchorRe.test(src)) { bad(`mutant anchor missing: ${label}`, from); continue; }
         const f = path.join(tmp, 'm' + Math.abs(label.length * 31 + from.length) + '.html');
-        fs.writeFileSync(f, src.replace(from, to));
+        fs.writeFileSync(f, src.replace(anchorRe, () => to));
         const m = await drive(puppeteer, chrome, f, 6);
         const mv = verdicts(m);
         const broke = mustBreak.filter(k => !passes(mv, k));

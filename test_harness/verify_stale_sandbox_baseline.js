@@ -2,7 +2,9 @@
 /**
  * verify_stale_sandbox_baseline.js -- the detector for DEFECT-STALE-SANDBOX (PROJECT_CHARTER.html, Named Defect Classes; operator ruling #105(1)).
  *
- * @detects DEFECT-STALE-SANDBOX
+ *
+ * T158: the Charter's 2026-10-09 revision no longer names DEFECT-STALE-SANDBOX (it was added at T156 under operator ruling #105, and the new Charter does not carry that amendment), so this test
+ * carries no `@detects` tag for it: a tag naming a class the Charter does not declare is an orphan. The detector keeps running; PENDING_DECISIONS asks whether the class was dropped on purpose.
  *
  * THE CLASS. A test assembles its own copy of the code under test by extracting functions from qr.html BY NAME. When the product gains a dependency
  * next to one of those functions (a helper, a constant, a shared extractor), or a function is renamed, the copy silently loses it: the test fails

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO_ROOT = path.dirname(__dirname);
-const html = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const html = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
 const findings = [];

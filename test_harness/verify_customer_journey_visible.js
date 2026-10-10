@@ -33,7 +33,7 @@ async function journey(puppeteer, chromePath, htmlPath, dataPath) {
   const browser = await puppeteer.launch({ headless: 'new', executablePath: chromePath, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   try {
     const page = await browser.newPage(); await page.setViewport({ width: 1280, height: 2200 }); await page.setRequestInterception(true);
-    page.on('request', r => r.url().includes('btnyc.json') ? r.respond({ status: 200, contentType: 'application/json', body: data }) : r.continue());
+    page.on('request', r => { const _d = require('./_page.js').documentResponse(r.url()); if (_d) return r.respond(_d); r.url().includes('btnyc.json') ? r.respond({ status: 200, contentType: 'application/json', body: data }) : r.continue(); });
     page.on('pageerror', e => out.errors.add(String(e.message).slice(0, 120)));
     await page.goto('file://' + htmlPath, { waitUntil: 'networkidle0', timeout: 60000 }); await page.waitForFunction(() => window.DB && window.DB.services, { timeout: 20000 });
     out.structure = await page.evaluate(() => { const ids = ['routeCardHost', 'serviceContainer', 'intakeQuestionsContainer', 'summaryMainContainer'], els = ids.map(i => document.getElementById(i)); const nested = els.filter(Boolean).some(a => els.filter(Boolean).some(b => a !== b && a.contains(b)));
@@ -96,7 +96,7 @@ async function journey(puppeteer, chromePath, htmlPath, dataPath) {
   check('after that, a second search still works (no stale cached references)', real.secondSearchWorks === true);
   check('no uncaught page error during the whole journey', real.errors.size === 0, [...real.errors].join(' | '));
   console.log('\n--- 6. mutants: each restored defect is caught ---');
-  const src = fs.readFileSync(HTML, 'utf8'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'journey-'));
+  const src = require('./_page.js').readPage(HTML), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'journey-'));
   const run = async (name, mutate) => { const m = mutate(src); if (m === src) throw new Error('mutant anchor missing: ' + name); const f = path.join(tmp, name + '.html'); fs.writeFileSync(f, m); return journey(puppeteer, chromePath, f, DATA); };
   const m1 = await run('renest', t => t.replace('<div class="summaryMainContainer" id="summaryMainContainer" style="display:none">', '<div class="summaryMainContainer" id="summaryMainContainer" style="display:none"><!--x--></div><div id="serviceContainer2"></div>').replace('<div id="intakeQuestionsContainer"></div>', '<div id="intakeQuestionsContainer"><div class="summaryMainContainer" style="display:none"><div id="serviceRequestSummary"><div id="serviceRequestList"></div><div id="totalAmount"></div></div></div></div>').replace(/<div id="serviceRequestSummary">\s*<div id="summary-header">/, '<div id="serviceRequestSummary_unused"><div id="summary-header">'));
   check('MUTANT 1 (the cart panel is nested inside the intake container again, as in the original) is caught: cards vanish or the structure check fails', m1.structure.nested || m1.reached.some(r => r.shown === 'nothing') || !m1.structure.cartInOwnWrapper, JSON.stringify(m1.reached.map(r => r.shown)));

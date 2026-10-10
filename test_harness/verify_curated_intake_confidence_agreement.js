@@ -45,7 +45,7 @@ function check(label, condition) {
     else { fail++; console.log(`  \u2717 ${label}`); }
 }
 
-const html = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const html = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const btnycJson = fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8');
 const DB = JSON.parse(btnycJson);
 
@@ -126,7 +126,7 @@ function answerEverything(w, svc, categoryId) {
 
     console.log('\n=== Boundary respected: only the one call-site swap, nothing else touched ===');
     {
-        const qrHtmlContent = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+        const qrHtmlContent = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
         function extractFnBody(text, name) {
             const m = text.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
             if (!m) return '';

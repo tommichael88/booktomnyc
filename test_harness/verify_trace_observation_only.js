@@ -18,7 +18,7 @@ const { JSDOM } = require(path.join(__dirname, 'node_modules', 'jsdom'));
 const REPO_ROOT = path.dirname(__dirname);
 const DB = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
 const SRC = f => fs.readFileSync(path.join(REPO_ROOT, f), 'utf8');
-const TRACE_SRC = SRC('trace.js');
+const TRACE_SRC = SRC('modules/trace.js');
 
 let pass = 0, fail = 0;
 function check(label, cond, detail) {
@@ -122,9 +122,9 @@ const freeTextRouteOf = (w, text) => JSON.stringify(w.executeWorkflow(w.collectB
 
   console.log('\n=== 4b. observation-only at the page level: the real page renders the same with the tracer absent, closed and open ===');
   {
-    const HTML = fs.readFileSync(process.env.QR_HTML || path.join(REPO_ROOT, 'qr.html'), 'utf8');
+    const HTML = require('./_page.js').readPage(process.env.QR_HTML || path.join(REPO_ROOT, 'qr.html'));
     const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
-    const TAG = '<script src="https://tommichael88.github.io/booktomnyc/trace.js"></script>';
+    const TAG = '<script src="https://tommichael88.github.io/booktomnyc/modules/trace.js"></script>';
     const wait = ms => new Promise(r => setTimeout(r, ms));
     async function page({ tracerSrc, open }) {
       if (!HTML.includes(TAG)) throw new Error('anchor missing: the page no longer loads trace.js by that tag');

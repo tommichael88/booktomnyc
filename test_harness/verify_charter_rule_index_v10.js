@@ -4,7 +4,8 @@
  *
  * UNIFIED DEEP ARCHITECTURAL ENFORCEMENT SUITE.
  *
- * @detects DEFECT-SILENT-SKIP   (_bundleGuard: a sandbox check whose bundle lacks a function FAILS instead of being skipped)
+ * (_bundleGuard: a sandbox check whose bundle lacks a function FAILS instead of being skipped. It was tagged `@detects DEFECT-SILENT-SKIP` until T158, when the Charter's
+ * 2026-10-09 revision stopped naming that class; see PENDING_DECISIONS.)
  *
  * Merges three previously distinct, related harnesses into one runner.
  * Every assertion is tagged with the suite that raised it, so the summary
@@ -224,7 +225,7 @@ if (!QR_HTML_PATH || !BTNYC_JSON_PATH) {
   process.exitCode = 1;
   return;
 }
-const qrHtmlContent = fs.readFileSync(QR_HTML_PATH, 'utf8');
+const qrHtmlContent = require('./_page.js').readPage(QR_HTML_PATH);
 let btnycData;
 try { btnycData = JSON.parse(fs.readFileSync(BTNYC_JSON_PATH, 'utf8')); }
 catch (err) { console.error(`CRITICAL: btnyc.json parse failed: ${err.message}`); process.exitCode = 1; return; }
@@ -726,7 +727,7 @@ if (!charterHtmlContent) {
     `The Charter audit has teeth: it reads the document the same from both serializations and fails on ${self.mutantCount} deliberately broken copies`,
     show(self.misses));
   assertMeta('R-GOVERN-INDEX', of('vacuity').length === 0,
-    `The Charter is visible to its readers (${charterModel.definitions.length} definitions, ${charterModel.index.size} index rows, ${charterModel.ids.size} ids, ${charterModel.anchors.size} anchors)`,
+    `The Charter is visible to its readers (${charterModel.definitions.length} definitions, ${charterModel.index.size} directory rows, ${charterModel.ids.size} ids, ${charterModel.anchors.size} anchors)`,
     show(of('vacuity')));
   assertMeta('R-GOVERN-INDEX', of('format').length === 0,
     `Every code matches <R|G|P>-<DOMAIN>-<NAME> with DOMAIN ∈ {${charterModule.DOMAINS.join(', ')}}`, show(of('format')));
@@ -735,19 +736,23 @@ if (!charterHtmlContent) {
   assertMeta('R-GOVERN-INDEX', of('prefix').length === 0,
     'Every code\'s prefix matches its category (R- Rule, G- Governance Process, P- Principle)', show(of('prefix')));
   assertMeta('R-GOVERN-INDEX', of('index').length === 0,
-    'The Rule and Principle Index and the definitions agree (same codes, same categories, no duplicate rows)', show(of('index')));
-  assertMeta('R-GOVERN-STOPTHELINE', of('enforcement').length === 0,
-    `Every Enforced/Partial Rule has an enforcement in the harness (${[...charterModel.index.values()].filter(r => r.status === 'enforced' || r.status === 'partial').length} Rules)`,
-    show(of('enforcement').map(m => m.replace(/^NO ENFORCEMENT: /, ''))));
+    'The directory and the definitions agree (same codes, each row in the directory for its own category, no duplicate rows)', show(of('index')));
+  // T158: R-GOVERN-STOPTHELINE ("a rule declared Enforced lands with its test") is no longer in the Charter, and the Charter no longer authors Enforced / Partial at all
+  // (R-GOVERN-INDEX: "the projection records whether the named mechanism is active, partial, incomplete, or absent. None of those states changes the Rule's normative force").
+  // "Every Rule has a mechanism" is therefore a PROJECTION, reported by every run -- not an assertion about the Charter. (PENDING_DECISIONS: whether an absent mechanism should fail CI is the operator's.)
+  const pairingReport = charterModule.pairing(charterModel);
+  console.log(`    ℹ  pairing (reported, not asserted -- the 2026-10-09 amendment removed mandatory pairing): ${pairingReport.oneWay.length} one-way directory citation(s), ${pairingReport.citesNone.length} Rule(s) citing no Principle, ${pairingReport.uncited.length} Principle(s) cited by no Rule`);
+  const projection = charterModule.coverage(charterModel, testDirEnf);
+  console.log(`    ℹ  projection: ${projection.rows.length - projection.absent.length} of ${projection.rows.length} Rules name a mechanism in this harness; ABSENT: ${projection.absent.join(', ') || 'none'}`);
   assertMeta('R-GOVERN-INDEX', of('orphan').length === 0,
     'Every @enforces tag and tagged assertion names a code the Charter declares (and @enforces names a Rule)', show(of('orphan')));
   assertMeta('R-INVARIANT-ANCHOR', of('anchor').length === 0,
     `Every internal anchor (href="#...") resolves (${charterModel.anchors.size} referenced, ${charterModel.ids.size} ids)`, show(of('anchor')));
 
-  const byStatus = { enforced: 0, partial: 0, governance: 0, principle: 0 };
-  for (const row of charterModel.index.values()) byStatus[row.status] = (byStatus[row.status] || 0) + 1;
-  console.log(`    ℹ  Charter statements indexed: ${charterModel.index.size} ` +
-    `(enforced=${byStatus.enforced} partial=${byStatus.partial} governance=${byStatus.governance} principle=${byStatus.principle})`);
+  const byCategory = { rule: 0, governance: 0, principle: 0 };
+  for (const row of charterModel.index.values()) byCategory[row.status] = (byCategory[row.status] || 0) + 1;
+  console.log(`    ℹ  Charter statements in the directory: ${charterModel.index.size} ` +
+    `(rule=${byCategory.rule} governance=${byCategory.governance} principle=${byCategory.principle})`);
 }
 
 /* ═════════════════════════════════════════════════════════════════════
@@ -1805,12 +1810,11 @@ if (charterHtmlContent) {
   const dupes = charterModel.indexDuplicates;
   assertMeta('R-GOVERN-INDEX', dupes.length === 0, 'Charter index contains no duplicate rule codes', dupes.join(', '));
   const bad = [...charterModel.index.values()].filter(r => !charterModule.STATUSES.includes(r.status)).map(r => `${r.code}:${r.status}`);
-  assertMeta('R-GOVERN-INDEX', bad.length === 0, 'Every index entry declares a valid category (Enforced | Partial | Governance Process | Principle)', bad.join(', '));
-  const prioritized = /\b(highest[-\s]?priority|critical[-\s]?rule|top[-\s]?priority)\b/i.test(charterHtmlContent);
-  assertMeta('G-GOVERN-RULEPARITY', !prioritized, 'No rule is declared higher priority than another');
+  assertMeta('R-GOVERN-INDEX', bad.length === 0, 'Every directory entry declares a valid category (Rule | Governance Process | Principle)', bad.join(', '));
+  // T158: G-GOVERN-RULEPARITY ("All Rules have equal normative weight") was retired from the Charter by the 2026-10-08 revision, and its check -- no text declaring one rule
+  // higher priority than another -- went with it. (The idea survives in R-GOVERN-INDEX's projection boundary, which is checked by the pairing assertion above; this is not a retag.)
 } else {
   assertMeta('R-GOVERN-INDEX', true, 'Charter absent', '', KIND.EXISTENCE);
-  assertMeta('G-GOVERN-RULEPARITY', true, 'Charter absent', '', KIND.EXISTENCE);
 }
 
 {
@@ -1858,7 +1862,9 @@ if (charterHtmlContent) {
     'DEFECT-ARBITRATION','DEFECT-PERUNIT-SCOPE','DEFECT-DUPLICATE-PARSER',
     'DEFECT-DERIVED-OVERWRITE','DEFECT-SECOND-CLASSIFICATION','DEFECT-DUPLICATE-REGISTRY',
     'DEFECT-PATH-SPECIFIC-PATCH','DEFECT-PREVIEW-CHARGE-MISMATCH',
-    'DEFECT-STALE-SANDBOX','DEFECT-SILENT-SKIP',   // T156, operator ruling #105: detectors are `@detects`-tagged tests (see below)
+    // T158: the Charter's 2026-10-09 revision names two more classes (R-COMPLEX-AXES; R-INTAKE-NONRETIRING) and no longer names DEFECT-STALE-SANDBOX / DEFECT-SILENT-SKIP
+    // (added at T156, operator ruling #105; the new Charter does not carry that amendment -- PENDING_DECISIONS). Detectors are `@detects`-tagged tests (see below).
+    'DEFECT-AXIS-CONFLATION','DEFECT-NON-RETIRING-ANSWER',
   ]);
   if (charterHtmlContent) {
     const charterClasses = new Set();
@@ -1889,11 +1895,6 @@ if (charterHtmlContent) {
       `(?:Detector\\s+for\\s+${cls}|${cls}\\s*[:.]\\s*detector|case\\s+['"]${cls}['"])`,
       'i');
     if (!detectorRef.test(selfSrc) && !detectorTags.has(cls)) undetected.push(cls);
-  }
-  for (const cls of ['DEFECT-STALE-SANDBOX', 'DEFECT-SILENT-SKIP']) {
-    assertMeta('R-INVARIANT-DISEASE', detectorTags.has(cls),
-      `${cls} has a shipped detector (${(detectorTags.get(cls) || []).join(', ') || 'none'})`,
-      `no verify_ file declares @detects ${cls}`);
   }
   if (undetected.length > 0) {
     console.log(`    ℹ  ${undetected.length} named class(es) have no detector reference yet ` +
@@ -3159,12 +3160,14 @@ assertStructural('R-SYSTEM-NODATA', !qrHtmlContent.includes('"services": [{"id":
 // ─── §10 Module Public API Signatures (VM-initialized) ─────────────
 // T148: the public surface after T143-T147 -- ADDED: the resolvers, the route-in/route-out orchestrator functions and the pure model builders; DROPPED: `init` (UIRenderer's never-called legacy bootstrap)
 // and `sqBuildCuratedIntake` (the legacy builder), both declared retirements deleted in T143/T144.
+// T158: ADDED `orch_recommended_service_ids` (orchestrator: the one place a route's recommended services are listed, which the renderer now reads from the route); DROPPED `sqRenderSelfQuoteAdlib`
+// (AppController: a declared retirement -- it is in DECLARED_RETIRED below -- that the operator's revised qr.html finally deleted; a retired function cannot also be a required public API).
 const expectedModuleAPIs = {
   'pricing_engine.js': ['resolveDynamicService','resolveEngineKey','entityHasOwnQtyQuestion','resolveServiceBadge','resolveServiceBadgeKey','resolveBaseConfidenceStrategy','applyLiveConfidenceEscalation','deriveComplexityTier','applyPricingFormula','getServiceProfile','formatServicePrice','tagValidForCategory','isDiagnosticService','isLogisticTag','sqTagLabel','sqTagFeeImpact','mathFurnitureAssembly','resolveServiceCheckoutStateKey','buildCheckoutStateModel','computeUnifiedQuote','computeArchetypeQuote','_computePrice','syncTagSynthesizedAnswers','resolveQuantityUnits','resolveQuantityMultiplier','resolveBuilderQuantity','classifyServiceIntake', 'isQuantityFixed', 'isFlatCheckoutState','buildQuotePanelModel','requiredTagIdsFor','closeTagsOverRequires','toggleTagState','buildServiceSessionSeed','synthesizeAnswersFromTags','computeQuoteFromState','onsiteDiagnosticTerms'],
   'nlp_engine.js': ['initNlpSets','refreshNlpPreviewBindings','understandRequest','composeAdlibParts','composeAdlibSentence','detectActionsInOrder','detectIntentNLP','detectTagsNLP','isServiceVerb','extractObjectDetailed','extractObject','extractQty','extractLocation','extractSizeHint','inferTagsFromContext','computeNegatedGroupHints','resolveGroupFromIntent','extractCondition'],
-  'orchestrator_engine.js': ['executeWorkflow','orch_resolve_entity','orch_apply_object_based_resolution','orch_enrich_from_dynamic_service','orch_compute_variability_flags','orch_compose_intake_chain','orch_apply_location_hints','orch_compute_confidence','orch_select_ui_template','orch_merge_materials_estimate','orch_compute_quote','orch_apply_intake_bypass_rules','readRoutePath','evaluateInvariant','describeInvariantFailure','validateRoute','catastrophicFallbackRoute','collectBookingContext_catalog','collectBookingContext_otherTile','collectBookingContext_freeText','makeBookingContext','checkRoutingArchetypeConsistency','orch_max_followup_questions','orch_splice_remote_deep_dive','orch_apply_remote_divergence','orch_apply_answer','orch_apply_quantity','buildOtherTilesForGroup','orch_validate_ssot','orch_resolve_schema_location'],
+  'orchestrator_engine.js': ['executeWorkflow','orch_resolve_entity','orch_apply_object_based_resolution','orch_enrich_from_dynamic_service','orch_compute_variability_flags','orch_compose_intake_chain','orch_apply_location_hints','orch_compute_confidence','orch_select_ui_template','orch_merge_materials_estimate','orch_compute_quote','orch_apply_intake_bypass_rules','readRoutePath','evaluateInvariant','describeInvariantFailure','validateRoute','catastrophicFallbackRoute','collectBookingContext_catalog','collectBookingContext_otherTile','collectBookingContext_freeText','makeBookingContext','checkRoutingArchetypeConsistency','orch_max_followup_questions','orch_splice_remote_deep_dive','orch_apply_remote_divergence','orch_apply_answer','orch_apply_quantity','buildOtherTilesForGroup','orch_validate_ssot','orch_resolve_schema_location','orch_recommended_service_ids'],
   'UIRenderer.js': ['renderCuratedCardFromRoute','renderSelfQuoteFromRoute','renderTagAffirmationFromRoute'],
-  'AppController.js': ['_sqRevertAutoSelect','addToCart','applySSOTRules','finalizeBooking','prefillSmartQuoteFromOtherTile','prefillSmartQuoteFromService','removeServiceFromCart','setStep','sqAdjQty','sqAnalyze','sqBuildAdlib','sqBuildStep2','sqBuildStep3','sqBuilderFinish','sqConfirmAdlib','sqPickType','sqPrepareFlow','sqRenderSelfQuoteAdlib','sqToggleTag','_recomputeInstanceLabels','removeFurnitureEntry','wireGlobalEvents'],
+  'AppController.js': ['_sqRevertAutoSelect','addToCart','applySSOTRules','finalizeBooking','prefillSmartQuoteFromOtherTile','prefillSmartQuoteFromService','removeServiceFromCart','setStep','sqAdjQty','sqAnalyze','sqBuildAdlib','sqBuildStep2','sqBuildStep3','sqBuilderFinish','sqConfirmAdlib','sqPickType','sqPrepareFlow','sqToggleTag','_recomputeInstanceLabels','removeFurnitureEntry','wireGlobalEvents'],
 };
 
 const safeSig = {
@@ -3757,37 +3760,33 @@ function extractLiteralArrayValues(arrAst) {
     'Harness entityHasOwnQtyQuestion extracted from source (not hand-written)', '', KIND.META);
 }
 
-// ─── R-GOVERN-DECIDEFIRST (T156, operator ruling #105(3)) -- the decisions-ledger linter, run for real ──────────────────────────────────────────
-// The linter is its own test (verify_r-govern-decidefirst_pending_decisions_default.js). It is run here as a subprocess so the Rule is asserted by this suite too,
-// and it exits 0 only if the ledger obeys the Rule AND the linter fails on each of its nine synthetic ledgers.
-{
-  const lint = require('child_process').spawnSync(process.execPath, [path.join(SCRIPT_DIR, 'verify_r-govern-decidefirst_pending_decisions_default.js')], { encoding: 'utf8' });
-  assertBehavioral('R-GOVERN-DECIDEFIRST', lint.status === 0,
-    'Every open ledger entry filed after the Rule carries a "Default if unanswered" line (linter exit 0; it fails on its nine synthetic ledgers)',
-    (lint.stdout || '').split('\n').filter(l => /✗/.test(l)).slice(0, 4).join(' | ') || String(lint.stderr || '').slice(0, 200));
-}
+// T158: the decisions-ledger linter (verify_r-govern-decidefirst_pending_decisions_default.js) used to be run here as R-GOVERN-DECIDEFIRST. The Charter's 2026-10-08 revision no longer
+// declares that Rule, so this suite no longer asserts it (an assertion tagged with an undeclared code is an orphan). The linter still runs on its own under run_all.sh, as the operator's
+// standing ruling #105(3); see PENDING_DECISIONS.
 
 // ─── §12 Goodhart Meta-Test — Evidence-Kind Audit ──────────────────
 if (charterHtmlContent) {
   // T156: the Judgment tier is retired. What it used to name is now two honest categories, Governance Process (G-) and Principle (P-); neither is enforced.
+  // T158: and Enforced / Partial are gone too: a Rule is a Rule (category 'rule'), and how completely a mechanism covers it is the projection's to record.
   const nonJudgment = [], judgment = []; // `judgment` = the statements that are not Rules
   for (const [c, s] of charterIndex.rules.entries()) {
-    if (s === 'enforced' || s === 'partial') nonJudgment.push([c, s]);
+    if (s === 'rule') nonJudgment.push([c, s]);
     else judgment.push(c);
   }
   const asserted = new Set(assertionLog.map(a => a.ruleCode).filter(Boolean));
 
-  const missing = nonJudgment.filter(([c]) => !asserted.has(c));
-  assertMeta('R-GOVERN-INDEX', missing.length === 0,
-    `Every Enforced/Partial rule is asserted at least once (${nonJudgment.length - missing.length}/${nonJudgment.length})`,
-    missing.slice(0, 12).map(([c, s]) => `${c}(${s})`).join(' | ') +
-      (missing.length > 12 ? ` (+${missing.length - 12} more)` : ''));
+  // T158: "every Rule is asserted at least once" (it was 39 of 45) was the check R-GOVERN-STOPTHELINE stood behind, and that Rule is no longer in the Charter. A Rule with no
+  // assertion is ABSENT in the projection (the census printed by the META-CHARTER block); it is reported there, not asserted here.
+  const absentRules = nonJudgment.filter(([c]) => !asserted.has(c)).map(([c]) => c);
+  console.log(`    ℹ  ${nonJudgment.length - absentRules.length}/${nonJudgment.length} Rules are asserted by this suite; absent: ${absentRules.join(', ') || 'none'}`);
 
+  // R-INVARIANT-BEHAVIORAL: a Rule that governs observable behavior needs a behavioral mechanism; unit-only coverage "does not establish behavioral protection". A Rule that HAS assertions
+  // is held to evidence at least as strong as what it claims; a Rule with none is absent (above).
   const weakEnforced = [];
   for (const [c, s] of charterIndex.rules.entries()) {
-    if (s !== 'enforced') continue;
+    if (s !== 'rule') continue;
     const kinds = assertionLog.filter(a => a.ruleCode === c).map(a => a.kind);
-    if (!kinds.length) { weakEnforced.push(`${c}: no assertion`); continue; }
+    if (!kinds.length) continue;
     const hasBehavioral = kinds.some(k => k === KIND.BEHAVIORAL || k === KIND.BEHAVIORAL_SAMPLE || k === KIND.BEHAVIORAL_POPULATION || k === KIND.BEHAVIORAL_MATRIX);
     const hasHeuristic = kinds.includes(KIND.HEURISTIC);
     const hasStructural = kinds.includes(KIND.STRUCTURAL);
@@ -3798,8 +3797,8 @@ if (charterHtmlContent) {
       if (!hasBehavioral && !hasHeuristic) weakEnforced.push(`${c}: only ${kinds.join(',')}`);
     }
   }
-  assertMeta('R-GOVERN-STOPTHELINE', weakEnforced.length === 0,
-    'Every Enforced rule certified by evidence at least as strong as the rule',
+  assertMeta('R-INVARIANT-BEHAVIORAL', weakEnforced.length === 0,
+    'Every Rule that has assertions is certified by evidence at least as strong as the Rule (a behavioral Rule has a behavioral mechanism; unit-only coverage is recorded as such)',
     weakEnforced.slice(0, 8).join(' | ') + (weakEnforced.length > 8 ? ` (+${weakEnforced.length - 8} more)` : ''));
 
   const declared = new Set(charterIndex.rules.keys());
@@ -3826,7 +3825,7 @@ if (charterHtmlContent) {
   if (notAsserted.length) console.log(`    ℹ  ${notAsserted.length} Principles / Governance Processes un-asserted (doctrine-only): ${notAsserted.slice(0, 12).join(', ')}${notAsserted.length > 12 ? ' …' : ''}`);
 } else {
   assertMeta('R-GOVERN-INDEX', true, 'Charter absent — audit skipped', '', KIND.EXISTENCE);
-  assertMeta('R-GOVERN-STOPTHELINE', true, 'Charter absent — audit skipped', '', KIND.EXISTENCE);
+  assertMeta('R-INVARIANT-BEHAVIORAL', true, 'Charter absent — audit skipped', '', KIND.EXISTENCE);
   assertMeta('P-GOVERN-GOODHART', true, 'Charter absent — audit skipped', '', KIND.EXISTENCE);
 }
 
@@ -3835,10 +3834,11 @@ if (charterHtmlContent) {
   const UNIV = /\b(every|all|each|no\s+[a-z]+s?)\b/i;
   const underCovered = [];
   for (const [c, s] of charterIndex.rules.entries()) {
-    if (s !== 'enforced' && s !== 'partial') continue;
+    if (s !== 'rule') continue;
     const text = charterIndex.ruleTexts.get(c) || '';
     if (!UNIV.test(text)) continue;
     const kinds = assertionLog.filter(a => a.ruleCode === c).map(a => a.kind);
+    if (!kinds.length) continue;   // absent in the projection: reported by the census, not judged for the strength of evidence it does not have
     const hasPopulation = kinds.includes(KIND.BEHAVIORAL_POPULATION);
     const hasMatrix = kinds.includes(KIND.BEHAVIORAL_MATRIX);
     const hasHeuristic = kinds.includes(KIND.HEURISTIC);

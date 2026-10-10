@@ -33,6 +33,7 @@ function truth(htmlPath) {            // acorn's top-level declarations, per scr
 function runExtractor(extractorPy, htmlPath, outDirName) {   // runs a COPY of the extractor beside a COPY of qr.html, so the real tree is never touched
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xe-')); fs.mkdirSync(path.join(dir, 'test_harness'));
   fs.copyFileSync(htmlPath, path.join(dir, 'qr.html')); fs.copyFileSync(extractorPy, path.join(dir, 'test_harness', 'extract_engine.py'));
+  fs.copyFileSync(path.join(HARNESS, '_page.js'), path.join(dir, 'test_harness', '_page.js')); fs.cpSync(path.join(ROOT, 'modules'), path.join(dir, 'modules'), { recursive: true });   // T158: the extractor reads the page with its external modules in place (_page.js), so a copy of the project carries both
   const idx = path.join(dir, 'index.json');
   const a = spawnSync('python3', ['extract_engine.py', '--index-json', idx], { cwd: path.join(dir, 'test_harness'), encoding: 'utf8' });
   const b = spawnSync('python3', ['extract_engine.py'], { cwd: path.join(dir, 'test_harness'), encoding: 'utf8' });

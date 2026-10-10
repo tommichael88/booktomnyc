@@ -53,7 +53,7 @@ function findChrome() {
   check('the scanner ignores the SSOT path and comments', scanFlatReads('const n = svc.ui_taxonomy?.display_name || "x";\n// was: svc.display_name || svc.base_price\n * svc.group_id').length === 0);
 
   console.log('\n=== 2. static: no reader falls back to the retired flat shape ===');
-  const hits = scanFlatReads(fs.readFileSync(HTML_PATH, 'utf8'));
+  const hits = scanFlatReads(require('./_page.js').readPage(HTML_PATH));
   check('qr.html has no `svc | entity | tile` read of base_price / display_name / group_id / estimate_disclaimer outside comments, and no s.group fallback',
     hits.length === 0, hits.slice(0, 8).map(h => 'L' + h.line + ' ' + h.text).join(' | '));
 
@@ -67,7 +67,7 @@ function findChrome() {
     const browser = await puppeteer.launch({ headless: 'new', executablePath: chromePath, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     try {
       const page = await browser.newPage(); await page.setRequestInterception(true);
-      page.on('request', r => r.url().includes('btnyc.json') ? r.respond({ status: 200, contentType: 'application/json', body: data }) : r.continue());
+      page.on('request', r => { const _d = require('./_page.js').documentResponse(r.url()); if (_d) return r.respond(_d); r.url().includes('btnyc.json') ? r.respond({ status: 200, contentType: 'application/json', body: data }) : r.continue(); });
       await page.goto('file://' + HTML_PATH, { waitUntil: 'networkidle0', timeout: 60000 });
       await page.waitForFunction(() => window.DB && window.DB.services, { timeout: 15000 });
       const census = await page.evaluate((FLATNAMES) => {

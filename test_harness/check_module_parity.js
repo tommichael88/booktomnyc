@@ -80,7 +80,8 @@ function checkParity({ modulePath, functionNames, preferFirst }) {
     const qrPath = path.join(moduleDir, 'qr.html');
 
     const moduleSrc = fs.readFileSync(modulePath, 'utf8');
-    const qrSrc = fs.readFileSync(qrPath, 'utf8');
+    // T158: "live qr.html" means the page as a browser runs it -- external <script src> modules in place (see _page.js)
+    const qrSrc = require('./_page.js').readPage(qrPath);
 
     const result = { ok: [], stale: [], missingInModule: [], missingInQr: [] };
 

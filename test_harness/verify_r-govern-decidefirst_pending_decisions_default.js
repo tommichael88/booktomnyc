@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /**
- * verify_r-govern-decidefirst_pending_decisions_default.js -- the linter behind R-GOVERN-DECIDEFIRST (PROJECT_CHARTER.html, Partial; operator ruling #105(3)).
+ * verify_r-govern-decidefirst_pending_decisions_default.js -- the decisions-ledger linter behind "decide first, defer last" (operator ruling #105(3)).
  *
- * @enforces R-GOVERN-DECIDEFIRST
+ * T158 NOTE. The Charter's 2026-10-08 revision no longer contains R-GOVERN-DECIDEFIRST (nor anything that says "Default if unanswered"), so this test no longer
+ * carries an `@enforces` tag: a tag naming a code the Charter does not declare is an orphan (charter_model.audit). The PRACTICE is the operator's own standing ruling
+ * (#105(3)) and has not been withdrawn, so the linter keeps running and every ledger entry filed since still carries its default. It is a project convention now, not
+ * a Charter Rule; PENDING_DECISIONS records the question of whether to keep it. Everything below describes the rule as it was when it was a Charter Rule.
  *
  * THE RULE. Before a decision is filed as needing the operator, its ledger entry carries the measurement that would settle it and the decision the
  * agent will take if it is not answered ("Default if unanswered"). Only a question that turns on information the agent cannot obtain (customer intent,

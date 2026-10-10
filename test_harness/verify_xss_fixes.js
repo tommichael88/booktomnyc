@@ -61,7 +61,7 @@ for (const input of PAYLOADS) {
 // ── Part 2: the real fixed call sites actually call escapeHtml() ───────────
 console.log('\n=== Fixed call sites actually use escapeHtml() (not just helper-exists) ===');
 
-const qrHtml = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const appController = fs.readFileSync(path.join(REPO_ROOT, 'AppController.js'), 'utf8');
 const uiRenderer = fs.readFileSync(path.join(REPO_ROOT, 'UIRenderer.js'), 'utf8');
 

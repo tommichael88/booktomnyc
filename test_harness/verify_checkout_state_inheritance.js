@@ -120,7 +120,7 @@ console.log('\n=== THE CRITICAL CHECK: zero real behavioral change, across every
 
 console.log('\n=== The 10 real call sites found and fixed are all present and synced ===');
 {
-    const qrHtml = fs.readFileSync(path.join(REPO_ROOT, 'qr.html'), 'utf8');
+    const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
     check('resolveServiceCheckoutStateKey exists as the canonical resolver', /function resolveServiceCheckoutStateKey/.test(qrHtml));
     check('the resolver returns { key, source } (R-INVARIANT-PROVENANCE)', /source: 'service_override'/.test(qrHtml) && /source: 'archetype_default'/.test(qrHtml) && /source: 'fallback'/.test(qrHtml));
     // T150: the helpers are handed the RESOLVED key rather than an entity, so there is no raw-read mode left that could be blind to archetype inheritance.

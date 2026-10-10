@@ -51,6 +51,7 @@ function findChrome() {
     page.on('pageerror', e => pageErrors.push(String(e.message).slice(0, 140)));
     await page.setRequestInterception(true);
     page.on('request', r => {
+        const _d = require('./_page.js').documentResponse(r.url()); if (_d) return r.respond(_d); 
         if (r.url().includes('btnyc.json')) r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(SSOT, 'utf8') });
         else if (/^https?:/.test(r.url())) r.abort(); else r.continue();
     });
