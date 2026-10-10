@@ -67,5 +67,20 @@ const [cmd, a, b] = process.argv.slice(2);
 if (cmd === 'capture') { const o = snapshot(); fs.writeFileSync(a, JSON.stringify(o)); const errs = Object.values(o).filter(v => typeof v === 'string').length; console.log(`captured ${Object.keys(o).length} price points (${errs} errors) -> ${a}`); }
 else if (cmd === 'compare') { const A = JSON.parse(fs.readFileSync(a)), B = JSON.parse(fs.readFileSync(b)); const diffs = []; for (const k of Object.keys(A)) if (JSON.stringify(A[k]) !== JSON.stringify(B[k])) diffs.push([k, A[k], B[k]]);
   const by = {}; diffs.forEach(([k]) => { const p = k.split('|'); by[p[0] + '|' + p[1]] = (by[p[0] + '|' + p[1]] || 0) + 1; });
-  console.log(`compared ${Object.keys(A).length} price points: ${diffs.length} differ across ${Object.keys(by).length} (path|entity) pairs`); diffs.slice(0, +process.env.SHOW || 12).forEach(d => console.log('  ', d[0], JSON.stringify(d[1]), '->', JSON.stringify(d[2]))); process.exit(diffs.length ? 1 : 0); }
+  console.log(`compared ${Object.keys(A).length} price points: ${diffs.length} differ across ${Object.keys(by).length} (path|entity) pairs`);
+  // Which FIELD of each record moved. "N differ" alone does not say whether a price moved; this does (T164: a golden that moves
+  // for a non-price reason must say so in the same line that reports the count). The field order of each family is the order
+  // its record is built in snapshot() above; a family not listed here is reported by position.
+  const FIELDS = { state: ['laborCalc', 'totalMin'], orch: ['laborEstimate', 'totalMin'], dyn: ['laborEstimate', 'totalMin'], 'dyn-tags': ['laborEstimate', 'totalMin'],
+    'state-tags': ['laborCalc', 'totalMin', 'meetsConfidenceBar', 'detTagsChargeable', 'checkoutStateKey', 'activeTagIds'], 'state-det': ['laborCalc', 'totalMin', 'meetsConfidenceBar', 'detTagsChargeable', 'checkoutStateKey', 'activeTagIds'], 'state-dyn': ['laborCalc', 'totalMin', 'meetsConfidenceBar', 'detTagsChargeable', 'checkoutStateKey', 'activeTagIds'],
+    'orch-tags': ['laborEstimate', 'totalMin', 'confidenceScore', 'minConf', 'escalatedBy', 'activeTags'], 'orch-other': ['entityType', 'uiTemplate', 'laborEstimate', 'totalMin', 'confidenceScore', 'skipTypeSelection'],
+    text: ['entity', 'uiTemplate', 'laborEstimate', 'totalMin', 'confidenceScore', 'units', 'activeTags'] };
+  const PRICE = /^(laborCalc|laborEstimate|totalMin)$/, moved = {}; let priceRecs = 0, errRecs = 0;
+  for (const [k, x, y] of diffs) { const fam = k.split('|')[0], names = FIELDS[fam] || [];
+    if (typeof x === 'string' || typeof y === 'string' || !Array.isArray(x) || !Array.isArray(y)) { errRecs++; continue; }
+    let hit = false; for (let i = 0; i < Math.max(x.length, y.length); i++) if (JSON.stringify(x[i]) !== JSON.stringify(y[i])) { const f = `${fam}.${names[i] || '#' + i}`; moved[f] = (moved[f] || 0) + 1; if (PRICE.test(names[i] || '')) hit = true; }
+    if (hit) priceRecs++; }
+  if (diffs.length) { console.log(`  of those ${diffs.length}: ${priceRecs} differ in a labor or minutes field${errRecs ? `; ${errRecs} are an error on one side` : ''}`);
+    console.log('  fields that differ (count of records): ' + Object.entries(moved).sort().map(([f, n]) => `${f} ${n}`).join(', ')); }
+  diffs.slice(0, +process.env.SHOW || 12).forEach(d => console.log('  ', d[0], JSON.stringify(d[1]), '->', JSON.stringify(d[2]))); process.exit(diffs.length ? 1 : 0); }
 else { console.log('usage: capture <out> | compare <a> <b>'); process.exit(2); }
