@@ -10345,6 +10345,14 @@ The three browser tests (`verify_intake_card_presentation.js`, `verify_cart_merg
 
 Governing message: yours (2026-10-10 03:33 New York, items A–H) and its approval ("go", three amendments, notes A–D). This entry is item B only; C–H are not started. Rules: `R-CONF-ONEFORMULA`, `R-CLIENT-CONVERGE`, `R-INVARIANT-CANONICAL`, `R-INVARIANT-SINGLEDEF`, `R-SYSTEM-LAYERS` (for the ship-gate part). Flagged and not satisfied: `R-CONF-ACCOUNTING`, `P-CONF-NOQUESTIONMATH` (`PENDING_DECISIONS.md` #140).
 
+**Ledger (R-GOVERN-TRANSITION: a structural change states the workaround the old shape forced and the shape it ends at; `verify_architectural_conformance.js` reads these five lines).**
+
+- **Rationale.** Three gateways each carried their own confidence arithmetic (the state path's inline score in `computeUnifiedQuote`, `orch_compute_confidence`, and the guided builder's `confidence_gain` loop), so the same request got a different score, bar and escalation depending on the door it came through (a catalog tap scored 40 on the state path and 100 in the orchestrator; 30 of 40 "Other"-tile cells stored a different bar in the builder), and every recalibration had to be made three times.
+- **Endpoint.** One function, `resolveConfidence(evidence, DB)`, in the pricing engine (Logic). The state path, the orchestrator and the guided builder each ask it, and the bar and the escalation come from `applyLiveConfidenceEscalation` and nowhere else.
+- **Defect class.** None of its own in the Charter (`R-CONF-ONEFORMULA` names the rule); the nearest declared class is `DEFECT-PATH-SPECIFIC-PATCH`, and the detector is its cross-gateway agreement sweep.
+- **Detector.** `verify_confidence_convergence.js`.
+- **Rules.** `R-CONF-ONEFORMULA`, `R-CLIENT-CONVERGE`, `R-INVARIANT-CANONICAL`, `R-INVARIANT-SINGLEDEF`.
+
 ### 1. What this claims, and what it does not
 
 **Lands:** one function (`resolveConfidence`), three implementations retired (the inline score in `computeUnifiedQuote`, the arithmetic in `orch_compute_confidence`, the guided builder's `confidence_gain` loop and bar test), convergence across the three gateways **on the current model**. **Remains:** `R-CONF-ACCOUNTING`, the Cᵢ / Cₓ split and the intent-vs-scope conflation, 47 of 76 bars that no answer can clear, coefficients written in code: one foundational entry, #140, with a migration plan. This is convergence, not a correct model; I did not raise B's feasibility estimate.
@@ -10399,6 +10407,14 @@ Swept for other confidence calculators: none (every reader of the confidence fie
 ## T160 — Item C of the 2026-10-10 mandate: the nine `FALLBACKS` values live in the SSOT (`global_rules.fallbacks`); `FALLBACKS` is a read-only, guarded view of them
 
 Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval ("go", three amendments, notes A–D, all v-a defaults) and "Great work, go for C" with its two things to watch. This entry is item C only; D–H are not started. Rules: `R-SYSTEM-NODATA` (the one C serves), `R-INVARIANT-SINGLEDEF`, `R-INVARIANT-DUPLICATION-TICKET`, `R-SYSTEM-SHAPE` (the schema and the SSOT change together), `G-INVARIANT-PREFIX`, `G-INVARIANT-SWEEP`, `R-INVARIANT-DISEASE`.
+
+**Ledger (R-GOVERN-TRANSITION: a structural change states the workaround the old shape forced and the shape it ends at; `verify_architectural_conformance.js` reads these five lines).**
+
+- **Rationale.** The nine last-resort values a quote falls back to when the catalog lacks one (base price, default minutes and seven more) were literals in `qr.html`, with two more copies in `nlp_engine.js`, so the catalog, which is meant to be the single source of truth, could not state, review or change them, and a reader had to know the code's constants to know what a missing field meant (`R-SYSTEM-NODATA`).
+- **Endpoint.** `global_rules.fallbacks` in `btnyc.json` (nine values, each with its reasoning in `_notes`; the schema closes the block). `FALLBACKS` is a read-only, guarded view over the live catalog that throws, naming the cause, when the catalog or a key is absent.
+- **Defect class.** None declared (the Charter has no class for a business number held in code; `R-SYSTEM-NODATA` is the rule).
+- **Detector.** `verify_fallbacks_live_in_ssot.js`.
+- **Rules.** `R-SYSTEM-NODATA`, `R-INVARIANT-SINGLEDEF`, `R-INVARIANT-DUPLICATION-TICKET`, `R-SYSTEM-SHAPE`, `R-INVARIANT-DISEASE`.
 
 ### 1. What this claims, and what it does not
 
@@ -10470,6 +10486,14 @@ Swept for the class (a business number defaulted in code): every `??` / `||` cha
 
 Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval, and "Three notes to add before D … Go for D". This entry is item D only; E–H are not started. Rules: `R-INVARIANT-DELETION` (a retirement is deleted, not deprecated), `R-CONF-ONEFORMULA` and `R-INVARIANT-CANONICAL` (one implementation), `R-CLIENT-CONVERGE`, `R-INVARIANT-DUPLICATION-TICKET`, `G-INVARIANT-PREFIX`, `G-INVARIANT-SWEEP`, `R-INVARIANT-DISEASE`. **Closes** the held note `PHASE_B_FOLLOWUP C-05` and `PENDING_DECISIONS.md` #116, both items of it (section 1).
 
+**Ledger (R-GOVERN-TRANSITION: a structural change states the workaround the old shape forced and the shape it ends at; `verify_architectural_conformance.js` reads these five lines).**
+
+- **Rationale.** The guided builder kept a second copy of the confidence escalation (`_sqPrepareFlowLegacyEscalation`), held by a note, that had drifted onto a tag field no tag carries (`effects.complexity_override`), so the builder and the orchestrator stored different bars for the same tag facts (30 of 40 cells) and the copy could drift again unseen.
+- **Endpoint.** The escalation exists once, in `applyLiveConfidenceEscalation`. The legacy function and its held note are deleted, not deprecated, and a detector holds that the arithmetic is read in one function, that nothing reads the retired field shape, and that the real builder stores what the catalog says.
+- **Defect class.** None declared (`R-CONF-ONEFORMULA` and `R-INVARIANT-CANONICAL` name the rule; the retired-artifact leg is the Charter's "retired artifact" validation kind).
+- **Detector.** `verify_single_escalation_path.js`.
+- **Rules.** `R-INVARIANT-DELETION`, `R-CONF-ONEFORMULA`, `R-INVARIANT-CANONICAL`, `R-CLIENT-CONVERGE`, `R-INVARIANT-DUPLICATION-TICKET`.
+
 ### 1. What this claims, and what it does not
 
 **Lands:** the function `_sqPrepareFlowLegacyEscalation` (a second copy of the escalation that had drifted onto a field no tag has) and the two comment blocks that held it (the `PHASE_B_FOLLOWUP (C-05, #116)` block above `sqPrepareFlow` and the function's own header) are gone from `qr.html`; the `sqPrepareFlow` comment that named them is reworded without the tag. `qr.html` is 41 lines shorter; no executable statement outside the deleted function changed. **The held note recorded two items; both are closed:** (1) the inline `confidence_gain` accumulation, deleted in T159 (item B); (2) the duplicated escalation, delegated in T159 and deleted here. **Does not land:** a change in anything the customer sees. D is a deletion of code that had been unreachable since T159, and the measurement says so (section 3, last two rows). The behaviour change belonged to B and is recorded, with its before and after numbers, in `PENDING_DECISIONS.md` #148. **Why it is an item if no output moved (`R-CLIENT-CONVERGE`):** the rule is about the stored state agreeing across paths, not about what is rendered. At `3f27e83` the guided builder and the orchestrator stored different bars for the same tag facts (30 of 40 cells); B made them agree, and D deletes the second implementation that could drift back and puts a detector over it, so the agreement is something the tree cannot lose without a red test rather than something it happens to have.
@@ -10521,6 +10545,14 @@ Swept for other readers of `effects.*`, other `RANK` tables and other callerless
 ## T162 — Item E of the 2026-10-10 mandate: the complexity-tier ranking exists once (`TIER_RANK`); the two worst-tier loops are untouched (#149)
 
 Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval, and "Go for E, but important to watch items for E": (1) #149 is E's neighbourhood, not E's mandate: E unifies the constants and files the loops separately; (2) a third reader of `escalate_complexity` is a new finding, logged as its own entry, not "this was supposed to be two". This entry is item E only; F–H are not started. Rules: `R-INVARIANT-SINGLEDEF` (one definition of a thing), class `DEFECT-DUPLICATE-REGISTRY`, `R-INVARIANT-DUPLICATION-TICKET` (a second copy that stays is ticketed), `G-INVARIANT-PREFIX` (the detector ran red on the tree before the fix), `G-INVARIANT-SWEEP`.
+
+**Ledger (R-GOVERN-TRANSITION: a structural change states the workaround the old shape forced and the shape it ends at; `verify_architectural_conformance.js` reads these five lines).**
+
+- **Rationale.** The ranking of the three complexity tiers (routine < skilled < specialized) was written as three private tables (`RANK` in `applyLiveConfidenceEscalation`, `RANK` in `computeUnifiedQuote`, `TIER_ORDER` in `deriveComplexityTier`), two of them with no `routine` key, so every read had to be written `(RANK[x] || 0)` to survive its own table's gap, and changing the order or adding a tier meant editing three places.
+- **Endpoint.** One frozen `TIER_RANK` in the pricing engine block, read in eleven places. A detector holds that exactly one table ranks the tiers, that it agrees with the catalog's tier minutes, that no equal constant tables appear without a filed ledger entry, and that no top-level name is declared twice.
+- **Defect class.** `DEFECT-DUPLICATE-REGISTRY`.
+- **Detector.** `verify_no_duplicate_registries.js`.
+- **Rules.** `R-INVARIANT-SINGLEDEF`, `R-INVARIANT-DUPLICATION-TICKET`.
 
 ### 1. What this claims, and what it does not
 
@@ -10577,6 +10609,14 @@ Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval,
 ## T163 — Item F of the 2026-10-10 mandate: `cart_logic` has one home (the inline block; `modules/cart_logic.js` is deleted), and every module header says where its module is deployed
 
 Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval, and "go for F". This entry is item F only; G and H are not started. Rules: `R-INVARIANT-SINGLEDEF` (one definition), `R-SYSTEM-SCRIPT` (script-tag scope is real: what a header says about how a module reaches the browser must be what the page does), `G-INVARIANT-PREFIX` (the detector ran red on the tree before the fix), `G-INVARIANT-SWEEP`.
+
+**Ledger (R-GOVERN-TRANSITION: a structural change states the workaround the old shape forced and the shape it ends at; `verify_architectural_conformance.js` reads these five lines).**
+
+- **Rationale.** `cart_logic` existed twice, as the inline block the page runs and as `modules/cart_logic.js`, which nothing loaded, so an edit to the file looked like a change to the product and changed nothing; and five inline headers said the module was loaded as its own `<script>` (or told a maintainer to re-extract a standalone copy) when the page runs it inline, so "where do I edit this" had two answers.
+- **Endpoint.** Every module has one home. `modules/cart_logic.js` is deleted, each inline block's header carries one `Deployment:` statement that says it runs inline from `qr.html`, and `modules/` holds only files the page loads. A detector holds all of it.
+- **Defect class.** None declared (`R-INVARIANT-SINGLEDEF` and `R-SYSTEM-SCRIPT` name the rules; `DEFECT-DUPLICATE-REGISTRY` covers lists and constants, not a module defined in two places).
+- **Detector.** `verify_module_deployment_shape.js`.
+- **Rules.** `R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT`.
 
 ### 1. What this claims, and what it does not
 
@@ -10636,6 +10676,14 @@ Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval,
 
 Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval, and "go" for G. This entry is item G only; H is not started. Rules: `R-INTAKE-NONRETIRING`, `R-INTAKE-WIREREMOVE` (a fallback that moves nothing is removed, with its module), `P-CONF-NOQUESTIONMATH`, `R-INVARIANT-DELETION`, `R-INVARIANT-RERUN` (derived data is regenerated, never hand-edited), `G-INVARIANT-PREFIX` (the detector ran red on the tree before the fix), `G-INVARIANT-SWEEP`. Class: `DEFECT-NON-RETIRING-ANSWER`.
 
+**Ledger (R-GOVERN-TRANSITION: a structural change states the workaround the old shape forced and the shape it ends at; `verify_architectural_conformance.js` reads these five lines).**
+
+- **Rationale.** Two intake questions, `door_size` and `space_ready` (and 24 more modules, #158), carried a "not sure" fallback that resolved to exactly the outcome of a confident answer and priced nothing, so the customer paid the friction of a question whose answer could never matter; and the four appliance services had a confidence bar (80, two follow-ups) that their one remaining question could not reach (base 40 plus its nominal 20 is 60).
+- **Endpoint.** `door_size` and `space_ready` are deleted from the catalog, the page and the compiler. The four appliance services have `intake_chain: []`, a bar equal to their base (`minimum_quote_confidence` 40) and no follow-up questions. The Charter's delta check is a behavioral detector over every module in every service that asks it (named and dynamic), and the other 24 non-retiring modules are filed on a list that can only shrink.
+- **Defect class.** `DEFECT-NON-RETIRING-ANSWER`.
+- **Detector.** `verify_non_retiring_answers.js`.
+- **Rules.** `R-INTAKE-NONRETIRING`, `R-INTAKE-WIREREMOVE`, `P-CONF-NOQUESTIONMATH`, `R-INVARIANT-DELETION`, `R-INVARIANT-RERUN`.
+
 ### 1. What this claims, and what it does not
 
 **Lands:** (a) `door_size` and `space_ready` are gone from the catalog, the page and the compiler: both module definitions, `door_size`'s `then` entry on `client_supplying_door`, the four `space_ready` chain entries, two stale notes, the page's `COMPONENT_MODULE_NAMES`, the compiler's two module lists, and four entries on the quantity-question ratchet. (b) The four appliance services (Microwave Setup, Washer Install, Dishwasher Install, Refrigerator Install) have an empty `intake_chain`, a bar of 40 (their base confidence) and no follow-up questions, with a `_note` giving the derivation. (c) The Charter's delta check is a detector, `verify_non_retiring_answers.js` (26 checks), which holds the class: 24 further modules are filed in a list that can only shrink (#158). (d) `compiled.*` is regenerated from the SSOT (a separate prep commit for the part that was already stale, then G's own effect), by a tool that moves no other byte.
@@ -10691,3 +10739,73 @@ Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval,
 **#158** (24 modules, filed with a table and a default), **#159** (the self-quote view for the four), **#160** (what regenerating found: three closed, three open), **#161** (an unaffirmed detected tag still changes the quote, through the answers it synthesises before the gate runs: pre-existing, measured at 526 of 1,014 (service, tag) pairs and 15 of the 34 affirmation-card prices, and reworked after this entry's first version into its own ledger entry with a default, (A2); `archive/T164_G_gate_blast_radius.js`).
 
 **Files modified:** `qr.html` (`COMPONENT_MODULE_NAMES`, one comment), `modules/nlp_engine.js` (`QR_BUILD_VERSION` `T163` -> `T164`), `btnyc.json`, `test_harness/btnyc_v10_compiler.py`, `test_harness/tools/splice_compiled.py` (new), `test_harness/tools/render_diff.js`, `test_harness/verify_non_retiring_answers.js` (new), `verify_quantity_question_ratchet.js`, `verify_raw_vs_compiled_reconciliation.js`, `verify_component_symptom_picker.js`, `PENDING_DECISIONS.md`, `TIMELINE.md`, `SESSION_PLAN.md`, `MASTER_TEST_SUITE.json`, `FILE_MANIFEST.json`, `test_harness/tools/price_golden_master.js` (`compare` prints which fields differ and how many of the differing records differ in a labor or minutes field), `archive/T164_G_nonretiring_pre.txt`, `T164_G_nonretiring_post.txt`, `T164_G_ui_drive.js`, `T164_G_ui_drive.txt`, `T164_G_result_key_diff.js`, `T164_G_result_key_diff.txt`, `T164_G_golden_compare.txt`, `T164_G_gate_blast_radius.js`, `T164_G_gate_blast_radius.txt`, `types_T164_G.txt`, `suite_T164_G.tsv`.
+
+## T165 — Item H of the 2026-10-10 mandate: one conformance test holds the six landed rules and their ledger; every detector fails on `3f27e83`
+
+Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval ("Proceed with B → H, stop and check in after each item"), and "go" for H. This entry is item H only: the rest of the mandate's queue (the DUPLICATE-REGISTRY sweep, the ARBITRATION sweep, the next-session write-up) is not started. Rules: `R-INVARIANT-DISEASE` (every fix has protection for its class; a detector protects the class), `R-GOVERN-TRANSITION` (a structural change states the workaround the old shape forced and the shape it ended at), `P-GOVERN-GOODHART` (the mechanism follows the claim), `G-INVARIANT-PREFIX` (each detector ran red on the tree before the fix), `G-INVARIANT-SWEEP`.
+
+**Ledger (R-GOVERN-TRANSITION: a structural change states the workaround the old shape forced and the shape it ends at; `verify_architectural_conformance.js` reads these five lines).**
+
+- **Rationale.** Each landed rule has a class detector, but nothing held the set: a detector could be deleted, left out of `MASTER_TEST_SUITE.json`, lose its `@enforces` tag when a Charter code was renamed, or be hollowed out to half its checks and stay green on its own, and no test would go red. And `R-GOVERN-TRANSITION` says its own enforcement check "asserts that every ledger entry describing a structural change carries both a rationale and an endpoint"; no such check existed, so T159 to T164 stated their rationale in prose that a test could not find.
+- **Endpoint.** `verify_architectural_conformance.js`: a roster of the six landed items (rules, defect class, claim kind, detector, check floor), and per row a check that the detector exists, is listed, carries real `@enforces` / `@detects` tags, fits its claim's mechanism, runs green with at least its floor of checks, and has a ledger entry stating its rationale, endpoint, class, detector and rules; plus a two-way completeness check between the roster and TIMELINE.md's mandate entries. T159 to T165 each carry that five-line `Ledger` block.
+- **Defect class.** None declared (a missing or decayed detector is not a class the Charter names; the rule is `R-INVARIANT-DISEASE`).
+- **Detector.** `verify_architectural_conformance.js`.
+- **Rules.** `R-INVARIANT-DISEASE`, `R-GOVERN-TRANSITION`, `P-GOVERN-GOODHART`, `G-INVARIANT-PREFIX`.
+
+### 1. What this claims, and what it does not
+
+**Lands:** (a) `test_harness/verify_architectural_conformance.js` (new, listed in `MASTER_TEST_SUITE.json`, 196 tests). (b) The five-line `Ledger` block on the T159–T164 entries (and this one). (c) `verify_no_duplicate_registries.js` now says what it is: `@detects DEFECT-DUPLICATE-REGISTRY`. **Does not land:** (a) a second, smaller copy of each detector inside this file (section 5). (b) A judgement that each detector is the right one for its rule, or that each Rationale is true (the file checks that one is stated, concrete and consistent with the roster). (c) Anything about items outside this mandate.
+
+### 2. What changed
+
+- **`test_harness/verify_architectural_conformance.js` (new):** the roster and the checks described in the file's header. The six detectors are started together and reported row by row. The pure checks (header tags, mechanism, summary, ledger, registration, completeness) are run on synthetic input first, each of which must give the verdict stated (**43 probes**): a header that lacks a rule, names an undeclared one, names a Principle, lacks the class or names an undeclared one; a behavioral claim held by a text-only detector; a summary of zero checks, of a failure, of nothing, that does not add up; a clean summary under a non-zero exit; a timeout; an unlisted detector; a ledger entry with no block, no endpoint, a placeholder or an abstract rationale or endpoint, another detector's name, an undeclared class, a class where the roster holds none and the reverse, an undeclared rule, an omitted rule; and the completeness check both ways.
+- **`TIMELINE.md`:** the `Ledger` block on T159–T164 (rationale = the workaround the old shape forced; endpoint = the new shape; class; detector; rules), written from each entry's own sections and measured numbers; this entry. Section 4 below is the whole set in one table.
+- **`test_harness/verify_no_duplicate_registries.js`:** one header line, `@detects DEFECT-DUPLICATE-REGISTRY`. The Charter declares that class and says its detector exists; this is it, and it had never said so. Comment only; the hash is re-stamped.
+- **`MASTER_TEST_SUITE.json`, `FILE_MANIFEST.json`:** the new test listed and hashed; the one edited test re-stamped.
+
+### 3. Verification (before = `3f27e83`, the tree before the mandate, with the new file and the six detectors copied in; after = this tree)
+
+| | Before (`archive/T165_H_conformance_pre.txt`) | After (`archive/T165_H_conformance_post.txt`) |
+|---|---|---|
+| B `verify_confidence_convergence.js` | **12 of 24 pass**: the three gateways score, bar and escalate differently; no `resolveConfidence` | 24 of 24 |
+| C `verify_fallbacks_live_in_ssot.js` | **9 of 41 pass**: no `global_rules.fallbacks`, no schema block, `FALLBACKS` a literal that throws on nothing | 41 of 41 |
+| D `verify_single_escalation_path.js` | **18 of 24 pass**: the arithmetic is read in two functions, `_sqPrepareFlowLegacyEscalation` and the held note present | 24 of 24 |
+| E `verify_no_duplicate_registries.js` | **16 of 22 pass**: three private tier tables, no `TIER_RANK` | 25 of 25 |
+| F `verify_module_deployment_shape.js` | **23 of 29 pass**: `cart_logic` in two places, five false load-shape headers | 29 of 29 |
+| G `verify_non_retiring_answers.js` | **17 of 26 pass**: `door_size` and `space_ready` present and unfiled | 26 of 26 |
+| Every row, the conformance file | **6 of 6 red** on the detector's own checks (and on registration and ledger, which `3f27e83` could not have) | **6 of 6 green** |
+| The conformance file's own checks (86) | **64 pass, 22 fail** | **86 of 86 pass** (`archive/T165_H_conformance_post.txt`) |
+| Seven mutations of the real tree (`archive/T165_H_mutations.txt`): delete a ledger Endpoint; unlist a detector; remove a detector's `@enforces` tag; replace a detector with a clean 3-check stub; add a later mandate item with no roster row; make a behavioral detector stop evaluating the page; make a ledger entry name another detector | -- | **7 of 7 red**, each at the intended check and nowhere else (the sixth also fails the detector's own run, as it should) |
+| Price golden master (2,988 points) | -- | **0 differ** (no code, catalog or page file moved) |
+| Full suite (`tools/suite_snapshot.js` vs `archive/suite_T164_G.tsv`) | 195 tests | **123 pass / 73 fail (196 tests)**: no pass->fail, no fail->pass, plus the one new passing test (`archive/suite_T165_H.tsv`); the same 2 tests report an environment gap (browser half skipped) |
+| `tsc` baseline | 1,887 | **1,887** (`archive/types_T165_H.txt`) |
+
+The six detectors fail on `3f27e83` for the class reason, not for a missing API: every failing check in the table above is one the item's own entry describes as the defect (section 4 lists the old shape). This is `G-INVARIANT-PREFIX` for the file as a whole.
+
+### 4. The ledger, in one table (one row per landed item)
+
+| Item | Ticket | Rules | The workaround the old shape forced | The endpoint | Defect class | Detector (kind) |
+|---|---|---|---|---|---|---|
+| B | T159 | `R-CONF-ONEFORMULA`, `R-CLIENT-CONVERGE`, `R-INVARIANT-CANONICAL` | three confidence calculators; the same request scored 40 or 100 by door; every recalibration made three times | `resolveConfidence`, asked by the state path, the orchestrator and the builder | none declared (nearest `DEFECT-PATH-SPECIFIC-PATCH`) | `verify_confidence_convergence.js` (behavioral) |
+| C | T160 | `R-SYSTEM-NODATA`, `R-INVARIANT-SINGLEDEF` | nine last-resort numbers in code the catalog could not state or review | `global_rules.fallbacks`; `FALLBACKS` a guarded read-only view | none declared | `verify_fallbacks_live_in_ssot.js` (mixed) |
+| D | T161 | `R-INVARIANT-DELETION`, `R-CONF-ONEFORMULA`, `R-INVARIANT-CANONICAL` | a held, drifted second copy of the escalation; builder and orchestrator stored different bars | the escalation exists once, `applyLiveConfidenceEscalation`; the copy and its note deleted | none declared | `verify_single_escalation_path.js` (mixed) |
+| E | T162 | `R-INVARIANT-SINGLEDEF`, `R-INVARIANT-DUPLICATION-TICKET` | three private tier tables, two with no `routine` key, every read written `(RANK[x] \|\| 0)` | one frozen `TIER_RANK` | `DEFECT-DUPLICATE-REGISTRY` | `verify_no_duplicate_registries.js` (source-shape) |
+| F | T163 | `R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT` | `cart_logic` in two places (one never loaded); headers claiming a load shape the page does not have | one home per module; a `Deployment:` statement in every inline header | none declared | `verify_module_deployment_shape.js` (source-shape) |
+| G | T164 | `R-INTAKE-NONRETIRING`, `R-INTAKE-WIREREMOVE` | a "not sure" fallback that priced nothing, and a bar five questions could not reach | `door_size` / `space_ready` deleted; four services with no questions; the delta check a detector | `DEFECT-NON-RETIRING-ANSWER` | `verify_non_retiring_answers.js` (behavioral) |
+| H | T165 | `R-INVARIANT-DISEASE`, `R-GOVERN-TRANSITION` | detectors that could decay unseen; a ledger no test could read | this file | none declared | `verify_architectural_conformance.js` (meta) |
+
+### 5. Deviations, and every test I touched
+
+- **The plan said this file "holds one class detector per rule landed". It holds six, by name, and runs them; it does not copy them.** Each is 200 to 350 lines that drive the real gateways, boot the page, or enumerate the whole catalog. A second, smaller copy of each here would be the duplicated definition this mandate exists to remove (`R-INVARIANT-SINGLEDEF`), and a copy that drifts from the detector it shadows is worse than none. What this file adds is what a detector cannot hold about itself: that it still exists, is still run, still claims its rule, still has its checks, and that the change it guards has its rationale and endpoint on the record. If you want the smaller copies anyway, that is a decision, not a gap I missed.
+- **Cost:** the six detectors run twice in a full suite (once as themselves, once here); the file's wall time is the slowest of them (C, about 30 s when the six start together). Reading the suite's own results instead needs a results file the suite does not write.
+- **The kind of each claim (`P-GOVERN-GOODHART`) is the roster's record of what the item's rule is about:** B and G behavioral, E and F source-shape, C and D mixed. The mechanism check is one generic line (a behavioral or mixed claim is held by a detector that evaluates the page's code); it is evidence, not proof, and I did not tie it to any function name, which would be the hidden specification the principle warns against.
+- **The ledger check bit on my own text once:** item G's Endpoint named nothing in backticks and the file failed it; the Endpoint now names `door_size`, `space_ready`, `intake_chain: []` and the bar.
+- **`R-GOVERN-TRANSITION` is checked for the 2026-10-10 mandate's entries only.** The Charter says every structural-change entry; the earlier ones (T1 to T158) do not carry the block and I did not retrofit 150 entries.
+- **Tests touched:** `verify_no_duplicate_registries.js` (one header line), and the new file. No assertion in any existing test was changed.
+
+### 6. Findings (G-INVARIANT-SWEEP)
+
+- **Four of the six landed rules have no defect class in the Charter** (B, C, D, F), and `R-INVARIANT-DISEASE` says a detector protects a class. Their detectors are tagged by rule (`@enforces`), which is accurate, and the ledger says "none declared" with the nearest class named. Naming classes is the Charter's, i.e. yours. Filed as #162 with a default.
+- **E's detector had never declared the class the Charter says it exists for** (fixed, section 2).
+
+**Files modified:** `test_harness/verify_architectural_conformance.js` (new), `test_harness/verify_no_duplicate_registries.js` (one header line), `TIMELINE.md`, `PENDING_DECISIONS.md` (#162), `SESSION_PLAN.md`, `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json`, `archive/T165_H_conformance_pre.txt`, `archive/T165_H_conformance_post.txt`, `archive/suite_T165_H.tsv`.

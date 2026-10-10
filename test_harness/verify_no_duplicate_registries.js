@@ -4,6 +4,7 @@
  *
  * @enforces R-INVARIANT-SINGLEDEF
  * @enforces R-INVARIANT-DUPLICATION-TICKET
+ * @detects DEFECT-DUPLICATE-REGISTRY
  *
  * THE CLASS (R-INVARIANT-SINGLEDEF; the project's label is DEFECT-DUPLICATE-REGISTRY): "Every concept has one definition." A table that ranks the complexity tiers was written three times,
  * each a private copy inside the function that needed it -- {skilled: 1, specialized: 2} in applyLiveConfidenceEscalation and in computeUnifiedQuote, {routine: 0, skilled: 1, specialized: 2}

@@ -1,0 +1,207 @@
+[architectural conformance]
+
+0. NON-VACUITY: every pure check below is run on synthetic input and must give the verdict stated
+  ✓ the Charter is read (rules, defect classes declared)
+  ✓ the roster is the six landed items B to G, each once, with a known kind and a floor
+  ✓ probe: header: correct tags conform
+  ✓ probe: header: a missing @enforces is found
+  ✓ probe: header: an @enforces of an undeclared rule is found
+  ✓ probe: header: a missing @detects is found
+  ✓ probe: header: a @detects of an undeclared class is found
+  ✓ probe: header: an @enforces of a Principle is found (a Principle is not enforced by definition)
+  ✓ probe: header: a roster row naming a rule the Charter lacks is found
+  ✓ probe: mechanism: a behavioral claim held by a text-only detector is found
+  ✓ probe: mechanism: a mixed claim held by a text-only detector is found
+  ✓ probe: mechanism: a behavioral claim held by a detector that boots the page conforms
+  ✓ probe: mechanism: a behavioral claim held by a detector that runs the code in a vm context conforms
+  ✓ probe: mechanism: a source-shape claim needs no evaluation
+  ✓ probe: mechanism: an unknown kind is found
+  ✓ probe: run: a clean summary at the floor conforms
+  ✓ probe: run: a summary of zero checks is found
+  ✓ probe: run: a detector that lost checks (below the floor) is found
+  ✓ probe: run: a failing check is found
+  ✓ probe: run: an output with no summary is found
+  ✓ probe: run: a non-zero exit under a clean summary is found
+  ✓ probe: run: a summary that does not add up is found
+  ✓ probe: run: a timeout is found
+  ✓ probe: registration: a listed detector conforms
+  ✓ probe: registration: an unlisted detector is found
+  ✓ probe: ledger: a complete block conforms
+  ✓ probe: ledger: no entry at all is found
+  ✓ probe: ledger: an entry with no block is found
+  ✓ probe: ledger: a block with no Endpoint is found
+  ✓ probe: ledger: a placeholder Rationale is found
+  ✓ probe: ledger: an abstract Rationale (names nothing) is found
+  ✓ probe: ledger: an abstract Endpoint (names nothing) is found
+  ✓ probe: ledger: another detector's name is found
+  ✓ probe: ledger: a class the Charter does not declare is found
+  ✓ probe: ledger: a different class from the roster's is found
+  ✓ probe: ledger: "None" where the roster holds a class is found
+  ✓ probe: ledger: a class where the roster holds none is found
+  ✓ probe: ledger: "None" where the roster holds none conforms
+  ✓ probe: ledger: a rule the Charter does not declare is found
+  ✓ probe: ledger: a rule the detector enforces but the entry omits is found
+  ✓ probe: entries: the mandate headings are found and bounded by the next heading
+  ✓ probe: completeness: a landed item with no roster row is found
+  ✓ probe: completeness: a roster row with no entry is found
+  ✓ probe: completeness: a ticket that disagrees is found
+  ✓ probe: completeness: matching roster and entries conform
+
+B. T159  one confidence resolver   [behavioral; verify_confidence_convergence.js]
+  ✓ the detector exists
+  ✗ it is listed in MASTER_TEST_SUITE.json
+      verify_confidence_convergence.js is not listed in MASTER_TEST_SUITE.json (the suite does not run it)
+  ✓ its header tags are real: @enforces R-CONF-ONEFORMULA, R-CLIENT-CONVERGE, R-INVARIANT-CANONICAL
+  ✓ its mechanism fits the claim (behavioral, P-GOVERN-GOODHART)
+  ✗ its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)
+      TIMELINE.md has no entry headed "## T159 -- Item B of the 2026-10-10 mandate"
+  ✗ it runs green: 12 of 24 pass, 8.6 s (floor 24)
+      12 of its 24 checks fail
+      it exited 1
+      its failing checks (12), first 12:
+      ✗ score is the same in both gateways
+      ✗ the bar verdict (meets / does not meet) is the same
+      ✗ orchestrator and state path: same score
+      ✗ orchestrator and state path: same bar verdict
+      ✗ guided builder: same minimum confidence as the orchestrator
+      ✗ guided builder: same escalatedBy as the orchestrator
+      ✗ guided builder asks the one resolver (resolveConfidence) for its confidence, as the other two gateways do
+      ✗ guided builder and state path: the same session gets the same score, bar, escalation and verdict
+      ✗ route and state path: same score
+      ✗ route.quote and route.confidence agree on score, minimum confidence, escalatedBy and verdict, on every entry
+      ✗ resolveConfidence exists as the one confidence function
+      ✗ the gateways above reached it (it was called while they ran)
+
+C. T160  no business number held in code   [mixed; verify_fallbacks_live_in_ssot.js]
+  ✓ the detector exists
+  ✗ it is listed in MASTER_TEST_SUITE.json
+      verify_fallbacks_live_in_ssot.js is not listed in MASTER_TEST_SUITE.json (the suite does not run it)
+  ✓ its header tags are real: @enforces R-SYSTEM-NODATA, R-INVARIANT-SINGLEDEF
+  ✓ its mechanism fits the claim (mixed, P-GOVERN-GOODHART)
+  ✗ its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)
+      TIMELINE.md has no entry headed "## T160 -- Item C of the 2026-10-10 mandate"
+  ✗ it runs green: 9 of 41 pass, 7.1 s (floor 41)
+      32 of its 41 checks fail
+      it exited 1
+      its failing checks (32), first 12:
+      ✗ btnyc.json has global_rules.fallbacks
+      ✗ the schema declares global_rules.fallbacks and requires it of global_rules
+      ✗ the schema declares exactly the keys the SSOT holds (no more, no fewer)
+      ✗ the schema requires every value key and closes the object (additionalProperties: false)
+      ✗ the schema types every value key as number or string (not left open)
+      ✗ every value key carries its reasoning in _notes (R-SYSTEM-NODATA: the field's own _note), and _notes names no key that does not exist
+      ✗ every key the code reads exists in the SSOT block
+      ✗ every key in the SSOT block is read by the code (no dead number)
+      ✗ the five filed duplicates (#142) still equal the field they copy
+      ✗ MUTANT (one side of a duplicate edited alone) is caught: both skewed pairs are reported
+      ✗ the live DB carries the block
+      ✗ a sentinel written into each key of the live DB comes back through FALLBACKS (the code holds no value of its own)
+
+D. T161  one escalation path; the retired copy absent   [mixed; verify_single_escalation_path.js]
+  ✓ the detector exists
+  ✗ it is listed in MASTER_TEST_SUITE.json
+      verify_single_escalation_path.js is not listed in MASTER_TEST_SUITE.json (the suite does not run it)
+  ✓ its header tags are real: @enforces R-CONF-ONEFORMULA, R-INVARIANT-CANONICAL, R-INVARIANT-DELETION, R-INVARIANT-DUPLICATION-TICKET
+  ✓ its mechanism fits the claim (mixed, P-GOVERN-GOODHART)
+  ✗ its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)
+      TIMELINE.md has no entry headed "## T161 -- Item D of the 2026-10-10 mandate"
+  ✗ it runs green: 18 of 24 pass, 6.7 s (floor 24)
+      6 of its 24 checks fail
+      it exited 1
+      its failing checks (6), first 6:
+      ✗ `minimum_quote_confidence_delta` is read in exactly one function, applyLiveConfidenceEscalation
+      ✗ `maximum_followup_questions_delta` is read in exactly one function, applyLiveConfidenceEscalation
+      ✗ no read of `<x>.effects.complexity_override` (the retired nested shape) anywhere in the page
+      ✗ the page has no `_sqPrepareFlowLegacyEscalation` (R-INVARIANT-DELETION: deleted, not deprecated)
+      ✗ the page has no "PHASE_B_FOLLOWUP ... C-05" held note (the note that kept it was released by D)
+      ✗ escalatedBy, the bar and the question cap match the SSOT in every cell
+
+E. T162  no duplicate registry   [source-shape; verify_no_duplicate_registries.js]
+  ✓ the detector exists
+  ✗ it is listed in MASTER_TEST_SUITE.json
+      verify_no_duplicate_registries.js is not listed in MASTER_TEST_SUITE.json (the suite does not run it)
+  ✓ its header tags are real: @enforces R-INVARIANT-SINGLEDEF, R-INVARIANT-DUPLICATION-TICKET; @detects DEFECT-DUPLICATE-REGISTRY
+  ✓ its mechanism fits the claim (source-shape, P-GOVERN-GOODHART)
+  ✗ its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)
+      TIMELINE.md has no entry headed "## T162 -- Item E of the 2026-10-10 mandate"
+  ✗ it runs green: 16 of 22 pass, 4.2 s (floor 25)
+      6 of its 22 checks fail
+      it reports 22 checks; the floor is 25 (a detector that loses checks stays green on its own; lower the floor here, with a reason, if that was intended)
+      it exited 1
+      its failing checks (6), first 6:
+      ✗ exactly one object literal in the page ranks the tiers, and it is TIER_RANK
+      ✗ TIER_RANK is declared once, at the top level of a block, with const
+      ✗ TIER_RANK is Object.freeze of a literal table of numbers
+      ✗ on a real boot TIER_RANK exists and is frozen
+      ✗ it is read (a constant nothing reads is a dead number)
+      ✗ every filed group cites a ledger entry that exists in PENDING_DECISIONS.md (R-INVARIANT-DUPLICATION-TICKET: a second copy is ticketed)
+
+F. T163  no duplicate module source; truthful headers   [source-shape; verify_module_deployment_shape.js]
+  ✓ the detector exists
+  ✗ it is listed in MASTER_TEST_SUITE.json
+      verify_module_deployment_shape.js is not listed in MASTER_TEST_SUITE.json (the suite does not run it)
+  ✓ its header tags are real: @enforces R-INVARIANT-SINGLEDEF, R-SYSTEM-SCRIPT
+  ✓ its mechanism fits the claim (source-shape, P-GOVERN-GOODHART)
+  ✗ its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)
+      TIMELINE.md has no entry headed "## T163 -- Item F of the 2026-10-10 mandate"
+  ✗ it runs green: 23 of 29 pass, 0.4 s (floor 29)
+      6 of its 29 checks fail
+      it exited 1
+      its failing checks (6), first 6:
+      ✗ no file in modules/ shares a name with an inline block (the cart_logic shape: the same module in two places)
+      ✗ every file in modules/ is loaded by a <script src> of the page (an unloaded copy is a second definition waiting for an edit)
+      ✗ COMPONENT_LAYER_MAP.md states each module's source as the page has it ("inline", or "external: `modules/X.js`")
+      ✗ an inline module's header has a Deployment statement and it states the shape the page has; an external module's states its own modules/ file or is absent
+      ✗ an inline module's header makes no load-shape claim outside its Deployment statement
+      ✗ an external module's header does not say the page does not load it
+
+G. T164  no non-retiring answer (the delta check)   [behavioral; verify_non_retiring_answers.js]
+  ✓ the detector exists
+  ✗ it is listed in MASTER_TEST_SUITE.json
+      verify_non_retiring_answers.js is not listed in MASTER_TEST_SUITE.json (the suite does not run it)
+  ✓ its header tags are real: @enforces R-INTAKE-NONRETIRING, R-INTAKE-WIREREMOVE; @detects DEFECT-NON-RETIRING-ANSWER
+  ✓ its mechanism fits the claim (behavioral, P-GOVERN-GOODHART)
+  ✗ its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)
+      TIMELINE.md has no entry headed "## T164 -- Item G of the 2026-10-10 mandate"
+  ✗ it runs green: 17 of 26 pass, 1.2 s (floor 26)
+      9 of its 26 checks fail
+      it exited 1
+      its failing checks (9), first 9:
+      ✗ no module is flagged that is not filed (a fallback that resolves to the same outcome as a confident answer, with no modifier)
+      ✗ the filed list cites a ledger entry that exists (#158)
+      ✗ door_size: not a module, not in any service's chain or then-branch, not in the compiled indexes
+      ✗ door_size: the name appears nowhere in btnyc.json (modules, chains, notes and the compiled copies alike: R-INVARIANT-DELETION counts a remaining mention)
+      ✗ door_size: not in the page's code
+      ✗ door_size: not in the compiler's module lists
+      ✗ space_ready: not a module, not in any service's chain or then-branch, not in the compiled indexes
+      ✗ space_ready: the name appears nowhere in btnyc.json (modules, chains, notes and the compiled copies alike: R-INVARIANT-DELETION counts a remaining mention)
+      ✗ space_ready: not in the compiler's module lists
+
+H. T165  the set of detectors, and the ledger   [verify_architectural_conformance.js]
+  ✓ its header tags are real: @enforces R-INVARIANT-DISEASE, R-GOVERN-TRANSITION
+  ✗ it is listed in MASTER_TEST_SUITE.json
+      verify_architectural_conformance.js is not listed in MASTER_TEST_SUITE.json (the suite does not run it)
+  ✗ its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)
+      TIMELINE.md has no entry headed "## T165 -- Item H of the 2026-10-10 mandate"
+
+COMPLETENESS (both ways)
+  ✗ every "Item X of the 2026-10-10 mandate" entry in TIMELINE.md has a roster row, and every row has its entry
+      the roster has item B and TIMELINE.md has no entry for it
+      the roster has item C and TIMELINE.md has no entry for it
+      the roster has item D and TIMELINE.md has no entry for it
+      the roster has item E and TIMELINE.md has no entry for it
+      the roster has item F and TIMELINE.md has no entry for it
+      the roster has item G and TIMELINE.md has no entry for it
+      the roster has item H and TIMELINE.md has no entry for it
+  ✗ TIMELINE.md is read (the mandate entries are found)
+      0 entries found, expected 7 (B to H)
+
+item ticket kind          detector                                verdict
+B    T159   behavioral    verify_confidence_convergence.js        12 of 24 pass
+C    T160   mixed         verify_fallbacks_live_in_ssot.js        9 of 41 pass
+D    T161   mixed         verify_single_escalation_path.js        18 of 24 pass
+E    T162   source-shape  verify_no_duplicate_registries.js       16 of 22 pass
+F    T163   source-shape  verify_module_deployment_shape.js       23 of 29 pass
+G    T164   behavioral    verify_non_retiring_answers.js          17 of 26 pass
+
+[architectural conformance] 64 passed, 22 failed (of 86 checks)
