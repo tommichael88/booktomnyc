@@ -41,8 +41,10 @@ console.log('=== The two originally-named discrepancies are resolved ===');
     const angleStopCompiled = DB.compiled.service_index['angle_stop_replacement'];
     check('angle_stop_replacement: raw and compiled intake_chain now agree',
         JSON.stringify(angleStop.intake_chain.map(s => s.module)) === JSON.stringify(angleStopCompiled.intake_chain.map(s => s.module)));
-    check('angle_stop_replacement: compiled chain is hybrid_qty, not the old stale access',
-        angleStopCompiled.intake_chain.map(s => s.module).includes('hybrid_qty') &&
+    // T164: this asserted that the chain contained `hybrid_qty`, which was true of the raw chain when the test was written. The raw chain has since been
+    // reshaped (plumbing_fixture, angle_stop_condition; no quantity step), and the compiled copy was stale (it kept hybrid_qty) until T164 regenerated it.
+    // What the check guards is "not the old stale `access`", and agreement with the raw chain is the check above; so it now says exactly that.
+    check('angle_stop_replacement: compiled chain is not the old stale access',
         !angleStopCompiled.intake_chain.map(s => s.module).includes('access'));
 
     const faucetDrip = DB.services.find(s => s.id === 'faucet_repair_drip');
@@ -87,8 +89,9 @@ console.log('\n=== Comprehensive, catalog-wide sweep: zero remaining dangling ac
 
 console.log('\n=== Full reconciliation: every real service agrees between raw and a freshly re-run compile ===');
 {
-    const freshOutPath = '/tmp/verify_fresh_compile_check.json';
-    execFileSync('python3', [path.join(REPO_ROOT, 'btnyc_v10_compiler.py'), path.join(REPO_ROOT, 'btnyc.json'), freshOutPath]);
+    // T164: the compiler lives in test_harness/ (the old path, the repo root, no longer exists, so this leg threw before it compared anything).
+    const freshOutPath = path.join(require('os').tmpdir(), `verify_fresh_compile_check_${process.pid}.json`);
+    execFileSync('python3', [path.join(REPO_ROOT, 'test_harness', 'btnyc_v10_compiler.py'), path.join(REPO_ROOT, 'btnyc.json'), freshOutPath], { stdio: 'pipe' });
     const fresh = JSON.parse(fs.readFileSync(freshOutPath, 'utf8'));
     let disagreements = 0;
     for (const svc of DB.services) {

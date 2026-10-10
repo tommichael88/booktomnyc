@@ -1225,9 +1225,20 @@ def compile_v10(input_file: Path, output_file: Path) -> int:
     # alongside it). The schema is a fixed companion to this compiler
     # script itself, not something that should depend on where the
     # data lives -- resolved relative to __file__ instead.
-    schema_errors = validate_against_real_schema(
-        output, Path(__file__).resolve().parent / "btnyc_schema.json"
+    #
+    # T164: the schema moved to schema/btnyc_schema.json in the T157 package
+    # layout (the SSOT's own `$schema` declares that location). The old
+    # companion path beside this script no longer exists, so every run
+    # reported "Schema file not found" and wrote a false `_schema_validation`.
+    # The repo-layout location is tried first; the old companion path stays as
+    # the fallback for a checkout that still keeps the schema beside the script.
+    _here = Path(__file__).resolve().parent
+    schema_path = next(
+        (c for c in (_here.parent / "schema" / "btnyc_schema.json",
+                     _here / "btnyc_schema.json") if c.exists()),
+        _here.parent / "schema" / "btnyc_schema.json",
     )
+    schema_errors = validate_against_real_schema(output, schema_path)
     output["_schema_validation"] = {
         "errors": schema_errors,
         "valid": len(schema_errors) == 0,

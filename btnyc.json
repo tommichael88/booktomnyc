@@ -22892,9 +22892,18 @@
             "minutes_per_unit": 6
           },
           "tiers": [
-            {"up_to_units": 5, "rate_per_unit": 20},
-            {"up_to_units": 15, "rate_per_unit": 15},
-            {"up_to_units": null, "rate_per_unit": 10}
+            {
+              "up_to_units": 5,
+              "rate_per_unit": 20
+            },
+            {
+              "up_to_units": 15,
+              "rate_per_unit": 15
+            },
+            {
+              "up_to_units": null,
+              "rate_per_unit": 10
+            }
           ],
           "visit_minimum": 95,
           "_note": "T135+ REWRITTEN (PRICING_GUIDE section 4.2/10.2 P3, direct business input): replaces the prior flat_tier_price ($140) two-tier model, which had a confirmed, live bug (B3) -- the swap rate's own Tier 2 never activated below 96 units, so every real job from 1 to 95 units priced identically at $140 flat, regardless of actual size. New model: swap covers 20 units for a flat $20, then $1.00/unit; new_holes covers 10 units for a flat $35, then $3.50/unit -- continuous, no downward cliff, verified against the reference ladder (12 units swap=$20/new_holes=$42; 22 units swap=$22/new_holes=$77; 100 units swap=$100/new_holes=$350). T156 (operator ruling #112, option A, 2026-10-07): the old model above priced 1 to 20 swap knobs identically at $20, so a customer with ten knobs was quoted what a customer with one is. It is kept as the FLOOR: price = max(visit_minimum, tier total, the old flat price for the install type), so no job is quoted less than before. `tiers` are GRADUATED (marginal): the first 5 units are $20 each, units 6-15 are $15 each, every unit after the 15th is $10 (up_to_units is the cumulative count the tier runs to; null = open-ended). Graduated, not whole-order, because pricing the whole order at the tier its count falls in makes the price FALL as the count rises (5 knobs $100, 6 knobs $90; 15 knobs $225, 16 knobs $160), which the Charter forbids (quantity-per-unit labor scales continuously, never stepped). The tiers apply to both install types; new holes take longer (6 min per unit against 3) but the ruling set one table, so today they price the same. Reference ladder (swap = new holes): 1-4 -> $95 (the minimum), 5 -> $100, 6 -> $115, 10 -> $175, 15 -> $250, 16 -> $260, 20 -> $300, 50 -> $600."
@@ -23086,11 +23095,33 @@
         "checkout_state": null
       },
       "furniture_repair_hourly": {
-        "pricing_engine_key": "assembly_formula",
-        "is_real_registered_formula": false,
-        "formula_params": {},
-        "pricing_archetype": "hourly_timed",
-        "pricing_type": "assembly_formula",
+        "pricing_engine_key": "furniture_repair_formula",
+        "is_real_registered_formula": true,
+        "formula_params": {
+          "base_minutes": 30,
+          "hourly_rate": 70,
+          "complexity_multiplier": 1,
+          "per_unit_minutes": 10,
+          "issue_type_fees": {
+            "Loose joints or wobbling": {
+              "modifier_ref": "furniture_repair_loose_joints_or_wobbling"
+            },
+            "Broken piece (leg, frame, etc.)": {
+              "modifier_ref": "furniture_repair_broken_piece_leg_frame_etc"
+            },
+            "Drawer that sticks or falls out": {
+              "modifier_ref": "furniture_repair_drawer_that_sticks_or_falls_ou"
+            },
+            "Surface damage (scratches, stains)": {
+              "modifier_ref": "furniture_repair_surface_damage_scratches_stain"
+            },
+            "Piece detached or fell off (needs reglued/reattached)": {
+              "modifier_ref": "furniture_repair_piece_detached_or_fell_off_nee"
+            }
+          }
+        },
+        "pricing_archetype": "formula",
+        "pricing_type": "hourly",
         "formula_ref": null,
         "base_price": 0,
         "checkout_state": null
@@ -24490,9 +24521,12 @@
       },
       "furniture": {
         "synonyms": [
+          "bed",
           "chair",
           "desk",
+          "dresser",
           "furniture",
+          "sofa",
           "table"
         ],
         "candidate_services": [],
@@ -25570,7 +25604,11 @@
           "new toilet seat",
           "replace toilet seat",
           "seat",
-          "toilet seat"
+          "seat cover",
+          "toilet cover",
+          "toilet lid",
+          "toilet seat",
+          "toilet seat cover"
         ],
         "candidate_services": [
           "toilet_seat_replacement"
@@ -25990,22 +26028,6 @@
           "toilet_wax_ring_replacement"
         ]
       },
-      "Loose but not cracked": {
-        "synonyms": [
-          "Loose but not cracked"
-        ],
-        "candidate_services": [
-          "loose_tile_replacement"
-        ]
-      },
-      "Cracked or chipped": {
-        "synonyms": [
-          "Cracked or chipped"
-        ],
-        "candidate_services": [
-          "loose_tile_replacement"
-        ]
-      },
       "No": {
         "synonyms": [
           "No"
@@ -26018,6 +26040,22 @@
       "Yes (Requires membrane)": {
         "synonyms": [
           "Yes (Requires membrane)"
+        ],
+        "candidate_services": [
+          "loose_tile_replacement"
+        ]
+      },
+      "Loose but not cracked": {
+        "synonyms": [
+          "Loose but not cracked"
+        ],
+        "candidate_services": [
+          "loose_tile_replacement"
+        ]
+      },
+      "Cracked or chipped": {
+        "synonyms": [
+          "Cracked or chipped"
         ],
         "candidate_services": [
           "loose_tile_replacement"
@@ -26107,7 +26145,6 @@
         "candidate_services": [
           "plaster_wall_repair",
           "squeaky_floor_repair",
-          "wall_hole_or_crack_repair",
           "wood_paneling_repair"
         ]
       },
@@ -26118,7 +26155,6 @@
         "candidate_services": [
           "plaster_wall_repair",
           "squeaky_floor_repair",
-          "wall_hole_or_crack_repair",
           "wood_paneling_repair"
         ]
       },
@@ -26129,7 +26165,6 @@
         "candidate_services": [
           "plaster_wall_repair",
           "squeaky_floor_repair",
-          "wall_hole_or_crack_repair",
           "wood_paneling_repair"
         ]
       },
@@ -26181,22 +26216,6 @@
           "scratch_or_water_ring_removal"
         ]
       },
-      "Single fixture": {
-        "synonyms": [
-          "Single fixture"
-        ],
-        "candidate_services": [
-          "slow_drain_clearing"
-        ]
-      },
-      "Multiple fixtures": {
-        "synonyms": [
-          "Multiple fixtures"
-        ],
-        "candidate_services": [
-          "slow_drain_clearing"
-        ]
-      },
       "Slow – takes a few minutes to empty": {
         "synonyms": [
           "Slow – takes a few minutes to empty"
@@ -26216,6 +26235,22 @@
       "Standing water – completely blocked": {
         "synonyms": [
           "Standing water – completely blocked"
+        ],
+        "candidate_services": [
+          "slow_drain_clearing"
+        ]
+      },
+      "Single fixture": {
+        "synonyms": [
+          "Single fixture"
+        ],
+        "candidate_services": [
+          "slow_drain_clearing"
+        ]
+      },
+      "Multiple fixtures": {
+        "synonyms": [
+          "Multiple fixtures"
         ],
         "candidate_services": [
           "slow_drain_clearing"
@@ -26341,10 +26376,6 @@
           {
             "module": "angle_stop_condition",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {}
           }
         ],
         "pricing": {
@@ -26394,7 +26425,6 @@
         },
         "modules_needed_for_exact": [
           "angle_stop_condition",
-          "hybrid_qty",
           "plumbing_fixture"
         ]
       },
@@ -26605,7 +26635,8 @@
           },
           {
             "module": "buy_the_hour_qty",
-            "then": {}
+            "then": {},
+            "_quantity_justification": "A deliberate binary gate (T118): one item is a flat rate, more than one switches to hourly billing; it is not a numeric count."
           },
           {
             "module": "wall_type",
@@ -26682,7 +26713,45 @@
         "intake_chain": [
           {
             "module": "item_count_template",
-            "then": {}
+            "then": {},
+            "params": {
+              "item_noun": "walls",
+              "client_response": [
+                {
+                  "label": "1 wall",
+                  "tags": [],
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "2 walls",
+                  "tags": [],
+                  "modifier_ref": "brick_or_concrete_crack_repair_item_count_template_2_walls",
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "3 walls",
+                  "tags": [],
+                  "modifier_ref": "brick_or_concrete_crack_repair_item_count_template_3_walls",
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "4 walls",
+                  "tags": [],
+                  "modifier_ref": "brick_or_concrete_crack_repair_item_count_template_4_walls",
+                  "complexity_override": "skilled"
+                },
+                {
+                  "label": "5 or more walls (specify exact count in notes)",
+                  "tags": [],
+                  "modifier_ref": "brick_or_concrete_crack_repair_item_count_template_5_or_more_walls_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
+                  "formula_override": "item_count_overflow_formula"
+                }
+              ],
+              "question_override": "How many walls have cracks like this?"
+            },
+            "_note": "T135+ FIX (verify_t20_item_count_overflow.js's own long-standing expectation, found via the test-validity audit): this step had no params at all, so the overflow-activating 'specify exact count' option -- the established pattern already correct on 8 sibling services -- was never present. No per-band fee data exists for this service (confirmed directly), so bands 1/2-3 stay at base price, matching those same 8 siblings' own shape.",
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           },
           {
             "module": "mounting_height",
@@ -26775,10 +26844,17 @@
                   "label": "9 or more items",
                   "tags": [],
                   "modifier_ref": "cabinet_door_or_drawer_adjustment_item_count_template_9_or_more_items"
+                },
+                {
+                  "label": "10 or more items (specify exact count in notes)",
+                  "tags": [],
+                  "formula_override": "item_count_overflow_formula",
+                  "modifier_ref": "cabinet_door_or_drawer_adjustment_item_count_template_9_or_more_items"
                 }
               ]
             },
-            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note."
+            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note.",
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -26841,7 +26917,8 @@
           },
           {
             "module": "hybrid_qty",
-            "then": {}
+            "then": {},
+            "_quantity_justification": "Homogeneous batch: each knob or pull is the same job, so the count is the same fact applied N times; priced per unit by the tiered per-unit archetype."
           }
         ],
         "pricing": {
@@ -26861,9 +26938,18 @@
               "minutes_per_unit": 6
             },
             "tiers": [
-              {"up_to_units": 5, "rate_per_unit": 20},
-              {"up_to_units": 15, "rate_per_unit": 15},
-              {"up_to_units": null, "rate_per_unit": 10}
+              {
+                "up_to_units": 5,
+                "rate_per_unit": 20
+              },
+              {
+                "up_to_units": 15,
+                "rate_per_unit": 15
+              },
+              {
+                "up_to_units": null,
+                "rate_per_unit": 10
+              }
             ],
             "visit_minimum": 95,
             "_note": "T135+ REWRITTEN (PRICING_GUIDE section 4.2/10.2 P3, direct business input): replaces the prior flat_tier_price ($140) two-tier model, which had a confirmed, live bug (B3) -- the swap rate's own Tier 2 never activated below 96 units, so every real job from 1 to 95 units priced identically at $140 flat, regardless of actual size. New model: swap covers 20 units for a flat $20, then $1.00/unit; new_holes covers 10 units for a flat $35, then $3.50/unit -- continuous, no downward cliff, verified against the reference ladder (12 units swap=$20/new_holes=$42; 22 units swap=$22/new_holes=$77; 100 units swap=$100/new_holes=$350). T156 (operator ruling #112, option A, 2026-10-07): the old model above priced 1 to 20 swap knobs identically at $20, so a customer with ten knobs was quoted what a customer with one is. It is kept as the FLOOR: price = max(visit_minimum, tier total, the old flat price for the install type), so no job is quoted less than before. `tiers` are GRADUATED (marginal): the first 5 units are $20 each, units 6-15 are $15 each, every unit after the 15th is $10 (up_to_units is the cumulative count the tier runs to; null = open-ended). Graduated, not whole-order, because pricing the whole order at the tier its count falls in makes the price FALL as the count rises (5 knobs $100, 6 knobs $90; 15 knobs $225, 16 knobs $160), which the Charter forbids (quantity-per-unit labor scales continuously, never stepped). The tiers apply to both install types; new holes take longer (6 min per unit against 3) but the ruling set one table, so today they price the same. Reference ladder (swap = new holes): 1-4 -> $95 (the minimum), 5 -> $100, 6 -> $115, 10 -> $175, 15 -> $250, 16 -> $260, 20 -> $300, 50 -> $600."
@@ -26995,10 +27081,6 @@
           {
             "module": "mounting_height",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {}
           }
         ],
         "pricing": {
@@ -27047,7 +27129,6 @@
         },
         "modules_needed_for_exact": [
           "existing_box",
-          "hybrid_qty",
           "mounting_height"
         ]
       },
@@ -27065,11 +27146,6 @@
           {
             "module": "mounting_height",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -27116,7 +27192,6 @@
           "_inherits_from_archetype": "electrical_fixture"
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "mounting_height",
           "weight"
         ]
@@ -27169,12 +27244,13 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": null,
-          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values."
+          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
           "computer_symptom",
@@ -27248,7 +27324,38 @@
         "intake_chain": [
           {
             "module": "item_count_template",
-            "then": {}
+            "then": {},
+            "params": {
+              "item_noun": "light switches",
+              "client_response": [
+                {
+                  "label": "1 switch",
+                  "tags": [],
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "2 switches",
+                  "tags": [],
+                  "modifier_ref": "dimmer_switch_install_item_count_template_2_switches",
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "3 switches",
+                  "tags": [],
+                  "modifier_ref": "dimmer_switch_install_item_count_template_3_switches",
+                  "complexity_override": "skilled"
+                },
+                {
+                  "label": "4 or more switches (specify exact count in notes)",
+                  "tags": [],
+                  "modifier_ref": "dimmer_switch_install_item_count_template_4_or_more_switches_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
+                  "formula_override": "item_count_overflow_formula"
+                }
+              ]
+            },
+            "_note": "T135+ FIX (verify_t20_item_count_overflow.js's own long-standing expectation, found via the test-validity audit): this step had no params at all, so the overflow-activating 'specify exact count' option -- the established pattern already correct on 8 sibling services -- was never present. No per-band fee data exists for this service (confirmed directly), so bands 1/2-3 stay at base price, matching those same 8 siblings' own shape.",
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           },
           {
             "module": "switch_wiring",
@@ -27347,12 +27454,13 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "diagnostic",
           "_variability_score": null,
-          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values. Separately, for this specific service: baseline checkout_state is already diagnostic (confirmed directly), meaning no firm quote is given regardless of this threshold today -- the practical stakes of this specific number are lower here than for the other 15. Raised anyway for consistency, so this doesn't become a second, new gap if this service's checkout_state is ever revisited."
+          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values. Separately, for this specific service: baseline checkout_state is already diagnostic (confirmed directly), meaning no firm quote is given regardless of this threshold today -- the practical stakes of this specific number are lower here than for the other 15. Raised anyway for consistency, so this doesn't become a second, new gap if this service's checkout_state is ever revisited.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
           "dishwasher_symptom"
@@ -27404,12 +27512,13 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "diagnostic",
           "_variability_score": null,
-          "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): matches dishwasher_repair's own confidence_strategy exactly -- same real reasoning applies (specialized-tier diagnostic appliance repair; see dishwasher_repair's own, more fully-researched note for the full derivation). Flagged for business-owner review, same as the value it's modeled on, not independently re-derived from scratch for this specific appliance."
+          "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): matches dishwasher_repair's own confidence_strategy exactly -- same real reasoning applies (specialized-tier diagnostic appliance repair; see dishwasher_repair's own, more fully-researched note for the full derivation). Flagged for business-owner review, same as the value it's modeled on, not independently re-derived from scratch for this specific appliance.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
           "dryer_symptom"
@@ -27461,12 +27570,13 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "diagnostic",
           "_variability_score": null,
-          "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): matches dishwasher_repair's own confidence_strategy exactly -- see dryer_repair's identical note. Flagged for business-owner review, not independently re-derived."
+          "_note": "T135+ ADDED (PENDING_DECISIONS.md #67): matches dishwasher_repair's own confidence_strategy exactly -- see dryer_repair's identical note. Flagged for business-owner review, not independently re-derived.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
           "stove_symptom"
@@ -27481,10 +27591,6 @@
         "intake_chain": [
           {
             "module": "hardware_type",
-            "then": {}
-          },
-          {
-            "module": "global_quantity",
             "then": {}
           }
         ],
@@ -27536,7 +27642,6 @@
           "_confidence_cap_reason": "Original minimum_quote_confidence (50) exceeded the mathematically achievable maximum (40 = base_confidence 40 + max real-module gain 0). Capped to the achievable ceiling so the estimate is always reachable after answering every visible question."
         },
         "modules_needed_for_exact": [
-          "global_quantity",
           "hardware_type"
         ]
       },
@@ -27547,10 +27652,6 @@
         "group": "minor_home_repairs_doors",
         "aliases": [],
         "intake_chain": [
-          {
-            "module": "item_count_template",
-            "then": {}
-          },
           {
             "module": "dmg_size",
             "then": {}
@@ -27592,16 +27693,16 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 4,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": null,
-          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values."
+          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): matches this service's own authored intake_chain depth so real, already-written questions aren't silently truncated (or, for toilet_install, reduced from an inflated 6 down to its real 4 -- the cap had drifted ahead of the chain, not behind it)."
         },
         "modules_needed_for_exact": [
-          "dmg_size",
-          "item_count_template"
+          "dmg_size"
         ]
       },
       "door_weatherstripping": {
@@ -27614,11 +27715,6 @@
           {
             "module": "door_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -27661,8 +27757,7 @@
           "_inherits_from_archetype": "door_hardware"
         },
         "modules_needed_for_exact": [
-          "door_type",
-          "hybrid_qty"
+          "door_type"
         ]
       },
       "window_ac_setup": {
@@ -27819,11 +27914,11 @@
             "then": {}
           },
           {
-            "module": "global_quantity",
+            "module": "mounting_height",
             "then": {}
           },
           {
-            "module": "mounting_height",
+            "module": "mount_sourcing",
             "then": {}
           }
         ],
@@ -27852,12 +27947,12 @@
           "disclaimer": "flat_fee"
         },
         "required_materials": [
-          "MAT-MNT-ANCH-Drywall",
-          "MAT-MNT-TV-Bracket"
+          "MAT-MNT-ANCH-Drywall"
         ],
         "optional_materials": [
           "MAT-MNT-ANCH-Masonry",
-          "MAT-MNT-CUR-Rod"
+          "MAT-MNT-CUR-Rod",
+          "MAT-MNT-TV-Bracket"
         ],
         "default_tags": [
           "#heavy_item",
@@ -27874,7 +27969,7 @@
           "_inherits_from_archetype": "wall_mounted_object"
         },
         "modules_needed_for_exact": [
-          "global_quantity",
+          "mount_sourcing",
           "mounting_height",
           "wall_type",
           "weight"
@@ -27914,6 +28009,10 @@
           {
             "module": "inwall_power_for_tv",
             "then": {}
+          },
+          {
+            "module": "mount_sourcing",
+            "then": {}
           }
         ],
         "pricing": {
@@ -27941,12 +28040,12 @@
           "disclaimer": "flat_fee"
         },
         "required_materials": [
-          "MAT-MNT-ANCH-Drywall",
-          "MAT-MNT-TV-Bracket"
+          "MAT-MNT-ANCH-Drywall"
         ],
         "optional_materials": [
           "MAT-MNT-ANCH-Masonry",
-          "MAT-TEC-CBL-CableKit"
+          "MAT-TEC-CBL-CableKit",
+          "MAT-MNT-TV-Bracket"
         ],
         "default_tags": [
           "#heavy_item",
@@ -27964,6 +28063,7 @@
         },
         "modules_needed_for_exact": [
           "inwall_power_for_tv",
+          "mount_sourcing",
           "mounting_height",
           "wall_type",
           "weight"
@@ -28123,11 +28223,33 @@
           }
         ],
         "pricing": {
-          "pricing_engine_key": "assembly_formula",
-          "is_real_registered_formula": false,
-          "formula_params": {},
-          "pricing_archetype": "hourly_timed",
-          "pricing_type": "assembly_formula",
+          "pricing_engine_key": "furniture_repair_formula",
+          "is_real_registered_formula": true,
+          "formula_params": {
+            "base_minutes": 30,
+            "hourly_rate": 70,
+            "complexity_multiplier": 1,
+            "per_unit_minutes": 10,
+            "issue_type_fees": {
+              "Loose joints or wobbling": {
+                "modifier_ref": "furniture_repair_loose_joints_or_wobbling"
+              },
+              "Broken piece (leg, frame, etc.)": {
+                "modifier_ref": "furniture_repair_broken_piece_leg_frame_etc"
+              },
+              "Drawer that sticks or falls out": {
+                "modifier_ref": "furniture_repair_drawer_that_sticks_or_falls_ou"
+              },
+              "Surface damage (scratches, stains)": {
+                "modifier_ref": "furniture_repair_surface_damage_scratches_stain"
+              },
+              "Piece detached or fell off (needs reglued/reattached)": {
+                "modifier_ref": "furniture_repair_piece_detached_or_fell_off_nee"
+              }
+            }
+          },
+          "pricing_archetype": "formula",
+          "pricing_type": "hourly",
           "formula_ref": null,
           "base_price": 0,
           "checkout_state": null
@@ -28271,10 +28393,17 @@
                   "label": "3 or more outlets",
                   "tags": [],
                   "modifier_ref": "gfci_outlet_replacement_item_count_template_3_or_more_outlets"
+                },
+                {
+                  "label": "4 or more outlets (specify exact count in notes)",
+                  "tags": [],
+                  "formula_override": "item_count_overflow_formula",
+                  "modifier_ref": "gfci_outlet_replacement_item_count_template_3_or_more_outlets"
                 }
               ]
             },
-            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note."
+            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note.",
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -28357,7 +28486,8 @@
                 }
               ],
               "question_override": "How many light bulbs need attention?"
-            }
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           },
           {
             "module": "mounting_height",
@@ -28436,11 +28566,6 @@
           {
             "module": "laptop_or_desktop",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -28475,17 +28600,17 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 80,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 5,
           "diagnostic_threshold": 30,
           "base_confidence": 40,
           "_variability_tier": "low",
-          "_variability_score": 21.3
+          "_variability_score": 21.3,
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): matches this service's own authored intake_chain depth so real, already-written questions aren't silently truncated (or, for toilet_install, reduced from an inflated 6 down to its real 4 -- the cap had drifted ahead of the chain, not behind it)."
         },
         "modules_needed_for_exact": [
           "computer_component",
           "customer_supplied_part",
           "device_type",
-          "hybrid_qty",
           "laptop_or_desktop"
         ]
       },
@@ -28593,7 +28718,8 @@
                 }
               ],
               "question_override": "How many light bulbs need attention?"
-            }
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -28656,10 +28782,6 @@
             "then": {}
           },
           {
-            "module": "global_quantity",
-            "then": {}
-          },
-          {
             "module": "distance",
             "then": {}
           }
@@ -28711,8 +28833,7 @@
         },
         "modules_needed_for_exact": [
           "distance",
-          "fixture_type",
-          "global_quantity"
+          "fixture_type"
         ]
       },
       "loose_tile_replacement": {
@@ -28737,7 +28858,8 @@
           {
             "module": "hybrid_qty",
             "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
+            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5.",
+            "_quantity_justification": "Homogeneous batch: each loose tile is the same small repair; priced per unit by the tile repair formula."
           }
         ],
         "pricing": {
@@ -28862,12 +28984,13 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": null,
-          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values."
+          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
           "appliance_type",
@@ -28885,11 +29008,6 @@
           {
             "module": "space_ready",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -28933,7 +29051,6 @@
           "_variability_score": 6.3
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "space_ready"
         ]
       },
@@ -28948,27 +29065,42 @@
             "module": "item_count_template",
             "then": {},
             "params": {
-              "item_noun": "damaged areas",
+              "item_noun": "walls",
               "client_response": [
                 {
-                  "label": "1 area",
+                  "label": "1 wall",
                   "tags": [],
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "2–3 areas",
+                  "label": "2 walls",
                   "tags": [],
+                  "modifier_ref": "plaster_wall_repair_item_count_template_2_walls",
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "4 or more areas (specify exact count in notes)",
+                  "label": "3 walls",
                   "tags": [],
-                  "complexity_override": "routine",
+                  "modifier_ref": "plaster_wall_repair_item_count_template_3_walls",
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "4 walls",
+                  "tags": [],
+                  "modifier_ref": "plaster_wall_repair_item_count_template_4_walls",
+                  "complexity_override": "skilled"
+                },
+                {
+                  "label": "5 or more walls (specify exact count in notes)",
+                  "tags": [],
+                  "modifier_ref": "plaster_wall_repair_item_count_template_5_or_more_walls_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
                   "formula_override": "item_count_overflow_formula"
                 }
               ],
-              "question_override": "How many damaged areas are there?"
-            }
+              "question_override": "How many walls need plaster repair?"
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           },
           {
             "module": "mounting_height",
@@ -29109,13 +29241,14 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 80,
-          "maximum_followup_questions": 4,
+          "maximum_followup_questions": 6,
           "diagnostic_threshold": 40,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": 73.3,
           "_confidence_cap_applied": true,
-          "_confidence_cap_reason": "v9.1: recomputed after wiring door_size + door_style_pref into this service intake_chain (previously only 2 of 4 relevant authored questions were actually asked — see CHANGELOG_v9.1.md). Achievable max = base_confidence 40 + door_size 20 + door_style_pref 20 + client_supplying_door 15 + existing_frame 20 = 115, capped to the global ceiling of 95 (global_rules.confidence_escalation.max_minimum_quote_confidence) rather than the per-service mathematical max."
+          "_confidence_cap_reason": "v9.1: recomputed after wiring door_size + door_style_pref into this service intake_chain (previously only 2 of 4 relevant authored questions were actually asked — see CHANGELOG_v9.1.md). Achievable max = base_confidence 40 + door_size 20 + door_style_pref 20 + client_supplying_door 15 + existing_frame 20 = 115, capped to the global ceiling of 95 (global_rules.confidence_escalation.max_minimum_quote_confidence) rather than the per-service mathematical max.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): matches this service's own authored intake_chain depth so real, already-written questions aren't silently truncated (or, for toilet_install, reduced from an inflated 6 down to its real 4 -- the cap had drifted ahead of the chain, not behind it)."
         },
         "modules_needed_for_exact": [
           "door_finish",
@@ -29136,11 +29269,6 @@
           {
             "module": "sink_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -29186,7 +29314,6 @@
           "_inherits_from_archetype": "plumbing_fixture"
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "sink_type"
         ]
       },
@@ -29244,12 +29371,13 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": null,
-          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values."
+          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
           "appliance_type",
@@ -29267,11 +29395,6 @@
           {
             "module": "distance",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -29319,8 +29442,7 @@
           "_inherits_from_archetype": "plumbing_fixture"
         },
         "modules_needed_for_exact": [
-          "distance",
-          "hybrid_qty"
+          "distance"
         ]
       },
       "router_configuration": {
@@ -29361,7 +29483,8 @@
                 }
               ],
               "question_override": "About how many devices (phones, laptops, smart TVs) will connect to this network?"
-            }
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -29398,11 +29521,12 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 80,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 4,
           "diagnostic_threshold": 30,
           "base_confidence": 40,
           "_variability_tier": "low",
-          "_variability_score": 21.3
+          "_variability_score": 21.3,
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): matches this service's own authored intake_chain depth so real, already-written questions aren't silently truncated (or, for toilet_install, reduced from an inflated 6 down to its real 4 -- the cap had drifted ahead of the chain, not behind it)."
         },
         "modules_needed_for_exact": [
           "internet_active",
@@ -29425,7 +29549,8 @@
           {
             "module": "hybrid_qty",
             "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
+            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5.",
+            "_quantity_justification": "Homogeneous batch: each mark is the same small, independent repair on the same piece."
           }
         ],
         "pricing": {
@@ -29493,7 +29618,8 @@
           {
             "module": "hybrid_qty",
             "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
+            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5.",
+            "_quantity_justification": "Buy-the-hour: the number of items is what drives the billable hours (T118); the items are shelves or frames of one kind."
           }
         ],
         "pricing": {
@@ -29554,7 +29680,8 @@
         "intake_chain": [
           {
             "module": "global_quantity",
-            "then": {}
+            "then": {},
+            "_quantity_justification": "Buy-the-hour: the number of items is what drives the billable hours (T118); the items are shelves or frames of one kind."
           }
         ],
         "pricing": {
@@ -29619,11 +29746,6 @@
           {
             "module": "existing_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -29672,8 +29794,7 @@
           "_inherits_from_archetype": "plumbing_fixture"
         },
         "modules_needed_for_exact": [
-          "existing_type",
-          "hybrid_qty"
+          "existing_type"
         ]
       },
       "slow_drain_clearing": {
@@ -29702,11 +29823,6 @@
           {
             "module": "single_fixture_or_multiple",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -29752,12 +29868,13 @@
           "base_confidence": 40,
           "_variability_tier": "low",
           "_variability_score": 21.3,
-          "_inherits_from_archetype": "plumbing_fixture"
+          "_inherits_from_archetype": "plumbing_fixture",
+          "maximum_followup_questions": 6,
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): matches this service's own authored intake_chain depth so real, already-written questions aren't silently truncated (or, for toilet_install, reduced from an inflated 6 down to its real 4 -- the cap had drifted ahead of the chain, not behind it)."
         },
         "modules_needed_for_exact": [
           "attempted_fix",
           "drain_speed",
-          "hybrid_qty",
           "location",
           "single_fixture_or_multiple",
           "standing_water"
@@ -29782,19 +29899,27 @@
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "2–3 plugs",
+                  "label": "2 plugs",
                   "tags": [],
+                  "modifier_ref": "smart_plug_configuration_item_count_template_2_plugs",
                   "complexity_override": "routine"
+                },
+                {
+                  "label": "3 plugs",
+                  "tags": [],
+                  "modifier_ref": "smart_plug_configuration_item_count_template_3_plugs",
+                  "complexity_override": "skilled"
                 },
                 {
                   "label": "4 or more plugs (specify exact count in notes)",
                   "tags": [],
-                  "complexity_override": "routine",
+                  "modifier_ref": "smart_plug_configuration_item_count_template_4_or_more_plugs_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
                   "formula_override": "item_count_overflow_formula"
                 }
-              ],
-              "question_override": "How many smart plugs need to be set up?"
-            }
+              ]
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -29855,7 +29980,8 @@
           {
             "module": "hybrid_qty",
             "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
+            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5.",
+            "_quantity_justification": "Homogeneous batch: each speaker is set up by the same procedure."
           }
         ],
         "pricing": {
@@ -29920,19 +30046,27 @@
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "2–3 switches",
+                  "label": "2 switches",
                   "tags": [],
+                  "modifier_ref": "smart_switch_install_item_count_template_2_switches",
                   "complexity_override": "routine"
+                },
+                {
+                  "label": "3 switches",
+                  "tags": [],
+                  "modifier_ref": "smart_switch_install_item_count_template_3_switches",
+                  "complexity_override": "skilled"
                 },
                 {
                   "label": "4 or more switches (specify exact count in notes)",
                   "tags": [],
-                  "complexity_override": "routine",
+                  "modifier_ref": "smart_switch_install_item_count_template_4_or_more_switches_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
                   "formula_override": "item_count_overflow_formula"
                 }
-              ],
-              "question_override": "How many light switches need work?"
-            }
+              ]
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -29990,11 +30124,6 @@
           {
             "module": "software_install_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30036,7 +30165,6 @@
           "_variability_score": 6.3
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "software_install_type"
         ]
       },
@@ -30055,7 +30183,7 @@
             "module": "item_count_template",
             "then": {},
             "params": {
-              "item_noun": "damaged areas",
+              "item_noun": "areas of floor",
               "client_response": [
                 {
                   "label": "1 area",
@@ -30063,19 +30191,34 @@
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "2–3 areas",
+                  "label": "2 areas",
                   "tags": [],
+                  "modifier_ref": "squeaky_floor_repair_item_count_template_2_areas",
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "4 or more areas (specify exact count in notes)",
+                  "label": "3 areas",
                   "tags": [],
-                  "complexity_override": "routine",
+                  "modifier_ref": "squeaky_floor_repair_item_count_template_3_areas",
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "4 areas",
+                  "tags": [],
+                  "modifier_ref": "squeaky_floor_repair_item_count_template_4_areas",
+                  "complexity_override": "skilled"
+                },
+                {
+                  "label": "5 or more areas (specify exact count in notes)",
+                  "tags": [],
+                  "modifier_ref": "squeaky_floor_repair_item_count_template_5_or_more_areas_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
                   "formula_override": "item_count_overflow_formula"
                 }
               ],
-              "question_override": "How many damaged areas are there?"
-            }
+              "question_override": "How many areas of the floor squeak?"
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           },
           {
             "module": "project_scale",
@@ -30139,11 +30282,6 @@
           {
             "module": "device_state",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30185,8 +30323,7 @@
           "_variability_score": 6.3
         },
         "modules_needed_for_exact": [
-          "device_state",
-          "hybrid_qty"
+          "device_state"
         ]
       },
       "thermostat_replacement": {
@@ -30199,11 +30336,6 @@
           {
             "module": "thermostat_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30248,7 +30380,6 @@
           "_inherits_from_archetype": "electrical_fixture"
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "thermostat_type"
         ]
       },
@@ -30262,11 +30393,6 @@
           {
             "module": "toilet_symptom",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30316,7 +30442,6 @@
           "_inherits_from_archetype": "plumbing_fixture"
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "toilet_symptom"
         ]
       },
@@ -30375,13 +30500,14 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 80,
-          "maximum_followup_questions": 6,
+          "maximum_followup_questions": 4,
           "diagnostic_threshold": 40,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": 70,
           "_confidence_cap_applied": true,
-          "_confidence_cap_reason": "Original minimum_quote_confidence (85) exceeded the mathematically achievable maximum (80 = base_confidence 40 + max real-module gain 40). Capped to the achievable ceiling so the estimate is always reachable after answering every visible question."
+          "_confidence_cap_reason": "Original minimum_quote_confidence (85) exceeded the mathematically achievable maximum (80 = base_confidence 40 + max real-module gain 40). Capped to the achievable ceiling so the estimate is always reachable after answering every visible question.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): matches this service's own authored intake_chain depth so real, already-written questions aren't silently truncated (or, for toilet_install, reduced from an inflated 6 down to its real 4 -- the cap had drifted ahead of the chain, not behind it)."
         },
         "modules_needed_for_exact": [
           "removal",
@@ -30398,11 +30524,6 @@
           {
             "module": "leak_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30449,7 +30570,6 @@
           "_inherits_from_archetype": "plumbing_fixture"
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "leak_type"
         ]
       },
@@ -30463,11 +30583,6 @@
           {
             "module": "existing_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30516,8 +30631,7 @@
           "_inherits_from_archetype": "plumbing_fixture"
         },
         "modules_needed_for_exact": [
-          "existing_type",
-          "hybrid_qty"
+          "existing_type"
         ]
       },
       "under_cabinet_light_install": {
@@ -30530,11 +30644,6 @@
           {
             "module": "length",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30581,7 +30690,6 @@
           "_inherits_from_archetype": "electrical_fixture"
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "length"
         ]
       },
@@ -30611,10 +30719,17 @@
                   "label": "3 or more outlets",
                   "tags": [],
                   "modifier_ref": "usb_outlet_install_item_count_template_3_or_more_outlets"
+                },
+                {
+                  "label": "4 or more outlets (specify exact count in notes)",
+                  "tags": [],
+                  "formula_override": "item_count_overflow_formula",
+                  "modifier_ref": "usb_outlet_install_item_count_template_3_or_more_outlets"
                 }
               ]
             },
-            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note."
+            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note.",
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -30674,11 +30789,6 @@
           {
             "module": "tech_problem_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30722,7 +30832,6 @@
           "_variability_score": 6.3
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "tech_problem_type"
         ]
       },
@@ -30756,34 +30865,45 @@
             "module": "item_count_template",
             "then": {},
             "params": {
-              "item_noun": "damaged areas",
+              "item_noun": "walls",
               "client_response": [
                 {
-                  "label": "1 area",
+                  "label": "1 wall",
                   "tags": [],
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "2–3 areas",
+                  "label": "2 walls",
                   "tags": [],
+                  "modifier_ref": "wall_hole_or_crack_repair_item_count_template_2_walls",
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "4 or more areas (specify exact count in notes)",
+                  "label": "3 walls",
                   "tags": [],
-                  "complexity_override": "routine",
+                  "modifier_ref": "wall_hole_or_crack_repair_item_count_template_3_walls",
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "4 walls",
+                  "tags": [],
+                  "modifier_ref": "wall_hole_or_crack_repair_item_count_template_4_walls",
+                  "complexity_override": "skilled"
+                },
+                {
+                  "label": "5 or more walls (specify exact count in notes)",
+                  "tags": [],
+                  "modifier_ref": "wall_hole_or_crack_repair_item_count_template_5_or_more_walls_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
                   "formula_override": "item_count_overflow_formula"
                 }
               ],
-              "question_override": "How many damaged areas are there?"
-            }
+              "question_override": "How many walls have damage like this?"
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           },
           {
             "module": "mounting_height",
-            "then": {}
-          },
-          {
-            "module": "project_scale",
             "then": {}
           }
         ],
@@ -30826,18 +30946,18 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 5,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": null,
-          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values."
+          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): matches this service's own authored intake_chain depth so real, already-written questions aren't silently truncated (or, for toilet_install, reduced from an inflated 6 down to its real 4 -- the cap had drifted ahead of the chain, not behind it)."
         },
         "modules_needed_for_exact": [
           "dmg_size",
           "item_count_template",
           "mounting_height",
-          "project_scale",
           "wall_type"
         ]
       },
@@ -30862,7 +30982,8 @@
           },
           {
             "module": "global_quantity",
-            "then": {}
+            "then": {},
+            "_quantity_justification": "Buy-the-hour style mounting: the number of items drives the billable hours; the items are frames or shelves of one kind."
           },
           {
             "module": "mounting_height",
@@ -30925,11 +31046,6 @@
           {
             "module": "space_ready",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -30971,7 +31087,6 @@
           "_variability_score": 6.3
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "space_ready"
         ]
       },
@@ -31029,12 +31144,13 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": null,
-          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values."
+          "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
           "location",
@@ -31073,10 +31189,17 @@
                   "label": "4 or more windows",
                   "tags": [],
                   "modifier_ref": "window_draft_sealing_item_count_template_4_or_more_windows"
+                },
+                {
+                  "label": "5 or more windows (specify exact count in notes)",
+                  "tags": [],
+                  "formula_override": "item_count_overflow_formula",
+                  "modifier_ref": "window_draft_sealing_item_count_template_4_or_more_windows"
                 }
               ]
             },
-            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note."
+            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note.",
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -31157,10 +31280,17 @@
                   "label": "4 or more windows",
                   "tags": [],
                   "modifier_ref": "window_hardware_repair_item_count_template_4_or_more_windows"
+                },
+                {
+                  "label": "5 or more windows (specify exact count in notes)",
+                  "tags": [],
+                  "formula_override": "item_count_overflow_formula",
+                  "modifier_ref": "window_hardware_repair_item_count_template_4_or_more_windows"
                 }
               ]
             },
-            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note."
+            "_note": "T135+ FIX (PRICING_GUIDE B4, extended to a confirmed systemic gap across 5 of the 16 item_count_overflow services): this step previously had no params at all, so item_count_template rendered its generic 1/2-3/4+ labels with zero fee difference between them -- this service's own real, authored per-band modifiers (global_rules.modifiers) existed but were never connected. Wired directly using this module's own documented mechanism (params.client_response), per its _template_note.",
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -31222,27 +31352,35 @@
             "module": "item_count_template",
             "then": {},
             "params": {
-              "item_noun": "damaged areas",
+              "item_noun": "window screens",
               "client_response": [
                 {
-                  "label": "1 area",
+                  "label": "1 screen",
                   "tags": [],
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "2–3 areas",
+                  "label": "2 screens",
                   "tags": [],
+                  "modifier_ref": "window_screen_repair_item_count_template_2_screens",
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "4 or more areas (specify exact count in notes)",
+                  "label": "3 screens",
                   "tags": [],
-                  "complexity_override": "routine",
+                  "modifier_ref": "window_screen_repair_item_count_template_3_screens",
+                  "complexity_override": "skilled"
+                },
+                {
+                  "label": "4 or more screens (specify exact count in notes)",
+                  "tags": [],
+                  "modifier_ref": "window_screen_repair_item_count_template_4_or_more_screens_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
                   "formula_override": "item_count_overflow_formula"
                 }
-              ],
-              "question_override": "How many damaged areas are there?"
-            }
+              ]
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -31301,7 +31439,7 @@
             "module": "item_count_template",
             "then": {},
             "params": {
-              "item_noun": "WiFi extenders",
+              "item_noun": "Wi-Fi extenders",
               "client_response": [
                 {
                   "label": "1 extender",
@@ -31311,17 +31449,25 @@
                 {
                   "label": "2 extenders",
                   "tags": [],
+                  "modifier_ref": "wi_fi_extender_setup_item_count_template_2_extenders",
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "3 or more extenders (specify exact count in notes)",
+                  "label": "3 extenders",
                   "tags": [],
-                  "complexity_override": "routine",
+                  "modifier_ref": "wi_fi_extender_setup_item_count_template_3_extenders",
+                  "complexity_override": "skilled"
+                },
+                {
+                  "label": "4 or more extenders (specify exact count in notes)",
+                  "tags": [],
+                  "modifier_ref": "wi_fi_extender_setup_item_count_template_4_or_more_extenders_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
                   "formula_override": "item_count_overflow_formula"
                 }
-              ],
-              "question_override": "How many WiFi extenders do you need set up?"
-            }
+              ]
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           }
         ],
         "pricing": {
@@ -31381,27 +31527,42 @@
             "module": "item_count_template",
             "then": {},
             "params": {
-              "item_noun": "damaged areas",
+              "item_noun": "walls",
               "client_response": [
                 {
-                  "label": "1 area",
+                  "label": "1 wall",
                   "tags": [],
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "2–3 areas",
+                  "label": "2 walls",
                   "tags": [],
+                  "modifier_ref": "wood_paneling_repair_item_count_template_2_walls",
                   "complexity_override": "routine"
                 },
                 {
-                  "label": "4 or more areas (specify exact count in notes)",
+                  "label": "3 walls",
                   "tags": [],
-                  "complexity_override": "routine",
+                  "modifier_ref": "wood_paneling_repair_item_count_template_3_walls",
+                  "complexity_override": "routine"
+                },
+                {
+                  "label": "4 walls",
+                  "tags": [],
+                  "modifier_ref": "wood_paneling_repair_item_count_template_4_walls",
+                  "complexity_override": "skilled"
+                },
+                {
+                  "label": "5 or more walls (specify exact count in notes)",
+                  "tags": [],
+                  "modifier_ref": "wood_paneling_repair_item_count_template_5_or_more_walls_specify_exact_count_in_notes",
+                  "complexity_override": "skilled",
                   "formula_override": "item_count_overflow_formula"
                 }
               ],
-              "question_override": "How many damaged areas are there?"
-            }
+              "question_override": "How many walls have damaged paneling?"
+            },
+            "_quantity_justification": "Homogeneous batch of identical small units; every band moves price and time (enforced by verify_quantity_question_ratchet)."
           },
           {
             "module": "mounting_height",
@@ -31468,24 +31629,29 @@
         "intake_chain": [
           {
             "module": "pax_cabinet_count",
-            "then": {}
+            "then": {},
+            "_quantity_justification": "Configurable product: every count is of identical components (cabinets, hinges, sliding doors, interiors), priced by the PAX formula. The wardrobe-count stepper is the one borderline step (each wardrobe is configured separately) -- see PENDING_DECISIONS #76."
           },
           {
             "module": "pax_hinge_count",
-            "then": {}
+            "then": {},
+            "_quantity_justification": "Configurable product: every count is of identical components (cabinets, hinges, sliding doors, interiors), priced by the PAX formula. The wardrobe-count stepper is the one borderline step (each wardrobe is configured separately) -- see PENDING_DECISIONS #76."
           },
           {
             "module": "pax_sliding_count",
-            "then": {}
+            "then": {},
+            "_quantity_justification": "Configurable product: every count is of identical components (cabinets, hinges, sliding doors, interiors), priced by the PAX formula. The wardrobe-count stepper is the one borderline step (each wardrobe is configured separately) -- see PENDING_DECISIONS #76."
           },
           {
             "module": "pax_interior_count",
-            "then": {}
+            "then": {},
+            "_quantity_justification": "Configurable product: every count is of identical components (cabinets, hinges, sliding doors, interiors), priced by the PAX formula. The wardrobe-count stepper is the one borderline step (each wardrobe is configured separately) -- see PENDING_DECISIONS #76."
           },
           {
             "module": "hybrid_qty",
             "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
+            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5.",
+            "_quantity_justification": "Configurable product: every count is of identical components (cabinets, hinges, sliding doors, interiors), priced by the PAX formula. The wardrobe-count stepper is the one borderline step (each wardrobe is configured separately) -- see PENDING_DECISIONS #76."
           }
         ],
         "pricing": {
@@ -31564,11 +31730,6 @@
           {
             "module": "existing_toilet_type",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -31613,8 +31774,7 @@
           "_inherits_from_archetype": "plumbing_fixture"
         },
         "modules_needed_for_exact": [
-          "existing_toilet_type",
-          "hybrid_qty"
+          "existing_toilet_type"
         ]
       },
       "dishwasher_install": {
@@ -31627,11 +31787,6 @@
           {
             "module": "space_ready",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -31673,7 +31828,6 @@
           "_variability_score": 6.3
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "space_ready"
         ]
       },
@@ -31687,11 +31841,6 @@
           {
             "module": "space_ready",
             "then": {}
-          },
-          {
-            "module": "hybrid_qty",
-            "then": {},
-            "_note": "T118: explicitly authored (was force-injected universally). Routine tier; preserves existing, correct quantity-ordering capability per FORCE_INJECTION_AUDIT.md §5."
           }
         ],
         "pricing": {
@@ -31733,7 +31882,6 @@
           "_variability_score": 6.3
         },
         "modules_needed_for_exact": [
-          "hybrid_qty",
           "space_ready"
         ]
       },
@@ -31787,12 +31935,13 @@
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
-          "maximum_followup_questions": 2,
+          "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
           "_variability_tier": "high",
           "_variability_score": null,
-          "_note": "Matches washer_repair's own v9.5.10 Phase 4 reasoning exactly -- specialized-tier repair services are raised to 65, not left at the tier default of 40, per that fix's own, already-reviewed rationale. Not re-derived independently; applied consistently to a newly-authored service of the identical real shape."
+          "_note": "Matches washer_repair's own v9.5.10 Phase 4 reasoning exactly -- specialized-tier repair services are raised to 65, not left at the tier default of 40, per that fix's own, already-reviewed rationale. Not re-derived independently; applied consistently to a newly-authored service of the identical real shape.",
+          "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
           "location",
@@ -33479,7 +33628,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "symptom",
+            "module": "window_ac_issue",
             "then": {}
           }
         ],
@@ -33522,7 +33671,7 @@
           "_variability_tier": "diagnostic"
         },
         "modules_needed_for_exact": [
-          "symptom"
+          "window_ac_issue"
         ]
       },
       "minor_home_repairs+minor_home_repairs_appliances_window_ac+Repair": {
@@ -33533,7 +33682,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "symptom",
+            "module": "window_ac_issue",
             "then": {}
           }
         ],
@@ -33574,7 +33723,7 @@
           "_variability_tier": "high"
         },
         "modules_needed_for_exact": [
-          "symptom"
+          "window_ac_issue"
         ]
       },
       "minor_home_repairs+minor_home_repairs_appliances_other+Diagnostic": {
@@ -33907,7 +34056,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "surface_type",
+            "module": "floor_issue",
             "then": {}
           }
         ],
@@ -33948,7 +34097,7 @@
           "_variability_tier": "high"
         },
         "modules_needed_for_exact": [
-          "surface_type"
+          "floor_issue"
         ]
       },
       "minor_home_repairs+minor_home_repairs_furniture+Diagnostic": {
@@ -34173,7 +34322,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "surface_type",
+            "module": "window_issue",
             "then": {}
           }
         ],
@@ -34214,7 +34363,7 @@
           "_variability_tier": "high"
         },
         "modules_needed_for_exact": [
-          "surface_type"
+          "window_issue"
         ]
       },
       "furniture_fixes_assembly+furniture_fixes_assembly_assembly+Assembly": {
@@ -34282,7 +34431,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "surface_type",
+            "module": "furniture_issue",
             "then": {}
           }
         ],
@@ -34323,7 +34472,7 @@
           "_variability_tier": "high"
         },
         "modules_needed_for_exact": [
-          "surface_type"
+          "furniture_issue"
         ]
       },
       "furniture_fixes_assembly+furniture_fixes_assembly_disassembly+Assembly": {
@@ -34391,7 +34540,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "surface_type",
+            "module": "furniture_issue",
             "then": {}
           }
         ],
@@ -34432,7 +34581,7 @@
           "_variability_tier": "high"
         },
         "modules_needed_for_exact": [
-          "surface_type"
+          "furniture_issue"
         ]
       },
       "furniture_fixes_assembly+furniture_fixes_assembly_repair+Repair": {
@@ -34443,7 +34592,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "surface_type",
+            "module": "furniture_issue",
             "then": {}
           }
         ],
@@ -34484,7 +34633,7 @@
           "_variability_tier": "high"
         },
         "modules_needed_for_exact": [
-          "surface_type"
+          "furniture_issue"
         ]
       },
       "wall_mounting+wall_mounting_drywall_or_plaster+Mount": {
@@ -35122,7 +35271,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "symptom",
+            "module": "garbage_disposal_issue",
             "then": {}
           }
         ],
@@ -35166,7 +35315,7 @@
           "_variability_tier": "diagnostic"
         },
         "modules_needed_for_exact": [
-          "symptom"
+          "garbage_disposal_issue"
         ]
       },
       "plumbing_help+plumbing_help_garbage_disposals+Mount": {
@@ -35234,7 +35383,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "symptom",
+            "module": "plumbing_fixture_issue",
             "then": {}
           }
         ],
@@ -35278,7 +35427,7 @@
           "_variability_tier": "diagnostic"
         },
         "modules_needed_for_exact": [
-          "symptom"
+          "plumbing_fixture_issue"
         ]
       },
       "plumbing_help+plumbing_help_sinks+Install": {
@@ -35346,7 +35495,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "symptom",
+            "module": "plumbing_fixture_issue",
             "then": {}
           }
         ],
@@ -35390,7 +35539,7 @@
           "_variability_tier": "diagnostic"
         },
         "modules_needed_for_exact": [
-          "symptom"
+          "plumbing_fixture_issue"
         ]
       },
       "plumbing_help+plumbing_help_showers_tubs+Install": {
@@ -35458,7 +35607,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "symptom",
+            "module": "plumbing_fixture_issue",
             "then": {}
           }
         ],
@@ -35502,7 +35651,7 @@
           "_variability_tier": "diagnostic"
         },
         "modules_needed_for_exact": [
-          "symptom"
+          "plumbing_fixture_issue"
         ]
       },
       "plumbing_help+plumbing_help_toilets+Install": {
@@ -35570,7 +35719,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "symptom",
+            "module": "water_line_issue",
             "then": {}
           }
         ],
@@ -35613,7 +35762,7 @@
           "_variability_tier": "diagnostic"
         },
         "modules_needed_for_exact": [
-          "symptom"
+          "water_line_issue"
         ]
       },
       "plumbing_help+plumbing_help_water_lines+Install": {
@@ -38101,19 +38250,16 @@
         "confidence_gain": 15,
         "option_count": 0,
         "used_by": [
-          "door_lock_or_handle_install",
           "electric_lighting+electric_lighting_bulbs+Install",
           "electric_lighting+electric_lighting_fans+Install",
           "electric_lighting+electric_lighting_light_fixtures+Install",
           "electric_lighting+electric_lighting_outlets+Install",
           "electric_lighting+electric_lighting_switches+Install",
           "electric_lighting+electric_lighting_thermostats+Install",
-          "flatscreen_mounting_standard",
           "furniture_assembly_flat_pack",
           "furniture_fixes_assembly+furniture_fixes_assembly_assembly+Assembly",
           "furniture_fixes_assembly+furniture_fixes_assembly_disassembly+Assembly",
           "generic_mounting_service",
-          "light_fixture_replacement",
           "minor_home_repairs+Install",
           "minor_home_repairs+minor_home_repairs_appliances+Mount",
           "plumbing_help+plumbing_help_garbage_disposals+Mount",
@@ -38181,36 +38327,14 @@
         "confidence_gain": 15,
         "option_count": 0,
         "used_by": [
-          "angle_stop_replacement",
           "cabinet_knob_or_pull_install",
-          "ceiling_fan_install",
-          "chandelier_or_pendant_install",
-          "dishwasher_install",
-          "door_weatherstripping",
           "furniture_disassembly_for_moving",
           "furniture_repair_hourly",
-          "internal_hardware_replacement",
           "loose_tile_replacement",
-          "microwave_setup",
-          "p_trap_cleaning",
           "pax_wardrobe_assembly",
-          "refrigerator_install",
-          "refrigerator_water_line_install",
           "scratch_or_water_ring_removal",
           "shelf_mortar_mounting_buy_the_hour",
-          "shower_head_replacement",
-          "slow_drain_clearing",
-          "smart_speaker_setup",
-          "software_or_driver_install",
-          "system_restore_or_reset",
-          "thermostat_replacement",
-          "toilet_flapper_or_fill_valve_replacement",
-          "toilet_seat_replacement",
-          "toilet_wax_ring_replacement",
-          "tub_spout_replacement",
-          "under_cabinet_light_install",
-          "virus_or_malware_removal",
-          "washer_install"
+          "smart_speaker_setup"
         ],
         "tag_setters": [],
         "complexity_overrides": []
@@ -38472,7 +38596,6 @@
         "used_by": [
           "plaster_wall_repair",
           "squeaky_floor_repair",
-          "wall_hole_or_crack_repair",
           "wood_paneling_repair"
         ],
         "tag_setters": [],
@@ -38596,14 +38719,9 @@
         "confidence_gain": 20,
         "option_count": 5,
         "used_by": [
-          "furniture_fixes_assembly+furniture_fixes_assembly_assembly+Repair",
-          "furniture_fixes_assembly+furniture_fixes_assembly_disassembly+Repair",
-          "furniture_fixes_assembly+furniture_fixes_assembly_repair+Repair",
           "minor_home_repairs+Repair",
           "minor_home_repairs+minor_home_repairs_appliances_other+Repair",
-          "minor_home_repairs+minor_home_repairs_floors_trim+Repair",
-          "minor_home_repairs+minor_home_repairs_walls+Repair",
-          "minor_home_repairs+minor_home_repairs_windows+Repair"
+          "minor_home_repairs+minor_home_repairs_walls+Repair"
         ],
         "tag_setters": [
           "#tile_work"
@@ -38635,13 +38753,6 @@
           "minor_home_repairs+minor_home_repairs_appliances_stove_range+Repair",
           "minor_home_repairs+minor_home_repairs_appliances_washer+Diagnostic",
           "minor_home_repairs+minor_home_repairs_appliances_washer+Repair",
-          "minor_home_repairs+minor_home_repairs_appliances_window_ac+Diagnostic",
-          "minor_home_repairs+minor_home_repairs_appliances_window_ac+Repair",
-          "plumbing_help+plumbing_help_garbage_disposals+Diagnostic",
-          "plumbing_help+plumbing_help_showers_tubs+Diagnostic",
-          "plumbing_help+plumbing_help_sinks+Diagnostic",
-          "plumbing_help+plumbing_help_toilets+Diagnostic",
-          "plumbing_help+plumbing_help_water_lines+Diagnostic",
           "repair_appliances",
           "washer_repair",
           "window_ac_repair"
@@ -38759,6 +38870,22 @@
           "routine"
         ]
       },
+      "mount_sourcing": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 15,
+        "option_count": 2,
+        "used_by": [
+          "flatscreen_mounting_standard",
+          "flatscreen_mounting_with_hidden_cables"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": [
+          "routine"
+        ]
+      },
       "wall_type": {
         "classification": "component",
         "type": "single",
@@ -38861,7 +38988,6 @@
           "brick_or_concrete_crack_repair",
           "cabinet_door_or_drawer_adjustment",
           "dimmer_switch_install",
-          "door_repair_impact_damage",
           "gfci_outlet_replacement",
           "high_ceiling_bulb_replacement",
           "led_bulb_upgrade",
@@ -39445,6 +39571,9 @@
         "confidence_gain": 25,
         "option_count": 5,
         "used_by": [
+          "furniture_fixes_assembly+furniture_fixes_assembly_assembly+Repair",
+          "furniture_fixes_assembly+furniture_fixes_assembly_disassembly+Repair",
+          "furniture_fixes_assembly+furniture_fixes_assembly_repair+Repair",
           "minor_home_repairs+minor_home_repairs_furniture+Diagnostic",
           "minor_home_repairs+minor_home_repairs_furniture+Repair"
         ],
@@ -39473,7 +39602,8 @@
         "confidence_gain": 25,
         "option_count": 5,
         "used_by": [
-          "minor_home_repairs+minor_home_repairs_floors_trim+Diagnostic"
+          "minor_home_repairs+minor_home_repairs_floors_trim+Diagnostic",
+          "minor_home_repairs+minor_home_repairs_floors_trim+Repair"
         ],
         "tag_setters": [],
         "complexity_overrides": []
@@ -39499,7 +39629,8 @@
         "confidence_gain": 25,
         "option_count": 5,
         "used_by": [
-          "minor_home_repairs+minor_home_repairs_windows+Diagnostic"
+          "minor_home_repairs+minor_home_repairs_windows+Diagnostic",
+          "minor_home_repairs+minor_home_repairs_windows+Repair"
         ],
         "tag_setters": [],
         "complexity_overrides": []
@@ -39713,6 +39844,89 @@
         "complexity_overrides": [
           "routine",
           "skilled"
+        ]
+      },
+      "window_ac_issue": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 8,
+        "used_by": [
+          "minor_home_repairs+minor_home_repairs_appliances_window_ac+Diagnostic",
+          "minor_home_repairs+minor_home_repairs_appliances_window_ac+Repair"
+        ],
+        "tag_setters": [
+          "#emergency",
+          "#part_order_likely",
+          "#water_hazard"
+        ],
+        "complexity_overrides": [
+          "routine",
+          "specialized"
+        ]
+      },
+      "garbage_disposal_issue": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 7,
+        "used_by": [
+          "plumbing_help+plumbing_help_garbage_disposals+Diagnostic"
+        ],
+        "tag_setters": [
+          "#emergency",
+          "#part_order_likely",
+          "#water_hazard"
+        ],
+        "complexity_overrides": [
+          "routine",
+          "specialized"
+        ]
+      },
+      "plumbing_fixture_issue": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 6,
+        "used_by": [
+          "plumbing_help+plumbing_help_showers_tubs+Diagnostic",
+          "plumbing_help+plumbing_help_sinks+Diagnostic",
+          "plumbing_help+plumbing_help_toilets+Diagnostic"
+        ],
+        "tag_setters": [
+          "#emergency",
+          "#part_order_likely",
+          "#water_hazard"
+        ],
+        "complexity_overrides": [
+          "routine",
+          "specialized"
+        ]
+      },
+      "water_line_issue": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 5,
+        "used_by": [
+          "plumbing_help+plumbing_help_water_lines+Diagnostic"
+        ],
+        "tag_setters": [
+          "#emergency",
+          "#part_order_likely",
+          "#water_hazard"
+        ],
+        "complexity_overrides": [
+          "routine",
+          "specialized"
         ]
       }
     },
@@ -41639,11 +41853,11 @@
         "unit": "unit",
         "category": "mounting",
         "sub_category": "TV",
-        "required_by": [
+        "required_by": [],
+        "optional_for": [
           "flatscreen_mounting_standard",
           "flatscreen_mounting_with_hidden_cables"
-        ],
-        "optional_for": []
+        ]
       },
       "MAT-MNT-Shelf-Bracket": {
         "name": "Floating Shelf Bracket",
@@ -41850,7 +42064,9 @@
             }
           }
         },
-        "used_by": []
+        "used_by": [
+          "furniture_repair_hourly"
+        ]
       },
       "pax_wardrobe_formula": {
         "params": {
@@ -41903,9 +42119,18 @@
             "minutes_per_unit": 6
           },
           "tiers": [
-            {"up_to_units": 5, "rate_per_unit": 20},
-            {"up_to_units": 15, "rate_per_unit": 15},
-            {"up_to_units": null, "rate_per_unit": 10}
+            {
+              "up_to_units": 5,
+              "rate_per_unit": 20
+            },
+            {
+              "up_to_units": 15,
+              "rate_per_unit": 15
+            },
+            {
+              "up_to_units": null,
+              "rate_per_unit": 10
+            }
           ],
           "visit_minimum": 95,
           "_note": "T135+ REWRITTEN (PRICING_GUIDE section 4.2/10.2 P3, direct business input): replaces the prior flat_tier_price ($140) two-tier model, which had a confirmed, live bug (B3) -- the swap rate's own Tier 2 never activated below 96 units, so every real job from 1 to 95 units priced identically at $140 flat, regardless of actual size. New model: swap covers 20 units for a flat $20, then $1.00/unit; new_holes covers 10 units for a flat $35, then $3.50/unit -- continuous, no downward cliff, verified against the reference ladder (12 units swap=$20/new_holes=$42; 22 units swap=$22/new_holes=$77; 100 units swap=$100/new_holes=$350). T156 (operator ruling #112, option A, 2026-10-07): the old model above priced 1 to 20 swap knobs identically at $20, so a customer with ten knobs was quoted what a customer with one is. It is kept as the FLOOR: price = max(visit_minimum, tier total, the old flat price for the install type), so no job is quoted less than before. `tiers` are GRADUATED (marginal): the first 5 units are $20 each, units 6-15 are $15 each, every unit after the 15th is $10 (up_to_units is the cumulative count the tier runs to; null = open-ended). Graduated, not whole-order, because pricing the whole order at the tier its count falls in makes the price FALL as the count rises (5 knobs $100, 6 knobs $90; 15 knobs $225, 16 knobs $160), which the Charter forbids (quantity-per-unit labor scales continuously, never stepped). The tiers apply to both install types; new holes take longer (6 min per unit against 3) but the ruling set one table, so today they price the same. Reference ladder (swap = new holes): 1-4 -> $95 (the minimum), 5 -> $100, 6 -> $115, 10 -> $175, 15 -> $250, 16 -> $260, 20 -> $300, 50 -> $600."
@@ -41939,23 +42164,19 @@
               "overflow_rate_ref": "window_hardware_repair_item_count_overflow"
             },
             "brick_or_concrete_crack_repair": {
-              "anchor": 4,
+              "anchor": 5,
               "overflow_rate_ref": "brick_or_concrete_crack_repair_item_count_overflow"
             },
-            "door_repair_impact_damage": {
-              "anchor": 4,
-              "overflow_rate_ref": "door_repair_impact_damage_item_count_overflow"
-            },
             "plaster_wall_repair": {
-              "anchor": 4,
+              "anchor": 5,
               "overflow_rate_ref": "plaster_wall_repair_item_count_overflow"
             },
             "squeaky_floor_repair": {
-              "anchor": 4,
+              "anchor": 5,
               "overflow_rate_ref": "squeaky_floor_repair_item_count_overflow"
             },
             "wall_hole_or_crack_repair": {
-              "anchor": 4,
+              "anchor": 5,
               "overflow_rate_ref": "wall_hole_or_crack_repair_item_count_overflow"
             },
             "window_screen_repair": {
@@ -41963,7 +42184,7 @@
               "overflow_rate_ref": "window_screen_repair_item_count_overflow"
             },
             "wood_paneling_repair": {
-              "anchor": 4,
+              "anchor": 5,
               "overflow_rate_ref": "wood_paneling_repair_item_count_overflow"
             },
             "dimmer_switch_install": {
@@ -41979,7 +42200,7 @@
               "overflow_rate_ref": "smart_plug_configuration_item_count_overflow"
             },
             "wi_fi_extender_setup": {
-              "anchor": 3,
+              "anchor": 4,
               "overflow_rate_ref": "wi_fi_extender_setup_item_count_overflow"
             }
           }
@@ -42267,7 +42488,6 @@
         "flatscreen_mounting_with_hidden_cables",
         "furniture_fixes_assembly+furniture_fixes_assembly_assembly+Assembly",
         "furniture_fixes_assembly+furniture_fixes_assembly_disassembly+Assembly",
-        "furniture_fixes_assembly+furniture_fixes_assembly_repair+Assembly",
         "garbage_disposal_replacement",
         "generic_mounting_service",
         "gfci_outlet_replacement",
@@ -42276,24 +42496,9 @@
         "leak_under_sink_repair",
         "led_bulb_upgrade",
         "light_fixture_replacement",
-        "loose_tile_replacement",
         "microwave_setup",
         "minor_home_repairs+Install",
         "minor_home_repairs+minor_home_repairs_appliances+Mount",
-        "minor_home_repairs+minor_home_repairs_appliances_dishwasher+Mount",
-        "minor_home_repairs+minor_home_repairs_appliances_dryer+Mount",
-        "minor_home_repairs+minor_home_repairs_appliances_microwave+Mount",
-        "minor_home_repairs+minor_home_repairs_appliances_other+Mount",
-        "minor_home_repairs+minor_home_repairs_appliances_refrigerator+Mount",
-        "minor_home_repairs+minor_home_repairs_appliances_stove_range+Mount",
-        "minor_home_repairs+minor_home_repairs_appliances_washer+Mount",
-        "minor_home_repairs+minor_home_repairs_appliances_window_ac+Mount",
-        "minor_home_repairs+minor_home_repairs_cabinets_drawers+Mount",
-        "minor_home_repairs+minor_home_repairs_doors+Mount",
-        "minor_home_repairs+minor_home_repairs_floors_trim+Mount",
-        "minor_home_repairs+minor_home_repairs_furniture+Mount",
-        "minor_home_repairs+minor_home_repairs_walls+Mount",
-        "minor_home_repairs+minor_home_repairs_windows+Mount",
         "p_trap_cleaning",
         "plaster_wall_repair",
         "plumbing_help+Install",
@@ -42352,7 +42557,6 @@
     "hourly_timed": {
       "definition": "base_price plus a real, computed labor-time estimate (operational_metrics.expected_minutes) at the entity's complexity-tier hourly rate.",
       "currently_assigned_to": [
-        "cabinet_knob_or_pull_install",
         "computer_diagnostic",
         "furniture_assembly_flat_pack",
         "furniture_disassembly_for_moving",
@@ -42361,7 +42565,6 @@
         "furniture_fixes_assembly+furniture_fixes_assembly_assembly+Repair",
         "furniture_fixes_assembly+furniture_fixes_assembly_disassembly+Repair",
         "furniture_fixes_assembly+furniture_fixes_assembly_repair+Repair",
-        "furniture_repair_hourly",
         "microwave_repair",
         "minor_home_repairs+Repair",
         "minor_home_repairs+minor_home_repairs_appliances+Repair",
@@ -42393,6 +42596,7 @@
       "definition": "Real, deliberate non-commitment -- the honest price is the diagnostic/dispatch fee alone; the actual repair cost is genuinely unknown until a technician is on-site.",
       "currently_assigned_to": [
         "dishwasher_repair",
+        "dryer_repair",
         "minor_home_repairs+Diagnostic",
         "minor_home_repairs+minor_home_repairs_appliances+Diagnostic",
         "minor_home_repairs+minor_home_repairs_appliances_dishwasher+Diagnostic",
@@ -42415,6 +42619,7 @@
         "plumbing_help+plumbing_help_sinks+Diagnostic",
         "plumbing_help+plumbing_help_toilets+Diagnostic",
         "plumbing_help+plumbing_help_water_lines+Diagnostic",
+        "stove_repair",
         "tech_trouble+Diagnostic",
         "tech_trouble+tech_trouble_cable_management+Diagnostic",
         "tech_trouble+tech_trouble_computer_repair+Diagnostic",
@@ -42429,7 +42634,10 @@
     "formula": {
       "definition": "Delegates to a real, named, registered entry in pricing_formulas for its complete calculation -- the archetype itself defines no fixed shape beyond 'look up and run this formula'.",
       "currently_assigned_to": [
-        "blinds_shades_curtains_buy_the_hour"
+        "blinds_shades_curtains_buy_the_hour",
+        "cabinet_knob_or_pull_install",
+        "furniture_repair_hourly",
+        "loose_tile_replacement"
       ]
     }
   },
