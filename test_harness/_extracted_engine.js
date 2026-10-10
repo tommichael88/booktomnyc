@@ -41,6 +41,11 @@ const FALLBACKS = (() => {
             });
         })();
 const _GENERIC_QTY_MODULE_KEYS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
+const TIER_RANK = Object.freeze({
+            routine: 0,
+            skilled: 1,
+            specialized: 2
+        });
 const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula', 'buy_the_hour_qty_gate_formula']);
 
 // ─── Functions (source order) ───
@@ -186,18 +191,14 @@ function applyLiveConfidenceEscalation(baseStrategy, activeTagIds, smartTags, es
                 },
                 escalatedBy: null
             };
-            const RANK = {
-                skilled: 1,
-                specialized: 2
-            };
             let worst = null,
                 worstRank = 0;
             for (const tid of activeTagIds) {
                 const tagDef = smartTags[tid];
                 const override = tagDef?.escalate_complexity;
-                if (override && (RANK[override] || 0) > worstRank) {
+                if (override && (TIER_RANK[override] || 0) > worstRank) {
                     worst = override;
-                    worstRank = RANK[override];
+                    worstRank = TIER_RANK[override];
                 }
             }
             if (!worst) return {
@@ -269,11 +270,6 @@ function resolveConfidence(evidence, DB) {
         }
 
 function deriveComplexityTier(totalMinutes, tagOverrideTier, exactTier) {
-            const TIER_ORDER = {
-                routine: 0,
-                skilled: 1,
-                specialized: 2
-            };
             const tiers = DB.global_rules?.complexity_tiers || {};
             let durationTier = 'routine';
             for (const [key, def] of Object.entries(tiers)) {
@@ -285,8 +281,8 @@ function deriveComplexityTier(totalMinutes, tagOverrideTier, exactTier) {
                 }
             }
             let result = durationTier;
-            if (exactTier && (TIER_ORDER[exactTier] || 0) > (TIER_ORDER[result] || 0)) result = exactTier;
-            if (tagOverrideTier && (TIER_ORDER[tagOverrideTier] || 0) > (TIER_ORDER[result] || 0)) result = tagOverrideTier;
+            if (exactTier && (TIER_RANK[exactTier] || 0) > (TIER_RANK[result] || 0)) result = exactTier;
+            if (tagOverrideTier && (TIER_RANK[tagOverrideTier] || 0) > (TIER_RANK[result] || 0)) result = tagOverrideTier;
             return result;
         }
 
@@ -982,10 +978,6 @@ function computeUnifiedQuote(ctx) {
             // to work together with intake (see CHANGELOG_v9.2.md), and a
             // job that "starts routine but escalates based on responses"
             // could not actually escalate through this path before this fix.
-            const RANK = {
-                skilled: 1,
-                specialized: 2
-            };
             let answerOverrideTier = null;
             // v9.3 architecture (backlog — see CHANGELOG_v9.3.md): same
             // ratchet pattern as answerOverrideTier above, for
@@ -1133,7 +1125,7 @@ function computeUnifiedQuote(ctx) {
                         });
                     }
                     const ov = chosen.complexity_override;
-                    if (ov && (RANK[ov] || 0) > (RANK[answerOverrideTier] || 0)) {
+                    if (ov && (TIER_RANK[ov] || 0) > (TIER_RANK[answerOverrideTier] || 0)) {
                         answerOverrideTier = ov;
                     }
                     const cso = chosen.checkout_state_override;
@@ -1249,13 +1241,13 @@ function computeUnifiedQuote(ctx) {
             // exactly as much as the same fact confirmed via an intake
             // question answer.
             let tagOverrideTier = answerOverrideTier,
-                tagOverrideRank = RANK[answerOverrideTier] || 0;
+                tagOverrideRank = TIER_RANK[answerOverrideTier] || 0;
             for (const tid of activeTagIds) {
                 const tagDef = smartTags[tid];
                 const override = tagDef?.escalate_complexity;
-                if (override && (RANK[override] || 0) > tagOverrideRank) {
+                if (override && (TIER_RANK[override] || 0) > tagOverrideRank) {
                     tagOverrideTier = override;
-                    tagOverrideRank = RANK[override];
+                    tagOverrideRank = TIER_RANK[override];
                 }
             }
             const exactTier = svc?.operational_metrics?.complexity_tier || null;
