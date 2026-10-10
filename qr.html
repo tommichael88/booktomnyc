@@ -245,7 +245,7 @@ body.modal-active{overflow:hidden}
 #routeCardHost{width:100%}
 #intakeQuestionsContainer{display:flex;flex-direction:column;gap:0;width:100%;padding:0;background:0 0;color:#fff}
 #intakeQuestionsContainer h3{font-size:1.05rem;font-weight:700;color:#fff;border:0;margin-bottom:8px;display:inline-flex;align-items:center;gap:10px;padding:8px 14px;background:#ffffff8c;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:var(--radius-sm);border-left:3px solid #de0000}
-#intakeQuestionsContainer p{background:#000;color:#ffffffb3;font-size:.88rem;line-height:1.5;margin:0 0 10px;padding:0 4px}
+#intakeQuestionsContainer p{font-size:.88rem;line-height:1.5;margin:0 0 10px;padding:0 4px}
 .simple-intake-form{display:flex;flex-direction:column;gap:14px;background:silver;color:#fff}
 .intake-section{display:flex;flex-direction:column;gap:10px;background:#555}
 .intake-label{font-size:.95rem;font-weight:700;color:#ffff00e6;letter-spacing:.01em;padding:0 2px}
@@ -3252,12 +3252,6 @@ body.modal-active{overflow:hidden}
                 // of exactly this single-field-name assumption.
                 divergenceCreditNote: divergenceCfg.credit_policy_note || divergenceCfg.credit_policy || '',
             };
-        }
-
-        const parsePriceToInt = (str) => {
-            if (!str || typeof str !== 'string') return 0;
-            const m = str.match(/(\d+(?:\.\d+)?)/);
-            return m ? Math.round(parseFloat(m[1])) : 0;
         }
 
 
@@ -7338,8 +7332,11 @@ body.modal-active{overflow:hidden}
             // T153: a quantity that MOVES the price must be a control the customer can use. The loop above draws only chip questions (it returns for a module with no client_response), so a
             // numeric quantity module was never drawn: ten services quoted a price that scaled with a quantity nobody could enter. Pure render of route.quantity; the click goes to the Glue handler.
             const _qtyModule = chain.find(m => !((m.client_response || []).length) && m.type === 'numeric_multiplier');
+            // T158: the quantity the card PRICED (route.quantity, resolved by the orchestrator); null when the service has no quantity stance. Drawn by the stepper below, and recorded on the
+            // cart line by the Add handler -- a line that carries only its price loses how many the customer asked for (three knobs and one knob both quote the visit minimum).
+            const _unitsPriced = (route.quantity && route.quantity.stance === 'batched') ? (route.quantity.requestedQty || route.quantity.units || 1) : null;
             if (_qtyModule && route.quantity && route.quantity.stance === 'batched') {
-                const _qtyNow = route.quantity.requestedQty || route.quantity.units || 1;
+                const _qtyNow = _unitsPriced;
                 html += `<div class="intake-module-step ims-qty" style="margin-bottom:16px;">
                      <div class="ims-label" data-mod="${_qtyModule.moduleKey || _qtyModule.module}" style="font-weight:bold; margin-bottom:8px;">${escapeHtml(_qtyModule.question || 'How many?')}</div>
                      <div class="ims-qty-row" style="display:flex; align-items:center; gap:12px;">
@@ -7441,8 +7438,8 @@ body.modal-active{overflow:hidden}
                 price: '$' + (onsite ? terms.fee : q.laborEstimate),
                 icon: entity.ui_taxonomy?.icon || '🔧',
                 detail: onsite ? 'On-site diagnostic (flat rate)' : 'Curated intake',
-                notes: 'Answers: ' + JSON.stringify(answers) + (onsite ? '\n' + terms.bookingNote : ''),
-                intakeAnswers: { ...answers },        // NEW — structured; the merge key reads this
+                notes: 'Answers: ' + JSON.stringify(answers) + (!onsite && _unitsPriced > 1 ? '\nQuantity: ' + _unitsPriced : '') + (onsite ? '\n' + terms.bookingNote : ''),
+                intakeAnswers: { ...answers, ...(!onsite && _unitsPriced !== null ? { __qty: _unitsPriced } : {}) },   // structured; the merge key reads this. __qty: the quantity priced, as the guided builders record it (the on-site diagnostic is a flat fee: no quantity)
                 _variant: onsite ? 'onsite' : null,    // NEW — discriminates the Fork-B line
                 materialsNotIncluded: true,
                 materialsEstimateRange: [0, 0]
@@ -9780,7 +9777,7 @@ body.modal-active{overflow:hidden}
                 item.appendChild(tw);
                 item.appendChild(create('div', {
                     class: 'cart-service-price',
-                    text: svc.price || '0'
+                    text: formatCartLinePrice(svc)
                 }));
                 const rmBtn = create('button', {
                     class: 'remove-service-btn',
@@ -9898,9 +9895,17 @@ body.modal-active{overflow:hidden}
 
         function updateCartOverlayTotal(cart) {
             const items = cart || window.__store.getState().cart.serviceRequest;
-            const total = items.reduce((sum, svc) => sum + parsePriceToInt(svc.price), 0);
+            const total = cartTotal(items); // LOGIC (cart_logic): the sum of amount x qty -- no renderer sums prices on its own
             if (DOM.cartTotal) setText(DOM.cartTotal, `$${total}`);
             if (DOM.serviceCount) setText(DOM.serviceCount, String(items.length));
+        }
+
+        // formatCartLinePrice -- RENDERER helper, the one place a cart line's price is worded. A line requested once shows its quoted price as authored; one requested n times shows
+        // "<price> × n", so the line, the total (cartTotal: amount x qty) and what the customer tapped all agree. Reads the entry's own price and qty (cartLineQty, LOGIC); decides nothing.
+        function formatCartLinePrice(svc) {
+            const n = cartLineQty(svc);
+            const shown = (svc && svc.price) || '0';
+            return n > 1 ? shown + ' \u00d7 ' + n : shown;
         }
 
         function updateCartSummary(cart) {
@@ -9923,7 +9928,6 @@ body.modal-active{overflow:hidden}
             });
 
             DOM.serviceRequestList.replaceChildren();
-            let total = 0;
             items.forEach(svc => {
                 const item = create('div', {
                     class: 'summary-service-item'
@@ -9999,11 +10003,11 @@ body.modal-active{overflow:hidden}
                 item.appendChild(rmBtn);
                 item.appendChild(create('div', {
                     class: 'summary-service-price',
-                    text: svc.price || '0'
+                    text: formatCartLinePrice(svc)
                 }));
                 DOM.serviceRequestList.appendChild(item);
-                total += parsePriceToInt(svc.price);
             });
+            const total = cartTotal(items); // LOGIC (cart_logic)
             const hasItems = items.length > 0;
             if (DOM.estimateTotalSummary) DOM.estimateTotalSummary.style.display = hasItems ? 'flex' : 'none';
             if (DOM.totalAmount) setText(DOM.totalAmount, `$${total}`);
@@ -10050,9 +10054,49 @@ body.modal-active{overflow:hidden}
  * from the entry's own structured fields, in exactly one place
  * (R-INVARIANT-CANONICAL).
  *
+ * A second fact, found by driving the real cart (verify_cart_merge_behavior):
+ * identity must include everything that determines the PRICE. Three shelves
+ * ($478) and one shelf ($159), same service and same answers, used to merge
+ * into one $478 line -- the $159 request vanished -- and the merged line's
+ * qty was read by nothing: the total and the line ignored it, so two
+ * identical taps were quoted once. The quoted amount is now part of a line's
+ * identity (cartLineAmount), and the total is the sum of amount x qty
+ * (cartTotal), computed here and nowhere else.
+ *
  * Ledger entry: TIMELINE §T158.
- * Named defect class: DEFECT-PRESENTATION-IDENTITY.
+ * Named defect classes: DEFECT-PRESENTATION-IDENTITY (the key was a display
+ * string); DEFECT-UNPRICED-IDENTITY (the key omitted a priced fact, and a
+ * stored qty nothing read).
  */
+
+// cartLineAmount -- LOGIC. The dollar amount a cart line quotes, as an integer:
+// the first number in the entry's price (a string such as '$478', '$95+',
+// ' $ 50.00 ', or a number), rounded; 0 when there is none. This is the one
+// price-string reader for the cart (the two cart totals used to each carry
+// their own copy of this parse).
+function cartLineAmount(entry) {
+    if (!entry || typeof entry !== 'object') return 0;
+    const p = entry.price;
+    if (typeof p === 'number') return Number.isFinite(p) ? Math.round(p) : 0;
+    if (typeof p !== 'string') return 0;
+    const m = p.match(/(\d+(?:\.\d+)?)/);
+    return m ? Math.round(parseFloat(m[1])) : 0;
+}
+
+// cartLineQty -- LOGIC. How many times this line was requested: a whole
+// number >= 1 (a missing, zero, negative or non-numeric qty is one).
+function cartLineQty(entry) {
+    const n = Math.floor(Number(entry && entry.qty));
+    return n >= 1 ? n : 1;
+}
+
+// cartTotal -- LOGIC. The cart's total: the sum, over every line, of its
+// quoted amount times its qty. The cart summary and the cart overlay read
+// this; no renderer sums prices on its own.
+function cartTotal(items) {
+    if (!Array.isArray(items)) return 0;
+    return items.reduce((sum, it) => sum + cartLineAmount(it) * cartLineQty(it), 0);
+}
 
 // canonicalAnswerKey -- LOGIC. Order-independent signature of an answers
 // object. Two objects with the same key/value pairs in any order produce
@@ -10084,6 +10128,13 @@ function canonicalAnswerKey(answers) {
 //                  (intakeAnswers / _answers); otherwise the renderer's own
 //                  opaque notes string, preserving historical behaviour for
 //                  renderers that disambiguate by free text.
+//   amount     -- the quoted amount (cartLineAmount, an integer). Two requests
+//                  for the same service with the same answers that quote
+//                  different amounts (a different quantity, a different
+//                  condition the answers do not carry) are different
+//                  purchases; merging them would keep one price and drop the
+//                  other. The FORMAT of the price string never matters, only
+//                  the amount it quotes.
 function cartLineKey(entry) {
     if (!entry || typeof entry !== 'object') return '';
     const answers = entry.intakeAnswers || entry._answers || null;
@@ -10093,6 +10144,7 @@ function cartLineKey(entry) {
         entry.category_id || '',
         entry._variant || '',
         answersPart,
+        String(cartLineAmount(entry)),
     ].join('::');
 }
 
@@ -10108,7 +10160,8 @@ function cartLineKey(entry) {
 //
 // Furniture lines are keyed by name+category, matching the historical,
 // deliberate rule (two furniture assemblies under different categories
-// are different jobs). Non-furniture lines are keyed by cartLineKey.
+// are different jobs). Non-furniture lines are keyed by cartLineKey; a match
+// raises that line's qty, and cartTotal prices the line at amount x qty.
 function resolveCartTransition(entry, currentCart) {
     const cart = Array.isArray(currentCart) ? currentCart : [];
     if (!entry || !entry.id) {
@@ -10147,10 +10200,12 @@ function resolveCartTransition(entry, currentCart) {
 
     // ---- Non-furniture: match by the entry's own business identity ----
     const key = cartLineKey(entry);
-    // Guard against an empty key (a degenerate entry with no identity at
-    // all) — never match on '' because that would merge every anonymous
-    // entry into one line.
-    if (key && key !== '::') {
+    // An entry merges only on a service identity. One that names no service
+    // (no serviceId / serviceKey) has nothing to compare, so it is appended,
+    // never merged -- otherwise every anonymous entry would collapse into one
+    // line. (The earlier guard compared the key with '::', but the empty key
+    // of several joined parts is a run of separators, so it never fired.)
+    if (entry.serviceId || entry.serviceKey) {
         const idx = cart.findIndex(it => !it.furnitureItems && cartLineKey(it) === key);
         if (idx !== -1) {
             const existing = cart[idx];
