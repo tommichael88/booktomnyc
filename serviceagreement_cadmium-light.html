@@ -1,0 +1,760 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Service Agreement</title>
+    <style>
+        /* Common CSS use by both light and dark themes */
+:root {
+  --titleBarHeight: 32px;
+  --editorAreaWidth: 750px;
+
+  /*editor*/
+  /*Theme color cluster*/
+  --themeColor: rgba(33, 181, 111, 1);
+  --themeColor90: rgba(33, 181, 111, .9);
+  --themeColor80: rgba(33, 181, 111, .8);
+  --themeColor70: rgba(33, 181, 111, .7);
+  --themeColor60: rgba(33, 181, 111, .6);
+  --themeColor50: rgba(33, 181, 111, .5);
+  --themeColor40: rgba(33, 181, 111, .4);
+  --themeColor30: rgba(33, 181, 111, .3);
+  --themeColor20: rgba(33, 181, 111, .2);
+  --themeColor10: rgba(33, 181, 111, .1);
+  --highlightThemeColor: var(--themeColor);
+
+  --highlightColor: rgba(33, 181, 111, .4);
+  --selectionColor: rgba(0, 0, 0, .1);
+  --editorColor: rgba(0, 0, 0, .7);
+  --editorColor80: rgba(0, 0, 0, .8);
+  --editorColor60: rgba(0, 0, 0, .6);
+  --editorColor50: rgba(0, 0, 0, .5);
+  --editorColor40: rgba(0, 0, 0, .4);
+  --editorColor30: rgba(0, 0, 0, .3);
+  --editorColor10: rgba(0, 0, 0, .1);
+  --editorColor04: rgba(0, 0, 0, .03);
+  --editorBgColor: rgba(255, 255, 255, 1);
+  --deleteColor: #ff6969;
+  --iconColor: #6B737B;
+  --codeBgColor: #d8d8d869;
+  --codeBlockBgColor: rgba(0, 0, 0, 0.03);
+  --footnoteBgColor: rgba(0, 0, 0, .03);
+  --inputBgColor: rgba(0, 0, 0, .06);
+  --focusColor: var(--themeColor);
+
+  --buttonFontColor: var(--editorColor);
+  --buttonBgColor: #ffffff;
+  --buttonBorder: 1px solid #dcdfe6;
+  --buttonShadow: none;
+  --buttonFontColorHover: var(--buttonFontColor);
+  --buttonBgColorHover: linear-gradient(#f9f9f9, #f2f2f2);
+  --buttonBorderHover: var(--buttonBorder);
+  --buttonFontColorActive: var(--buttonFontColor);
+  --buttonBgColorActive: #f0f0f0;
+  --buttonBorderActive: var(--buttonBorder);
+  --buttonFocusBorder: 1px solid var(--themeColor);
+
+  --buttonPrimaryFontColor: #ffffff;
+  --buttonPrimaryBgColor: var(--themeColor);
+  --buttonPrimaryBorder: none;
+  --buttonPrimaryShadow: 0 0 8px 0 rgba(0, 0, 0, .1);
+  --buttonPrimaryFontColorHover: var(--buttonPrimaryFontColor);
+  --buttonPrimaryBgColorHover: var(--buttonPrimaryBgColor);
+  --buttonPrimaryBorderHover: var(--buttonPrimaryBorder);
+  --buttonPrimaryFontColorActive: var(--buttonPrimaryFontColor);
+  --buttonPrimaryBgColorActive: var(--buttonPrimaryBgColor);
+  --buttonPrimaryBorderActive: var(--buttonPrimaryBorder);
+  --buttonPrimaryFocusBorder: none;
+  --buttonPrimaryFocusShadow: inset 0 0 0 1px rgba(13, 91, 55, 0.5), 0 0 0 1px var(--themeColor);
+  --tableBorderColor: #e5e5e5;
+
+  /*marktext*/
+  --sideBarColor: rgba(0, 0, 0, .6);
+  --sideBarIconColor: var(--iconColor);
+  --sideBarTitleColor: rgba(0, 0, 0, 1);
+  --sideBarTextColor: rgba(0, 0, 0, .4);
+  --sideBarBgColor: rgba(242, 242, 242, 0.9);
+  --sideBarItemHoverBgColor: rgba(0, 0, 0, .03);
+  --itemBgColor: rgba(255, 255, 255, 0.6);
+
+  --floatFontColor: rgba(0, 0, 0, .6);
+  --floatBgColor: #fff;
+  --floatHoverColor: rgba(0, 0, 0, .04);
+  --floatBorderColor: rgba(0, 0, 0, .1);
+  --floatShadow: rgba(15, 15, 15, 0.03) 0px 0px 0px 1px, rgba(15, 15, 15, 0.04) 0px 3px 6px, rgba(15, 15, 15, 0.05) 0px 9px 24px;
+  --maskColor: rgba(232, 232, 232, .8);
+
+  /* Notification colors */
+  --notificationPrimaryColor: #ffffff;
+  --notificationPrimaryBg: var(--themeColor);
+  --notificationInfoColor: #ffffff;
+  --notificationInfoBg: #909399;
+  --notificationWarningColor: #ffffff;
+  --notificationWarningBg: #ff8800;
+  --notificationErrorColor: #ffffff;
+  --notificationErrorBg: #ff6969;
+}
+
+::-webkit-scrollbar,
+::-webkit-scrollbar-corner {
+  background: var(--floatHoverColor);
+}
+
+::-webkit-scrollbar:vertical {
+  width: 12px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--editorColor10);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--editorColor30);
+}
+
+:focus {
+  outline: none;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  caret-color: var(--editorColor);
+}
+
+body {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.icon {
+  width: 1em; height: 1em;
+  vertical-align: -0.15em;
+  fill: currentColor;
+  overflow: hidden;
+}
+
+.text-overflow {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Overwrite Element style */
+.el-tooltip__popper {
+  background: var(--floatBgColor);
+  color: var(--sideBarColor);
+  box-shadow: 0 4px 8px 0 var(--floatBorderColor);
+  border: solid 1px var(--floatBorderColor);
+}
+
+.el-tooltip__popper[x-placement^=left] .popper__arrow {
+  border-bottom-color: var(--floatBorderColor);
+}
+.el-tooltip__popper[x-placement^=top] .popper__arrow {
+  border-bottom-color: var(--floatBorderColor);
+}
+.el-tooltip__popper[x-placement^=right] .popper__arrow {
+  border-bottom-color: var(--floatBorderColor);
+}
+.el-tooltip__popper[x-placement^=bottom] .popper__arrow {
+  border-bottom-color: var(--floatBorderColor);
+}
+
+.el-button:hover,
+.el-button--primary:hover {
+  border-color: unset;
+}
+.el-button:active,
+.el-button--primary:active {
+  border-color: unset;
+}
+.el-button:focus,
+.el-button--primary:focus {
+  border-color: unset;
+}
+
+.el-slider__button {
+  border-color: var(--themeColor);
+}
+
+.el-slider__bar {
+  background-color: var(--themeColor);
+}
+
+.el-dialog,
+.el-dialog.ag-dialog-table {
+  border-radius: 8px;
+  box-shadow: 0 4px 8px 0 var(--floatBorderColor);
+  border: solid 1px var(--floatBorderColor);
+  background-color: var(--floatBgColor);
+}
+.el-dialog__header {
+  position: relative;
+  display: block;
+  padding: 8px 6px;
+}
+
+input.el-input__inner {
+  background: var(--inputBgColor);
+  border: 1px solid var(--editorColor10);
+  color: var(--editorColor80);
+}
+
+.el-input-number.is-controls-right span.el-input-number__decrease,
+.el-input-number.is-controls-right span.el-input-number__increase {
+  background: var(--buttonBgColor);
+  border-left: none;
+  color: var(--editorColor80);
+}
+
+.el-input-number.is-controls-right span.el-input-number__increase {
+  border-bottom: none;
+}
+
+.el-tabs__nav-wrap::after {
+  background: var(--editorColor04);
+}
+
+div.el-tabs__item {
+  color: var(--editorColor);
+}
+
+div.el-tab-pane {
+  color: var(--editorColor);
+  font-size: 14px;
+}
+
+.ag-dialog-table .dialog-title svg {
+  width: 1.5em;
+  height: 1.5em;
+}
+
+.ag-underdevelop {
+  opacity: .3;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.button,
+.muya-button,
+.el-button {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--buttonFontColor);
+  background: var(--buttonBgColor);
+  border: var(--buttonBorder);
+  border-radius: 5px;
+  box-shadow: var(--buttonShadow);
+  padding: 7px 14px;
+}
+.button:hover,
+.muya-button:hover,
+.el-button:hover {
+  color: var(--buttonFontColorHover);
+  background: var(--buttonBgColorHover);
+  border: var(--buttonBorderHover);
+}
+.button:active,
+.muya-button:active,
+.el-button:active {
+  color: var(--buttonFontColorActive);
+  background: var(--buttonBgColorActive);
+  border: var(--buttonBorderActive);
+}
+.button:focus,
+.muya-button:focus,
+.el-button:focus {
+  outline: none;
+  border: var(--buttonFocusBorder);
+}
+
+.button-primary,
+.muya-button-primary,
+.el-button--primary {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--buttonPrimaryFontColor);
+  background: var(--buttonPrimaryBgColor);
+  border: var(--buttonPrimaryBorder);
+  border-radius: 5px;
+  box-shadow: var(--buttonPrimaryShadow);
+  padding: 7px 14px;
+}
+.button-primary:hover,
+.muya-button-primary:hover,
+.el-button--primary:hover {
+  color: var(--buttonPrimaryFontColorHover);
+  background: var(--buttonPrimaryBgColorHover);
+  border: var(--buttonPrimaryBorderHover);
+}
+.button-primary:active,
+.muya-button-primary:active,
+.el-button--primary:active {
+  color: var(--buttonPrimaryFontColorActive);
+  background: var(--buttonPrimaryBgColorActive);
+  border: var(--buttonPrimaryBorderActive);
+}
+button.button-primary:not(.custom):focus,
+.button-primary:focus,
+.muya-button-primary:focus,
+.el-button--primary:focus {
+  outline: none;
+  border: var(--buttonPrimaryFocusBorder);
+  box-shadow: var(--buttonPrimaryFocusShadow);
+}
+
+.button.disabled,
+.button[disabled],
+.muya-button.disabled,
+.muya-button[disabled],
+.el-button.disabled,
+.el-button[disabled],
+.button-primary.disabled,
+.button-primary[disabled],
+.el-button--primary.disabled,
+.el-button--primary[disabled] {
+  cursor: not-allowed !important;
+  opacity: .65 !important;
+  box-shadow: none !important;
+}
+
+.button.small,
+.muya-button.small,
+.el-button.small,
+.button-primary.small,
+.muya-button-primary.small,
+.el-button--primary.small {
+  padding: 5px 8px;
+}
+.button.tiny,
+.muya-button.tiny,
+.el-button.tiny,
+.button-primary.tiny,
+.muya-button-primary.tiny,
+.el-button--primary.tiny {
+  font-size: 13px;
+  padding: 4px 7px;
+}
+
+.button-group {
+  /* Remove space between buttons */
+  font-size: 0;
+}
+.button-group > button:first-child:not(:last-child) {
+  border-bottom-right-radius: 0;
+  border-top-right-radius: 0;
+  margin-left: 0;
+  border-right: none;
+}
+.button-group > button:not(:first-child):not(:last-child) {
+  border-radius: 0;
+  margin-left: 0;
+  margin-right: 0;
+  border-right: none;
+}
+.button-group > button:last-child:not(:first-child) {
+  border-bottom-left-radius: 0;
+  border-top-left-radius: 0;
+  margin-right: 0;
+}
+
+/* Overwrite element UI button padding */
+.el-button,
+.el-button--primary {
+  padding: 7px 14px;
+}
+.el-button:focus {
+  background-color: var(--buttonBgColor);
+}
+.el-button--primary:focus {
+  background-color: var(--buttonPrimaryBgColor);
+}
+.el-button.is-disabled,
+.el-button.is-disabled:focus,
+.el-button.is-disabled:hover {
+  color: var(--buttonFontColor);
+  background: var(--buttonBgColor);
+  border: var(--buttonBorder);
+  box-shadow: none;
+}
+.el-button--primary.is-disabled,
+.el-button--primary.is-disabled:focus,
+.el-button--primary.is-disabled:hover {
+  color: var(--buttonPrimaryFontColor);
+  background: var(--buttonPrimaryBgColor);
+  border: var(--buttonPrimaryBorder);
+  box-shadow: none;
+}
+
+.image-viewer {
+  z-index: 10001;
+}
+
+
+
+@media (prefers-color-scheme: light) {
+  .markdown-body,
+  [data-theme="light"] {
+    /*light*/
+    /*light*/
+    color-scheme: light;
+    --color-prettylights-syntax-comment: #6e7781;
+    ... (additional variables here) ...
+    --color-done-fg: #8250df;
+  }
+}
+
+    </style>
+</head>
+<body>
+    <div class="markdown-body">
+        <h1>SERVICE AGREEMENT</h1>
+
+<hr />
+
+<h5><u>Legal Disclaimer:</u> The forthcoming "Service Agreement" constitutes a legally binding contract and is not intended as legal advice or guidance. For personalized legal assistance, please consult with a qualified attorney or legal professional.</h5>
+
+<hr />
+
+<p>| <strong><em>*Service Provider</em>*</strong>                                                                               |
+|:------------------------------------------------------------------------------------------------------:|
+| <strong>Name:</strong> Tom Kongerslev                                                                               |
+| <strong>Email:</strong> booktom@icloud.com                                                                          |
+| <strong>Phone:</strong> 929-256-3252                                                                                |
+| <strong>Websites:</strong>  <a href="https://booktom.nyc">booktom.nyc</a> / <a href="https://booktom.setmore.com">booktom.setmore.com</a> |</p>
+
+<p>| <strong>Client</strong>                    |
+|:-----------------------------:|
+| Details  provided at booking. |</p>
+
+<p>| <strong>Date</strong>                 |
+|:------------------------:|
+| Date of service booking. |</p>
+
+<p>This Service Agreement (the "<strong>Agreement</strong>") is entered into between <strong>Tom Kongerslev</strong>, an alias for Thomas Kongerslev, hereinafter referred to as the "<strong>Service Provider</strong>," and the client (where specific details are provided upon booking), hereinafter referred to as the "<strong>Client</strong>." Together, they are collectively referred to as the "<strong>Parties</strong>."  </p>
+
+<p><strong>The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service.</strong></p>
+
+<hr />
+
+<h2>Table of Contents</h2>
+
+<p>|                                                                                                                                                    |                                                                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#1-introduction">Introduction</a>                                                       | 11. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#11-payment-as-acceptance-of-terms">Payment As Acceptance Of Terms</a>                         |
+| 2. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#2-definitions">Definitions</a>                                                         | 12. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#12-refusal-to-pay">Refusal To Pay</a>                                                         |
+| 3. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#3-scope-of-services">Scope Of Services</a>                                             | 13. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#13-client-responsibilities">Clients Responsibilities</a>                                      |
+| 4. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-governing-law-and-jurisdiction">Governing Law And Jurisdiction</a>                  | 14. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#14-agreement-updates">Agreement Updates</a>                                                   |
+| 5. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#5-service-providers-status">Service Providers Status</a>                               | 15. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#15-severability">Severability</a>                                                             |
+| 6. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#6-hold-harmless-clause">Hold Harmless Clause</a>                                       | 16. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#16-emergency-situations">Emergency Situations</a>                                             |
+| 7. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#7-limitation-of-liability">Limitation Of Liability</a>                                 | 17. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#17-timeframes">Timeframes</a>                                                                 |
+| 8. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#8-quality-of-work-and-guarantee">Quality Of Work And Guarantee</a>                     | 18. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#18-dispute-resolution">Dispute Resolution</a>                                                 |
+| 9. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#9-fees-and-payment">Fees And Payment</a>                                               | 19. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#19-media-policy-and-client-feedback-ownership">Media Policy and Client Feedback Ownership</a> |
+| 10. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#10-agreement-acceptance-and-payment-terms">Agreement Acceptance And Payment Terms</a> | 20. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#20-privacy-policy">Privacy Policy</a>                                                         |
+|                                                                                                                                                    | 21. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#21-disclaimer">Disclaimer</a>                                                                 |
+|                                                                                                                                                    |                                                                                                                                                            |
+| <strong><em>ANNEX A. Scope of Work</em></strong>                                                                                                                       |                                                                                                                                                            |
+|                                                                                                                                                    |                                                                                                                                                            |
+| A. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#a-minor-home-repairs">Minor Home Repairs</a>                                           | D. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#d-electrical-help">Electrical Help</a>                                                         |
+| B. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#b-wall-mounting">Wall Mounting</a>                                                     | E. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#e-furniture-fixes-&-assembly">Furniture Fixes &amp; Assembly</a>                                   |
+| C. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#c-computer-tech-services">Computer Tech Services</a>                                   | F. <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement#f-plumbing-help">Plumbing Help</a>                                                             |</p>
+
+<h2>1. Introduction</h2>
+
+<p>By accessing and using the services provided by the Service Provider either through directly contacting Service Provider or by scheduling service through <a href="https://booktom.nyc">BookTOM.NYC</a> or <a href="https://booktom.setmore.com">Setmore Appointments</a>, the Client agrees to the terms and conditions outlined in this Agreement. The Client acknowledges that they have full and comprehensive insurance coverage, which extends to anyone impacted by the service they are requesting. The Service Provider operates under the assumption that the Client is fully insured and will not accept responsibility for any work where this is not the case as permitted by law. </p>
+
+<p><strong>The Service Agreement is not valid for services booked through third party referal platforms (sometimes known as "match maker" services) of which both Client and Service Provider are bound by the third party referal platform's terms of service .</strong></p>
+
+<h2>2. Definitions</h2>
+
+<ul>
+<li><strong>Service Provider</strong>: Refers to Tom Kongerslev or alias Thomas Kongerslev, offering handyman and tech services.</li>
+<li><strong>Client</strong>: Refers to the individual (or individuals) utilizing and/or requesting services performed by the Service Provider.</li>
+<li><strong>Services</strong>: Refers to handyman, tech, and computer services provided by the Service Provider.</li>
+<li><strong>Job</strong>: Refers to the entire scope of work or project that the Client has requested. This encompasses all tasks, services, and other related activities required to complete the Client's request from start to finish.</li>
+<li><strong>Work</strong>: Refers to the physical or digital actions, efforts, and activities performed by the Service Provider to fulfill a specific task, service, or job.</li>
+<li><strong>Task</strong>: Refers to an individual activity or step that is part of a larger service or job. For instance, within the "Wall Mounting" service, a task might be "drilling holes in the wall."</li>
+<li><strong>Project</strong>: Refers to a larger endeavor that may encompass multiple jobs, services, and tasks. It's a broader term that might be used for more extensive engagements with the Client.</li>
+</ul>
+
+<h2>3. Scope of Services</h2>
+
+<p>The Service Provider will provide the Client with the services as mutually agreed upon in writing. The detailed scope of each service is provided in Annex A.</p>
+
+<h2>4. Governing Law and Jurisdiction</h2>
+
+<p>This Agreement follows the laws of the State of New York. Legal actions related to this Agreement will be taken exclusively in New York City, New York courts.</p>
+
+<h2>5. Service Providers Status</h2>
+
+<p>The Service Provider is not a licensed contractor or tradesperson (e.g., plumber or electrician) and does not claim to be. The Client should not request work requiring such professional status by law. The Service Provider is not obligated to accept tasks needing specialized skills, licensing, insurance, or permits. For work in New York, the Service Provider follows legal handyman standards. If the Client requests non-standard work, Client assumes responsibility for and  accepts all risks resulting from such work as permitted by law. The Client must confirm work requirements and compliance with the law, failing which, is at the Client's risk and legal responsibility.</p>
+
+<h2>6. Hold Harmless Clause</h2>
+
+<p>The Client agrees to insure, hold harmless, and indemnify the Service Provider from and against any and all claims, liabilities, damages, losses, or expenses, including legal fees, arising from the services provided under this Agreement. However, this clause shall not be construed to transfer or shift any liability imposed by law from the Service Provider to the Client or any other third party.</p>
+
+<h2>7. Limitation of Liability</h2>
+
+<p>Any damages, losses, or liabilities arising from the Service Provider's work shall not exceed the amount the Client paid for those services.</p>
+
+<h2>8. Quality of Work and Guarantee</h2>
+
+<p>The Service Provider commits to performing services that meet the agreed-upon standards and benchmarks as outlined throughout. The Service Provider guarantees the quality of the work for a period of 30 days from the completion date.</p>
+
+<p>If, within this 30-day period, the work does not meet the specified standards or a previously addressed problem reoccurs due to no fault of the Client or external factors (e.g., natural disasters, third-party interventions), the Service Provider agrees to return and rectify the issue.</p>
+
+<p>This guarantee covers:</p>
+
+<ul>
+<li><strong>Labor performed by the Service Provider.</strong></li>
+<li><strong>Materials used, unless otherwise specified.</strong></li>
+</ul>
+
+<p>Exceptions to this guarantee include:</p>
+
+<ul>
+<li><strong>8-1</strong>: Situations where additional parts or materials are required.</li>
+<li><strong>8-2</strong>: Misdiagnosis of the initial problem leading to unforeseen complications.</li>
+<li><strong>8-3</strong>: Significant hardware failures or issues beyond the initial service scope.</li>
+<li><strong>8-4</strong>: In cases where additional costs arise, the Service Provider will provide a detailed estimate. Any additional labor costs will be discussed and agreed upon with the Client before proceeding.</li>
+</ul>
+
+<p>Clients should report any issues to the Service Provider in writing (see Service Provider contact details as listed at the top of this Service Agreement) within the guarantee period, providing relevant details and evidence of the issue.</p>
+
+<h2>9. Fees and Payment</h2>
+
+<p>The Client agrees to compensate the Service Provider immediately upon satisfaction with the services rendered and upon receipt of an invoice, whether delivered via text, email, or in person.</p>
+
+<h2>10. Agreement Acceptance and Payment Terms</h2>
+
+<ul>
+<li><strong>10-1</strong>: By accessing the Service Provider's website, booking services, and/or making any form of payment, the Client acknowledges and accepts the terms outlined in this Agreement.</li>
+<li><strong>10-2</strong>: The Service Agreement is accessible at all times publicly at the specified URL prior to booking the service. In cases where an electronic hyperlink is not available on the invoice or other communication, the URL will be provided in written form. If the Client requires a physical or electronic copy of the Agreement, they may request the Service Provider to deliver it to their specified address.</li>
+<li><strong>10-3</strong>: Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms of this Agreement. If the Client does not agree to any of the terms of this Agreement, they are obligated to refuse payment for the service. Payment for the service, either in full or partial, is a binding provision of this Agreement.</li>
+<li><strong>10-4</strong>: The relationship between the Service Provider and the Client is on an "at-will" basis. The Service Provider is not an employee, agent, or representative of the Client. Both parties understand and agree that the Service Provider will provide services under the terms of this Agreement, and that no long-term employment relationship is established.</li>
+</ul>
+
+<h2>11. Payment as Acceptance of Terms</h2>
+
+<p>Any payment, whether in full or partial, made by the Client to the Service Provider for services rendered is considered an acknowledgment and acceptance of the terms outlined in this Agreement.</p>
+
+<h2>12. Refusal to Pay</h2>
+
+<p>If the Client does not agree to any of the terms of this Agreement, they are obligated to refuse payment for the service.</p>
+
+<h2>13. Clients Responsibilities</h2>
+
+<ul>
+<li><p><strong>13-1</strong>: Confirms their legal age and authority for service decisions.</p></li>
+<li><p><strong>13-2</strong>: Secured necessary permissions from property owners or landlords to perform services.</p></li>
+<li><strong>13-3</strong>: Ensures and acknowledges that the services do not require city or state permits and are not legally restricted to professional tradespeople or licensed contractors.</li>
+<li><p><strong>13-4</strong>: Will ensure that the Service Provider does not perform renovation work.</p></li>
+<li><p><strong>13-5</strong>: Accepts full responsibility for the Service Provider's work, especially in the realm of plumbing services, limited to cosmetic modifications or minor alterations.</p></li>
+<li><p><strong>13-6</strong>: Ensures they have full comprehensive insurance covering potential property damage, injury, or errors and affirms they will handle any and all claims through such policy.</p></li>
+<li><p><strong>13-7</strong>: Commits to inspecting the Service Provider's work and addressing any discovered errors.</p></li>
+<li><p><strong>13-8</strong>: <strong>Communication and Termination</strong>:</p>
+
+<ul>
+<li><p>Immediate Communication: The Client agrees to promptly inform the Service Provider if any actions being conducted by the Service Provider are perceived to be in violation of this agreement, beyond the Scope of Work as described in Annex A of the Agreement, or any action or conduct that is not to the Client's satisfaction.</p></li>
+<li><p>Opportunity to Correct: Upon receiving such communication, the Service Provider shall be given a reasonable opportunity to correct the action or conduct in question. If the Service Provider fails to address the concerns to the Client's satisfaction, the Client may then consider termination.</p></li>
+<li><p>Termination: The Client reserves the right to demand the Service Provider stop performing the agreed-upon services and to terminate the service before or during such services being rendered. In the event of such termination, the parties shall discuss and determine the appropriate payment or partial payment where applicable. Such discussions should be initiated as soon as possible, with the aim to reach an agreement within a reasonable timeframe, not exceeding 72 hours after the notice of termination. </p></li>
+<li><p>At-Will Relationship: Both parties understand and agree that the relationship established by this agreement is "at-will," meaning either party can terminate the relationship at any time, with or without cause. This agreement does not create a long-term employment relationship between the parties. </p></li>
+</ul></li>
+<li><p><strong>13-9</strong>: <strong>Dissatisfaction and Obligations</strong>: In the event that the Client is dissatisfied with the completed work or encounters any issues related to the services provided, the Client acknowledges that their responsibilities, including but not limited to maintaining comprehensive insurance coverage, shall remain in full force and effect. </p>
+
+<ul>
+<li>The Client's dissatisfaction or any problems arising from the services shall not absolve the Client of their obligations under this Agreement. The Client is still responsible for fulfilling all their duties and commitments as outlined in Sections 13-1 through 13-8, regardless of any disputes or concerns related to the services rendered. Failure to meet these responsibilities shall not release the Client from any liability or obligations under this Agreement.</li>
+</ul></li>
+</ul>
+
+<h2>14. Agreement Updates</h2>
+
+<p>Changes to this Agreement can be found at <a href="https://tommichael88.github.io/booktomnyc/ServiceAgreement">Service Agreement</a> referenced upon booking services through the website hosted on <a href="https://booktom.setmore.com">Setmore</a>.</p>
+
+<h2>15. Severability</h2>
+
+<p>If a provision of this Agreement is deemed invalid, the other provisions remain in effect. The invalid provision will be replaced with a valid one that closely mirrors the original's intent and economic effect.</p>
+
+<h2>16. Emergency Situations</h2>
+
+<p>In situations deemed emergencies due to unforeseen service interruptions or hazards, both Parties commit to swift communication and collaboration to find an appropriate solution.</p>
+
+<h2>17. Timeframes</h2>
+
+<p>The Service Provider will strive to complete services within agreed timeframes and will promptly communicate any unforeseen delays.</p>
+
+<h2>18. Dispute Resolution</h2>
+
+<ul>
+<li><strong>18-1</strong>: In line with section 6-8, if the Client identifies any actions by the Service Provider that are in violation of this agreement, beyond the Scope of Work as described in Annex A, or any other conduct that is not to the Client's satisfaction, they are obligated to inform the Service Provider immediately.</li>
+<li><strong>18-2</strong>: Upon such notification, the Service Provider will either correct the action or conduct in question or cease performing the agreed-upon services. The terms of termination and any associated payments or refunds will be determined and agreed upon by both parties either immediately at the time of notice of termination or within no more than 24 hours after any termination.</li>
+<li><strong>18-3</strong>: If a satisfactory resolution is not achieved following the above steps, the Client shall refuse to pay for any or part of the services until such resolution is met. In the event a civil agreement, either as a refund or non-payment for services, would satisfy the Service Provider's end of the agreement and fulfill their obligations.</li>
+</ul>
+
+<h2>19. Media Policy and Client Feedback Ownership</h2>
+
+<p>When the Client leaves feedback, comments, or reviews ("Client Feedback") either in response to a solicitation by the Service Provider or unsolicited but in a publicly accessible manner, the Service Provider shall own 100% of the rights to the written text of such Client Feedback in its entirety.</p>
+
+<ul>
+<li><p><strong>19-1</strong>: <strong>Rights and Permissions</strong></p>
+
+<ul>
+<li><strong>Use and Modification</strong>: The Service Provider has the right to use, repost, crop, reformat, or otherwise modify the Client Feedback for marketing or promotional purposes.</li>
+<li><strong>Platform Independence</strong>: The Service Provider has the right to use Client reviews, comments or feedback on other websites, platforms, or media channels, whether now known or hereafter invented.</li>
+</ul></li>
+<li><p><strong>19-2</strong>: <strong>Waiver of Confidentiality</strong>: By leaving Client Feedback, the Client waives any right to confidentiality and consents to the use of their name, likeness, and other identifying information as described above.</p></li>
+</ul>
+
+<h2>20. Privacy Policy</h2>
+
+<p>Client and Service Provider agree to the terms and conditions as detailed in the <a href="https://tommichael88.github.io/booktomnyc/Privacy%20Policy">Privacy Policy</a></p>
+
+<h4>Overview</h4>
+
+<p>This summary provides key points of the Privacy Policy related to the services offered by Tom Kongerslev in New York City and surrounding areas. For the complete details of the Privacy Policy, please refer to the full document found <a href="https://tommichael88.github.io/booktomnyc/Privacy%20Policy">here</a>.</p>
+
+<h5>Important provisions per the Privacy Policy but not limited to</h5>
+
+<pre><code>Third-Party Websites and Services: Use of various third-party services (like Setmore, Google, PythonAnywhere, etc.) is integral to our operations. These services have their own privacy policies, and Tom Kongerslev is not responsible for their data practices.
+
+Consent and Usage of Information: Clients agree to the collection and use of personal information for service delivery, appointment management, and marketing purposes. This includes information shared through third-party services.
+
+Media and Feedback Ownership: As per Section 19 of the Service Agreement, Tom Kongerslev owns rights to any client feedback or reviews, with the ability to modify and republish this content.
+
+Disclosure of Information: Personal data may be shared as agreed by clients, for legal purposes, or to facilitate service provision.
+
+Data Security and Breach Disclaimer: While measures are taken to protect personal data, there is no liability for potential data breaches, especially during computer servicing.
+
+Limitation on Removal Requests: Removal or opt-out requests for content on third-party platforms may not always be executable.
+
+Data Retention: Personal information is retained as necessary for service provision and legal compliance.
+
+Client Rights: Clients can request access to, correction of, or deletion of their personal data via booktom@icloud.com.
+
+Policy Updates: Significant changes to the policy will be communicated during service booking.
+
+Contact for Queries: For questions about the policy, contact booktom@icloud.com.
+
+Review of Third-Party Policies: Clients are advised to review the privacy policies of third-party websites and services used.
+</code></pre>
+
+<h2>21. Disclaimer</h2>
+
+<p>This Disclaimer section is a crucial part of the Service Agreement between the Service Provider (Tom Kongerslev) and the Client. It outlines the limitations of liability and responsibilities in the event of certain outcomes during the repair or service process.</p>
+
+<ul>
+<li><p><strong>21-A</strong>: <strong>Limitations of Liability</strong></p>
+
+<ul>
+<li><em>Damage to Equipment</em>: While every effort will be made to handle client equipment with the utmost care, the Service Provider is not liable for damages that may occur to client equipment during repair services. This includes but is not limited to data loss, overheating due to faulty hardware or parts, and damage to components such as screens, keyboards, or mice.</li>
+<li><em>Stolen Property</em>: In the unfortunate event of property theft, a police report will be filed, and charges pressed. The Service Provider (Tom Kongerslev) will assist in legal matters by offering an affidavit or in-person appearance. However, the Service Provider is not responsible for any court fees or costs associated with these proceedings.</li>
+</ul></li>
+<li><p><strong>21-B</strong>: <strong>Client Acknowledgement</strong></p>
+
+<ul>
+<li>The Client is responsible for backing up any data on devices submitted for repair.</li>
+<li>The Client accepts the inherent risks of damage during the repair of faulty or damaged hardware.</li>
+</ul></li>
+<li><p><strong>21-C</strong>: <strong>Efforts to Mitigate Risk</strong></p>
+
+<ul>
+<li>The Service Provider will take all reasonable precautions to securely store client property during the repair process.</li>
+<li>In cases of faulty hardware, the Service Provider will endeavor to prevent further damage during the repair.</li>
+</ul></li>
+<li><p><strong>21-D</strong>: <strong>Agreement</strong></p>
+
+<ul>
+<li>By accepting the Service Agreement, the Client acknowledges and agrees to the terms outlined in this Disclaimer section.</li>
+</ul></li>
+</ul>
+
+<h1><em>Annex A: Scope of Work</em></h1>
+
+<p>The following details the services provided by the Service Provider under each category:</p>
+
+<h3>A. Minor Home Repairs</h3>
+
+<p>Minor Home Repairs refer to a range of small-scale repair services intended to fix or restore various elements of a home to their original condition. This category encompasses services that do not require significant reconstruction or renovation but are essential for the maintenance and upkeep of a residence.</p>
+
+<p>|     | SERVICE NAME                         | DESCRIPTION                                                 | INCLUDES                              | CLIENT MUST PROVIDE                                      |
+| --- | ------------------------------------ | ----------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------- |
+| A-1 | Door Handles &amp; Locks Installation    | Installation of door knobs and locks on interior doors.     | Installation tools and expertise.     | Door hardware (knobs, locks, etc.)                       |
+| A-2 | Hollow Door Repair                   | Repair of damages to interior hollow doors.                 | Patching materials, paint, and tools. | Access to the damaged door.                              |
+| A-3 | Wall Repair - Patch &amp; Paint          | Repair of minor damages to interior walls.                  | Patching materials, paint, and tools. | Access to the damaged wall area.                         |
+| A-4 | Appliances Hourly Service Rate       | Maintenance, repair, or assessment of household appliances. | Diagnostic tools and expertise.       | Appliance for repair and any specific replacement parts. |
+| A-5 | Furniture Repair Hourly Service Rate | Repair of various types of furniture.                       | Repair tools and materials.           | Furniture piece for repair.                              |</p>
+
+<h2>B. Wall Mounting</h2>
+
+<p>Wall Mounting services involve securely attaching various objects to walls, such as televisions, shelves, or artwork, to enhance the living or working space.</p>
+
+<p>|     | SERVICE NAME                                     | DESCRIPTION                                              | INCLUDED                                                    | CLIENT MUST PROVIDE               |
+| --- | ------------------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------- |
+| B-1 | Curtains/Drapes Single Rod Installation          | Installation of curtains or drapes using a single rod.   | Installation tools and expertise.                           | Curtains, drapes, and rod.        |
+| B-2 | Frame/Shelf Mounting Hourly Service Rate         | Mounting of frames, shelves, or similar items on walls.  | Mounting hardware, tools, and expertise.                    | Items to be mounted.              |
+| B-3 | TV Mounting (Under 60”) without cable management | Mounting of TVs up to 60 inches without managing cables. | Basic mounting tools and expertise.                         | TV and specific mounting bracket. |
+| B-4 | TV Mounting (Under 60”) + Concealed Cables       | Mounting of TVs up to 60 inches with cables concealed.   | Mounting tools, cable concealment materials, and expertise. | TV, mounting bracket, and cables. |</p>
+
+<h3>C. Computer Tech Services</h3>
+
+<p>Computer Tech Services cover a range of technical support and repair services related to personal computers. This includes software installation, hardware upgrades, virus removal, and general troubleshooting.</p>
+
+<p>|     | SERVICE NAME                        | DESCRIPTION                                                             | INCLUDED                             | CLIENT MUST PROVIDE                                                                        |
+| --- | ----------------------------------- | ----------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| C-1 | PC Diagnostic Service               | Comprehensive diagnosis of PC hardware or software issues.              | Diagnostic software and tools.       | PC and any relevant software licenses or credentials.                                      |
+| C-2 | Data Transfer/Data Back-Up          | Secure transfer or backup of data from one device or medium to another. | Data transfer tools and software.    | Source and destination devices or media.                                                   |
+| C-3 | Part Replacement /Upgrade           | Replacement or upgrade of specific PC hardware components.              | Installation tools and expertise.    | PC and replacement or upgrade parts.                                                       |
+| C-4 | Software Install / Update / Removal | Installation, update, or removal of up to four software applications.   | Installation tools and expertise.    | PC and software licenses or installation files.                                            |
+| C-5 | System Restore                      | Restoration of PC’s operating system to a previous state.               | Restoration tools and software.      | PC and any relevant software licenses or credentials.                                      |
+| C-6 | Virus / Malware Removal             | Identification and removal of malicious software from a PC.             | Antivirus and malware removal tools. | PC Guarantee against future infections, data recovery from ransomware attacks for 30 days. |</p>
+
+<h2>D. Electrical Help</h2>
+
+<p>Electrical help services are provided under the direct supervision or instruction of the Client. These services involve assisting with minor electrical tasks such as changing light fixtures or replacing outlets. The Service Provider is in a helping role, thereby following direction or instructions from the Client, not hired to lead or make decisions independently.</p>
+
+<p>|     | SERVICE NAME       | DESCRIPTION                                           | INCLUDED                              | CLIENT MUST PROVIDE                                   |
+| --- | ------------------ | ----------------------------------------------------- | ------------------------------------- | ----------------------------------------------------- |
+| D-1 | Light Fixture Swap | Replacement of existing light fixtures with new ones. | Basic electrical tools and expertise. | New light fixture and any specific mounting hardware. |</p>
+
+<h2>E. Furniture Fixes &amp; Assembly</h2>
+
+<p>Furniture fixes and assembly services encompass the assembly of various 
+types of furniture items. The Service Provider's role is to follow the 
+manufacturer's assembly instructions to ensure the stability and 
+functionality of the furniture. This service includes the use of 
+assembly tools and expertise. </p>
+
+<p>|     | SERVICE NAME                           | DESCRIPTION                             | INCLUDED                      | CLIENT MUST PROVIDE                                             |
+| --- | -------------------------------------- | --------------------------------------- | ----------------------------- | --------------------------------------------------------------- |
+| E-1 | Furniture Assembly Hourly Service Rate | Assembly of various types of furniture. | Assembly tools and expertise. | Furniture in its original packaging with assembly instructions. |
+| E-2 | Furniture Repair Hourly Service Rate   | Repair of various types of furniture.   | Repair tools and materials.   | Furniture piece for repair.                                     |</p>
+
+<h3>F. Plumbing Help</h3>
+
+<p>Plumbing help services are offered under the direct supervision or instruction of the Client. This means the Service Provider assists with plumbing tasks that the Client has either started or plans to undertake. The Service Provider’s role is to support and assist, not to lead the project or make decisions without the Client’s input or direction.</p>
+
+<p>|     | SERVICE NAME                      | DESCRIPTION                                                                  | INCLUDED                            | CLIENT MUST PROVIDE                             |
+| --- | --------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------- |
+| F-1 | Bidet Accessory Install/Removal   | Installation or removal of bidet attachments on toilets.                     | Installation tools and expertise.   | Bidet attachment and toilet.                    |
+| F-2 | Fixture Swap (Cosmetic)           | Cosmetic replacement of plumbing fixtures like sink faucets or shower heads. | Basic plumbing tools and knowledge. | New fixture and any specific mounting hardware. |
+| F-3 | Leak Under Sink Repair            | Repair of minor leaks occurring under sinks.                                 | Repair tools and replacement parts. | Access to the sink and plumbing.                |
+| F-4 | Unclog Sink/Shower/Toilet (Minor) | Removal of minor clogs from sinks, showers, or toilets.                      | Clog removal tools and chemicals.   | Access to the clogged fixture.                  |</p>
+
+<hr />
+
+<p><code>
+LAST UPDATED: Saturday, NDecember 2, 2023 01:50PM EST
+</code></p>
+
+    </div>
+</body>
+</html>
