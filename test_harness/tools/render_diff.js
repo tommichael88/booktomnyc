@@ -20,6 +20,9 @@
  *                               for entry keys starting with `prefix` (e.g. @quote:) so an allowance is never broader than the change; repeatable
  *          --drop 'regex[@prefix]'    remove text matching `regex` from HEAD output (optionally only for keys starting with `prefix`) before
  *                               comparing -- for a change that deliberately ADDS markup, so the allowance names exactly what was added; repeatable
+ *          --base-ssot <btnyc.json>   serve this catalog to the BASE build and the positional one (or the repo's) to the HEAD build. For a change that edits btnyc.json itself
+ *                               (T164): the two builds then differ by exactly the catalog change, and the diff says what a customer sees because of it. Default: one catalog for both.
+ *          env SHOW=n lists the first n differing keys; DUMP_DIFF=<file> writes every differing entry (base and head) as JSON.
  *          --trace <trace.js>   serve this file for the page's <script src=".../trace.js"> in the HEAD run ONLY. With base == head (the same
  *                               qr.html twice) this proves the trace layer is observation-only: output with it loaded must equal output without.
  * A1.6 (PHASE_PLAN.md, Phase A) EXTENSION -- inputs only, new key families; no original entry or input changed (so the original 836 are still a subset): two families the Phase A
@@ -41,14 +44,16 @@ const { execSync } = require('child_process');
 const args = process.argv.slice(2);
 const ignoreIdx = args.indexOf('--ignore');
 const ignore = new Set(ignoreIdx >= 0 ? (args[ignoreIdx + 1] || '').split(',').filter(Boolean) : []);
+const baseSsotIdx = args.indexOf('--base-ssot'); const baseSsotArg = baseSsotIdx >= 0 ? path.resolve(args[baseSsotIdx + 1]) : null;
 const traceIdx = args.indexOf('--trace'); const traceFile = traceIdx >= 0 ? path.resolve(args[traceIdx + 1]) : null;
 const renames = []; args.forEach((a, i) => { if (a === '--rename' && args[i + 1]) { const [spec, scope] = args[i + 1].split('@'); const [n, o] = spec.split('='); renames.push([n, o, scope || '']); } });
 const drops = []; args.forEach((a, i) => { if (a === '--drop' && args[i + 1]) { const at = args[i + 1].lastIndexOf('@'); const hasScope = at > 0 && !/[\\)\]]$/.test(args[i + 1].slice(at + 1)) && args[i + 1].slice(at + 1).length < 20 && /^[a-z]+:?$/.test(args[i + 1].slice(at + 1)); drops.push(hasScope ? [new RegExp(args[i + 1].slice(0, at), 'g'), args[i + 1].slice(at + 1)] : [new RegExp(args[i + 1], 'g'), '']); } });
-const isOptVal = i => (ignoreIdx >= 0 && i === ignoreIdx + 1) || (i > 0 && (args[i - 1] === '--rename' || args[i - 1] === '--drop' || args[i - 1] === '--trace'));
+const isOptVal = i => (ignoreIdx >= 0 && i === ignoreIdx + 1) || (i > 0 && (args[i - 1] === '--rename' || args[i - 1] === '--drop' || args[i - 1] === '--trace' || args[i - 1] === '--base-ssot'));
 const pos = args.filter((a, i) => !a.startsWith('--') && !isOptVal(i));
 if (pos.length < 2) { console.error('usage: render_diff.js <base_qr.html> <head_qr.html> [btnyc.json] [--ignore key[,key]]'); process.exit(2); }
 const [baseFile, headFile] = pos.map(p => path.resolve(p));
 const ssot = path.resolve(pos[2] || path.join(__dirname, '..', '..', 'btnyc.json'));
+const baseSsot = baseSsotArg || ssot;
 const puppeteer = require(path.join(__dirname, '..', 'node_modules', 'puppeteer-core'));
 
 function findChrome() {
@@ -63,14 +68,14 @@ function findChrome() {
 // leaves the machine); the run without trace.js aborts that one request, i.e. trace.js genuinely absent.
 const PAGE = require('../_page.js');
 const VIRTUAL_URL = 'https://tommichael88.github.io/booktomnyc/qr.html';
-async function probe(browser, file, traceFile, virtual) {
+async function probe(browser, file, traceFile, virtual, ssotFile) {
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(String(e.message).slice(0, 160)));
     await page.setRequestInterception(true);
     page.on('request', r => {
         if (virtual && r.url().split('?')[0] === VIRTUAL_URL) r.respond({ status: 200, contentType: 'text/html; charset=utf-8', body: fs.readFileSync(file, 'utf8') });
-        else if (r.url().includes('btnyc.json')) r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(ssot, 'utf8') });
+        else if (r.url().includes('btnyc.json')) r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(ssotFile, 'utf8') });
         else if (/trace\.js(\?|$)/.test(r.url())) { if (traceFile) r.respond({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(traceFile, 'utf8') }); else r.abort(); }   // the tracer is present only when --trace asks for it
         else if (!virtual && PAGE.documentResponse(r.url())) r.respond(PAGE.documentResponse(r.url()));   // file mode: the page with its external modules assembled in (CSP blocks them from file://)
         else if (virtual && PAGE.localFileForUrl(r.url())) r.respond({ status: 200, contentType: 'application/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(PAGE.localFileForUrl(r.url()), 'utf8') });   // virtual mode: the deployed origin's own module files
@@ -177,7 +182,7 @@ const normalize = (k, v) => {
     const chrome = findChrome();
     if (!chrome) { console.error('No Chrome found: set CHROME_PATH'); process.exit(2); }
     const browser = await puppeteer.launch({ headless: 'new', executablePath: chrome, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-    const a = await probe(browser, baseFile, null, !!traceFile), b = await probe(browser, headFile, traceFile, !!traceFile);
+    const a = await probe(browser, baseFile, null, !!traceFile, baseSsot), b = await probe(browser, headFile, traceFile, !!traceFile, ssot);
     for (const k of Object.keys(b.res)) if (typeof b.res[k] === 'string') for (const [n, o, scope] of renames) if (k.startsWith(scope)) b.res[k] = b.res[k].split(n).join(o);
     for (const k of Object.keys(b.res)) if (typeof b.res[k] === 'string') for (const [re, scope] of drops) if (k.startsWith(scope)) b.res[k] = b.res[k].replace(re, '');
     await browser.close();
@@ -196,5 +201,6 @@ const normalize = (k, v) => {
     console.log(`entries ${keys.length} ${JSON.stringify(kinds)} | DIFFERENT: ${diff.length} | render errors in head: ${errs} | page errors base/head: ${a.errors.length}/${b.errors.length} | ignored keys: ${[...ignore].join(',') || 'none'} | renames: ${renames.map(r => r[0] + '=' + r[1] + (r[2] ? '@' + r[2] : '')).join(',') || 'none'} | drops: ${drops.length}`);
     Object.entries(b.res).filter(([, v]) => String(v).startsWith('ERR')).slice(0, +process.env.SHOW_ERR || 0).forEach(([k, v]) => console.log('  ERR  ' + k + ' -> ' + String(v).slice(0, 200)));   // SHOW_ERR=n prints the first n render errors (A1.6)
     diff.slice(0, +process.env.SHOW || 6).forEach(k => console.log('  DIFF ' + k)); // SHOW=9999 lists every difference (T148)
+    if (process.env.DUMP_DIFF) { fs.writeFileSync(process.env.DUMP_DIFF, JSON.stringify(Object.fromEntries(diff.map(k => [k, { base: a.res[k], head: b.res[k] }])), null, 1)); console.log(`  (the ${diff.length} differing entries, base and head, written to ${process.env.DUMP_DIFF})`); }   // DUMP_DIFF=file: what each side rendered (T164)
     process.exit(diff.length || errs ? 1 : 0);
 })().catch(e => { console.error('render_diff failed:', e.message); process.exit(2); });

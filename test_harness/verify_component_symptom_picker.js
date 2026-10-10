@@ -308,24 +308,26 @@ function tap(t, w) {
             await wait(30);
         }
 
+        // T164: these three installs have no intake question any more, so a tap on them routes to the self-quote view, which does not set S._svc (it sets S.intent, whose
+        // `key` is the service id the tap resolved to). The three checks below read S.intent.key as well; every other check in this file still reads S.svc / S._svc only.
         // Washer already had both real services before this round -- the
         // baseline "does the picker work when nothing needed closing" case.
         await checkAction('minor_home_repairs_appliances_washer', /^install$/i);
         check('Washer: Install resolves directly to washer_install (unambiguous action, no symptom to tap)',
-            (w.S?.svc?.id || w.S?._svc?.id) === 'washer_install');
+            (w.S?.svc?.id || w.S?._svc?.id || w.S?.intent?.key) === 'washer_install');
 
         // Dishwasher and Refrigerator: real, authored install services,
         // pattern-matched to washer_install (same description, same $70)
         await checkAction('minor_home_repairs_appliances_dishwasher', /^install$/i);
         check('Dishwasher: Install resolves directly to the newly-authored dishwasher_install',
-            (w.S?.svc?.id || w.S?._svc?.id) === 'dishwasher_install');
+            (w.S?.svc?.id || w.S?._svc?.id || w.S?.intent?.key) === 'dishwasher_install');
         await checkAction('minor_home_repairs_appliances_dishwasher', /fix.*repair/i);
         check('Dishwasher: Repair still shows the real symptom picker (not skipped, unlike Install)',
             tileLabels(doc).some(l => /wont drain/i.test(l)));
 
         await checkAction('minor_home_repairs_appliances_refrigerator', /^install$/i);
         check('Refrigerator: Install resolves directly to the newly-authored refrigerator_install',
-            (w.S?.svc?.id || w.S?._svc?.id) === 'refrigerator_install');
+            (w.S?.svc?.id || w.S?._svc?.id || w.S?.intent?.key) === 'refrigerator_install');
 
         // Window AC: the inverse gap (had install, was missing repair) --
         // and the one real, genuine multi-service component in this

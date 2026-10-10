@@ -72,13 +72,13 @@ COMPILER_KEYS: Set[str] = {
 LOGISTICS_MODULES: Set[str] = {
     "access", "parking_difficulty", "disposal_request", "pets_present",
     "urgency", "item_volume", "hybrid_qty", "global_quantity",
-    "item_count_template", "space_ready", "disposal", "buy_the_hour_qty",
+    "item_count_template", "disposal", "buy_the_hour_qty",
 }
 
 # "What is it?" — identifies the object being worked on.
 COMPONENT_MODULES: Set[str] = {
     "appliance_type", "brand", "client_supplying_door",
-    "customer_supplied_part", "device_type", "distance", "door_size",
+    "customer_supplied_part", "device_type", "distance",
     "door_style_pref", "door_type", "ducting", "electrical_item",
     "existing_box", "existing_frame", "existing_type", "faucet_type",
     "fixture_type", "floor_type", "furn_item", "hardware_type",
@@ -351,7 +351,10 @@ def compile_symptom_index(db: dict) -> Dict[str, dict]:
         sid = svc.get("id")
         if not sid:
             continue
-        for mod_name in flatten_intake_chain(svc.get("intake_chain", [])):
+        # T164: flatten_intake_chain returns a set, and this loop's order is the order the index's keys are first
+        # seen in, so the compiled symptom_index came out in a different key order under each PYTHONHASHSEED (same
+        # object, different text on every run, so a regenerated file churned). Sorted: one text for one input.
+        for mod_name in sorted(flatten_intake_chain(svc.get("intake_chain", []))):
             if mod_name not in SYMPTOM_MODULES:
                 continue
             mod = modules.get(mod_name, {})

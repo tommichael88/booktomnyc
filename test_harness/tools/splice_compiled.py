@@ -12,12 +12,14 @@ those text spans in the file and leaves every other byte alone.
     python3 test_harness/tools/splice_compiled.py [btnyc.json] --write    # write it in place
 
 What it checks before it writes (any failure exits 1 and writes nothing):
+  0. the compiler gives the same TEXT under two different hash seeds (one input, one output);
   1. the compiler runs and reports a valid schema (an invalid result is never written);
   2. every key the compiler does not own is equal in the compiler's output and in the file (additive);
   3. the spliced text parses, and equals the compiler's output as a whole object;
   4. every byte outside the owned keys' spans is byte-identical to the input.
 """
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -59,14 +61,24 @@ def main(argv):
     raw = ssot.read_text(encoding="utf-8")
     cur = json.loads(raw)
 
-    with tempfile.TemporaryDirectory() as d:
-        out_file = Path(d) / "compiled.json"
-        proc = subprocess.run([sys.executable, str(COMPILER), str(ssot), str(out_file)], capture_output=True, text=True)
-        if proc.returncode != 0 or not out_file.exists():
-            print(proc.stdout + proc.stderr)
-            print("FAIL: the compiler did not produce an output")
-            return 1
-        comp_text = out_file.read_text(encoding="utf-8")
+    def compile_once(seed):
+        with tempfile.TemporaryDirectory() as d:
+            out_file = Path(d) / "compiled.json"
+            env = dict(os.environ, PYTHONHASHSEED=str(seed))
+            proc = subprocess.run([sys.executable, str(COMPILER), str(ssot), str(out_file)], capture_output=True, text=True, env=env)
+            if proc.returncode != 0 or not out_file.exists():
+                print(proc.stdout + proc.stderr)
+                print("FAIL: the compiler did not produce an output")
+                return None
+            return out_file.read_text(encoding="utf-8")
+
+    comp_text = compile_once(1)
+    if comp_text is None:
+        return 1
+    # R-INVARIANT-RERUN: one input, one text. Two different hash seeds must give the same bytes, or a regenerated file churns.
+    if compile_once(2) != comp_text:
+        print("FAIL: the compiler's output text depends on the hash seed (set iteration order reached a dict's key order)")
+        return 1
     comp = json.loads(comp_text)
 
     fails = []
