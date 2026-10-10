@@ -1,0 +1,37 @@
+
+=== 1-3. the page as written: one home per module, a header that says it, a load order that is true ===
+  (inline: pricing_engine.js, orchestrator_engine.js, UIRenderer.js, AppController.js, cart_logic.js; loaded by <script src>: modules/trace.js, modules/nlp_engine.js, modules/appReducer.js, modules/store.js; files in modules/: appReducer.js, nlp_engine.js, store.js, trace.js)
+  ✓ every module the tooling names is in the page exactly once: one inline block or one <script src>, never both, never neither
+  ✓ no file in modules/ shares a name with an inline block (the cart_logic shape: the same module in two places)
+  ✓ every file in modules/ is loaded by a <script src> of the page (an unloaded copy is a second definition waiting for an edit)
+  ✓ every module name is git-ignored at the repo root, where the generated reference copies are written (extract_modules.js)
+  ✓ COMPONENT_LAYER_MAP.md states each module's source as the page has it ("inline", or "external: `modules/X.js`")
+  ✓ an inline module's header has a Deployment statement and it states the shape the page has; an external module's states its own modules/ file or is absent
+  ✓ an inline module's header makes no load-shape claim outside its Deployment statement
+  ✓ an external module's header does not say the page does not load it
+  ✓ every "load X.js before this file" in a header names a module that comes earlier in the page
+  (2 load-order claim(s) found in the headers and checked)
+  ✓ the load-order leg sees at least one claim on this page (a pattern that matched nothing would pass for the wrong reason)
+
+=== 4. non-vacuity: each leg is shown able to fail, and a correct page is shown clean ===
+  ✓ a correct page (one inline module, one loaded module, a Deployment statement, both ignored) is clean
+  ✓ leg 1 flags a module that is an inline block AND a file in modules/ (the cart_logic shape)
+  ✓ leg 1 flags a file in modules/ that nothing loads
+  ✓ leg 1 flags a module that is both an inline block and a <script src>
+  ✓ leg 1 flags a named module that the page does not contain
+  ✓ leg 1 flags a module name missing from .gitignore
+  ✓ leg 2 flags an inline header with no Deployment statement
+  ✓ leg 2 flags an inline header whose Deployment statement claims it is loaded from modules/
+  ✓ leg 2 flags "Loaded as a plain global-scope <script>" outside the statement
+  ✓ leg 2 does NOT flag the same words inside the Deployment statement
+  ✓ leg 2 flags an external header that says qr.html was NOT modified to load it
+  ✓ leg 2 flags an external header whose Deployment statement claims the wrong file
+  ✓ leg 2 accepts an external header whose Deployment statement names its own file
+  ✓ leg 3b flags a Layer Map row that says "inline" for a module the page loads by <script src>
+  ✓ leg 3b flags a Layer Map row that hedges ("inline (a copy of modules/foo.js, not yet loaded from it)")
+  ✓ leg 3b flags a module with no row in the Layer Map
+  ✓ leg 3 flags "load bar.js before this file" when the page loads bar.js after
+  ✓ leg 3 accepts it when the page loads bar.js first
+  ✓ leg 3 flags a load-before claim naming a module the page does not have
+
+[module deployment shape] 29 passed, 0 failed (of 29 checks)

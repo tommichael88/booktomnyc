@@ -187,10 +187,8 @@ for (const n of NAMES) {
 }
 check(holders.length === 1, 'all six live in one script block', `the six functions are spread over ${holders.length} script blocks`);
 
-// Until the page loads modules/cart_logic.js by <script src>, the module file and the page's inline block are two copies of one definition (PENDING_DECISIONS: cart_logic double definition).
-// They are held byte-identical (modulo the trailing newline) so an edit to one cannot silently leave the other behind.
-const MODFILE = path.join(ROOT, 'modules', 'cart_logic.js');
-if (BLOCK && fs.existsSync(MODFILE)) check(fs.readFileSync(MODFILE, 'utf8').trim() === BLOCK.trim(), 'modules/cart_logic.js is the same text as the cart block the page runs', 'modules/cart_logic.js and the page\'s cart block differ: edit both, or load the module by <script src> and delete the inline copy', 'R-INVARIANT-SINGLEDEF: a definition that exists twice drifts.');
+// T163 (item F): the module file modules/cart_logic.js is deleted. The page runs the inline block and nothing else; that a module never exists in both places is held for every module by
+// verify_module_deployment_shape.js (a check here that two copies are equal would be a test that holds a duplicate in place, PENDING_DECISIONS #129).
 
 if (!BLOCK) { bad('the cart logic block was not found in the page'); console.log(`\n${pass} passed, ${fail} failed`); process.exit(1); }
 

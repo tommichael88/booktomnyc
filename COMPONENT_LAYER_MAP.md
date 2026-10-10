@@ -28,19 +28,21 @@ recorded once can go stale exactly like any other claim in this project.
 
 `qr.html` is one file whose `<script>` blocks each correspond to one of the charter's module names, plus `<script>` blocks that carry no module header (the `inline` row). Some modules are inline in `qr.html`; others are loaded from `modules/` by a `<script src>` under the deployed base (`test_harness/_page.js` assembles the page from them, so a structural test reads the page the browser runs). Verified boundaries, `T158` (line numbers are `qr.html` source lines):
 
-| Module | Layer | Source in the page | `qr.html` block starts |
+| Module | Layer | Source in the page | `qr.html` block starts (as of T163; it moves with every edit above it) |
 |---|---|---|---|
 | `trace.js` | -- (observation tool, never assembled) | external: `modules/trace.js` | line 909 |
 | `pricing_engine.js` | Logic/Engine | inline | line 912 |
-| `nlp_engine.js` | Logic/Engine | external: `modules/nlp_engine.js` | line 3507 |
-| `orchestrator_engine.js` | Logic/Engine | inline | line 3510 |
-| `UIRenderer.js` | UI/Renderer | inline | line 5290 |
-| `cart_logic.js` | Logic/Engine | inline (a copy of `modules/cart_logic.js`, not yet loaded from it) | line 10041 |
-| `AppController.js` | Controller/Glue | inline | line 10223 |
-| `appReducer.js` | Logic/Engine | external: `modules/appReducer.js` | line 12227 |
-| `store.js` | Logic/Engine | external: `modules/store.js` | line 12230 |
+| `nlp_engine.js` | Logic/Engine | external: `modules/nlp_engine.js` | line 3634 |
+| `orchestrator_engine.js` | Logic/Engine | inline | line 3637 |
+| `UIRenderer.js` | UI/Renderer | inline | line 5401 |
+| `cart_logic.js` | Logic/Engine | inline | line 10152 |
+| `AppController.js` | Controller/Glue | inline | line 10339 |
+| `appReducer.js` | Logic/Engine | external: `modules/appReducer.js` | line 12172 |
+| `store.js` | Logic/Engine | external: `modules/store.js` | line 12175 |
 | `inline` | Controller/Glue | inline | -- |
 | `btnyc.json` | Knowledge (SSOT) | the catalog | -- |
+
+**Where a module lives (`T163`).** A module has one home. Five are inline blocks of `qr.html` (`pricing_engine`, `orchestrator_engine`, `UIRenderer`, `cart_logic`, `AppController`) and four are files in `modules/` that the page loads by `<script src>` (`trace`, `nlp_engine`, `appReducer`, `store`). For an inline module the page is the deployment unit and the block is the source: its header carries a `Deployment:` statement saying so, and a `<name>.js` at the repo root is a git-ignored reference copy that `test_harness/extract_modules.js` generates. For a loaded module the file in `modules/` IS the deployed artifact. `modules/` holds nothing the page does not load, and no file in it shares a name with an inline block (that was `cart_logic`, T163); `verify_module_deployment_shape.js` fails on a second home, on an unloaded file in `modules/`, on a header that claims a load shape the page does not have, on a "load X before this file" that the page's order contradicts, and on a row of the table above that states a different source than the page has. Moving an inline module to `modules/` is one change: add the file and its `<script src>`, delete the block.
 
 **How the structural tests read this table (`T144`).** `verify_r-system-layers_full_matrix.js`,
 `verify_r-invariant-comply_ship_gate.js` and `verify_r-invariant-boundary_ui_renderer_layer.js` read the
@@ -233,7 +235,7 @@ functions by name out of `qr.html`, so adding a helper next to a function can no
 
 ## The cart (`T158`)
 
-The cart's identity, merge and total rules are Logic and live in one module, `cart_logic.js` (an inline block of `qr.html` today; `modules/cart_logic.js` is the same text, ready to be loaded). Glue and Renderer read them and decide nothing.
+The cart's identity, merge and total rules are Logic and live in one module, `cart_logic.js`: an inline block of `qr.html`, and nowhere else (T163 deleted the unloaded twin `modules/cart_logic.js`). Glue and Renderer read them and decide nothing.
 
 | ID | Function | Layer | Purpose |
 |---|---|---|---|

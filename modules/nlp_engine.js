@@ -93,11 +93,10 @@
       * reading window._NLP directly itself, matching how it's actually called in
       * qr.html — preserved here exactly, not "cleaned up".
       *
-      * Loaded as a plain global-scope <script> (not an ES module) — same
-      * rationale as pricing_engine.js. qr.html itself was NOT modified to load
-      * this file (it remains fully self-contained, single-file deployment) —
-      * see CHANGELOG_v9.4.md for the same deployment-model decision made for
-      * pricing_engine.js, which applies identically here.
+      * Deployment: loaded from modules/nlp_engine.js by qr.html, with a `src` script tag (a plain
+      * global-scope script, not an ES module). This file IS the deployed artifact, not a copy of
+      * anything in qr.html: edit it here, and publish it with qr.html (PENDING_DECISIONS #145 for
+      * the order). `QR_BUILD_VERSION` below is the one value in it that must follow qr.html.
       */
 
      /*
@@ -170,7 +169,7 @@
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T162';
+     const QR_BUILD_VERSION = 'T163';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────

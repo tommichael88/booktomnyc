@@ -36,7 +36,7 @@ const QR_PATH = process.env.BTNYC_QR_FILE ? path.resolve(process.env.BTNYC_QR_FI
 const MODULE_NAMES = [
     'pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js',
     'UIRenderer.js', 'AppController.js', 'appReducer.js', 'store.js',
-    'cart_logic.js',   // T158: the cart-line identity, merge and total rules (Logic); an inline block until the page loads modules/cart_logic.js
+    'cart_logic.js',   // T158: the cart-line identity, merge and total rules (Logic); an inline block (T163: modules/cart_logic.js, the unloaded twin, is deleted)
 ];
 
 function headerRegex(moduleFile) {
