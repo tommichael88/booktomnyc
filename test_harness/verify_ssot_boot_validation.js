@@ -89,6 +89,20 @@ const mine = (d, s) => HAS_CHECKER ? sandbox.orch_validate_ssot(d, s || SCHEMA) 
     else if (cur && typeof cur === 'object' && !Array.isArray(cur)) cur.__extra = 1; else parent[key] = cur;
     compare(`random #${i} ${kind} at /${p.join('/')}`, d);
   }
+  // T160: DIRECTED, every key that must be JSON-Pointer-escaped to name its place ("/" or "~" inside the key), retyped in turn. The seeded draws above reach such a key only when they
+  // happen to land on one (the catalog has 'Hide or run cables through a wall/floor'); a change to the catalog's key order moved the draws and exposed that the checker reported such a
+  // place unescaped. This leg does not depend on the draw: every such key is mutated, and the checker must name the place the way the reference validator does.
+  const escKeys = []; (function walk(o, p) { if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!Array.isArray(o) && /[\/~]/.test(k)) escKeys.push(p.concat([k])); walk(o[k], p.concat([k])); } })(BASE, []);
+  const beforeEsc = [pathAgree, pathCases];
+  for (const p of escKeys) {
+    const d = clone(BASE); let parent = d; for (let j = 0; j < p.length - 1; j++) parent = parent[p[j]];
+    const key = p[p.length - 1], cur = parent[key];
+    parent[key] = ({ string: 7, number: 'x', boolean: 'true', object: [], array: {} })[cur === null ? 'null' : Array.isArray(cur) ? 'array' : typeof cur] ?? 'x';
+    compare(`escaped key retyped at /${p.join('/')}`, d);
+  }
+  const escInvalid = pathCases - beforeEsc[1], escAgree = pathAgree - beforeEsc[0];
+  check(`the catalog has keys that need escaping (${escKeys.length}); where retyping one is invalid under both validators (${escInvalid}; the rest sit in free-form maps), the checker names the same place ajv does (${escAgree} of ${escInvalid})`,
+    escKeys.length >= 1 && escInvalid >= 1 && escAgree === escInvalid, `${escKeys.length} keys, ${escAgree} agreed of ${escInvalid} both-invalid`);
   check(`the checker and ajv return the same verdict on all ${total} documents (the real catalog and ${total - 1} mutated copies)`, mismatches.length === 0, mismatches.slice(0, 5).join('\n      '));
   check(`non-vacuity: many of those mutants are actually invalid under ajv (${invalidByAjv} of ${total}), so agreement is not "everything passes"`, invalidByAjv >= 60 && invalidByAjv < total, `${invalidByAjv} of ${total}`);
   check(`where both say invalid, the checker's complaint is at (or on the path to/from) a place ajv also complains about (${pathAgree} of ${pathCases})`, pathCases > 0 && pathAgree === pathCases, `${pathAgree} of ${pathCases}`);
@@ -97,6 +111,12 @@ const mine = (d, s) => HAS_CHECKER ? sandbox.orch_validate_ssot(d, s || SCHEMA) 
   check('a schema keyword the checker does not implement is an error, not a silent pass (top level)', u({}, { type: 'object', minLength: 3 }).valid === false && /not supported/.test(u({}, { type: 'object', minLength: 3 }).errors[0].message));
   check('... and the same when it sits deep in the schema, in a branch the data never visits', u({}, { type: 'object', properties: { a: { type: 'array', items: { allOf: [] } } } }).valid === false);
   check('an unresolvable $ref is an error', u({}, { $ref: '#/$defs/nope', $defs: {} }).valid === false);
+  // T160 (DEFECT-CHECKER-ESCAPING): the schema audit builds its locations from keys too (properties / patternProperties / $defs); each must be escaped as RFC 6901 says, like the data paths above
+  check('the schema audit names a place with "/" and "~" in its key as RFC 6901 does (#/properties/a~1b~0c, #/$defs/d~1e)', (() => {
+    const r = u({}, { type: 'object', properties: { 'a/b~c': { type: 'string', minLength: 3 } }, $defs: { 'd/e': { type: 'string', maxLength: 2 } } });
+    const at = r.errors.map(e => e.path);
+    return r.valid === false && at.includes('#/properties/a~1b~0c') && at.includes('#/$defs/d~1e');
+  })(), JSON.stringify(u({}, { type: 'object', properties: { 'a/b~c': { type: 'string', minLength: 3 } }, $defs: { 'd/e': { type: 'string', maxLength: 2 } } }).errors));
   check('the real schema uses only keywords the checker implements (so its verdicts can be trusted)', mine(BASE).errors.length === 0);
 
   console.log('\n=== 2. the page stops on non-conforming data ===');

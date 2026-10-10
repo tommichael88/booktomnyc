@@ -1,0 +1,33 @@
+=== 1. the page's checker gives the same verdict as the reference validator (ajv) ===
+  ✓ the orchestrator module carries the checker (orch_validate_ssot)
+  ✓ the real catalog conforms, per both
+  ✓ the schema is published where btnyc.json's own $schema says it is, and the page reads it from there (T157: orch_resolve_schema_location)
+  ✗ the catalog has keys that need escaping (11); where retyping one is invalid under both validators (2; the rest sit in free-form maps), the checker names the same place ajv does (0 of 2)
+      11 keys, 0 agreed of 2 both-invalid
+  ✓ the checker and ajv return the same verdict on all 290 documents (the real catalog and 289 mutated copies)
+  ✓ non-vacuity: many of those mutants are actually invalid under ajv (107 of 290), so agreement is not "everything passes"
+  ✗ where both say invalid, the checker's complaint is at (or on the path to/from) a place ajv also complains about (105 of 107)
+      105 of 107
+  ✓ a schema keyword the checker does not implement is an error, not a silent pass (top level)
+  ✓ ... and the same when it sits deep in the schema, in a branch the data never visits
+  ✓ an unresolvable $ref is an error
+  ✗ the schema audit names a place with "/" and "~" in its key as RFC 6901 does (#/properties/a~1b~0c, #/$defs/d~1e)
+      [{"path":"#/properties/a/b~c","message":"schema keyword \"minLength\" is not supported by this checker"},{"path":"#/$defs/d/e","message":"schema keyword \"maxLength\" is not supported by this checker"}]
+  ✓ the real schema uses only keywords the checker implements (so its verdicts can be trusted)
+
+=== 2. the page stops on non-conforming data ===
+  ✓ the real catalog boots: the page finished initializing and the validation status is "valid"
+  ✓ ... and nothing was logged as an error or warning on the way
+  ✓ a catalog missing a required key does NOT boot
+  ✓ ... the status is "invalid" and it names the missing key
+  ✓ ... the invalid catalog never became DB
+  ✓ ... and the console says why (every problem, then the boot failure)
+  ✓ MUTANT (the gate cut out of the source): the same invalid catalog boots, so the check above can fail
+
+=== 3. a missing schema file does not break the page, and is loud ===
+  ✓ the page boots without the schema file
+  ✓ ... the status says "unavailable"
+  ✓ ... and a warning says the SSOT was not validated
+
+[SSOT boot validation, A3] 19 passed, 3 failed (of 22 checks)
+

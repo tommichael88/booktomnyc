@@ -170,7 +170,7 @@
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T158';
+     const QR_BUILD_VERSION = 'T161';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -849,7 +849,7 @@
              category: m.default_dynamic_category || m.fallback?.category || 'other',
              stype: normStype(m.default_service_type || m.fallback?.service_type || 'Repair'),
              group: m.keyword,
-             base: m.fallback?.base_price || 70,
+             base: m.fallback?.base_price || FALLBACKS.base_price,
              key: m.keyword,
              label: m.keyword,
              qtyLabel: 'item',
@@ -1203,7 +1203,7 @@
                  category: fb.category || 'other',
                  stype: normStype(fb.service_type || 'Repair'),
                  group: 'other',
-                 base: fb.base_price || 70,
+                 base: fb.base_price || FALLBACKS.base_price,
                  key: 'other',
                  label: 'Other',
                  qtyLabel: 'item',

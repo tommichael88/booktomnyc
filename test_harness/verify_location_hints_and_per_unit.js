@@ -83,8 +83,19 @@ check('default_tags seed into inherentTagIds, not detTagIds (now in buildService
 check('the "We understood" banner source (detAndMan) does NOT include inherentTagIds',
     /detAndMan = \[\.\.\.new Set\(\[\.\.\.S\.detTagIds, \.\.\.S\.manTagIds\]\)\]/.test(QR_HTML) ||
     /detAndMan/.test(QR_HTML));
-check('the REAL final pricing computation (computeQuoteFromState) DOES include inherentTagIds',
-    /inherentTagIds/.test(QR_HTML) && /allTagIds.*inherentTagIds|inherentTagIds.*allTagIds|inherentTagIds\|\|\[\]\)/.test(QR_HTML));
+// T159: this was a source-shape pin (`allTagIds ... inherentTagIds` on one line). The tag set now has one definition (resolveSessionTagIds) that computeQuoteFromState calls, so the
+// text moved and the regex no longer matched, though nothing about the behaviour changed. The property is that the REAL pricing computation counts an inherent tag; assert that by
+// behaviour: an inherent tag is in force in the quote's active set, and an inherent tag is never gated away.
+{
+    const vm = require('vm'), sbi = { DB, SERVICE_DATA: DB, window: { DB }, console }; sbi.global = sbi; vm.createContext(sbi);
+    for (const f of ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js']) vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, f), 'utf8'), sbi, { filename: f });
+    const svc = DB.services.find(s => s.id === 'led_bulb_upgrade') || DB.services[0];
+    const st = { qty: 1, intent: { key: svc.id, category: svc.ui_taxonomy && svc.ui_taxonomy.category_id, label: 'x', qtyLabel: 'item' }, stype: 'Repair', answers: {},
+        detTagIds: [], manTagIds: [], negatedTagIds: [], inherentTagIds: ['#brick_wall'], userTagIds: [], _svc: svc, _tagsAffirmed: false };
+    const q = sbi.computeQuoteFromState(st);
+    check('the REAL final pricing computation (computeQuoteFromState) DOES include inherentTagIds (behaviour: an inherent tag is in the quote\'s full and chargeable sets)',
+        q.allTagIds.includes('#brick_wall') && q.activeTagIds.includes('#brick_wall'), { expected: '#brick_wall in allTagIds and activeTagIds', got: { all: q.allTagIds, active: q.activeTagIds } });
+}
 check('at least 4 real inherentTagIds references exist (declaration, push, activeTagIds, computeQuoteFromState)',
     (QR_HTML.match(/inherentTagIds/g) || []).length >= 4);
 

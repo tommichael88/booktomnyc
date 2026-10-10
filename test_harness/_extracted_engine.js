@@ -11,17 +11,35 @@ global.window = global.window || global;  // resolveDynamicService reads window.
 S = global.S = { _svc: null };
 
 // ─── Module-level constants (source order) ───
-const FALLBACKS = Object.freeze({
-            base_price: 70,             // buildServiceSessionSeed, prefillSmartQuoteFromOtherTile, sqAnalyze fallback, sqRenderSelfQuoteAdlib
-            tier_rate: 85,              // computeUnifiedQuote, sqRenderSelfQuoteAdlib
-            dispatch_fee: 45,           // computeUnifiedQuote, sqRenderSelfQuoteAdlib
-            standard_labor: 40,         // mathFurnitureAssembly
-            default_minutes: 60,        // sqRenderSelfQuoteAdlib per-job default
-            no_estimate_minutes: 45,    // computeUnifiedQuote when no estimate exists at all (distinct from above; preserve 45)
-            badge_label: '✅ Fixed price',
-            call_for_quote: 'Call',
-            disclaimer_text: 'Labor estimate. Materials extra.',
-        });
+const FALLBACKS = (() => {
+            const PATH = 'global_rules.fallbacks';
+            /** @param {string | symbol} k */
+            const isValueKey = k => typeof k === 'string' && k[0] !== '_';
+            const block = () => {
+                if (typeof DB === 'undefined' || !DB) throw new Error('FALLBACKS was read before the SSOT was loaded (DB is not set); ' + PATH + ' in btnyc.json is where its values live.');
+                const b = DB.global_rules && DB.global_rules.fallbacks;
+                if (!b || typeof b !== 'object') throw new Error('FALLBACKS needs ' + PATH + ' in btnyc.json and the loaded SSOT has none; deploy btnyc.json together with qr.html.');
+                return b;
+            };
+            /** @param {Record<string, any>} b @param {string | symbol} k */
+            const has = (b, k) => isValueKey(k) && Object.prototype.hasOwnProperty.call(b, k);
+            const readOnly = () => { throw new TypeError('FALLBACKS is read-only; edit ' + PATH + ' in btnyc.json.'); };
+            return new Proxy({}, {
+                get(_t, k) {
+                    if (typeof k === 'symbol') return undefined; // engine probes (Symbol.toPrimitive, inspect), not reads of a fallback
+                    const b = block();
+                    if (!has(b, k)) throw new Error('FALLBACKS.' + k + ' is not defined: ' + PATH + '.' + k + ' is missing from btnyc.json.');
+                    return b[k];
+                },
+                has: (_t, k) => has(block(), k),
+                ownKeys: () => Object.keys(block()).filter(isValueKey),
+                getOwnPropertyDescriptor: (_t, k) => has(block(), k) ? { value: block()[k], writable: false, enumerable: true, configurable: true } : undefined,
+                set: readOnly,
+                deleteProperty: readOnly,
+                defineProperty: readOnly,
+                setPrototypeOf: readOnly,
+            });
+        })();
 const _GENERIC_QTY_MODULE_KEYS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);
 const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula', 'buy_the_hour_qty_gate_formula']);
 
@@ -209,6 +227,44 @@ function applyLiveConfidenceEscalation(baseStrategy, activeTagIds, smartTags, es
             return {
                 strategy,
                 escalatedBy: worst
+            };
+        }
+
+function intentKeywordWeight(keyword, DB) {
+            if (!keyword) return 0;
+            const maps = Array.isArray(DB.intent_mappings) ? DB.intent_mappings : (DB.intent_mappings?.objects || []);
+            const m = maps.find(x => (x.keyword || '').toLowerCase() === keyword.toLowerCase());
+            return m?.confidence_weight || 0;
+        }
+
+function resolveConfidence(evidence, DB) {
+            const baseStrategy = evidence.baseStrategy;
+            const escalation = applyLiveConfidenceEscalation(
+                baseStrategy, evidence.activeTagIds || [], DB.smart_tags || {}, DB.global_rules?.confidence_escalation
+            );
+            const base = baseStrategy.base_confidence;
+            const match = (evidence.matchConfidence === undefined || evidence.matchConfidence === null) ?
+                intentKeywordWeight(evidence.intentKeyword, DB) : evidence.matchConfidence;
+            let score, source;
+            if (evidence.entry === 'catalog') {
+                // Direct tap: the customer chose this exact service. Intent is certain.
+                score = 100;
+                source = 'entry:catalog';
+            } else if (evidence.entry === 'other_tile') {
+                // Group-level tap: category and group are known, the specific service type may not be. Start high, not perfect.
+                score = Math.min(100, base + 45 + Math.min(15, match * 0.15));
+                source = 'entry:other_tile';
+            } else {
+                // Keyword evidence (free text, the guided builder): how sure the match was, scaled and capped.
+                score = Math.min(100, base + Math.min(20, match * 0.2));
+                source = 'entry:keyword';
+            }
+            return {
+                score,
+                minConf: escalation.strategy.minimum_quote_confidence,
+                escalatedBy: escalation.escalatedBy,
+                source,
+                strategy: escalation.strategy
             };
         }
 
@@ -495,7 +551,7 @@ function applyPricingFormula(formulaId, answers, qty, svc = null) {
                 const basePrice = svc?.financial_engine?.base_price || 0;
                 const minHours = f.minimum_billable_hours ?? DB.global_rules?.pricing_engines?.hourly_estimate?.minimum_billable_hours ?? 1;
                 const tm = svc?.default_estimates?.total_minutes;
-                const baseMinutesEstimate = (tm && tm.min != null && tm.max != null) ? Math.round((tm.min + tm.max) / 2) : (svc?.operational_metrics?.expected_minutes ?? 60);
+                const baseMinutesEstimate = (tm && tm.min != null && tm.max != null) ? Math.round((tm.min + tm.max) / 2) : (svc?.operational_metrics?.expected_minutes ?? FALLBACKS.default_minutes);
                 const minFloorMinutes = minHours * 60;
                 if (answers.buy_the_hour_qty === '1 item') {
                     overrideHourlyRate = 0;
@@ -656,6 +712,8 @@ function computeUnifiedQuote(ctx) {
                 answers = {},
                 qty: requestedQty = 1,
                 intentKeyword = null,
+                entry = null,
+                matchConfidence = null,
                 formulaId = null,
                 ctxAdjFee = 0,
                 ctxAdjMin = 0,
@@ -730,12 +788,7 @@ function computeUnifiedQuote(ctx) {
             const baseStrategy = resolveBaseConfidenceStrategy(svc, dynDef);
             const variabilityTier = baseStrategy._variability_tier;
 
-            let keywordConfidence = 0;
-            if (intentKeyword) {
-                const maps = Array.isArray(DB.intent_mappings) ? DB.intent_mappings : (DB.intent_mappings?.objects || []);
-                const m = maps.find(x => (x.keyword || '').toLowerCase() === intentKeyword.toLowerCase());
-                keywordConfidence = m?.confidence_weight || 0;
-            }
+            const keywordConfidence = intentKeywordWeight(intentKeyword, DB);
 
             const fe = svc?.financial_engine || dynDef?.financial_engine || {};
             // v9.5 FIX (closes Archaeology Audit findings #3/#5): the legacy
@@ -1300,42 +1353,21 @@ function computeUnifiedQuote(ctx) {
             const btnClassKey = cs.hide_materials ? 'button_class_no_mat' : 'button_class_with_mat';
             const btnClass = cs[btnClassKey] || cs.button_class || 'btn-primary';
 
-            const escalation = applyLiveConfidenceEscalation(
-                baseStrategy, activeTagIds, smartTags, DB.global_rules?.confidence_escalation
-            );
-            const liveStrategy = escalation.strategy;
+            // R-CONF-ONEFORMULA: the score, the bar and the escalation come from resolveConfidence, the one confidence function. `entry` is the customer's way in,
+            // threaded by the callers that know it (computeQuoteFromState, orch_compute_quote); a caller that does not say keeps the inference that stood before: no
+            // intent keyword means the customer chose this service, a keyword means keyword evidence. matchConfidence is the match strength the caller measured;
+            // absent, the resolver takes the intent keyword's own weight.
+            const confidence = resolveConfidence({
+                baseStrategy,
+                entry: entry ? entry : (intentKeyword ? 'free_text' : 'catalog'),
+                matchConfidence,
+                intentKeyword,
+                activeTagIds
+            }, DB);
+            const liveStrategy = confidence.strategy;
 
-            // v9.6 FIX (T65): was `keywordConfidence + base_confidence`, uncapped --
-            // a structurally different, more permissive formula than
-            // orch_compute_confidence's own (base_confidence + a scaled,
-            // capped contribution from match strength). Confirmed empirically:
-            // disagreed on ~40% of a representative catalog sweep, always in
-            // the same direction (this formula more permissive) -- any
-            // service with minimum_quote_confidence above ~60 could
-            // structurally never fail this check regardless of match
-            // quality, since raw confidence_weight values run 55-100.
-            // Fixed to match orch_compute_confidence's real logic exactly:
-            // no intentKeyword means the customer already explicitly chose
-            // this service (a catalog tap, or a chip-answer recompute on an
-            // already-selected service) -- maximally confident, matching
-            // orch_compute_confidence's own catalog=100 case. With an
-            // intentKeyword (free-text/NLP-driven), the raw keyword weight
-            // is scaled and capped identically to orch_compute_confidence's
-            // free-text formula. Both pipelines now compute the literally
-            // same number from the same inputs -- not just aligned, unified.
-            // Known, minor, deliberately-accepted imprecision: this collapses
-            // orch_compute_confidence's distinct 'other_tile' case (a
-            // group-level tap, no intentKeyword either) into the same
-            // maximal-confidence bucket as true catalog taps, rather than
-            // its own, slightly more conservative blended formula --
-            // threading an explicit entry-type signal through every real
-            // call site of this function would be a substantially larger,
-            // riskier change than this fix's real, confirmed scope justified
-            // this round.
-            const totalConfidence = intentKeyword ?
-                (liveStrategy.base_confidence || 0) + Math.min(20, keywordConfidence * 0.2) :
-                100;
-            const meetsConfidenceBar = totalConfidence >= liveStrategy.minimum_quote_confidence;
+            const totalConfidence = confidence.score;
+            const meetsConfidenceBar = totalConfidence >= confidence.minConf;
             // T118 FIX: was a tier-keyed lookup (the retired tier-only force-modules resolver, deleted in T155) ->
             // force_modules_by_variability[tier], unconditional. Purely
             // informational (this field is only ever read for the trace
@@ -1462,7 +1494,7 @@ function computeUnifiedQuote(ctx) {
                 variabilityTier,
                 baseStrategy,
                 liveStrategy,
-                escalatedBy: escalation.escalatedBy,
+                escalatedBy: confidence.escalatedBy,
                 keywordConfidence,
                 totalConfidence,
                 meetsConfidenceBar,

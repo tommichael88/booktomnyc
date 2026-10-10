@@ -1,0 +1,85 @@
+
+=== 1. agreement: SSOT block, schema and read sites name the same keys ===
+  ✗ btnyc.json has global_rules.fallbacks
+  ✗ the schema declares global_rules.fallbacks and requires it of global_rules
+  ✗ the schema declares exactly the keys the SSOT holds (no more, no fewer)
+      schema: []  ssot: []
+  ✗ the schema requires every value key and closes the object (additionalProperties: false)
+  ✗ the schema types every value key as number or string (not left open)
+  ✗ every value key carries its reasoning in _notes (R-SYSTEM-NODATA: the field's own _note), and _notes names no key that does not exist
+      no _notes
+  ✓ FALLBACKS is declared once (R-INVARIANT-SINGLEDEF)
+  ✓ no computed read of FALLBACKS (a read the check cannot name)
+  ✗ every key the code reads exists in the SSOT block
+      read but not in global_rules.fallbacks: [badge_label,base_price,call_for_quote,standard_labor,disclaimer_text,dispatch_fee,no_estimate_minutes,tier_rate]
+  ✗ every key in the SSOT block is read by the code (no dead number)
+      held in global_rules.fallbacks but never read: []
+  ✗ the five filed duplicates (#142) still equal the field they copy
+      base_price=undefined vs service_types.Repair.base_price=70; tier_rate=undefined vs global_rules.complexity_tiers.skilled.hourly_rate=85; dispatch_fee=undefined vs global_rules.surcharges.dispatch_fee=45; standard_labor=undefined vs meta.global_rates.standard_labor=40; badge_label=undefined vs checkout_states.standard_flat_rate.ui_badge_label="✅ Fixed price"
+  ✗ MUTANT (one side of a duplicate edited alone) is caught: both skewed pairs are reported
+    (0 keys; 12 read sites: badge_label×1, base_price×3, call_for_quote×1, standard_labor×1, disclaimer_text×1, dispatch_fee×1, no_estimate_minutes×2, tier_rate×2)
+
+=== booting the real page (spy on the page's Proxy constructor) ===
+✅ BookTOM initialized successfully.
+  ✓ the page booted: DB is set and the text bar exists
+  ✓ the boot gate ran against the real schema and the SSOT is valid
+
+=== 2. no copy: FALLBACKS returns what the live DB holds, for every key ===
+  ✗ the live DB carries the block
+  ✗ a sentinel written into each key of the live DB comes back through FALLBACKS (the code holds no value of its own)
+       (the SSOT block has no keys to read)
+  ✗ with the key removed from the DB, FALLBACKS throws naming the key -- there is no default in code to fall back to
+       (the SSOT block has no keys to read)
+
+=== 3. the guard ===
+  ✗ read before the SSOT is loaded (DB not set) throws, and says so
+      returned undefined
+  ✗ a document without the block throws, naming global_rules.fallbacks
+      returned undefined
+  ✗ a key nobody defined throws, naming it
+      returned undefined
+  ✗ FALLBACKS cannot be written, deleted or redefined, and the SSOT value is untouched
+      write threw false, delete threw false, define threw true
+  ✗ enumerating FALLBACKS reports the SSOT's keys (not an empty object), annotations excluded
+      [base_price,tier_rate,dispatch_fee,standard_labor,default_minutes,no_estimate_minutes,badge_label,call_for_quote,disclaimer_text]
+  ✗ `in` agrees with the SSOT
+  ✗ the block's annotation keys are not served as fallback values
+
+=== 4. boot order (Note B): no read of FALLBACKS before DB is set ===
+  ✗ the spy saw the page construct FALLBACKS (non-vacuity: the instrument is attached to the real object)
+      0 proxies seen
+  ✗ reads of FALLBACKS before DB was set, over a complete real boot: 0 (must be 0; counted only if the spy is attached to FALLBACKS)
+      the spy never saw FALLBACKS built, so a zero would mean nothing
+    (reads after DB was set, during the same boot: 0)
+  ✗ the spy counts a read made after boot (the counter moves when a read happens)
+  ✓ mutant anchor present in the page (DB = SERVICE_DATA;)
+✅ BookTOM initialized successfully.
+  ✗ MUTANT (a FALLBACKS read just before DB is set) is counted by the same spy
+      0 early reads counted
+  ✗ MUTANT is stopped by the guard: the boot fails and DB is never set (a loud failure, not an undefined in a price)
+
+=== 5. the schema gate holds the block (the page's own validator) ===
+  ✓ the SSOT as it stands is valid
+  ✗ a copy without global_rules.fallbacks is refused, naming it
+      []
+  ✗ removing ANY one of the 0 keys is refused, naming it
+      accepted without: [(no keys to remove: the block is absent)]
+  ✗ giving ANY one of the 0 keys the wrong type is refused, naming it
+      accepted with the wrong type: [(no keys to retype: the block is absent)]
+  ✗ a key the schema does not declare is refused (the surface cannot grow without the schema)
+✅ BookTOM initialized successfully.
+  ✗ the real page, given an SSOT without the block, does not boot (status invalid, DB never set)
+      status valid, DB set: true
+
+=== 6. the tail: every numeric default in every layer is filed, and the list only shrinks ===
+  ✓ scanner: sees `|| 45` and the last operand of `a || b || 12`; ignores `?? 0`, `?? 1` and `?? FALLBACKS.k`
+  ✓ the scan covered the page (every inline block and external module parsed; functions found)
+  ✗ no numeric default is unfiled (a new one means: put the number in the SSOT, or file it in the ledger)
+      logic applyPricingFormula ?? 60 ×1 (not filed); logic detectIntentNLP || 70 ×2 (not filed)
+  ✓ no filed default has gone (a retired one must be deleted from FILED so the list only shrinks)
+  ✗ every filed default cites a ledger entry that exists in PENDING_DECISIONS.md
+      no entry for: [#144,#143]
+    (23 numeric defaults in 17 places; 20 filed)
+
+[FALLBACKS and the numbers in code live in the SSOT] 9 passed, 32 failed (of 41 checks)
+

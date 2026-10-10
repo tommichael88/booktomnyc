@@ -250,3 +250,33 @@ The cart's identity, merge and total rules are Logic and live in one module, `ca
 Named defect classes (proposed in `cart_logic.js`; **neither is in the Charter's defect-class list yet** -- surfaced in `PENDING_DECISIONS.md`, the Charter is not edited here): **DEFECT-PRESENTATION-IDENTITY** (a line's identity was composed of what the customer saw) and **DEFECT-UNPRICED-IDENTITY** (an identity that left out a priced fact -- three shelves and one shelf merged into the first price -- and a stored `qty` nothing read, so two taps were quoted once). Held by `verify_cart_logic.js` (the rule, with mutants) and `verify_cart_merge_behavior.js` (the same rule through the real cart, with mutants of the page).
 
 A curated card records the quantity it priced on its cart line (`intakeAnswers.__qty`, and a `Quantity: n` line in the notes when n > 1), as the guided builders already did. Two things are NOT yet recorded the same way and are tracked in `PENDING_DECISIONS.md`: the free-text SmartQuote entry and the self-quote bypass entry carry no structured quantity (the quoted-amount part of the identity keeps them from merging at the wrong price, but the count is not on the line).
+
+## Where confidence is computed (`T159`)
+
+`resolveConfidence(evidence, DB)` (pricing_engine, Logic) is the one place a score, a bar and an escalation are produced (`R-CONF-ONEFORMULA`). The bar and the escalation come from `applyLiveConfidenceEscalation` alone, called only from there. Every gateway builds its evidence and reads the record:
+
+| Id | Function | Layer | Role |
+|---|---|---|---|
+| CF-01 | `resolveConfidence` | Logic | The one confidence function: `{score, minConf, escalatedBy, source, strategy}` from `{baseStrategy, entry, matchConfidence, intentKeyword, activeTagIds}`. |
+| CF-02 | `intentKeywordWeight` | Logic | The authored weight of an intent keyword; the match strength when the caller measured none. |
+| CF-03 | `resolveSessionEntry`, `otherTileId` | Logic | The customer's way in (`catalog` / `other_tile` / `free_text`) for a session; an explicit `intent.entry` wins, otherwise the intent's own identity says. |
+| CF-04 | `resolveSessionTagIds` | Logic | The tags in force for a session (the full set, or the chargeable set before the customer affirms what the words detected). |
+| CF-05 | `resolveSessionConfidence` | Logic | A session's confidence from its own evidence; the guided builder's gateway. |
+| -- | `computeUnifiedQuote`, `orch_compute_confidence` | Logic | Gateways for the state path and the orchestrator; neither holds confidence arithmetic. |
+| -- | `sqPrepareFlow` | Glue | Stores what `resolveSessionConfidence` answered (`S._confidenceStrategy`, `S._escalatedBy`); its tag detection and dynamic-service defaults moved to `resolveBuilderTags` and `resolveBuilderDynamicDefaults` (Logic). |
+
+`verify_confidence_convergence.js` holds it: it drives the three real gateways with the same request and asserts they agree. It is a **class detector** (it freezes no output and asserts no number), so it is not a golden, parity or equivalence test in the sense of PHASE_PLAN's standing rule; that is recorded here once, as the operator-accepted default (`SESSION_PLAN.md` v-a 6). What the one function does not settle (`R-CONF-ACCOUNTING`, the Cᵢ / Cₓ split, bars the questions cannot clear) is `PENDING_DECISIONS.md` #140.
+
+**Where the escalation lives (`T161`).** The arithmetic that raises the bar and the question cap when a tag is in force exists in one function, `applyLiveConfidenceEscalation` (it reads the SSOT's `confidence_escalation` deltas and caps). The guided builder's private copy of it is deleted. A tag names its tier in `smart_tags.<tag>.escalate_complexity`; `complexity_override` is a different field, on an intake **answer**. Two functions read a tag's tier, for two purposes: `applyLiveConfidenceEscalation` (the confidence bar) and `computeUnifiedQuote` (the pricing tier); that pair is filed (`PENDING_DECISIONS.md` #149) and `verify_single_escalation_path.js` fails on a third reader, a second copy of the arithmetic, or a read of `effects.complexity_override`.
+
+## Where the last-resort numbers live (`T160`)
+
+The nine values the pricing code falls back to (a starting price, a tier rate, a dispatch fee, a labor rate, two "minutes of a job nobody estimated", three pieces of card text) are in `btnyc.json` at `global_rules.fallbacks`, each with its reasoning in the block's `_notes` (`R-SYSTEM-NODATA`). The schema requires the block and closes it (`additionalProperties: false`), so the boot gate refuses a document that lacks it or carries another key.
+
+| Id | Thing | Layer | Role |
+|---|---|---|---|
+| FB-01 | `FALLBACKS` (top-level `const`, pricing_engine block) | Logic (read by Logic, Rendering and Glue) | A read-only **view** of `DB.global_rules.fallbacks`; it holds no value of its own. Reads `DB` at the moment of the read; throws, naming what is missing, before the SSOT is loaded, when the block is absent, or for a key nobody defined; cannot be written, deleted or redefined. |
+| FB-02 | `global_rules.fallbacks` (btnyc.json, schema) | SSOT | The nine values and their `_notes`. Five repeat a number the catalog holds elsewhere (`PENDING_DECISIONS.md` #142). |
+| FB-03 | `verify_fallbacks_live_in_ssot.js` | Test | The class detector: SSOT, schema and read sites agree; no copy in code; the guard; zero reads before `DB` is set on a real boot; every numeric `??` / `||` default in every layer is filed (#143, #144) and the list only shrinks. |
+
+Deploy order (#145): `btnyc.json` and `schema/btnyc_schema.json` first; then `qr.html`; then `modules/nlp_engine.js`. **`nlp_engine.js` -> `qr.html` is a new edge in the deploy graph:** the module reads `FALLBACKS`, a binding declared in `qr.html`'s pricing block (two reads, `buildCandidate` and the `default_fallback` branch of `detectIntentNLP`). It works against any `qr.html` in this repository's history; against one with no `FALLBACKS` binding it throws on free text.

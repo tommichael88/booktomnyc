@@ -1,0 +1,77 @@
+
+=== 1. agreement: SSOT block, schema and read sites name the same keys ===
+  ✓ btnyc.json has global_rules.fallbacks
+  ✓ the schema declares global_rules.fallbacks and requires it of global_rules
+  ✓ the schema declares exactly the keys the SSOT holds (no more, no fewer)
+  ✓ the schema requires every value key and closes the object (additionalProperties: false)
+  ✓ the schema types every value key as number or string (not left open)
+  ✓ every value key carries its reasoning in _notes (R-SYSTEM-NODATA: the field's own _note), and _notes names no key that does not exist
+  ✓ FALLBACKS is declared once (R-INVARIANT-SINGLEDEF)
+  ✓ no computed read of FALLBACKS (a read the check cannot name)
+  ✓ every key the code reads exists in the SSOT block
+  ✓ every key in the SSOT block is read by the code (no dead number)
+  ✓ the five filed duplicates (#142) still equal the field they copy
+  ✓ MUTANT (one side of a duplicate edited alone) is caught: both skewed pairs are reported
+    (9 keys; 15 read sites: badge_label×1, default_minutes×1, base_price×5, call_for_quote×1, standard_labor×1, disclaimer_text×1, dispatch_fee×1, no_estimate_minutes×2, tier_rate×2)
+
+=== booting the real page (spy on the page's Proxy constructor) ===
+✅ BookTOM initialized successfully.
+  ✓ the page booted: DB is set and the text bar exists
+  ✓ the boot gate ran against the real schema and the SSOT is valid
+
+=== 2. no copy: FALLBACKS returns what the live DB holds, for every key ===
+  ✓ the live DB carries the block
+  ✓ a sentinel written into each key of the live DB comes back through FALLBACKS (the code holds no value of its own)
+  ✓ with the key removed from the DB, FALLBACKS throws naming the key -- there is no default in code to fall back to
+
+=== 3. the guard ===
+  ✓ read before the SSOT is loaded (DB not set) throws, and says so
+  ✓ a document without the block throws, naming global_rules.fallbacks
+  ✓ a key nobody defined throws, naming it
+  ✓ FALLBACKS cannot be written, deleted or redefined, and the SSOT value is untouched
+  ✓ enumerating FALLBACKS reports the SSOT's keys (not an empty object), annotations excluded
+  ✓ `in` agrees with the SSOT
+  ✓ the block's annotation keys are not served as fallback values
+
+=== 4. boot order (Note B): no read of FALLBACKS before DB is set ===
+  ✓ the spy saw the page construct FALLBACKS (non-vacuity: the instrument is attached to the real object)
+  ✓ reads of FALLBACKS before DB was set, over a complete real boot: 0 (must be 0; counted only if the spy is attached to FALLBACKS)
+    (reads after DB was set, during the same boot: 0)
+  ✓ the spy counts a read made after boot (the counter moves when a read happens)
+  ✓ mutant anchor present in the page (DB = SERVICE_DATA;)
+❌ BookTOM failed to initialize: Error: FALLBACKS was read before the SSOT was loaded (DB is not set); global_rules.fallbacks in btnyc.json is where its values live.
+    at block (https://tommichael88.github.io/booktomnyc/qr.html:60:61)
+    at Object.get (https://tommichael88.github.io/booktomnyc/qr.html:71:31)
+    at spied.get (/home/claude/work/btnyc_repo_T156/test_harness/verify_fallbacks_live_in_ssot.js:94:52)
+    at init (https://tommichael88.github.io/booktomnyc/qr.html:49:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ✓ MUTANT (a FALLBACKS read just before DB is set) is counted by the same spy
+  ✓ MUTANT is stopped by the guard: the boot fails and DB is never set (a loud failure, not an undefined in a price)
+
+=== 5. the schema gate holds the block (the page's own validator) ===
+  ✓ the SSOT as it stands is valid
+  ✓ a copy without global_rules.fallbacks is refused, naming it
+  ✓ removing ANY one of the 9 keys is refused, naming it
+  ✓ giving ANY one of the 9 keys the wrong type is refused, naming it
+  ✓ a key the schema does not declare is refused (the surface cannot grow without the schema)
+❌ btnyc.json does not conform to ./schema/btnyc_schema.json (1 problem(s)): [
+  {
+    path: '/global_rules',
+    message: 'missing required property "fallbacks"'
+  }
+]
+❌ BookTOM failed to initialize: Error: btnyc.json failed schema validation (1 problem(s)); first: /global_rules missing required property "fallbacks"
+    at init (https://tommichael88.github.io/booktomnyc/qr.html:46:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ✓ the real page, given an SSOT without the block, does not boot (status invalid, DB never set)
+
+=== 6. the tail: every numeric default in every layer is filed, and the list only shrinks ===
+  ✓ scanner: sees `|| 45` and the last operand of `a || b || 12`; ignores `?? 0`, `?? 1` and `?? FALLBACKS.k`
+  ✓ the scan covered the page (every inline block and external module parsed; functions found)
+  ✓ no numeric default is unfiled (a new one means: put the number in the SSOT, or file it in the ledger)
+  ✓ no filed default has gone (a retired one must be deleted from FILED so the list only shrinks)
+  ✓ every filed default cites a ledger entry that exists in PENDING_DECISIONS.md
+    (20 numeric defaults in 15 places; 20 filed)
+
+[FALLBACKS and the numbers in code live in the SSOT] 41 passed, 0 failed (of 41 checks)
+

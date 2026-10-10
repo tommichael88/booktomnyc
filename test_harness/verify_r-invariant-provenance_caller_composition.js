@@ -21,7 +21,7 @@
  *   2. BEHAVIOUR, because "source travels on the return value" is a runtime fact: every migrated resolver is called for EVERY service and dynamic service, and the
  *      record it returns must carry a source from the Charter's vocabulary that matches where the data says the value came from.
  * Scope limit, stated: variable tracing is within one function PLUS one hop through a direct call: a resolver's result passed as an argument to a named function taints that
- * function's parameter (T158: the operator extracted the guided builder's escalation block into _sqPrepareFlowLegacyEscalation(baseStrategy, ...), and without the hop two
+ * function's parameter (T158: the operator extracted the guided builder's escalation block into a helper that took the strategy as a parameter -- since deleted, T161 -- and without the hop two
  * frozen compositions simply vanished from the count while still existing in the source -- relocation read as migration). A value passed further than that is not seen. Inline re-derivation of the same
  * concept with no resolver call (a second implementation) is DEFECT-DUPLICATE-REGISTRY / R-INVARIANT-DUPLICATION-TICKET territory and has its own detectors.
  */
@@ -94,8 +94,11 @@ check('the retired quantity arbiters (entityHasOwnQtyQuestion, QTY_AWARE_FORMULA
 // two (the minimum-quote-confidence chain in orch_compute_confidence, the archetype-result `??` in computeUnifiedQuote) were deleted in T155 (A2b: their second sources were
 // unreachable), so "the detector saw them once" no longer proves it still CAN. For each deleted one, inject a composition of exactly that kind into a synthetic function and
 // require the detector to flag it, then discard it so the frozen counts are untouched (the T150 method).
-const CANARY = ['_sqPrepareFlowLegacyEscalation | resolveBaseConfidenceStrategy | ||', 'executeWorkflow | orch_resolve_entity | ||'];   // T158: the strategy chain moved from sqPrepareFlow into the helper the operator extracted; the one-hop trace follows it
-check('non-vacuity: the detector SEES the headline instances that remain in the source (the strategy chain in _sqPrepareFlowLegacyEscalation, the entity chain in executeWorkflow)', CANARY.every(k => counts[k] >= 1), { expected: 'both present', got: CANARY.filter(k => !counts[k]) });
+// T159 (item B) / T161 (item D): the guided builder's strategy chain (a resolveBaseConfidenceStrategy result composed with `||`) is no longer a headline instance the detector can see:
+// sqPrepareFlow stopped calling its private escalation helper in T159 (the builder now asks resolveSessionConfidence) and T161 deleted the helper. The shape it carried is covered by
+// the INJECTED probe below, the same way T155 A2b handled the sites it deleted.
+const CANARY = ['executeWorkflow | orch_resolve_entity | ||'];
+check('non-vacuity: the detector SEES the headline instance that remains in the source (the entity chain in executeWorkflow)', CANARY.every(k => counts[k] >= 1), { expected: 'present', got: CANARY.filter(k => !counts[k]) });
 { const probes = [
     ['probeConfidenceChain', 'function probeConfidenceChain(e) { const s = resolveBaseConfidenceStrategy(e, null); const m = s.minimum_quote_confidence || 80; return m; }', 'resolveBaseConfidenceStrategy', '||'],
     ['probeArchetypeResult', 'function probeArchetypeResult(e) { const r = computeArchetypeQuote(e, "formula", {}, 1, DB, null); let l = 0; l = r.laborEstimate ?? l; return l; }', 'computeArchetypeQuote', '??'],
@@ -110,11 +113,12 @@ const LEGACY = {
     "orch_resolve_entity | resolveDynamicService | ||": 1,
     "prefillSmartQuoteFromOtherTile | resolveDynamicService | ??": 1,
     "prefillSmartQuoteFromOtherTile | resolveDynamicService | ||": 1,
-    "_sqPrepareFlowLegacyEscalation | resolveBaseConfidenceStrategy | ||": 2, // T158: RELOCATED, not migrated -- these two sites were in sqPrepareFlow (2 there before, 0 now); the operator extracted the block into this helper and the one-hop trace follows the argument into it
     "orch_enrich_from_dynamic_service | resolveDynamicService | ||": 1, // T158: first SEEN by the one-hop trace (the entity arrives as a parameter); present in the source before it, frozen at the count found
-    "orch_compute_quote | orch_resolve_entity | ||": 1, // T158: same
-    "sqPrepareFlow | resolveDynamicService | ||": 1
-}; // FROZEN T147 (T150: the four checkout-state entries are gone -- that resolver is STRICT now; T155 A2b: the six computeUnifiedQuote / orch_compute_confidence entries and the collectBookingContext_freeText entry are gone -- their second sources were unreachable and are deleted) -- the unmigrated arbitration the Charter's audit named; lower or delete an entry as each resolver is migrated
+    "orch_compute_quote | orch_resolve_entity | ||": 1  // T158: same
+}; // T159 (item B) / T161 (item D): two entries left. "sqPrepareFlow | resolveDynamicService | ||" (1) was in the confidence_gain loop (`...?.intake_chain || []`), deleted with the loop (T159). The guided
+// builder's private escalation helper held two `|| 0` compositions of resolveBaseConfidenceStrategy; sqPrepareFlow stopped calling it in T159 (the trace could no longer reach them) and the function
+// was deleted in T161, so the two sites no longer exist. They were NOT migrated: they were removed with the second implementation they belonged to (verify_single_escalation_path.js holds that class).
+// FROZEN T147 (T150: the four checkout-state entries are gone -- that resolver is STRICT now; T155 A2b: the six computeUnifiedQuote / orch_compute_confidence entries and the collectBookingContext_freeText entry are gone -- their second sources were unreachable and are deleted) -- the unmigrated arbitration the Charter's audit named; lower or delete an entry as each resolver is migrated
 const cur = Object.keys(counts).filter(k => !STRICT.has(k.split(' | ')[1]));
 const grew = cur.filter(k => counts[k] > (LEGACY[k] || 0)).map(k => `${k}: ${counts[k]} (frozen ${LEGACY[k] || 0})`);
 const shrunk = Object.keys(LEGACY).filter(k => (counts[k] || 0) < LEGACY[k]).map(k => `${k}: ${counts[k] || 0} (frozen ${LEGACY[k]})`);

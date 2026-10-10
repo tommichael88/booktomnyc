@@ -35,7 +35,9 @@ const state = (x, over) => { const st = mkState(x, over); const q = sb.computeQu
 const orch = (x, o) => {
     const c = sb.collectBookingContext_catalog(x, catOf(x));
     c.manuallyToggledTagIds = (o && o.man) || []; c.detectedTagIds = (o && o.det) || []; c.negatedTagIds = (o && o.neg) || []; if (o && o.answers) c.answers = Object.assign({}, o.answers);
-    if (o && o.nlp) c.nlpIntent = { key: o.nlp }; if (o && o.affirmed) c.tagsAffirmed = true;
+    // A request that carries an NLP keyword is a free-text request: it says so (the way collectBookingContext_freeText does), since the orchestrator now reads the entry a context declares (T159, R-CONF-ONEFORMULA)
+    // instead of guessing it from the keyword -- a context that claimed 'catalog' AND carried a keyword was one no real entry produces.
+    if (o && o.nlp) { c.nlpIntent = { key: o.nlp }; c.entry = 'free_text'; } if (o && o.affirmed) c.tagsAffirmed = true;
     const r = sb.executeWorkflow(c, DB); return { price: r.quote.laborEstimate, answers: r.answers };
 };
 
