@@ -3494,6 +3494,65 @@ body.modal-active{overflow:hidden}
             return { detTagIds, negatedTagIds };
         }
 
+        // resolveTagRules -- LOGIC. The SSOT's tag rules applied to a session's four tag sets: (1) the default for each display group (smart_tags[].is_default_for_group, valid for
+        // the category and group) when nothing of that group is held, unless the session is curated or the customer negated or already chose it; (2) mutual exclusion
+        // (smart_tags[].mutually_exclusive): a tapped tag removes its siblings everywhere, a detected tag removes its siblings unless the customer tapped one; (3) a negation
+        // dies when an exclusive sibling of the negated tag is active. Pure: it returns the four sets and writes no session; applySSOTRules stores them. Moved out of
+        // applySSOTRules (glue) so a rule lives in the Logic layer (R-SYSTEM-LAYERS, R-INVARIANT-COMPLY: the T166 fix below touched it), text and order preserved except where noted.
+        function resolveTagRules({ category, groupId, curatedMode, detTagIds, manTagIds, userTagIds, negatedTagIds }) {
+            const tags = DB.smart_tags || {};
+            const cat = category || 'other';
+            let det = (detTagIds || []).slice(), man = (manTagIds || []).slice(), usr = (userTagIds || []).slice(), neg = (negatedTagIds || []).slice();
+            const valid = Object.keys(tags).filter(tid => tagValidForCategory(tid, cat, groupId));
+
+            // Default-for-group -- only for tags valid for this category
+            const groups = new Set(valid.map(tid => tags[tid].display_group || 'Additional Adjustments'));
+            groups.forEach(g => {
+                const gTids = valid.filter(tid => (tags[tid].display_group || 'Additional Adjustments') === g);
+                // T166: a tag of this display group that the session already holds counts as the group's selection whether or not it is valid for this category. Counting only the valid
+                // ones let the default be pushed beside a held tag it excludes, and the mutual-exclusion pass below then removed BOTH (the held tag and the default it had just been
+                // handed): "#brick_wall" held in the drywall group lost the tag the customer chose and gained nothing. The held tag is still not priced or shown as a chip when it is
+                // out of scope; this only stops the default from cancelling it (verify_confidence_convergence.js: the builder and the state path now agree on that session).
+                const hasSel = Object.keys(tags).some(tid => (tags[tid].display_group || 'Additional Adjustments') === g && (det.includes(tid) || man.includes(tid)));
+                if (!hasSel) {
+                    // Skip auto-default in curated mode (e.g. don't auto-select #drywall for door installs)
+                    if (curatedMode) return;
+                    const def = gTids.find(tid => tags[tid].is_default_for_group && tagValidForCategory(tid, cat, groupId));
+                    if (def && !neg.includes(def) && !man.includes(def))
+                        man.push(def);
+                }
+            });
+
+            // Mutual exclusion -- reads fully from btnyc.json smart_tags[tid].mutually_exclusive
+            // manTagIds (user tap) take priority: remove their exclusive siblings everywhere
+            const rm = new Set();
+            man.forEach(tid => {
+                (tags[tid]?.mutually_exclusive || []).forEach(x => rm.add(x));
+            });
+            // detTagIds (NLP) also enforce exclusion -- but only if not overridden by a manTag
+            det.forEach(tid => {
+                if (!rm.has(tid)) {
+                    (tags[tid]?.mutually_exclusive || []).forEach(x => {
+                        if (!man.includes(x)) rm.add(x); // NLP tag wins unless user picked the sibling
+                    });
+                }
+            });
+            man = man.filter(x => !rm.has(x));
+            det = det.filter(x => !rm.has(x));
+            usr = usr.filter(x => !rm.has(x));
+
+            // Clean negatedTagIds: if an exclusive sibling IS selected, the negation is no longer valid
+            // e.g. #heavy_item is selected -> remove any negation of its sibling #very_heavy
+            const activeSet = new Set([...man, ...det]);
+            neg = neg.filter(tid => {
+                const t = tags[tid];
+                if (!t) return false;
+                // Keep the negation only if none of this tag's exclusive siblings are active
+                return !(t.mutually_exclusive || []).some(sib => activeSet.has(sib));
+            });
+            return { detTagIds: det, manTagIds: man, userTagIds: usr, negatedTagIds: neg };
+        }
+
         // resolveBuilderDynamicDefaults -- LOGIC. What the dynamic service for a (category, service type, group) gives the guided builder: its base price and the ids of
         // its suggested tags (chips made available, not pre-selected). `found` is false when no dynamic service matches; `base` is undefined when the entry authors none;
         // `suggestedTagIds` is null when it authors no suggested tags. Pure: moved out of sqPrepareFlow, text preserved (R-SYSTEM-LAYERS).
@@ -5199,7 +5258,10 @@ body.modal-active{overflow:hidden}
             // Large fragile items get #fragile_item, not #heavy_item.
             const sizeHint = (typeof extractSizeHint === 'function') ?
                 extractSizeHint(rawText, DB.smart_tags || {}) : null;
-            const isFragileItem = /(neon|glass|canvas|painting|art|fragile|delicate|stained)/i.test(rawText);
+            // T166: whole words. As a bare substring "art" matched inside "apartment", "smart", "part" and "cart", so "hang an oversized mirror in my apartment" took the fragile branch,
+            // lost its heavy-item tag and priced $213 lower than the same sentence without "in my apartment" (PENDING_DECISIONS #163). The words are still written here; they belong in
+            // the SSOT beside #fragile_item's synonyms (R-SYSTEM-NODATA), which is queued, not done.
+            const isFragileItem = /\b(?:neon|glass(?:es)?|canvas(?:es)?|paintings?|arts?|fragile|delicate|stained)\b/i.test(rawText);
             if (sizeHint === 'oversized') {
                 if (isFragileItem) {
                     if (!detectedTagIds.includes('#fragile_item') && !negatedTagIds.includes('#fragile_item'))
@@ -10481,52 +10543,21 @@ function addToCart(entry) {
     }
 }
 
+        // applySSOTRules -- GLUE. Stores what the Logic function resolveTagRules resolves for this session's tags (group defaults, mutual exclusion, dead negations).
         function applySSOTRules() {
-            const tags = DB.smart_tags || {};
-            const cat = S.intent?.category || 'other';
-            const valid = Object.keys(tags).filter(tid => tagValidForCategory(tid, cat, S.intent?._groupId));
-
-            // Default-for-group — only for tags valid for this category
-            const groups = new Set(valid.map(tid => tags[tid].display_group || 'Additional Adjustments'));
-            groups.forEach(g => {
-                const gTids = valid.filter(tid => (tags[tid].display_group || 'Additional Adjustments') === g);
-                const hasSel = gTids.some(tid => S.detTagIds.includes(tid) || S.manTagIds.includes(tid));
-                if (!hasSel) {
-                    // Skip auto-default in curated mode (e.g. don't auto-select #drywall for door installs)
-                    if (S._curatedMode) return;
-                    const def = gTids.find(tid => tags[tid].is_default_for_group && tagValidForCategory(tid, cat, S.intent?._groupId));
-                    if (def && !S.negatedTagIds.includes(def) && !S.manTagIds.includes(def))
-                        S.manTagIds.push(def);
-                }
+            const r = resolveTagRules({
+                category: S.intent?.category,
+                groupId: S.intent?._groupId,
+                curatedMode: S._curatedMode,
+                detTagIds: S.detTagIds,
+                manTagIds: S.manTagIds,
+                userTagIds: S.userTagIds,
+                negatedTagIds: S.negatedTagIds
             });
-
-            // Mutual exclusion — reads fully from btnyc.json smart_tags[tid].mutually_exclusive
-            // manTagIds (user tap) take priority: remove their exclusive siblings everywhere
-            const rm = new Set();
-            S.manTagIds.forEach(tid => {
-                (tags[tid]?.mutually_exclusive || []).forEach(x => rm.add(x));
-            });
-            // detTagIds (NLP) also enforce exclusion — but only if not overridden by a manTag
-            S.detTagIds.forEach(tid => {
-                if (!rm.has(tid)) {
-                    (tags[tid]?.mutually_exclusive || []).forEach(x => {
-                        if (!S.manTagIds.includes(x)) rm.add(x); // NLP tag wins unless user picked the sibling
-                    });
-                }
-            });
-            S.manTagIds = S.manTagIds.filter(x => !rm.has(x));
-            S.detTagIds = S.detTagIds.filter(x => !rm.has(x));
-            S.userTagIds = (S.userTagIds || []).filter(x => !rm.has(x));
-
-            // Clean negatedTagIds: if an exclusive sibling IS selected, the negation is no longer valid
-            // e.g. #heavy_item is selected → remove any negation of its sibling #very_heavy
-            const activeSet = new Set([...S.manTagIds, ...S.detTagIds]);
-            S.negatedTagIds = S.negatedTagIds.filter(tid => {
-                const t = tags[tid];
-                if (!t) return false;
-                // Keep the negation only if none of this tag's exclusive siblings are active
-                return !(t.mutually_exclusive || []).some(sib => activeSet.has(sib));
-            });
+            S.manTagIds = r.manTagIds;
+            S.detTagIds = r.detTagIds;
+            S.userTagIds = r.userTagIds;
+            S.negatedTagIds = r.negatedTagIds;
         }
 
         function finalizeBooking() {

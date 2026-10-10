@@ -1010,6 +1010,96 @@ def _validate_smart_tag_refs(db: dict) -> List[str]:
         for ref in extract_refs(svc.get("default_tags", [])):
             if ref not in tags:
                 errors.append(f"Service '{sid}' default_tags references unknown tag '{ref}'")
+        # T166: suggested_tags on a named service were never read by this check
+        for ref in extract_refs(svc.get("suggested_tags", [])):
+            if ref not in tags:
+                errors.append(f"Service '{sid}' suggested_tags references unknown tag '{ref}'")
+    # T166: a dynamic service's suggested_tags / smart_tags, and the tags on every intake option, were never read
+    # either, which is how a pointer to a tag retired in v9.5 (#pets_on_site) stayed valid:true for a year.
+    for dyn_key, dyn in (db.get("dynamic_services", {}) or {}).items():
+        for field in ("suggested_tags", "smart_tags"):
+            for ref in extract_refs(dyn.get(field, [])):
+                if ref not in tags:
+                    errors.append(f"Dynamic service '{dyn_key}' {field} references unknown tag '{ref}'")
+    for mod_name, mod in modules.items():
+        for i, resp in enumerate(mod.get("client_response", []) or []):
+            for ref in extract_refs(resp.get("tags", [])):
+                if ref not in tags:
+                    errors.append(
+                        f"intake_modules['{mod_name}'].client_response[{i}].tags references unknown tag '{ref}'"
+                    )
+    # tag scoping: the categories, groups and services a tag says it applies to (or not to) must exist
+    category_ids = {c.get("id") for c in db.get("category", []) if c.get("id")}
+    group_ids = {g.get("id") for g in db.get("group", []) if g.get("id")}
+    service_ids = {s.get("id") for s in db.get("services", []) if s.get("id")}
+    for tag_name, tag in (db.get("smart_tags", {}) or {}).items():
+        for cid in tag.get("applicable_categories", []) or []:
+            if cid != "all" and cid not in category_ids:
+                errors.append(f"smart_tags['{tag_name}'].applicable_categories references unknown category '{cid}'")
+        for gid in tag.get("applicable_group_ids", []) or []:
+            if gid not in group_ids:
+                errors.append(f"smart_tags['{tag_name}'].applicable_group_ids references unknown group '{gid}'")
+        for sid in tag.get("excluded_service_ids", []) or []:
+            if sid not in service_ids:
+                errors.append(f"smart_tags['{tag_name}'].excluded_service_ids references unknown service '{sid}'")
+    return errors
+
+
+def _chain_steps(chain: Optional[List[Any]]) -> Iterable[Dict[str, Any]]:
+    """Every step dict of a chain, descending into `then` branches. A branch is a list whose items are module-id
+    strings (the catalog's real shape) or step dicts; flatten_intake_chain only descends into dicts, so a branch of
+    strings was never validated by anything."""
+    for step in (chain or []):
+        if isinstance(step, dict):
+            yield step
+            then_map = step.get("then")
+            if isinstance(then_map, dict):
+                for branch in then_map.values():
+                    if isinstance(branch, list):
+                        yield from _chain_steps([b for b in branch if isinstance(b, dict)])
+
+
+def _validate_chain_branches(db: dict) -> List[str]:
+    """T166: a `then` key must be the exact label of an option of the module it hangs off (a label spelled with U+2011
+    where the key used U+002D opened no branch, silently), and every module a branch names must exist."""
+    errors: List[str] = []
+    modules = db.get("intake_modules", {}) or {}
+    owners = [(f"Service '{s.get('id')}'", s.get("intake_chain")) for s in db.get("services", [])]
+    owners += [(f"Dynamic service '{k}'", d.get("intake_chain")) for k, d in (db.get("dynamic_services", {}) or {}).items()]
+    for owner, chain in owners:
+        for step in _chain_steps(chain):
+            then_map = step.get("then")
+            if not isinstance(then_map, dict) or not then_map:
+                continue
+            mod = modules.get(step.get("module"))
+            labels = {r.get("label") for r in ((mod or {}).get("client_response", []) or [])}
+            for key, branch in then_map.items():
+                if mod is not None and key not in labels:
+                    errors.append(
+                        f"{owner}: then-key {key!r} on module '{step.get('module')}' is not the label of any of its options"
+                    )
+                for item in (branch if isinstance(branch, list) else []):
+                    name = item if isinstance(item, str) else (item.get("module") if isinstance(item, dict) else None)
+                    if name and name not in modules:
+                        errors.append(f"{owner}: then-branch {key!r} names unknown intake module '{name}'")
+    return errors
+
+
+def _validate_option_refs(db: dict) -> List[str]:
+    """T166: what an intake option points at -- its modifier, formula override and checkout-state override -- must exist."""
+    errors: List[str] = []
+    modifiers = ((db.get("global_rules", {}) or {}).get("modifiers", {}) or {})
+    formulas = db.get("pricing_formulas", {}) or {}
+    states = db.get("checkout_states", {}) or {}
+    for mod_name, mod in (db.get("intake_modules", {}) or {}).items():
+        for i, resp in enumerate(mod.get("client_response", []) or []):
+            at = f"intake_modules['{mod_name}'].client_response[{i}]"
+            if resp.get("modifier_ref") and resp["modifier_ref"] not in modifiers:
+                errors.append(f"{at}.modifier_ref '{resp['modifier_ref']}' is not in global_rules.modifiers")
+            if resp.get("formula_override") and resp["formula_override"] not in formulas:
+                errors.append(f"{at}.formula_override '{resp['formula_override']}' is not in pricing_formulas")
+            if resp.get("checkout_state_override") and resp["checkout_state_override"] not in states:
+                errors.append(f"{at}.checkout_state_override '{resp['checkout_state_override']}' is not in checkout_states")
     return errors
 
 
@@ -1097,6 +1187,8 @@ def validate_structural(db: dict) -> Dict[str, List[str]]:
         "material_references": _validate_material_refs(db),
         "intent_mapping_references": _validate_intent_mapping_refs(db),
         "smart_tag_references": _validate_smart_tag_refs(db),
+        "chain_branches": _validate_chain_branches(db),
+        "option_references": _validate_option_refs(db),
         "category_group_references": _validate_category_group_refs(db),
         "dynamic_service_keys": _validate_dynamic_service_keys(db),
         "archetypes": _validate_archetypes(db),

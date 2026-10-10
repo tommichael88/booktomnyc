@@ -35,7 +35,8 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-function findFn(name) {
+const { engineAwareFindFn } = require('./_engine.js');   // T166: applySSOTRules (glue) hands its rules to the Logic function resolveTagRules; a cherry-picked glue function would lose it (the T136 reason for the shared loader)
+function findFnLocal(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) throw new Error(`Could not find function: ${name}`);
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -44,6 +45,8 @@ function findFn(name) {
         else if (QR_HTML[j] === '}') { depth--; if (depth === 0) return QR_HTML.slice(start, j + 1); }
     }
 }
+
+const findFn = engineAwareFindFn(findFnLocal);
 
 console.log('=== The real, structural fix: applySSOTRules is now wired into the main render path, not just the legacy builder ===');
 const syncIdx = QR_HTML.indexOf('const render = () => {\n                        syncTagSynthesizedAnswers(S);');
@@ -64,7 +67,7 @@ const _QTY_WORD_MAP = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,n
 const nlpSandbox = { DB, window: { DB }, console };
 nlpSandbox.global = nlpSandbox;
 vm.createContext(nlpSandbox);
-vm.runInContext(HELPER_CONSTS + '\n' + ['initNlpSets', 'isServiceVerb', 'extractObject', 'extractQty', 'extractLocation', 'detectTagsNLP'].map(findFn).join('\n\n'), nlpSandbox);
+vm.runInContext(HELPER_CONSTS + '\n' + [...new Set(['initNlpSets', 'isServiceVerb', 'extractObject', 'extractQty', 'extractLocation', 'detectTagsNLP'].map(findFn))].join('\n\n'), nlpSandbox);
 nlpSandbox.initNlpSets();
 const detected = nlpSandbox.detectTagsNLP('I have a crack in my brick wall near the drywall trim, high up, hard to reach, need it urgent').found;
 check('confirmed: detectTagsNLP itself genuinely returns both mutually-exclusive tags with no awareness of the conflict (the real root cause -- not fixed here, since this is the correct, existing behavior applySSOTRules is designed to clean up downstream)',
@@ -74,12 +77,13 @@ console.log('\n=== applySSOTRules itself correctly resolves the conflict when ac
 const ssotSandbox = { DB, window: { DB }, console };
 ssotSandbox.global = ssotSandbox;
 vm.createContext(ssotSandbox);
-vm.runInContext(findFn('applySSOTRules'), ssotSandbox);
+vm.runInContext(findFn('resolveTagRules') + '\n' + findFn('applySSOTRules'), ssotSandbox);   // T166: the whole engine (it holds resolveTagRules and tagValidForCategory) + the glue function
 ssotSandbox.S = {
     intent: { _groupId: 'minor_home_repairs_walls' },
     detTagIds: ['#brick_wall', '#drywall'], manTagIds: [], negatedTagIds: [], userTagIds: [],
 };
-ssotSandbox.tagValidForCategory = () => true; // isolate mutual-exclusion logic specifically
+// T166: the stub `tagValidForCategory = () => true` that stood here isolated the mutual-exclusion logic from the category check. The engine now loads whole and resolveTagRules binds the real
+// function, so the stub could no longer take effect; neither case below depends on category validity (both hold their tags, so no group default is considered).
 ssotSandbox.applySSOTRules();
 check('after applySSOTRules runs: only one of the two mutually-exclusive tags remains active',
     ssotSandbox.S.detTagIds.includes('#brick_wall') !== ssotSandbox.S.detTagIds.includes('#drywall'));

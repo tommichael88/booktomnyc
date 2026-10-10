@@ -169,7 +169,7 @@
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T164';
+     const QR_BUILD_VERSION = 'T166';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -795,6 +795,45 @@
 
      // ───────────────────────── ANALYSIS pipeline ─────────────────────────
 
+     // v9.5 FIX (severe, previously-undiscovered bug, found while
+     // fact-checking an external analysis against real data):
+     // lower.includes(kw) is a bare substring check, so "washer"
+     // matched inside "dishwasher" — confirmed via direct test
+     // that "dishwasher is leaking water" silently resolved to
+     // washer_repair (the wrong appliance entirely), since both
+     // keywords score equally (confidence_weight 90 each) and the
+     // tie-break is pure array order (washer happens to come
+     // first). Confirmed this is the ONLY real keyword pair in
+     // the current catalog with this exact substring
+     // relationship, but fixed the general MECHANISM with a real
+     // word-boundary match rather than patch this one instance,
+     // since the same class of bug could recur with any future
+     // keyword addition. Multi-word "label-only" keywords (e.g.
+     // "tile / floor") never matched via this primary check
+     // either way, before or after this fix — their real
+     // matching is entirely through single-word synonyms,
+     // confirmed via direct check; this fix changes nothing for
+     // them.
+     // T166: hoisted to module scope and split into a match + a boolean so detectTagsNLP can use the SAME matcher (R-INVARIANT-CANONICAL: one matcher for
+     // 'does this phrase occur in this text'); the pattern and the comment are unchanged.
+     const wordBoundaryMatch = (text, term) => {
+         if (!term) return null;
+         const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+         // v9.5 FIX (PERMANENT, not a patch): extends the
+         // original plural-only fix (s/es) to also handle verb
+         // conjugations (ed/ing) and the silent-e-drop pattern
+         // (replace->replacing) -- confirmed via direct test
+         // that "I need this installed" previously failed to
+         // match a bare "install" synonym, an ordinary phrasing
+         // gap affecting every verb synonym in the catalog, not
+         // just newly-added ones. Confirmed washer still
+         // correctly rejects dishwasher with this exact pattern.
+         const silentEDrop = term.endsWith('e') ? escaped.slice(0, -1) : null;
+         const altPattern = silentEDrop ? '|' + silentEDrop + '(?:ed|ing)' : '';
+         return new RegExp('\\b(?:' + escaped + "(?:'?s|es|ed|ing)?" + altPattern + ')\\b', 'i').exec(text);
+     };
+     const wordBoundaryIncludes = (text, term) => !!wordBoundaryMatch(text, term);
+
      function detectIntentNLP(text) {
          // T118 #30 FIX (PENDING_DECISIONS.md #30): real, user-captured
          // trace -- "I need a bed assembled. [...] produces irrelevant
@@ -860,41 +899,7 @@
              _ctxMin: 0,
              _ctxTags: []
          });
-         // v9.5 FIX (severe, previously-undiscovered bug, found while
-         // fact-checking an external analysis against real data):
-         // lower.includes(kw) is a bare substring check, so "washer"
-         // matched inside "dishwasher" — confirmed via direct test
-         // that "dishwasher is leaking water" silently resolved to
-         // washer_repair (the wrong appliance entirely), since both
-         // keywords score equally (confidence_weight 90 each) and the
-         // tie-break is pure array order (washer happens to come
-         // first). Confirmed this is the ONLY real keyword pair in
-         // the current catalog with this exact substring
-         // relationship, but fixed the general MECHANISM with a real
-         // word-boundary match rather than patch this one instance,
-         // since the same class of bug could recur with any future
-         // keyword addition. Multi-word "label-only" keywords (e.g.
-         // "tile / floor") never matched via this primary check
-         // either way, before or after this fix — their real
-         // matching is entirely through single-word synonyms,
-         // confirmed via direct check; this fix changes nothing for
-         // them.
-         const wordBoundaryIncludes = (text, term) => {
-             if (!term) return false;
-             const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-             // v9.5 FIX (PERMANENT, not a patch): extends the
-             // original plural-only fix (s/es) to also handle verb
-             // conjugations (ed/ing) and the silent-e-drop pattern
-             // (replace->replacing) -- confirmed via direct test
-             // that "I need this installed" previously failed to
-             // match a bare "install" synonym, an ordinary phrasing
-             // gap affecting every verb synonym in the catalog, not
-             // just newly-added ones. Confirmed washer still
-             // correctly rejects dishwasher with this exact pattern.
-             const silentEDrop = term.endsWith('e') ? escaped.slice(0, -1) : null;
-             const altPattern = silentEDrop ? '|' + silentEDrop + '(?:ed|ing)' : '';
-             return new RegExp('\\b(?:' + escaped + "(?:'?s|es|ed|ing)?" + altPattern + ')\\b', 'i').test(text);
-         };
+         // (wordBoundaryIncludes is defined once, at module scope, above detectIntentNLP -- T166.)
          const isInflectionOnly = (kwl, synl) => {
              if (synl === kwl) return true;
              if (!synl.startsWith(kwl)) return false;
@@ -1112,7 +1117,9 @@
                  // flat screen tv") already works correctly via the exact-
                  // substring check alone — the word-bag fallback was
                  // unnecessary as well as dangerous. Removed entirely.
-                 const ctxMatched = ctxKws.some(kw => lower.includes(kw.toLowerCase()));
+                 // T166: whole words, with the matcher the keyword and synonym tests above already use. As a bare substring "lock" matched inside "blocks" ("my door blocks the hallway"
+                 // -> door_lock_or_handle_install) and "new" inside "renewed" and "knew" (-> prehung_interior_door_install, $150). Multi-word keywords match as phrases, as they did.
+                 const ctxMatched = ctxKws.some(kw => wordBoundaryIncludes(lower, kw.toLowerCase()));
                  if (!ctxMatched) continue;
                  // v9.6 FIX (real, pre-existing bug found while testing an
                  // unrelated cabinets change): this loop had no early exit,
@@ -1352,27 +1359,53 @@
          return best;
      }
 
+     // T166: for the multi-word fallback of detectTagsNLP. `tokens` is [{w, at}] (word, character offset). Finds the earliest window of at most `span` consecutive tokens that holds every
+     // word of `need` (exact token equality) and returns the character offset of `anchor` inside it (the first word of the synonym, where the negation check has always looked), or -1.
+     function nearTokens(tokens, need, span, anchor) {
+         const uniq = [...new Set(need)];
+         for (let i = 0; i < tokens.length; i++) {
+             if (!uniq.includes(tokens[i].w)) continue;
+             const seen = new Set();
+             for (let j = i; j < tokens.length && j < i + span; j++) {
+                 if (uniq.includes(tokens[j].w)) seen.add(tokens[j].w);
+                 if (seen.size === uniq.length) {
+                     for (let k = i; k <= j; k++) if (tokens[k].w === anchor) return tokens[k].at;
+                     return tokens[i].at;
+                 }
+             }
+         }
+         return -1;
+     }
+
      function detectTagsNLP(text) {
          const lower = text.toLowerCase().replace(/[.,!?;:]/g, '');
-         const words = new Set(lower.split(/\s+/)); // word set for multi-word synonym fallback
+         const tokens = [...lower.matchAll(/\S+/g)].map(m => ({ w: m[0], at: m.index })); // for the multi-word words-near-each-other fallback
          const tags = DB.smart_tags || {};
          const found = [],
              negated = [];
          const neg = ['not', "isn't", 'isnt', 'no', 'without', "don't", 'dont', 'non', 'never', 'neither', 'nor', 'nothing', 'nowhere', 'hardly', 'barely', 'wont', 'won\'t'];
+         // T166 FIX (PENDING_DECISIONS #163): this function matched a synonym with a bare String.indexOf, so a synonym matched INSIDE a longer word -- "cement" in
+         // "replacement" (#brick_wall found on 23 catalog phrases that name a replacement), "mold" in "molding" (#water_damage), "stain" in "stainless", "heavy" in "heavy duty"
+         // -- and its multi-word fallback accepted ANY text holding the synonym's words anywhere, so "no power" matched "won't power on / no burners work" (#emergency, a priced
+         // answer). detectIntentNLP, three functions up, had met the same two bugs and fixed them (v9.5: "washer" in "dishwasher") with a whole-word matcher that also tolerates
+         // inflection; this function now uses that SAME matcher (wordBoundaryMatch). The fallback keeps what it was for -- "the mirror is heavy" finds "heavy mirror", "I need a
+         // helper" finds "need helper" -- but the synonym's words must be whole words sitting near each other (within the phrase's own length + 3 words), and a synonym that
+         // CONTAINS a negator ("no power", "no tank") is a phrase and never a bag of words: its words scattered through a sentence ("no leak in the toilet tank") say the opposite.
+         // Negation itself is unchanged.
          for (const [tid, t] of Object.entries(tags)) {
              let hit = false,
                  neg_ = false;
              const syns = (t.synonyms?.length) ? t.synonyms.filter(s => typeof s === 'string') : [tid.replace('#', '').replace(/_/g, ' ')];
              for (const s of syns) {
                  const sl = s.toLowerCase();
-                 // Try exact substring first
-                 let idx = lower.indexOf(sl);
-                 // If not found as phrase, try all-words-present match for multi-word synonyms
+                 // whole-word phrase match first
+                 const m = wordBoundaryMatch(lower, sl);
+                 let idx = m ? m.index : -1;
+                 // else, for a multi-word synonym with no negator in it: all of its words, as whole words, near each other (any order)
                  if (idx === -1 && sl.includes(' ')) {
                      const synWords = sl.split(/\s+/);
-                     if (synWords.length >= 2 && synWords.every(w => words.has(w))) {
-                         // Find position of first synonym word for negation check
-                         idx = lower.indexOf(synWords[0]);
+                     if (synWords.length >= 2 && !synWords.some(w => neg.includes(w))) {
+                         idx = nearTokens(tokens, synWords, synWords.length + 3, synWords[0]);
                      }
                  }
                  if (idx !== -1) {
@@ -1746,7 +1779,7 @@
          // mechanism ("fireplace" -> #brick_wall) silently broken
          // by an unrelated, later, correct fix elsewhere.
          for (const hint of _BRICK_HINTS) {
-             if (lower.includes(hint) && tagValidForCategory('#brick_wall', cat, groupId)) {
+             if (wordBoundaryIncludes(lower, String(hint).toLowerCase()) && tagValidForCategory('#brick_wall', cat, groupId)) {
                  inferred.push({
                      tid: '#brick_wall',
                      source: 'context'
@@ -1754,23 +1787,19 @@
                  break;
              }
          }
-         // High ceiling hints
-         // v9.5 FIX (same real bug class as #brick_wall above,
-         // found by checking the rest of this function): #high_ceiling
-         // also has real applicable_group_ids, so this call was
-         // equally, silently broken.
-         if (/(vaulted|cathedral|very high|high ceiling|12 ?ft|14 ?ft|tall ceiling)/i.test(text)) {
-             if (tagValidForCategory('#high_ceiling', cat, groupId)) inferred.push({
-                 tid: '#high_ceiling',
-                 source: 'context'
-             });
-         }
-         // Emergency
-         if (/(urgent|emergency|asap|today|right now|flooding|leak|critical)/i.test(text)) {
-             inferred.push({
-                 tid: '#emergency',
-                 source: 'context'
-             });
+         // T166 (PENDING_DECISIONS #163): the words that infer a tag from the text alone -- "vaulted" -> #high_ceiling, "right now" -> #emergency -- were two regular expressions
+         // written into this function (R-SYSTEM-NODATA: business vocabulary in code, invisible to the operator who owns it, and a bare "leak" inside it quietly made every leak urgent
+         // and priced it so). They are now data: a tag that can be inferred this way lists the words in `context_hints`, matched as whole words by the same matcher as everything
+         // else. Same words, same tags, same scoping test (tagValidForCategory); nothing about WHICH words changed in this move.
+         for (const [tid, t] of Object.entries(DB.smart_tags || {})) {
+             if (!Array.isArray(t.context_hints) || !t.context_hints.length) continue;
+             if (inferred.some(x => x.tid === tid)) continue;
+             if (t.context_hints.some(h => typeof h === 'string' && wordBoundaryIncludes(lower, h.toLowerCase())) && tagValidForCategory(tid, cat, groupId)) {
+                 inferred.push({
+                     tid,
+                     source: 'context'
+                 });
+             }
          }
          return inferred;
      }

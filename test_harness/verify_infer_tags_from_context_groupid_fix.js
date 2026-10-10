@@ -40,7 +40,8 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-function findFn(name) {
+const { engineAwareFindFn } = require('./_engine.js');   // T166: inferTagsFromContext now calls the module-scope wordBoundaryIncludes; a cherry-picked function loses it (the T136 reason for the shared loader)
+function findFnLocal(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return null;
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -51,12 +52,15 @@ function findFn(name) {
     return null;
 }
 
+const findFn = engineAwareFindFn(findFnLocal);
+
 console.log('=== inferTagsFromContext now genuinely accepts and passes a real groupId ===');
 check('the function signature now includes a groupId parameter', /function inferTagsFromContext\(text, cat, groupId\)/.test(QR_HTML));
 check('the live call site in collectBookingContext_freeText passes groupId as third argument', /inferTagsFromContext\(rawText, detCat, detGroup\)/.test(QR_HTML));
 
-const brickHintsLine = "const _BRICK_HINTS = new Set(['fireplace', 'brick', 'concrete', 'stone', 'mantel', 'mantle', 'chimney', 'masonry', 'cinder block', 'cinderblock', 'tile wall', 'cement']);";
-const code = brickHintsLine + '\n' + [findFn('tagValidForCategory'), findFn('inferTagsFromContext')].join('\n\n');
+// T166: the engine modules load whole (both functions are in them, so findFn returns the same wrapper twice: one copy is enough). The test's own `_BRICK_HINTS` global was never read:
+// the function declares its own (from DB.smart_tags['#brick_wall'].synonyms), which shadows it.
+const code = [...new Set([findFn('tagValidForCategory'), findFn('inferTagsFromContext')])].join('\n\n');
 const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
 sandbox.global = sandbox;
 vm.createContext(sandbox);

@@ -195,6 +195,10 @@ Spare time, in your order and only after H: (1) AST sweep for more `DEFECT-DUPLI
 
 ---
 
+## Addendum, T166 (the SSOT audit you asked for at 17:56 NY, after H closed)
+
+Not a mandate item and not on the conformance roster. It audited `btnyc.json` (structure, values, content, the tag references to the NLP) and fixed what a data edit or a small engine change could fix without changing which questions a customer is asked: tag detection by whole words at four sites, the dangling pointer, the dead `then` key and the option-tag spellings (and the compiler validating them), `#plaster_wall`, 24 prepositions, the "internal hardware replacement" alias, and the tag rules moved from Glue to a Logic function. Three detectors (`verify_tag_detection_precision.js`, `verify_ssot_reference_integrity.js`, `verify_harness_boots_nlp.js`). Everything it found and did not change is filed as #163 to #169; the record is `TIMELINE.md` T166 and `archive/golden_change_T166_ssot_audit.md`. **For the UI / question work you start next:** read #165 (the flat-graph answer and the staged reshape: S1 option ids first), #167 (the question and label findings) and #166 (the tags in force differ per gateway) before touching the question set; #161's fix (A2) is still first in the queue.
+
 ## Next-session priorities
 
 *(appended after the work lands; empty until then)*
