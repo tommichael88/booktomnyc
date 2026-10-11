@@ -145,7 +145,6 @@ const LEGACY = [
     "furniture_repair_hourly:furn_item",
     "generic_mounting_service:mounting_item",
     "internal_hardware_replacement:computer_component",
-    "internal_hardware_replacement:laptop_or_desktop",
     "leak_under_sink_repair:leak_loc",
     "leak_under_sink_repair:leak_type",
     "leak_under_sink_repair:location",

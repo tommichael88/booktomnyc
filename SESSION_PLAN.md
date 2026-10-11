@@ -199,6 +199,12 @@ Spare time, in your order and only after H: (1) AST sweep for more `DEFECT-DUPLI
 
 Not a mandate item and not on the conformance roster. It audited `btnyc.json` (structure, values, content, the tag references to the NLP) and fixed what a data edit or a small engine change could fix without changing which questions a customer is asked: tag detection by whole words at four sites, the dangling pointer, the dead `then` key and the option-tag spellings (and the compiler validating them), `#plaster_wall`, 24 prepositions, the "internal hardware replacement" alias, and the tag rules moved from Glue to a Logic function. Three detectors (`verify_tag_detection_precision.js`, `verify_ssot_reference_integrity.js`, `verify_harness_boots_nlp.js`). Everything it found and did not change is filed as #163 to #169; the record is `TIMELINE.md` T166 and `archive/golden_change_T166_ssot_audit.md`. **For the UI / question work you start next:** read #165 (the flat-graph answer and the staged reshape: S1 option ids first), #167 (the question and label findings) and #166 (the tags in force differ per gateway) before touching the question set; #161's fix (A2) is still first in the queue.
 
+## Addendum, T169 (the #167 question and label pass you ruled on at 19:45 and 20:11 NY, and the #166 measurement)
+
+Not a mandate item. Detector first (`verify_non_retiring_answers.js` section 6, red 40/4 then 44/44), then four fixes: Internal Hardware Replacement asks "laptop or desktop" once (the orphaned module is kept, no removals), `brand` offers "Other / don't know" (and joins #158), the fee is out of the `removal` label, the eight `purpose`-less modules have one. Golden 0 of 2,988 differ; the render differential attributes 30 of 30 entries. Filed, not fixed: the overlapping options (#173-#176, each with a proposed removal or relabel) and a per-tag proposal for the 11 synonym-less tags (#177, nothing applied). The #166 measurement says **no** (#178). Everything is ledgered with a default. I stopped there as you said: no reshape (#165), no #168, nothing on `main`.
+
 ## Next-session priorities
 
 *(appended after the work lands; empty until then)*
+
+**After T169, in the order the open entries make natural (all need your word first):** #178 (apply the tag rules at every gateway, and the matcher fix for "very high ceiling"); #177 (approve the synonym lists per tag); #173-#176 (the four overlaps); #158 now carries `brand` and the orphaned `laptop_or_desktop`; #171 (the apostrophes); the reshape scope (#165) waits for its own session.

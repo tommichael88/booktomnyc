@@ -18,13 +18,15 @@
  *                          that asks the module, the 76 named services AND the 82 dynamic ones (a module is flagged only when the fallback equals the other option EVERYWHERE the module is asked:
  *                          a module that moves the job in one place is wired; plumbing_fixture's "Other" opens no follow-up in the plumbing builder where "Toilet" does, so it is not flagged). The tuple is what the engine returns: labor, extra and per-visit fees, total minutes, complexity tier, checkout state, materials estimate, the
  *                          branch (the visible chain after the answer), the active tags, the fee breakdown and the forced modules.
- *   2. THE FILED LIST      The modules the check flags today are FILED (23 besides the two retired; 24 until T166, see below), each citing the ledger entry that names them. A new flagged module is red;
+ *   2. THE FILED LIST      The modules the check flags today are FILED (24 besides the two retired: 24 until T166, 23 after it, 24 again with `brand` in T169, see below), each citing the ledger entry that names them. A new flagged module is red;
  *                          a filed module that no longer flags is red too (delete its entry: the list only shrinks).
  *   3. THE TWO ARE GONE    door_size and space_ready are absent from the catalog (modules, chains, then-branches, compiled), from the page's component set and from the compiler's module lists.
  *   4. NO QUESTION, NO BAR A service whose intake chain is empty has no question to raise its confidence, so its bar must be one the keyword evidence can reach (minimum_quote_confidence <=
  *                          base_confidence, no follow-up questions) and the free-text route must meet it. (The four appliance services were the first empty chains, T164.)
  *   5. NON-VACUITY         The fallback vocabulary recognises the Charter's own exemplars (the three honest "wired" fallbacks and the two dead ones); synthetic modules are shown flagged when inert and
  *                          not flagged when the fallback carries a modifier, an override, a tag or a branch; an empty-chain service with a bar above its base is shown flagged.
+ *   6. (T169) THE QUESTION AND LABEL PASS  Section 6, PENDING_DECISIONS #167: four legs on what the customer READS (a duplicate question in one service, a brand/make/model question with no way
+ *                          out, a dollar figure in a question or answer, a module with no `purpose`), each pure, each shown red on the catalog as it stood and able to fail on a planted one.
  *
  * WHAT THIS DOES NOT COVER (named, so it is not read as more): (a) the Charter's tuple has axes the SSOT cannot express -- risk tier, batch risk and PREP (what a technician needs before arriving).
  * No field of the catalog or the engine carries them, so a fallback that only changes prep is not distinguishable here; it would be flagged, and that is the finding behind the missing channel.
@@ -72,6 +74,10 @@ const FILED = [
     // T166 delisted `electrical_item`: its option "Under\u2011cabinet light" (non-breaking hyphen) had a follow-up branch keyed with an ASCII hyphen, so the branch never opened; the key was renamed
     // in the catalog (btnyc.json, no code), the fallback now moves the job, and the list shrinks by design.
     'appliance_item', 'cable_symptom', 'generic_tech_symptom', 'install_target', 'network_symptom', 'smart_device_symptom', 'window_ac_issue',
+    // T169 ADDED `brand` (asked in smart_speaker_setup): PENDING_DECISIONS #167 gave it the "Other / don't know" way out its open set lacked (leg 6b). `brand` moves nothing the engine reports, so the
+    // new fallback equals every brand: the module is a retirement candidate (R-INTAKE-WIREREMOVE), filed here and in #167 by the operator's rule for this session (no removals; "extend the #158
+    // list"). It leaves this list by an explicit ruling (wire it to something, or retire it), not by editing this file.
+    'brand',
 ];
 
 // The Charter's fallback exemplars: "not sure", "the tech will measure/check on site", "I'll describe it in the notes" (and the equivalent forms the catalog uses).
@@ -295,6 +301,131 @@ section('5. non-vacuity: the vocabulary, the check and the empty-chain leg are s
     const DBo = clone(SSOT), so = DBo.services.find(s => s.id === svc.id);
     so.intake_chain = []; so.confidence_strategy.minimum_quote_confidence = so.confidence_strategy.base_confidence; so.confidence_strategy.maximum_followup_questions = 0;
     check('...and does NOT flag the same service once the bar is its base confidence and it asks nothing', emptyChainFindings(DBo).bad.length === 0, emptyChainFindings(DBo).bad.join(' | '));
+});
+
+// ---- 6. the question and label pass (PENDING_DECISIONS #167, T169) --------------------------------------------------------------------------------------------------------------
+// R-INTAKE-WIREREMOVE says a question the customer is asked must do something; the delta check above asks it of an ANSWER. These four legs ask it of what the customer READS: the
+// same question twice in one service, a question about an open set with no way out, a price written into a label, and a module with no `purpose` (the field the chip UI reads
+// to choose its badge). Each is a pure function of the catalog, so each is shown red on the starting catalog and able to fail on a planted one (below).
+//
+//   6a. DUPLICATE QUESTION   Two different modules asked in ONE service (a chain step, or a module a step's `then` opens; two branches of one parent are alternatives, never both asked)
+//                            whose answers are drawn from the same named things: >= 2 shared answers after normalising (case, parentheses, punctuation), not counting the generic ones
+//                            (yes / no / other / not sure / none) and not counting a count scale ("1", "2", "6 or more"), which one scale legitimately serves for different counts
+//                            (pax_cabinet_count / pax_hinge_count / pax_sliding_count share one and are not duplicates). Internal Hardware Replacement asked `device_type` (Laptop /
+//                            Desktop (tower) / All-in-one) and then `laptop_or_desktop` (Laptop / Desktop): the customer chooses between the same two things twice.
+//   6b. NO WAY OUT           A question that asks for a brand, make, manufacturer or model asks about an open set, which no list is ever complete for: it must offer an option the vocabulary
+//                            reads as an escape (other / not sure / don't know / something else / not listed). `brand` offered three speakers; a customer with another brand could not answer.
+//                            (Scope, named: this is NOT every "what type of ..." question; 13 of those are closed taxonomies without an escape today and are listed in the ledger as a question, not a defect.)
+//   6c. MONEY IN A LABEL     No option label and no question holds a dollar figure (/\$\s?\d/). The fee lives in the modifier; a label that repeats it is a second copy that does not follow it
+//                            (R-SYSTEM-NODATA: one place for a number). The engine also builds the quote's fee line FROM the label ("<question>: <answer>"), so the figure was printed twice there.
+//   6d. PURPOSE              Every module has a `purpose`, and it is one of the four the catalog uses (pricing, scheduling, routing, diagnostic). The only reader is the chip UI, which draws the
+//                            "affects price" badge when it is `pricing`; a missing value draws nothing, and a typo ("pricng") silently drops a badge the module earns.
+//                            (Whether a `pricing` badge is EARNED is #96's ratchet, verify_quantity_question_ratchet.js section G, not repeated here.)
+const PURPOSES = ['pricing', 'scheduling', 'routing', 'diagnostic'];
+const ESCAPE_RE = /\b(other|not sure|don.?t know|unsure|no idea|something else|not listed|none of (these|the above))\b/i;
+const OPEN_SET_RE = /\b(brand|make|manufacturer|model)\b/i;
+const MONEY_RE = /\$\s?\d/;
+const GENERIC_ANSWERS = new Set(['yes', 'no', 'other', 'not sure', 'unsure', 'none', 'dont know', 'i dont know']);
+const COUNT_ANSWER = /^\d+( \d+)?( or more| plus)?$/;
+const normAnswer = l => String(l).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[‘’'`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+const nameSet = opts => new Set((opts || []).map(o => normAnswer(o.label)).filter(x => x && !GENERIC_ANSWERS.has(x) && !COUNT_ANSWER.test(x)));
+/** Every option the customer can read, wherever it is authored: module answers and chain-embedded answers. */
+function allOptionTexts(DB) {
+    const out = [];
+    Object.entries(DB.intake_modules || {}).forEach(([id, m]) => {
+        if (m && typeof m.question === 'string') out.push({ at: `intake_modules[${id}].question`, text: m.question, kind: 'question' });
+        ((m && m.client_response) || []).forEach((o, i) => out.push({ at: `intake_modules[${id}].client_response[${i}]`, text: String(o.label), kind: 'label' }));
+    });
+    const emb = (owner, ch) => (ch || []).forEach((c, i) => {
+        const p = (c && c.params) || {};
+        if (typeof p.question === 'string') out.push({ at: `${owner}.intake_chain[${i}].params.question`, text: p.question, kind: 'question' });
+        (p.client_response || []).forEach((o, j) => out.push({ at: `${owner}.intake_chain[${i}].params.client_response[${j}]`, text: String(o.label), kind: 'label' }));
+    });
+    (DB.services || []).forEach(s => emb(`services[${s.id}]`, s.intake_chain));
+    Object.entries(DB.dynamic_services || {}).forEach(([k, d]) => emb(`dynamic_services[${k}]`, d.intake_chain));
+    return out;
+}
+function questionPassFindings(DB) {
+    const duplicate = [], noEscape = [], money = [], purpose = [];
+    // 6a: per service entity, every pair of different modules the customer can be asked together
+    const byEntity = new Map();
+    for (const cx of contexts(DB)) { if (!byEntity.has(cx.s.id)) byEntity.set(cx.s.id, []); byEntity.get(cx.s.id).push(cx); }
+    const exclusive = (x, y) => Object.keys(x.via).some(p => p in y.via && x.via[p] !== y.via[p]);
+    const seen = new Set();
+    for (const [svc, list] of byEntity) {
+        for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+            const a = list[i], b = list[j];
+            if (a.mod === b.mod || exclusive(a, b)) continue;
+            const A = nameSet(optionsOf(DB, a)), B = nameSet(optionsOf(DB, b));
+            const shared = [...A].filter(x => B.has(x));
+            if (shared.length < 2) continue;
+            const key = svc + '|' + [a.mod, b.mod].sort().join('|');
+            if (seen.has(key)) continue; seen.add(key);
+            duplicate.push({ svc, a: a.mod, b: b.mod, shared });
+        }
+    }
+    // 6b: a module that asks for a brand / make / manufacturer / model must offer a way out (judged on the module's own answers and on every chain-embedded override)
+    for (const [id, m] of Object.entries(DB.intake_modules || {})) {
+        if (!m || !OPEN_SET_RE.test(String(m.question || '')) || !Array.isArray(m.client_response) || !m.client_response.length) continue;
+        if (!m.client_response.some(o => ESCAPE_RE.test(String(o.label)))) noEscape.push({ module: id, question: m.question, answers: m.client_response.map(o => o.label) });
+    }
+    // 6c: a dollar figure in anything the customer reads as a question or an answer
+    for (const t of allOptionTexts(DB)) if (MONEY_RE.test(t.text)) money.push({ at: t.at, text: t.text });
+    // 6d: purpose present and spelled as the catalog spells it
+    for (const [id, m] of Object.entries(DB.intake_modules || {})) {
+        if (!m || typeof m !== 'object') continue;   // (no key under intake_modules starts with an underscore today; a non-object entry is a note, not a module)
+        if (!PURPOSES.includes(m.purpose)) purpose.push({ module: id, purpose: m.purpose === undefined ? '(missing)' : JSON.stringify(m.purpose) });
+    }
+    return { duplicate, noEscape, money, purpose };
+}
+section('6. the question and label pass (#167): no duplicate question, no open set without a way out, no price in a label, every module has a purpose', () => {
+    const r = questionPassFindings(SSOT);
+    console.log(`  (${Object.keys(SSOT.intake_modules).filter(k => !k.startsWith('_')).length} modules; ${allOptionTexts(SSOT).length} question and answer texts read)`);
+    check('6a. no service asks two different modules whose answers are the same named things',
+        r.duplicate.length === 0, r.duplicate.map(d => `${d.svc}: ${d.a} and ${d.b} share ${JSON.stringify(d.shared)}`).join(' | '));
+    check('6b. every question that asks for a brand, make, manufacturer or model offers a way out (other / not sure / don\'t know)',
+        r.noEscape.length === 0, r.noEscape.map(d => `${d.module} "${d.question}": ${d.answers.map(a => `"${a}"`).join(', ')}`).join(' | '));
+    check('6c. no question or answer holds a dollar figure (the fee is in the modifier)', r.money.length === 0, r.money.map(d => `${d.at}: "${d.text}"`).join(' | '));
+    check(`6d. every module has a purpose, one of ${PURPOSES.join(' / ')}`, r.purpose.length === 0, `${r.purpose.length}: ` + r.purpose.map(d => `${d.module} (${d.purpose})`).join(', '));
+});
+section('6 (non-vacuity). each leg of the question pass is shown able to fail, and shown not to over-reach', () => {
+    const svcId = SSOT.services.find(s => (s.intake_chain || []).length && s.ui_taxonomy && s.id !== 'prehung_interior_door_install').id;
+    const plant = (mods, chainMods) => {
+        const DB = clone(SSOT);
+        Object.entries(mods).forEach(([k, m]) => { DB.intake_modules[k] = Object.assign({ type: 'single', purpose: 'diagnostic', confidence_gain: 0, affects_price: false }, m); });
+        const s = DB.services.find(x => x.id === svcId);
+        (chainMods || []).forEach(k => s.intake_chain.push({ module: k, then: {} }));
+        return DB;
+    };
+    const L = (...ls) => ls.map(label => ({ label }));
+    const dupOf = DB => questionPassFindings(DB).duplicate.filter(d => /^__/.test(d.a) || /^__/.test(d.b));
+    check('6a flags two modules in one chain that offer the same two named things (Laptop / Desktop twice)', dupOf(plant({ __a: { question: 'Which?', client_response: L('Laptop', 'Desktop (tower)', 'All-in-one') }, __b: { question: 'Is it a laptop or desktop?', client_response: L('Laptop', 'Desktop') } }, ['__a', '__b'])).length === 1);
+    check('6a does not flag one count scale reused for different counts ("1".."6 or more")', dupOf(plant({ __a: { question: 'How many doors?', client_response: L('1', '2', '3', '6 or more') }, __b: { question: 'How many hinges?', client_response: L('1', '2', '3', '6 or more') } }, ['__a', '__b'])).length === 0);
+    check('6a does not flag two modules that share only generic answers (Yes / No / Other / Not sure)', dupOf(plant({ __a: { question: 'Is it A?', client_response: L('Yes', 'No', 'Not sure') }, __b: { question: 'Is it B?', client_response: L('Yes', 'No', 'Not sure', 'Other') } }, ['__a', '__b'])).length === 0);
+    check('6a does not flag two modules that share one named thing', dupOf(plant({ __a: { question: 'Which?', client_response: L('Laptop', 'Router') }, __b: { question: 'Which else?', client_response: L('Laptop', 'Printer') } }, ['__a', '__b'])).length === 0);
+    check('6a does not flag the same module asked twice, or two branches of one parent (alternatives, never both asked)', (() => {
+        const DB = plant({ __a: { question: 'Which?', client_response: L('Router', 'Printer') }, __p: { question: 'Parent?', client_response: L('Left', 'Right') }, __x: { question: 'X?', client_response: L('Laptop', 'Desktop') }, __y: { question: 'Y?', client_response: L('Laptop', 'Desktop') } }, ['__a', '__a']);
+        DB.services.find(x => x.id === svcId).intake_chain.push({ module: '__p', then: { Left: ['__x'], Right: ['__y'] } });
+        return dupOf(DB).length === 0;
+    })());
+    const escOf = DB => questionPassFindings(DB).noEscape.filter(d => /^__/.test(d.module));
+    check('6b flags a brand question with no way out', escOf(plant({ __b: { question: 'Which brand is it?', client_response: L('Amazon Echo', 'Google Nest', 'Apple HomePod') } })).length === 1);
+    check('6b flags a make, a manufacturer and a model question alike', ['Which make is it?', 'Who is the manufacturer?', 'What model is it?'].every(q => escOf(plant({ __b: { question: q, client_response: L('A', 'B') } })).length === 1));
+    check('6b does not flag the same question once it offers "Other / don\'t know"', escOf(plant({ __b: { question: 'Which brand is it?', client_response: L('Amazon Echo', 'Google Nest', 'Other / don\'t know') } })).length === 0);
+    check('6b does not flag a closed taxonomy ("What type of faucet is it?" is outside the rule, named in the header)', escOf(plant({ __b: { question: 'What type of faucet is it?', client_response: L('Kitchen', 'Bath', 'Utility') } })).length === 0);
+    const monOf = DB => questionPassFindings(DB).money.filter(d => /__/.test(d.at));
+    check('6c flags a price in an answer label ("(+$25)") and in a question', monOf(plant({ __m: { question: 'Remove it?', client_response: L('Yes (+$25)', 'No') } })).length === 1 && monOf(plant({ __m: { question: 'Is the job over $500?', client_response: L('Yes', 'No') } })).length === 1);
+    check('6c does not flag a label with no dollar figure ("2-3 feet", "5 dollars-ish is words, not a figure")', monOf(plant({ __m: { question: 'How long?', client_response: L('2-3 feet', 'Under 5 dollars is words') } })).length === 0);
+    const purOf = DB => questionPassFindings(DB).purpose.filter(d => /^__/.test(d.module));
+    check('6d flags a module with no purpose, and one with a mistyped purpose', (() => {
+        const a = plant({ __p: { question: 'Q?', client_response: L('A', 'B') } }); delete a.intake_modules.__p.purpose;
+        return purOf(a).length === 1 && purOf(plant({ __p: { question: 'Q?', client_response: L('A', 'B'), purpose: 'pricng' } })).length === 1;
+    })());
+    check('6d does not flag each of the four purposes the catalog uses', PURPOSES.every(p => purOf(plant({ __p: { question: 'Q?', client_response: L('A', 'B'), purpose: p } })).length === 0));
+    check('the question pass reads the real catalog: the vocabulary matches what is in use (every in-use purpose is in the list)', (() => {
+        const used = new Set(Object.values(SSOT.intake_modules).map(m => m && m.purpose).filter(Boolean));
+        return [...used].every(p => PURPOSES.includes(p));
+    })(), `in use: ${[...new Set(Object.values(SSOT.intake_modules).map(m => m && m.purpose))].join(', ')}`);
 });
 
 console.log(`\n[non-retiring answers] ${pass} passed, ${fail} failed (of ${pass + fail} checks)`);

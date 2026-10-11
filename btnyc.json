@@ -4682,10 +4682,6 @@
         {
           "module": "customer_supplied_part",
           "then": {}
-        },
-        {
-          "module": "laptop_or_desktop",
-          "then": {}
         }
       ],
       "default_tags": [],
@@ -13908,6 +13904,11 @@
           "label": "Apple HomePod",
           "tags": [],
           "complexity_override": "routine"
+        },
+        {
+          "label": "Other / don't know",
+          "tags": [],
+          "complexity_override": "routine"
         }
       ],
       "purpose": "pricing",
@@ -13929,7 +13930,8 @@
         }
       ],
       "confidence_gain": 15,
-      "affects_price": false
+      "affects_price": false,
+      "purpose": "pricing"
     },
     "customer_supplied_part": {
       "question": "Do you have the replacement part already?",
@@ -14395,7 +14397,8 @@
       "max_val": 20,
       "confidence_gain": 15,
       "affects_price": false,
-      "_note": "Distinct from item_count_template: this renders via the dedicated qty-stepper UI (ui_render_type semantics owned by hybrid_qty), not the chip-question UI. Kept separate intentionally — v9.1 audit."
+      "_note": "Distinct from item_count_template: this renders via the dedicated qty-stepper UI (ui_render_type semantics owned by hybrid_qty), not the chip-question UI. Kept separate intentionally — v9.1 audit.",
+      "purpose": "pricing"
     },
     "hardware_type": {
       "question": "What type of door hardware needs attention?",
@@ -14492,7 +14495,8 @@
         "minutes_per_unit": 0
       },
       "confidence_gain": 15,
-      "affects_price": false
+      "affects_price": false,
+      "purpose": "pricing"
     },
     "install_target": {
       "question": "What are we installing or replacing?",
@@ -14658,7 +14662,8 @@
       ],
       "purpose": "pricing",
       "confidence_gain": 5,
-      "affects_price": true
+      "affects_price": true,
+      "_orphan_backlog_note": "T169 (PENDING_DECISIONS #167 item 1, operator ruling 2026-10-10 20:11 NY): unwired from internal_hardware_replacement, the only service that asked it, because it asked the customer to choose between Laptop and Desktop a second time after device_type (Laptop / Desktop (tower) / All-in-one), which carries the same two answers plus the one it lacks and is the one that moves the job (complexity tier, the all-in-one modifier). This module's two answers move nothing the engine reports (purpose pricing, affects_price true: R-INTAKE-WIREREMOVE). NOT deleted: no removals this session; it is a retirement candidate filed under #158 (the ratchet) and #167, and may be deleted only by an explicit ruling."
     },
     "lath_check": {
       "question": "Does the wall have solid backing (wood lath) where you're mounting, or just plaster?",
@@ -14939,7 +14944,7 @@
       "type": "single",
       "client_response": [
         {
-          "label": "Yes, remove and haul away (+$25)",
+          "label": "Yes, remove and haul away",
           "tags": [],
           "complexity_override": "skilled",
           "modifier_ref": "removal_yes_remove_and_haul_away_25"
@@ -15714,7 +15719,8 @@
           "label": "Files may already be lost or corrupted - need recovery",
           "modifier_ref": "tech_problem_type_lost_or_corrupted_files"
         }
-      ]
+      ],
+      "purpose": "pricing"
     },
     "device_state": {
       "question": "What’s the current state of the device?",
@@ -16397,7 +16403,8 @@
           "label": "Other (describe in notes)"
         }
       ],
-      "type": "single"
+      "type": "single",
+      "purpose": "diagnostic"
     },
     "backup_source_device": {
       "question": "What device are the files on?",
@@ -16416,7 +16423,8 @@
         {
           "label": "Multiple devices"
         }
-      ]
+      ],
+      "purpose": "routing"
     },
     "blind_curtain_shade_items": {
       "question": "What's being mounted?",
@@ -16438,7 +16446,8 @@
         {
           "label": "Mixed items"
         }
-      ]
+      ],
+      "purpose": "routing"
     },
     "buy_the_hour_qty": {
       "question": "How many items?",
@@ -16451,7 +16460,8 @@
         {
           "label": "More than 1 item"
         }
-      ]
+      ],
+      "purpose": "pricing"
     },
     "appliance_item": {
       "question": "Which appliance is this for?",
@@ -28608,10 +28618,6 @@
           {
             "module": "customer_supplied_part",
             "then": {}
-          },
-          {
-            "module": "laptop_or_desktop",
-            "then": {}
           }
         ],
         "pricing": {
@@ -28656,8 +28662,7 @@
         "modules_needed_for_exact": [
           "computer_component",
           "customer_supplied_part",
-          "device_type",
-          "laptop_or_desktop"
+          "device_type"
         ]
       },
       "leak_under_sink_repair": {
@@ -37938,7 +37943,7 @@
         "purpose": "pricing",
         "affects_price": true,
         "confidence_gain": 20,
-        "option_count": 3,
+        "option_count": 4,
         "used_by": [
           "smart_speaker_setup"
         ],
@@ -37950,7 +37955,7 @@
       "client_supplying_door": {
         "classification": "component",
         "type": "single",
-        "purpose": null,
+        "purpose": "pricing",
         "affects_price": false,
         "confidence_gain": 15,
         "option_count": 2,
@@ -38250,7 +38255,7 @@
       "global_quantity": {
         "classification": "logistics",
         "type": "numeric_multiplier",
-        "purpose": null,
+        "purpose": "pricing",
         "affects_price": false,
         "confidence_gain": 15,
         "option_count": 0,
@@ -38327,7 +38332,7 @@
       "hybrid_qty": {
         "classification": "logistics",
         "type": "numeric_multiplier",
-        "purpose": null,
+        "purpose": "pricing",
         "affects_price": false,
         "confidence_gain": 15,
         "option_count": 0,
@@ -38424,9 +38429,7 @@
         "affects_price": true,
         "confidence_gain": 5,
         "option_count": 2,
-        "used_by": [
-          "internal_hardware_replacement"
-        ],
+        "used_by": [],
         "tag_setters": [],
         "complexity_overrides": []
       },
@@ -39063,7 +39066,7 @@
       "tech_issue_source": {
         "classification": "symptom",
         "type": "single",
-        "purpose": null,
+        "purpose": "pricing",
         "affects_price": null,
         "confidence_gain": null,
         "option_count": 4,
@@ -39458,7 +39461,7 @@
       "cable_symptom": {
         "classification": "symptom",
         "type": "single",
-        "purpose": null,
+        "purpose": "diagnostic",
         "affects_price": null,
         "confidence_gain": null,
         "option_count": 6,
@@ -39471,7 +39474,7 @@
       "backup_source_device": {
         "classification": "component",
         "type": "single",
-        "purpose": null,
+        "purpose": "routing",
         "affects_price": null,
         "confidence_gain": null,
         "option_count": 4,
@@ -39484,7 +39487,7 @@
       "blind_curtain_shade_items": {
         "classification": "component",
         "type": "single",
-        "purpose": null,
+        "purpose": "routing",
         "affects_price": null,
         "confidence_gain": null,
         "option_count": 5,
@@ -39497,7 +39500,7 @@
       "buy_the_hour_qty": {
         "classification": "logistics",
         "type": "single",
-        "purpose": null,
+        "purpose": "pricing",
         "affects_price": null,
         "confidence_gain": null,
         "option_count": 2,
