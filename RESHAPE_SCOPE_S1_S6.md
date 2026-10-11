@@ -1,6 +1,6 @@
 # Scope: reshaping `btnyc.json` into a flat graph (S1 to S6)
 
-Filed 2026-10-11 (T167) on your ruling of 2026-10-10 19:45 NY (PENDING_DECISIONS #165): "Leave the shape ... file a short scope for it as the next session's work after the content pass closes ... a written plan for S1 to S6 with a migration path for each, so it doesn't sit unread. Default if unanswered: hold."
+Filed 2026-10-10 NY (T167) on your ruling of 2026-10-10 19:45 NY (PENDING_DECISIONS #165): "Leave the shape ... file a short scope for it as the next session's work after the content pass closes ... a written plan for S1 to S6 with a migration path for each, so it doesn't sit unread. Default if unanswered: hold."
 
 **Status: filed, not started. Nothing in this document is done, and nothing starts without your go.** The numbers below were measured on the T167 tree (`t167-question-pass`) with the commands in the last section, so a later session can re-measure them before it trusts them.
 
