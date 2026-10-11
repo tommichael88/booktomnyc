@@ -91,7 +91,7 @@ const countBands = wallSvc.intake_chain.find(t => t.module === 'item_count_templ
 const oneWall = countBands[0].label, topBand = countBands[countBands.length - 1].label, wallBase = wallSvc.financial_engine.base_price;
 const baseAnswers = {
     wall_type: 'Brick or concrete', dmg_size: 'Large (bigger than a sheet of paper)',
-    mounting_height: 'High (8-16 ft, ladder needed)',
+    mounting_height: 'Needs a stepladder (high or vaulted ceiling)',
     disposal_request: 'Yes, please haul it away', urgency: 'Urgent - today or tomorrow',
 };
 const REAL_KEYS = ['wall_type', 'dmg_size', 'mounting_height', 'disposal_request', 'urgency'];

@@ -97,7 +97,7 @@ const wallLabels = wallSvc.intake_chain.find(t => t.module === 'item_count_templ
 const screenshotAnswers = {
     wall_type: 'Brick or concrete', dmg_size: 'Large (bigger than a sheet of paper)',
     item_count_template: wallLabels[0],
-    mounting_height: 'High (8-16 ft, ladder needed)',
+    mounting_height: 'Needs a stepladder (high or vaulted ceiling)',
     disposal_request: 'Yes, please haul it away', urgency: 'Urgent - today or tomorrow',
 };
 // R-GOVERN-GOODHART: a sandbox that omits a function the real code calls measures something else. This test once asserted $925 here and passed ONLY because

@@ -81,9 +81,9 @@ COMPONENT_MODULES: Set[str] = {
     "customer_supplied_part", "device_type", "distance",
     "door_style_pref", "door_type", "ducting", "electrical_item",
     "existing_box", "existing_frame", "existing_type", "faucet_type",
-    "fixture_type", "floor_type", "furn_item", "hardware_type",
+    "floor_type", "furn_item", "hardware_type",
     "has_matching_tiles", "install_target", "install_type", "item_type",
-    "laptop_or_desktop", "lath_check", "leak_loc", "length", "location",
+    "laptop_or_desktop", "lath_check", "leak_loc", "location",
     "masonry_anchor", "mesh_network", "mounting_item", "plumbing_fixture",
     "removal", "router_owned", "Setup", "sink_type", "surface_type",
     "tech_device", "thermostat_type", "toilet_style_pref", "wall_type",
@@ -93,6 +93,8 @@ COMPONENT_MODULES: Set[str] = {
     "pax_hinge_count", "pax_sliding_count", "pax_interior_count",
     "backup_source_device", "blind_curtain_shade_items", "appliance_item",
     "cable_install_item",
+    # T170 (PENDING_DECISIONS #179): the three questions that replaced `length` (twice) and `distance` (for the water line), same layer
+    "baseboard_length", "under_cabinet_length", "water_line_run",
 }
 
 # "What's wrong / what condition / what severity?" — describes the problem.

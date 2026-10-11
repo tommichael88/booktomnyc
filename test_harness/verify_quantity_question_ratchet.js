@@ -136,7 +136,6 @@ check(`n walls cost n x the base price on both paths, for the four wall services
 // ---- G. ratchet: a question that declares it affects price must change something -------------------------------------------------------------------------------------
 const LEGACY = [
         "angle_stop_replacement:plumbing_fixture",
-    "baseboard_install:length",
     "bidet_attachment_install_or_removal:action",
     "blinds_shades_curtains_buy_the_hour:wall_type",
     "computer_diagnostic:computer_symptom",
@@ -148,7 +147,6 @@ const LEGACY = [
     "leak_under_sink_repair:leak_loc",
     "leak_under_sink_repair:leak_type",
     "leak_under_sink_repair:location",
-    "light_fixture_replacement:fixture_type",
     "loose_tile_replacement:has_matching_tiles",
     "loose_tile_replacement:tile_condition",
     "microwave_repair:location",
@@ -160,7 +158,6 @@ const LEGACY = [
     "stove_repair:stove_symptom",
     "system_restore_or_reset:device_state",
     "toilet_install:toilet_style_pref",
-    "under_cabinet_light_install:length",
     "washer_repair:location",
     "washer_repair:washer_type",
     "window_ac_repair:location",

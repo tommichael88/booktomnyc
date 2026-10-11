@@ -553,16 +553,6 @@
         "minutes": 15,
         "scope": "per_unit"
       },
-      "distance_10_to_25_feet": {
-        "fee": 25,
-        "minutes": 20,
-        "scope": "per_unit"
-      },
-      "distance_more_than_25_feet": {
-        "fee": 50,
-        "minutes": 0,
-        "scope": "per_unit"
-      },
       "drain_speed_very_slow_water_pools_for_over": {
         "fee": 10,
         "minutes": 15,
@@ -828,16 +818,6 @@
         "fee": 50,
         "minutes": 40,
         "scope": "per_visit"
-      },
-      "mounting_height_high_8_16_ft_ladder_needed": {
-        "fee": 40,
-        "minutes": 30,
-        "scope": "per_unit"
-      },
-      "mounting_height_very_high_over_16_ft": {
-        "fee": 100,
-        "minutes": 60,
-        "scope": "per_unit"
       },
       "toilet_symptom_runs_constantly_won_t_stop": {
         "fee": 10,
@@ -1541,6 +1521,56 @@
         "fee": 50,
         "minutes": 40,
         "note": "Per-unit tier for window_screen_repair's item_count_template ('4 or more screens (specify exact count in notes)')",
+        "scope": "per_unit"
+      },
+      "mounting_height_needs_a_stepladder": {
+        "fee": 40,
+        "minutes": 30,
+        "scope": "per_unit"
+      },
+      "mounting_height_needs_an_extension_ladder_or_scaffold": {
+        "fee": 100,
+        "minutes": 60,
+        "scope": "per_unit"
+      },
+      "baseboard_length_one_average_room": {
+        "fee": 55,
+        "minutes": 45,
+        "scope": "per_unit"
+      },
+      "baseboard_length_two_or_more_rooms": {
+        "fee": 125,
+        "minutes": 100,
+        "scope": "per_unit"
+      },
+      "under_cabinet_length_one_wall": {
+        "fee": 40,
+        "minutes": 30,
+        "scope": "per_unit"
+      },
+      "under_cabinet_length_two_or_more_walls": {
+        "fee": 95,
+        "minutes": 75,
+        "scope": "per_unit"
+      },
+      "distance_same_room_short_run": {
+        "fee": 25,
+        "minutes": 20,
+        "scope": "per_unit"
+      },
+      "distance_another_room_or_through_walls": {
+        "fee": 50,
+        "minutes": 0,
+        "scope": "per_unit"
+      },
+      "water_line_run_across_the_kitchen": {
+        "fee": 25,
+        "minutes": 20,
+        "scope": "per_unit"
+      },
+      "water_line_run_another_room_or_through_a_wall": {
+        "fee": 50,
+        "minutes": 0,
         "scope": "per_unit"
       }
     }
@@ -2292,7 +2322,7 @@
           "then": {}
         },
         {
-          "module": "length",
+          "module": "baseboard_length",
           "then": {}
         },
         {
@@ -4918,11 +4948,7 @@
       "service_type": "Install",
       "intake_chain": [
         {
-          "module": "fixture_type",
-          "then": {}
-        },
-        {
-          "module": "distance",
+          "module": "mounting_height",
           "then": {}
         }
       ],
@@ -5593,7 +5619,7 @@
       "service_type": "Install",
       "intake_chain": [
         {
-          "module": "distance",
+          "module": "water_line_run",
           "then": {}
         }
       ],
@@ -7011,7 +7037,7 @@
       "service_type": "Install",
       "intake_chain": [
         {
-          "module": "length",
+          "module": "under_cabinet_length",
           "then": {}
         }
       ],
@@ -8774,8 +8800,7 @@
               "removal"
             ],
             "Light bulb": [
-              "item_count_template",
-              "distance"
+              "item_count_template"
             ],
             "Under-cabinet light": [
               "item_count_template",
@@ -8854,7 +8879,7 @@
               "wiring"
             ],
             "Water line (ice maker, humidifier)": [
-              "distance"
+              "water_line_run"
             ],
             "Other (describe in notes)": []
           }
@@ -14001,30 +14026,31 @@
       "_disambiguation_note": "v9.1: renamed from \"What type of device is it?\" to disambiguate against tech_device (same original question text, different answer domain — this module is computer-form-factor specific: laptop/desktop/all-in-one; tech_device covers the broader tech_trouble category gate: computer/router/smart speaker/etc). Caught by the validator near-duplicate-question check."
     },
     "distance": {
-      "question": "About how far does the wiring or cable need to run?",
+      "question": "How far is the nearest power from the spot?",
       "type": "single",
       "client_response": [
         {
-          "label": "Less than 10 feet",
+          "label": "Right at the spot (replacing something already there)",
           "tags": [],
           "complexity_override": "routine"
         },
         {
-          "label": "10 to 25 feet",
+          "label": "In the same room, a short run away",
           "tags": [],
           "complexity_override": "skilled",
-          "modifier_ref": "distance_10_to_25_feet"
+          "modifier_ref": "distance_same_room_short_run"
         },
         {
-          "label": "More than 25 feet",
+          "label": "In another room, or the run goes through walls or floors",
           "tags": [],
           "complexity_override": "specialized",
-          "modifier_ref": "distance_more_than_25_feet"
+          "modifier_ref": "distance_another_room_or_through_walls"
         }
       ],
       "purpose": "pricing",
       "confidence_gain": 20,
-      "affects_price": true
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #179): was 'About how far does the wiring or cable need to run?' with 'Less than 10 feet / 10 to 25 feet / More than 25 feet', asked of a customer who cannot say how many feet of wire a run takes, and (before this change) also asked of a refrigerator WATER line and of a light bulb. The customer can say where the power is. Same three outcomes and the same two modifiers' values (renamed so the id no longer carries feet). Asked now by the guided builder's light fixture and ceiling fan installs only; the water line has `water_line_run`, a bulb has no wiring run (its branch no longer asks this). `distance_another_room_or_through_walls` keeps the 50 dollar fee with 0 minutes it always had; the other bands run at the catalog rate, so 0 minutes is probably a slip, filed (#179) and not changed here."
     },
     "dmg_size": {
       "question": "How large is the damaged area?",
@@ -14292,35 +14318,6 @@
           "tags": [],
           "complexity_override": "skilled",
           "modifier_ref": "faucet_type_ceramic_disc_modern_cartridge"
-        }
-      ],
-      "purpose": "pricing",
-      "confidence_gain": 20,
-      "affects_price": true
-    },
-    "fixture_type": {
-      "question": "What kind of light fixture is it?",
-      "type": "single",
-      "client_response": [
-        {
-          "label": "Ceiling light (flush or semi-flush)",
-          "tags": [],
-          "complexity_override": "routine"
-        },
-        {
-          "label": "Wall sconce",
-          "tags": [],
-          "complexity_override": "routine"
-        },
-        {
-          "label": "Pendant (hangs down)",
-          "tags": [],
-          "complexity_override": "routine"
-        },
-        {
-          "label": "Flush mount (tight to ceiling)",
-          "tags": [],
-          "complexity_override": "routine"
         }
       ],
       "purpose": "pricing",
@@ -14747,30 +14744,6 @@
         },
         {
           "label": "Movement / shifting of the fixture",
-          "tags": [],
-          "complexity_override": "routine"
-        }
-      ],
-      "purpose": "pricing",
-      "confidence_gain": 20,
-      "affects_price": true
-    },
-    "length": {
-      "question": "About how long is the cable run or area?",
-      "type": "single",
-      "client_response": [
-        {
-          "label": "Less than 20 feet",
-          "tags": [],
-          "complexity_override": "routine"
-        },
-        {
-          "label": "20 to 50 feet",
-          "tags": [],
-          "complexity_override": "routine"
-        },
-        {
-          "label": "50 to 100 feet",
           "tags": [],
           "complexity_override": "routine"
         }
@@ -15997,34 +15970,35 @@
       "_orphan_backlog_note": "v9.6 DECIDED (explicit business decision, project owner): these 4 modules (parking_difficulty, disposal_request, pets_present, item_volume) will NOT be force-injected into every service via global_rules.force_modules_by_variability -- unlike urgency, which was the only one of the original v9.5 design's 5 intended modules actually wired that way. Decision: leave as optional, available via their own smart_tags (#no_parking, #disposal_needed, #pets_on_site, #high_volume) and any high-logistics category/group context, not as a universal question on every quote. No further action needed here."
     },
     "mounting_height": {
-      "question": "How high up will this be mounted or installed?",
+      "question": "How would you reach the spot, from the floor or with a ladder?",
       "type": "single",
       "client_response": [
         {
-          "label": "Standard reach (under 8 ft)",
+          "label": "Within reach from the floor or a step stool",
           "tags": [],
           "complexity_override": "routine"
         },
         {
-          "label": "High (8-16 ft, ladder needed)",
+          "label": "Needs a stepladder (high or vaulted ceiling)",
           "tags": [
             "#high_ceiling"
           ],
           "complexity_override": "skilled",
-          "modifier_ref": "mounting_height_high_8_16_ft_ladder_needed"
+          "modifier_ref": "mounting_height_needs_a_stepladder"
         },
         {
-          "label": "Very high (over 16 ft)",
+          "label": "Needs an extension ladder or scaffold (stairwell, two-story or cathedral ceiling)",
           "tags": [
             "#very_high_ceiling"
           ],
           "complexity_override": "specialized",
-          "modifier_ref": "mounting_height_very_high_over_16_ft"
+          "modifier_ref": "mounting_height_needs_an_extension_ladder_or_scaffold"
         }
       ],
       "purpose": "pricing",
       "confidence_gain": 15,
-      "affects_price": true
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #179, operator 2026-10-11 04:57 NY: customers do not carry tape measures, ask it by the ladder): the three answers were 'Standard reach (under 8 ft)', 'High (8-16 ft, ladder needed)', 'Very high (over 16 ft)': two leaned on a number the customer would have to measure and the third named no way of reaching the spot at all. They are now the thing the customer would do: reach from the floor or a step stool, fetch a stepladder, or need an extension ladder or scaffold. Same three outcomes, same two modifiers (renamed so the id no longer carries feet), same two tags; a stepladder covers the one-story high or vaulted ceiling the old middle band covered (the Charter's R1, 'ladder under sixteen feet'), an extension ladder or scaffold the stairwell and two-story case it left unnamed (R2, 'heights over sixteen feet')."
     },
     "toilet_symptom": {
       "question": "What's the toilet doing?",
@@ -16848,7 +16822,7 @@
       "purpose": "routing",
       "confidence_gain": 20,
       "affects_price": false,
-      "_note": "v10.x new. The service description already says 'install new OR repair existing' — currently quoted identically. This scopes which job it actually is. Genuinely affects_price: false because the length module handles sizing; this is a routing distinction that prevents a repair being quoted as new-install labor."
+      "_note": "v10.x new. The service description already says 'install new OR repair existing' — currently quoted identically. This scopes which job it actually is. Genuinely affects_price: false because the baseboard_length module handles sizing (T170: it was `length`); this is a routing distinction that prevents a repair being quoted as new-install labor."
     },
     "switch_wiring": {
       "question": "What type of switch circuit is this?",
@@ -17301,6 +17275,87 @@
           "modifier_ref": "symptom_trips_breaker_immediately"
         }
       ]
+    },
+    "baseboard_length": {
+      "question": "How much baseboard is it?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "A single wall or a small space (closet, small bathroom, short hallway)",
+          "tags": [],
+          "complexity_override": "routine"
+        },
+        {
+          "label": "About one average room (a bedroom or living room)",
+          "tags": [],
+          "complexity_override": "routine",
+          "modifier_ref": "baseboard_length_one_average_room"
+        },
+        {
+          "label": "Two or more rooms",
+          "tags": [],
+          "complexity_override": "routine",
+          "modifier_ref": "baseboard_length_two_or_more_rooms"
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #179, operator 2026-10-11 04:57 NY): replaces `length`, whose answers ('Less than 20 feet', '20 to 50 feet', '50 to 100 feet') were a measurement and nothing else, overlapped at 50, and moved nothing (a frozen member of the inert-question list). A customer looking at a room cannot say how many feet of baseboard it has; they can say how many rooms. The three answers are the rooms, in the old three bands (under 20 ft: one wall or small space; 20 to 50 ft: one average room, about 46 ft of baseboard once the doors are out; over 50 ft: two or more). The two larger answers now carry a modifier, so the question is wired (R-INTAKE-WIREREMOVE). T170 (PENDING_DECISIONS #179): fee and minutes follow the catalog's own labour rate (median 1.17 dollars a minute across the 144 modifiers that carry both; removal 25/20, distance 25/20, ladder 40/30). Best estimate, no NYC figure available offline (G-GOVERN-AUTONOMY: catalog anchor); flagged for owner review."
+    },
+    "under_cabinet_length": {
+      "question": "How much cabinet is getting lights?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "One or two cabinets (for example just over the sink or the stove)",
+          "tags": [],
+          "complexity_override": "routine"
+        },
+        {
+          "label": "One wall of cabinets (a typical kitchen run)",
+          "tags": [],
+          "complexity_override": "routine",
+          "modifier_ref": "under_cabinet_length_one_wall"
+        },
+        {
+          "label": "Cabinets on two or more walls (an L- or U-shaped kitchen)",
+          "tags": [],
+          "complexity_override": "routine",
+          "modifier_ref": "under_cabinet_length_two_or_more_walls"
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #179, operator 2026-10-11 04:57 NY): replaces `length` for this service. 'About how long is the cable run or area?' with 'Less than 20 feet / 20 to 50 feet / 50 to 100 feet' asked a customer standing in a kitchen for a measurement, offered a top band (100 feet of cabinet) that no kitchen reaches, and moved nothing. The customer can see how many cabinets and walls. T170 (PENDING_DECISIONS #179): fee and minutes follow the catalog's own labour rate (median 1.17 dollars a minute across the 144 modifiers that carry both; removal 25/20, distance 25/20, ladder 40/30). Best estimate, no NYC figure available offline (G-GOVERN-AUTONOMY: catalog anchor); flagged for owner review."
+    },
+    "water_line_run": {
+      "question": "How far is the fridge from the nearest water pipe (usually under the kitchen sink)?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "Right next to it (same wall or the cabinet beside it)",
+          "tags": [],
+          "complexity_override": "routine"
+        },
+        {
+          "label": "Across the kitchen (a few cabinets or an open stretch of floor away)",
+          "tags": [],
+          "complexity_override": "skilled",
+          "modifier_ref": "water_line_run_across_the_kitchen"
+        },
+        {
+          "label": "In another room, or the line has to go through a wall or floor",
+          "tags": [],
+          "complexity_override": "specialized",
+          "modifier_ref": "water_line_run_another_room_or_through_a_wall"
+        }
+      ],
+      "purpose": "pricing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #179, operator 2026-10-11 04:57 NY): replaces `distance` for the water line. `distance` asked 'About how far does the wiring or cable need to run?' of a refrigerator water line, in feet. Same three outcomes and the same values as the old three bands (<10 ft, 10 to 25 ft, over 25 ft); the customer can see how far the fridge is from the sink."
     }
   },
   "pricing_formulas": {
@@ -19620,7 +19675,7 @@
         "12ft ceiling"
       ],
       "answers": {
-        "mounting_height": "High (8-16 ft, ladder needed)"
+        "mounting_height": "Needs a stepladder (high or vaulted ceiling)"
       },
       "requires": [],
       "display_group": "Ladder & Height",
@@ -20088,7 +20143,7 @@
         "30ft"
       ],
       "answers": {
-        "mounting_height": "Very high (over 16 ft)"
+        "mounting_height": "Needs an extension ladder or scaffold (stairwell, two-story or cathedral ceiling)"
       },
       "requires": [],
       "display_group": "Ladder & Height",
@@ -26496,7 +26551,7 @@
             "then": {}
           },
           {
-            "module": "length",
+            "module": "baseboard_length",
             "then": {}
           },
           {
@@ -26546,7 +26601,7 @@
           "_variability_score": 6.3
         },
         "modules_needed_for_exact": [
-          "length",
+          "baseboard_length",
           "removal"
         ]
       },
@@ -28829,11 +28884,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "fixture_type",
-            "then": {}
-          },
-          {
-            "module": "distance",
+            "module": "mounting_height",
             "then": {}
           }
         ],
@@ -28883,8 +28934,7 @@
           "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values."
         },
         "modules_needed_for_exact": [
-          "distance",
-          "fixture_type"
+          "mounting_height"
         ]
       },
       "loose_tile_replacement": {
@@ -29434,7 +29484,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "distance",
+            "module": "water_line_run",
             "then": {}
           }
         ],
@@ -29483,7 +29533,7 @@
           "_inherits_from_archetype": "plumbing_fixture"
         },
         "modules_needed_for_exact": [
-          "distance"
+          "water_line_run"
         ]
       },
       "router_configuration": {
@@ -30683,7 +30733,7 @@
         "aliases": [],
         "intake_chain": [
           {
-            "module": "length",
+            "module": "under_cabinet_length",
             "then": {}
           }
         ],
@@ -30731,7 +30781,7 @@
           "_inherits_from_archetype": "electrical_fixture"
         },
         "modules_needed_for_exact": [
-          "length"
+          "under_cabinet_length"
         ]
       },
       "usb_outlet_install": {
@@ -32293,8 +32343,7 @@
                 "removal"
               ],
               "Light bulb": [
-                "item_count_template",
-                "distance"
+                "item_count_template"
               ],
               "Under-cabinet light": [
                 "item_count_template",
@@ -32373,7 +32422,7 @@
                 "wiring"
               ],
               "Water line (ice maker, humidifier)": [
-                "distance"
+                "water_line_run"
               ],
               "Other (describe in notes)": []
             }
@@ -38023,10 +38072,7 @@
         "affects_price": true,
         "confidence_gain": 20,
         "option_count": 3,
-        "used_by": [
-          "light_fixture_replacement",
-          "refrigerator_water_line_install"
-        ],
+        "used_by": [],
         "tag_setters": [],
         "complexity_overrides": [
           "routine",
@@ -38203,21 +38249,6 @@
         "complexity_overrides": [
           "routine",
           "skilled"
-        ]
-      },
-      "fixture_type": {
-        "classification": "component",
-        "type": "single",
-        "purpose": "pricing",
-        "affects_price": true,
-        "confidence_gain": 20,
-        "option_count": 4,
-        "used_by": [
-          "light_fixture_replacement"
-        ],
-        "tag_setters": [],
-        "complexity_overrides": [
-          "routine"
         ]
       },
       "floor_type": {
@@ -38487,22 +38518,6 @@
         "complexity_overrides": [
           "routine",
           "specialized"
-        ]
-      },
-      "length": {
-        "classification": "component",
-        "type": "single",
-        "purpose": "pricing",
-        "affects_price": true,
-        "confidence_gain": 20,
-        "option_count": 3,
-        "used_by": [
-          "baseboard_install",
-          "under_cabinet_light_install"
-        ],
-        "tag_setters": [],
-        "complexity_overrides": [
-          "routine"
         ]
       },
       "location": {
@@ -39266,6 +39281,7 @@
           "flatscreen_mounting_with_hidden_cables",
           "generic_mounting_service",
           "high_ceiling_bulb_replacement",
+          "light_fixture_replacement",
           "plaster_wall_repair",
           "shelf_mortar_mounting_buy_the_hour",
           "wall_hole_or_crack_repair",
@@ -39918,6 +39934,53 @@
           "routine",
           "specialized"
         ]
+      },
+      "baseboard_length": {
+        "classification": "component",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 3,
+        "used_by": [
+          "baseboard_install"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": [
+          "routine"
+        ]
+      },
+      "under_cabinet_length": {
+        "classification": "component",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 3,
+        "used_by": [
+          "under_cabinet_light_install"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": [
+          "routine"
+        ]
+      },
+      "water_line_run": {
+        "classification": "component",
+        "type": "single",
+        "purpose": "pricing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 3,
+        "used_by": [
+          "refrigerator_water_line_install"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": [
+          "routine",
+          "skilled",
+          "specialized"
+        ]
       }
     },
     "smart_tag_index": {
@@ -40520,7 +40583,7 @@
           "12ft ceiling"
         ],
         "answers": {
-          "mounting_height": "High (8-16 ft, ladder needed)"
+          "mounting_height": "Needs a stepladder (high or vaulted ceiling)"
         },
         "requires": [],
         "mutually_exclusive": [
@@ -41076,7 +41139,7 @@
           "30ft"
         ],
         "answers": {
-          "mounting_height": "Very high (over 16 ft)"
+          "mounting_height": "Needs an extension ladder or scaffold (stairwell, two-story or cathedral ceiling)"
         },
         "requires": [],
         "mutually_exclusive": [

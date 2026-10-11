@@ -20,7 +20,7 @@
  *                          branch (the visible chain after the answer), the active tags, the fee breakdown and the forced modules.
  *   2. THE FILED LIST      The modules the check flags today are FILED (24 besides the two retired: 24 until T166, 23 after it, 24 again with `brand` in T169, see below), each citing the ledger entry that names them. A new flagged module is red;
  *                          a filed module that no longer flags is red too (delete its entry: the list only shrinks).
- *   3. THE TWO ARE GONE    door_size and space_ready are absent from the catalog (modules, chains, then-branches, compiled), from the page's component set and from the compiler's module lists.
+ *   3. THE TWO ARE GONE    door_size and space_ready are absent from the catalog (modules, chains, then-branches, compiled), from the page's component set and from the compiler's module lists. T170 adds `fixture_type` (retired by the operator's ruling of 2026-10-11 04:57 NY: a question that moves no price, time or scope; PENDING_DECISIONS #179).
  *   4. NO QUESTION, NO BAR A service whose intake chain is empty has no question to raise its confidence, so its bar must be one the keyword evidence can reach (minimum_quote_confidence <=
  *                          base_confidence, no follow-up questions) and the free-text route must meet it. (The four appliance services were the first empty chains, T164.)
  *   5. NON-VACUITY         The fallback vocabulary recognises the Charter's own exemplars (the three honest "wired" fallbacks and the two dead ones); synthetic modules are shown flagged when inert and
@@ -62,7 +62,7 @@ const section = (title, fn) => {
 };
 
 // ---- the two retired, and the modules filed while the rest of the class is open ---------------------------------------------------------------------------------------------
-const RETIRED = ['door_size', 'space_ready'];
+const RETIRED = ['door_size', 'space_ready', 'fixture_type'];   // fixture_type: T170 (PENDING_DECISIONS #173/#179), four answers that all priced the same ('Ceiling light (flush or semi-flush)' and 'Flush mount (tight to ceiling)' were one thing); retired, not renamed
 // The modules this check flags today besides the two retired ones: a fallback option with no modifier whose outcome equals a confident option's in every service that asks the module.
 // Filed with the ledger entry that names them (R-INVARIANT-DUPLICATION-TICKET's shape: a known instance is ticketed). The list can only shrink.
 const FILED_LEDGER = '#158';
@@ -209,7 +209,7 @@ section('1-2. the delta check on the real catalog, and the filed list', () => {
 });
 
 // ---- 3. the two are gone --------------------------------------------------------------------------------------------------------------------------------------------------------
-section('3. door_size and space_ready are retired everywhere the SSOT, the page and the compiler name modules', () => {
+section('3. door_size, space_ready and fixture_type are retired everywhere the SSOT, the page and the compiler name modules', () => {
     for (const mod of RETIRED) {
         const where = [];
         if (SSOT.intake_modules && SSOT.intake_modules[mod]) where.push('intake_modules');

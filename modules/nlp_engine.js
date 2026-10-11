@@ -1392,6 +1392,12 @@
          // helper" finds "need helper" -- but the synonym's words must be whole words sitting near each other (within the phrase's own length + 3 words), and a synonym that
          // CONTAINS a negator ("no power", "no tank") is a phrase and never a bag of words: its words scattered through a sentence ("no leak in the toilet tank") say the opposite.
          // Negation itself is unchanged.
+         // T170 (PENDING_DECISIONS #178, DEFECT-ARBITRATION): where in the text each found tag was matched, so the more specific of two mutually exclusive tags can win below.
+         // exact[tid] = the [start, end) of each whole-phrase match; loose[tid] = a hit made only by the any-order fallback, which has no span and so never takes part.
+         /** @type {Record<string, number[][]>} */
+         const exact = {};
+         /** @type {Record<string, boolean>} */
+         const loose = {};
          for (const [tid, t] of Object.entries(tags)) {
              let hit = false,
                  neg_ = false;
@@ -1413,14 +1419,31 @@
                      if (pre.slice(-3).some(w => neg.includes(w))) {
                          neg_ = true;
                          break;
-                     } else hit = true;
+                     } else {
+                         hit = true;
+                         if (m) (exact[tid] = exact[tid] || []).push([m.index, m.index + m[0].length]);
+                         else loose[tid] = true;
+                     }
                  }
              }
              if (neg_) negated.push(tid);
              else if (hit) found.push(tid);
          }
+         // T170 (PENDING_DECISIONS #178; Charter, The Cross-Entry Specificity Rule applied to tags): "very high ceiling" holds the words "high ceiling", so BOTH tags were found, and the
+         // two conflicting answers then cancelled (the ladder surcharge vanished) or the first tag in catalog order won, which is the wrong one. When two tags the SSOT declares mutually exclusive
+         // (smart_tags[].mutually_exclusive) are both found and EVERY match of one lies inside a longer match of the other, the customer said the longer thing: the shorter tag was only a
+         // piece of it, and is dropped. Data-driven (the exclusion list is the SSOT's); a tag with no exclusive sibling, and two exclusive tags the text names separately, are untouched.
+         /** @param {any} r */
+         const refId = r => (r && typeof r === 'object' && r.$ref) ? r.$ref : r;
+         /** @param {string} a @param {string} b */
+         const excl = (a, b) => (tags[a]?.mutually_exclusive || []).map(refId).includes(b) || (tags[b]?.mutually_exclusive || []).map(refId).includes(a);
+         /** @param {number[]} small @param {number[]} big */
+         const coveredBy = (small, big) => big[0] <= small[0] && small[1] <= big[1] && (big[1] - big[0]) > (small[1] - small[0]);
+         /** @type {string[]} */
+         const foundIds = found;
+         const swallowed = foundIds.filter(a => exact[a] && !loose[a] && foundIds.some(b => b !== a && excl(a, b) && exact[b] && exact[a].every(sp => exact[b].some(bp => coveredBy(sp, bp)))));
          return {
-             found,
+             found: swallowed.length ? found.filter(t => !swallowed.includes(t)) : found,
              negated
          };
      }

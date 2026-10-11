@@ -5340,6 +5340,22 @@ body.modal-active{overflow:hidden}
                 nlpIntent._matchConfidence = Math.max(nlpIntent._matchConfidence || 0, thresholds.auto_select_named_service || 70);
             }
 
+            // T170 (PENDING_DECISIONS #178, Charter Battle 7 / DEFECT-ARBITRATION, "a single call in the right place, not new logic"): the SSOT's tag rules -- mutual exclusion
+            // (smart_tags[].mutually_exclusive), a negation that dies when an exclusive sibling is active, the default tag of a display group -- were applied by ONE gateway, the guided
+            // builder (sqBuildStep3 -> applySSOTRules -> resolveTagRules). This gateway handed the engine whatever the words detected, so a sentence naming two exclusive facts was
+            // charged for both (measured: 13 situations, up to $124 apart from the builder's answer for the same words). It is the same function, called once, where the words become
+            // tags: a named service is a curated session (no group default), exactly as the builder treats it. Nothing here is a second rule.
+            const selectedServiceId = (nlpIntent?._matchConfidence >= thresholds.auto_select_named_service) ? (nlpIntent?.recommendedSku || null) : null;
+            const ruled = resolveTagRules({
+                category: detCat,
+                groupId: selectedGroupId,
+                curatedMode: !!selectedServiceId,
+                detTagIds: detectedTagIds,
+                manTagIds: [],
+                userTagIds: [],
+                negatedTagIds,
+            });
+
             return makeBookingContext('free_text', {
                 rawText,
                 nlpIntent,
@@ -5347,11 +5363,12 @@ body.modal-active{overflow:hidden}
                 extractedObject,
                 resolutionObject,
                 extractedLocation: extractLocation(rawText),
-                selectedServiceId: (nlpIntent?._matchConfidence >= thresholds.auto_select_named_service) ? (nlpIntent?.recommendedSku || null) : null,
+                selectedServiceId,
                 selectedCategoryId: nlpIntent?.category || null,
                 selectedGroupId,
-                detectedTagIds,
-                negatedTagIds,
+                detectedTagIds: ruled.detTagIds,
+                manuallyToggledTagIds: ruled.manTagIds,
+                negatedTagIds,   // the customer's own negations, as detected: the negation-pivot (T36) reads them, and the rules' dead-negation cleanup ("not brick, just drywall" -> the 'not brick' is redundant to the builder) would erase the very words that tell the pivot where to go
                 _negationOverride: negationOverride,
             });
         }
@@ -5397,9 +5414,10 @@ body.modal-active{overflow:hidden}
             "client_supplying_door", "existing_frame", "faucet_type", "sink_type",
             "toilet_style_pref", "existing_toilet_type", "window_type", "removal",
             "install_type", "existing_type", "furn_item", "mounting_item",
-            "wall_mount_items", "item_type", "fixture_type", "electrical_item",
+            "wall_mount_items", "item_type", "electrical_item",
             "plumbing_fixture", "tech_device", "computer_component", "device_type",
-            "laptop_or_desktop", "existing_box", "ducting", "length", "distance",
+            "laptop_or_desktop", "existing_box", "ducting", "distance",
+            "baseboard_length", "under_cabinet_length", "water_line_run",
             "weight", "mounting_height", "tile_condition", "waterproof_area",
             "has_matching_tiles", "thermostat_type", "customer_supplied_part",
             "software_install_type", "brand", "router_owned", "mesh_network",

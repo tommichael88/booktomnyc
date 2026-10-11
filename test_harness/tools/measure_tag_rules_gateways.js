@@ -4,6 +4,10 @@
  * (the free-text and state paths)? A read-only measurement, not a test: it changes nothing and exits 0. T169 ran it and the answer is NO (#178); it is kept so the fix session starts
  * from a number, and so the fix can be shown to take every cell below to "same".
  *
+ * T170 (#178 RESOLVED): the free-text gateway now applies the rules once, where the words become tags (collectBookingContext_freeText), and the matcher no longer finds a tag whose only evidence is the
+ * middle of a longer exclusive tag's phrase. The proof is test_harness/verify_tag_arbitration_gateways.js (red 4 of 8 before, green after). THIS tool still prices the RAW sets on its "state path" column on purpose
+ * (computeQuoteFromState has no gateway of its own and prices what it is handed), so its table still lists the 13 situations: read it as "what the rules change", not as a remaining difference between the doors. With --sentences, 6 of 7 sentences now read "same"; the seventh ("my toilet keeps running and the kitchen faucet leaks") differs because the service's own default tag is carried by the builder and not by the free-text route, which is #93, not the rules.
+ *
  *   node test_harness/tools/measure_tag_rules_gateways.js [--sentences]
  *
  * THE QUESTION. The SSOT's tag rules (the default tag of a display group, mutual exclusion between tags, a negation that dies when an exclusive sibling is active) are applied by ONE gateway,
