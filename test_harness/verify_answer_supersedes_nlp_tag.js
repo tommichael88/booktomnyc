@@ -79,7 +79,7 @@ console.log('\n=== The core fix: an explicit contradictory answer clears the ear
 {
     const q = sandbox.computeUnifiedQuote({
         svc, dynDef: null, activeTagIds: ['#emergency'],
-        answers: { urgency: 'Whenever works — no rush' },
+        answers: { urgency: 'Whenever works - no rush' },
         qty: 1
     });
     check('the contradictory "urgent / same-day" label no longer displays after an explicit "no rush" answer', q.activeLabels.length === 0);
@@ -89,7 +89,7 @@ console.log('\n=== A matching (non-contradictory) answer correctly preserves the
 {
     const q = sandbox.computeUnifiedQuote({
         svc, dynDef: null, activeTagIds: ['#emergency'],
-        answers: { urgency: 'Urgent — today or tomorrow' },
+        answers: { urgency: 'Urgent - today or tomorrow' },
         qty: 1
     });
     check('the tag is correctly preserved when the explicit answer matches it', q.activeLabels.includes('urgent / same-day'));
@@ -99,7 +99,7 @@ console.log('\n=== An unrelated tag (not owned by the answered module) is never 
 {
     const q = sandbox.computeUnifiedQuote({
         svc, dynDef: null, activeTagIds: ['#brick_wall'],
-        answers: { urgency: 'Whenever works — no rush' },
+        answers: { urgency: 'Whenever works - no rush' },
         qty: 1
     });
     check('an unrelated tag from a different concept space is unaffected', q.activeLabels.includes('on brick or concrete'));

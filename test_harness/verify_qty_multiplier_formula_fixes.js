@@ -98,7 +98,7 @@ const screenshotAnswers = {
     wall_type: 'Brick or concrete', dmg_size: 'Large (bigger than a sheet of paper)',
     item_count_template: wallLabels[0],
     mounting_height: 'High (8-16 ft, ladder needed)',
-    disposal_request: 'Yes, please haul it away', urgency: 'Urgent — today or tomorrow',
+    disposal_request: 'Yes, please haul it away', urgency: 'Urgent - today or tomorrow',
 };
 // R-GOVERN-GOODHART: a sandbox that omits a function the real code calls measures something else. This test once asserted $925 here and passed ONLY because
 // its hand-picked function list left out entityHasOwnQtyQuestion (so the guard below did not exist in the sandbox). In the real browser -- original file and

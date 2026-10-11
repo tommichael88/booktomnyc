@@ -240,7 +240,7 @@ async function boot() {
     // ---- Part 3: free text -> the route sqAnalyze really produced vs the state path afterwards ----
     const texts = DB.services.map(s => (s.ui_taxonomy && s.ui_taxonomy.display_name) || s.id)
         .concat(['hang a heavy mirror on my brick wall', 'move my fragile antique cabinet', 'repair a hole in the wall near the fireplace']);
-    const FILED_NO_ROUTE = ['LED Bulb Upgrade', 'System Restore or Reset', 'Wall Hole or Crack Repair', 'Wi\u2011Fi Extender Setup'];
+    const FILED_NO_ROUTE = ['LED Bulb Upgrade', 'System Restore or Reset', 'Wall Hole or Crack Repair', 'Wi-Fi Extender Setup'];
     const p3 = { score: [], minConf: [], escalatedBy: [], verdict: [] };
     let p3compared = 0, p3noRoute = [], p3entity = 0;
     for (const text of texts) {

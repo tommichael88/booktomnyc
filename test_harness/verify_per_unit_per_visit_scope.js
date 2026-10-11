@@ -124,7 +124,7 @@ console.log('\n=== The motivating trace, on a BATCHED service ===');
 console.log('\n=== Regression: per-visit fees still apply correctly at qty=1 (no observable change expected) ===');
 {
     const svc = DB.services.find(s => s.id === 'faucet_repair_drip');
-    const q = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers: { disposal_request: 'Yes, please haul it away', urgency: 'Urgent \u2014 today or tomorrow' }, qty: 1 });
+    const q = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers: { disposal_request: 'Yes, please haul it away', urgency: 'Urgent - today or tomorrow' }, qty: 1 });
     check('qty=1, disposal_request+urgency both selected: fee still applies in full ($125 = $50 base + $25 + $50), unaffected by the qty=1 case',
         q.laborEstimate === 125);
 }
@@ -140,7 +140,7 @@ console.log('\n=== Regression: item_count_template-driven services are correctly
     // driven by the template SELECTION, not a separate qty parameter; this
     // just confirms the scope split doesn't change anything for a service
     // that never multiplies by qty in the first place.
-    const q = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers: { urgency: 'Urgent \u2014 today or tomorrow' }, qty: 1 });
+    const q = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers: { urgency: 'Urgent - today or tomorrow' }, qty: 1 });
     check('urgency fee still applies once, normally, for a template-driven service ($45+$50=$95 total, and never gets multiplied since qtyMultiplier is already 1 for these)',
         q.laborEstimate === 95);
 }

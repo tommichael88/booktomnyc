@@ -50,7 +50,7 @@ console.log('=== The real, exact, reported scenario: prehung_interior_door_insta
         client_supplying_door: 'No, I need you to procure it',
         existing_frame: 'Yes',
         disposal_request: 'Yes, please haul it away',
-        urgency: 'Urgent — today or tomorrow',
+        urgency: 'Urgent - today or tomorrow',
     };
     const q = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers, qty: 1 });
     check('laborEstimate is the real, correct, unchanged $225 (this is a display fix, not a pricing change)', q.laborEstimate === 225);

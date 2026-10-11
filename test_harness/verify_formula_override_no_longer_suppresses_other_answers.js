@@ -92,7 +92,7 @@ const oneWall = countBands[0].label, topBand = countBands[countBands.length - 1]
 const baseAnswers = {
     wall_type: 'Brick or concrete', dmg_size: 'Large (bigger than a sheet of paper)',
     mounting_height: 'High (8-16 ft, ladder needed)',
-    disposal_request: 'Yes, please haul it away', urgency: 'Urgent — today or tomorrow',
+    disposal_request: 'Yes, please haul it away', urgency: 'Urgent - today or tomorrow',
 };
 const REAL_KEYS = ['wall_type', 'dmg_size', 'mounting_height', 'disposal_request', 'urgency'];
 const noFormula = quoteFor(wallSvc, { ...baseAnswers, item_count_template: oneWall });

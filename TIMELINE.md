@@ -10903,3 +10903,47 @@ The plan was written from the code, not from the audit's summary, and four state
 A baseline note: `verify_affirmation_card_ui.js` reported "0 passed, 1 failed" once in the merged-tree baseline run (four tests in parallel) and 7 of 7 on each of three isolated runs on the same tree, so it is a load-dependent timeout and not a result of the merge. It is re-run in isolation at close-out if it recurs.
 
 **Files modified:** `PROJECT_CHARTER.html`, `RESHAPE_SCOPE_S1_S6.md` (new), `PENDING_DECISIONS.md` (#163, #165, #168), `TIMELINE.md`, `test_harness/verify_tag_detection_precision.js`, `test_harness/verify_ssot_reference_integrity.js`, `test_harness/verify_charter_rule_index_v10.js`, `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json`.
+
+
+## T168 — #167 item 5, the dash sweep (your ruling of 2026-10-10 19:45 NY): no invisible lookalike anywhere in `btnyc.json`, and no dash but the ASCII hyphen in an option label
+
+Governing message: yours, 2026-10-10 19:45 New York: "**Split the 58 non-ASCII dashes into their own sub-item.** It's mechanical, and it would be best to land it first in its own commit so the substantive question work is reviewable separately. The `electrical_item` hyphen bug was silent for months — a mechanical sweep closes that class for good." And 20:11: "1. The dash sweep — own commit, own ledger entry." Nothing else is in this commit.
+
+**Ledger (R-GOVERN-TRANSITION: a structural change states the workaround the old shape forced and the shape it ends at).**
+
+- **Rationale.** A label is a key (`then`, tag `answers`, `issue_type_fees` point at an option by its exact text), and the catalog spelled the same character several ways, one of them invisible: 58 module option labels (28 en dash, 19 em dash, 11 non-breaking hyphen), 6 chain-embedded labels, and 43 other strings held a dash a typist and a test cannot tell from the ASCII one. A non-breaking hyphen is what silently killed the `electrical_item` "Under-cabinet light" branch for months. A reference and its target had to be typed with an identical invisible character, and nothing could say they differed.
+- **Endpoint.** No invisible lookalike character anywhere in the file (derived data included); no non-ASCII dash in an option label; every reference moved with its label; the sweep is a kept tool (`test_harness/tools/fold_ssot_typography.js`) and a detector section, so the class stays closed.
+- **Defect class.** `DEFECT-DANGLING-REFERENCE` (a pointer spelled in a way its target is not, named in T167).
+- **Detector.** `verify_ssot_reference_integrity.js` section 5 and the `fee-key` check: **red 41 pass / 2 fail of 43 on the pre-sweep tree** (`archive/T168_typography_pre.txt`), **43 of 43** after (`archive/T168_typography_post.txt`).
+- **Rules.** `R-INVARIANT-DISEASE`, `R-SYSTEM-SHAPE`, `P-INVARIANT-PROPAGATE`, `R-GOVERN-TRANSITION`, `P-SYSTEM-NOEDIT` (`compiled.*` regenerated, fixed point confirmed).
+
+### 1. What changed
+
+- **`btnyc.json`** (byte-preserving: 145 lines changed, 147 differing leaves, 48 of them in `compiled`): 61 distinct labels folded, 104 whole-string occurrences (the label, its `then` key, tag answers, chain copies, `compiled`), 42 further non-breaking hyphens in names and sentences. The rule: invisible lookalike hyphens become "-" everywhere; in a label an en or em dash becomes ASCII ("2–3" -> "2-3", " – " and " — " -> " - "). Curly apostrophes were **not** touched (#171).
+- **`test_harness/tools/fold_ssot_typography.js` (new).** Changes a string only when the **whole string** equals a label that needs folding; proves the text it wrote parses to the document the same fold gives on the parsed object; refuses any dash position its rules do not cover. `splice_compiled.py` then found nothing to change (0 of 8 compiler-owned keys differ).
+- **`test_harness/verify_ssot_reference_integrity.js`:** TYPOGRAPHY section (invisible lookalikes anywhere; dashes in labels; typography-only collisions; the filed curly-apostrophe list may only shrink; eight non-vacuity mutants) and a `fee-key` resolution (`issue_type_fees` keys must be labels of module `issue`).
+- **Existing tests touched, and why. No assertion was changed; each followed a label its data renamed.** Fifteen label literals in ten files: `verify_answer_supersedes_nlp_tag.js` (3), `verify_fee_breakdown.js`, `verify_formula_override_no_longer_suppresses_other_answers.js`, `verify_project_based_hide_time.js`, `verify_qty_multiplier_formula_fixes.js`, `verify_quote_template_complete_fields.js`, `verify_reported_ui_bugs_batch1.js` (2): "Urgent — today or tomorrow" / "Whenever works — no rush" / "Two‑handle ..." -> the new spelling; `verify_answers_round_trip.js` (2), `verify_per_unit_per_visit_scope.js` (2): the same label written as `—`; `verify_confidence_convergence.js` (1): the filed-no-route service name "Wi‑Fi Extender Setup" -> "Wi-Fi Extender Setup". My first search read the raw character only and missed the six escaped literals; the suite found them (4 tests pass -> fail), which is what the suite is for.
+- **Not changed:** `verify_answers_round_trip.js` L191 seeds `door_style_pref: 'Solid core – better sound insulation (~$300–$500)'`, a string that was already no label of the catalog before the sweep; it tests unknown-answer handling and is left alone. `verify_non_retiring_answers.js` L259 to L273 use the Charter's dead exemplars as vocabulary samples and do not read the SSOT.
+
+### 2. The one extension, and what a customer sees
+
+You ruled the 58 labels. The same invisible character in the 43 other strings (service names such as "P‑Trap Cleaning", descriptions, the estimate disclaimer, furniture names) is folded by the same rule because the detector's rule has to be one rule; nothing visible changes (a line may wrap at the hyphen). In the 64 labels the visible change is real: en and em dashes became ASCII, so "Urgent — today or tomorrow" now reads "Urgent - today or tomorrow". Prose keeps its typography. Say so if you want either part reverted (one `git revert` of the data hunk).
+
+### 3. Verification (before = the tree at `a8eece5`, i.e. T166 plus the T167 Charter commit; after = this tree)
+
+| | Before | After |
+|---|---|---|
+| `verify_ssot_reference_integrity.js` | 41 pass / **2 fail** of 43 (invisible lookalikes; label dashes) | **43 of 43** |
+| Price golden master (2,988 points) vs `archive/golden_master_T166_extended.json` (`archive/T168_golden_compare.txt`) | -- | **0 differ, in any field**: no `laborEstimate`, `laborCalc`, `totalMin`, `tierRate`, fee, confidence, bar or checkout-state value moved |
+| Render differential, old catalog vs new catalog on the same page (`archive/T168_render_diff.txt`, 1,146 entries) | -- | 256 differ, 0 render or page errors, and **all 256 are exactly the fold**: applying the same fold to the BASE output reproduces the HEAD output byte for byte (0 residual); families: card 14, panel 40, route 37, routeJson 76, prefill 35, quote 45, adlib 9 |
+| Full suite (`tools/suite_snapshot.js` vs `archive/suite_T166.tsv`; `archive/suite_T168.tsv`) | 126 pass / 73 fail | **126 pass / 73 fail: no pass->fail, no fail->pass**, same 2 tests with an environment gap. (A first run found the 4 escaped-literal tests above; fixed, then the whole suite was run again.) |
+| `verify_r-invariant-comply_ship_gate.js` | 13 of 13 | **13 of 13** |
+| `tsc` baseline (`archive/types_T168.txt`) | 1,891 | **1,891** (no code changed) |
+
+### 4. Findings
+
+- **#170** (resolved) the sweep. **#171** (open, default: fold in the next content session on your word) the 22 module labels that carry a curly apostrophe, 20 more that use the ASCII one.
+- The engine already normalises typed text (`_normalizeTypedText`, `modules/nlp_engine.js` L593: dashes, curly quotes, NBSP), so a customer's typing never met this class; only the catalog's own keys did.
+- A process note: resetting the generated root module copies (`git checkout -- pricing_engine.js ...`) leaves tests that read them stale; `node test_harness/extract_modules.js` regenerates them, as `run_all.sh` does, and they are reverted again before every commit.
+
+**Files modified:** `btnyc.json`, `test_harness/tools/fold_ssot_typography.js` (new), `test_harness/verify_ssot_reference_integrity.js`, ten test files (literals only, listed above), `PENDING_DECISIONS.md` (#170, #171), `TIMELINE.md`, `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json`, `archive/T168_typography_pre.txt`, `archive/T168_typography_post.txt`, `archive/T168_golden_compare.txt`, `archive/T168_render_diff.txt`, `archive/suite_T168.tsv`, `archive/types_T168.txt`.

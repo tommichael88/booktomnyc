@@ -92,6 +92,10 @@ function walk(D) {
         if (o.formula_override && !forms[o.formula_override]) dang('formula', `intake_modules[${id}].client_response[${i}]`, o.formula_override);
         if (o.checkout_state_override && !cstates[o.checkout_state_override]) dang('checkout-state', `intake_modules[${id}].client_response[${i}]`, o.checkout_state_override);
     }));
+    // a fee map keyed by an option label (T167: S2 of RESHAPE_SCOPE_S1_S6.md lists it with `then` and tag answers): pricing reads `issue_type_fees[answers.issue]`, so a key that is no label of module `issue` is a fee that never applies
+    Object.entries(forms).forEach(([fid, f]) => Object.keys((f && f.issue_type_fees) || {}).forEach(k => {
+        if (!mods.issue || !(mods.issue.client_response || []).some(o => o.label === k)) dang('fee-key', `pricing_formulas[${fid}].issue_type_fees`, `"${k}"`);
+    }));
     Object.entries(tags).forEach(([id, t]) => {
         (t.requires || []).forEach((r, i) => tagPtr('tag-pointer', `smart_tags[${id}].requires[${i}]`, r));
         (t.mutually_exclusive || []).forEach((r, i) => tagPtr('tag-pointer', `smart_tags[${id}].mutually_exclusive[${i}]`, r));
@@ -119,7 +123,7 @@ const brief = xs => xs.slice(0, 6).map(x => `${x.at}: ${x.what}`).join(' | ') + 
 // ---- 1 + 2. the SSOT as it is ----
 const { dangling, spelling } = walk(DB);
 const byClass = {}; dangling.forEach(d => { (byClass[d.cls] = byClass[d.cls] || []).push(d); });
-const CLASSES = ['tag-pointer', 'chain-module', 'then-module', 'then-key', 'tag-answer', 'modifier', 'formula', 'checkout-state', 'material', 'scoping', 'intent', 'membership'];
+const CLASSES = ['tag-pointer', 'chain-module', 'then-module', 'then-key', 'tag-answer', 'fee-key', 'modifier', 'formula', 'checkout-state', 'material', 'scoping', 'intent', 'membership'];
 for (const c of CLASSES) check(`no dangling ${c} pointer in the SSOT`, !(byClass[c] || []).length, { expected: 'none', got: brief(byClass[c] || []) });
 check('every option tag is spelled "#id" (the one form the engine compares against)', spelling.length === 0, { expected: 'none', got: brief(spelling) });
 
@@ -171,4 +175,95 @@ if (base) {
     { const d = clone(); const m = Object.values(d.intake_modules).find(x => (x.client_response || []).length); const real = Object.keys(d.smart_tags)[0]; const was = (m.client_response[0].tags || []).filter(r => typeof r !== 'string' || r[0] !== '#').length; m.client_response[0].tags = [{ $ref: real }];
       const w = walk(d); check('(non-vacuity) a planted {"$ref"} option tag is one more spelling defect', w.spelling.length === here.spelling.length - was + 1, { expected: here.spelling.length - was + 1, got: w.spelling.length }); }
 }
+
+// ---- 5. TYPOGRAPHY (T167, #167 item 5): a label is a key, so what it is spelled with is part of what it points at ----
+// The `electrical_item` branch was dead for months because one hyphen was U+002D and the other U+2011: identical on screen, different to every comparison. Two kinds of character make that
+// possible, and they are governed differently:
+//   INVISIBLE   a character that renders as a hyphen, a space or nothing and is a different code point (U+2010 to U+2012, U+2212, U+00AD, U+00A0, zero-width). Nothing is gained by one in an
+//               SSOT string and every comparison is lost, so the rule is absolute: none anywhere in the file (derived data included, which also catches a `compiled` that was not regenerated).
+//   VISIBLE     en dash, em dash, horizontal bar. Real typography, so prose may keep it (the operator's prose does); but in an OPTION LABEL, which `then`, tag `answers` and `issue_type_fees`
+//               point at by its exact text, it is a second spelling of the hyphen the author types and a test hard-codes. Ruled mechanical on 2026-10-10 19:45 NY: none in a label.
+//   CURLY       apostrophes and quotation marks in a label are the same hazard; NOT ruled, so FILED: the labels that still carry one are listed below (PENDING_DECISIONS #167 item 5), keyed by
+//               their folded spelling, the list may only shrink, and a new label with one fails.
+const INVISIBLE = /[ ­‐‑‒−﹘﹣－​-‍⁠﻿]/u;
+const VISIBLE_DASH = /[–—―]/u;
+const CURLY = /[‘’“”]/u;
+const fold = x => x.normalize('NFKC').replace(/[‐-―−﹘﹣－]/gu, '-').replace(/[‘’]/gu, "'").replace(/[“”]/gu, '"').replace(/\s+/g, ' ').trim().toLowerCase();
+const uplus = ch => 'U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+const FILED_CURLY = new Set([
+    "appliance_type|not sure - i'll describe in the notes",
+    "computer_symptom|battery won't charge or drains quickly",
+    "computer_symptom|turns on but won't boot / stuck on loading",
+    "computer_symptom|won't connect to wifi or internet",
+    "computer_symptom|won't power on at all",
+    "device_state|dead / won't power on",
+    "ducting|no - it's recirculating (no duct)",
+    "ducting|not sure - i'll describe in notes",
+    "existing_box|no / i'm not sure (may need a new box)",
+    "garbage_disposal_issue|won't drain (water stays inside)",
+    "garbage_disposal_issue|won't spin / no movement",
+    "generic_tech_symptom|won't connect to wifi, bluetooth, or an app",
+    "generic_tech_symptom|won't power on",
+    "leak_loc|not sure - i'll describe in notes",
+    "network_symptom|can't connect new devices to the network",
+    "network_symptom|won't power on or reboots constantly",
+    "plumbing_fixture_issue|won't drain (water stays inside)",
+    "smart_device_symptom|won't connect to wifi or the app",
+    "smart_device_symptom|won't power on",
+    "symptom|won't drain (water stays inside)",
+    "symptom|won't spin / no movement",
+    "window_ac_issue|won't turn on / fan won't spin",
+]);
+function optionLabels(D) {   // module options and the options a service's chain overrides in place
+    const out = [];
+    Object.entries(D.intake_modules).forEach(([id, m]) => (m.client_response || []).forEach((o, i) => out.push({ at: `intake_modules[${id}].client_response[${i}]`, module: id, label: String(o.label) })));
+    const emb = (owner, ch) => (ch || []).forEach((c, i) => ((c && c.params && c.params.client_response) || []).forEach((o, j) => out.push({ at: `${owner}.intake_chain[${i}].params.client_response[${j}]`, module: (c && c.module) || '?', label: String(o.label) })));
+    D.services.forEach(s => emb(`services[${s.id}]`, s.intake_chain));
+    Object.entries(D.dynamic_services).forEach(([k, d]) => emb(`dynamic_services[${k}]`, d.intake_chain));
+    return out;
+}
+function typography(D) {
+    const labels = optionLabels(D), invisible = [], dashes = [], curly = [], collisions = [];
+    labels.forEach(x => {
+        const v = x.label.match(VISIBLE_DASH) || x.label.match(INVISIBLE);
+        if (v) dashes.push({ at: x.at, what: `"${x.label}" holds ${uplus(v[0])}` });
+        if (CURLY.test(x.label)) curly.push({ at: x.at, key: x.module + '|' + fold(x.label), what: `"${x.label}"` });
+    });
+    const seen = {};
+    Object.entries(D.intake_modules).forEach(([id, m]) => (m.client_response || []).forEach(o => { const k = id + '|' + fold(String(o.label)); (seen[k] = seen[k] || []).push(o.label); }));
+    Object.entries(seen).forEach(([k, v]) => { if (v.length > 1) collisions.push({ at: k.split('|')[0], what: JSON.stringify(v) }); });
+    (function w(o, at) {
+        if (typeof o === 'string') { const m = o.match(INVISIBLE); if (m) invisible.push({ at, what: `${uplus(m[0])} in "${o.slice(0, 50)}"` }); return; }
+        if (o && typeof o === 'object') for (const k of Object.keys(o)) { const m = k.match(INVISIBLE); if (m) invisible.push({ at: at + '.' + k, what: `${uplus(m[0])} in the key "${k.slice(0, 50)}"` }); w(o[k], at + (Array.isArray(o) ? `[${k}]` : '.' + k)); }
+    })(D, '');
+    return { labels, invisible, dashes, curly, collisions };
+}
+const ty = typography(DB);
+check('no INVISIBLE lookalike character (non-breaking hyphen, minus, soft hyphen, NBSP, zero-width ...) anywhere in the SSOT', ty.invisible.length === 0, { expected: 'none', got: ty.invisible.length + ': ' + brief(ty.invisible) });
+check('no dash other than the ASCII hyphen-minus in any option label (module options and chain-embedded options)', ty.dashes.length === 0, { expected: 'none', got: ty.dashes.length + ': ' + brief(ty.dashes) });
+check('no two options of a module differ only by typography (case, dash, apostrophe, space)', ty.collisions.length === 0, { expected: 'none', got: brief(ty.collisions) });
+{ const now = new Set(ty.curly.map(x => x.key)), unlisted = [...now].filter(k => !FILED_CURLY.has(k)), stale = [...FILED_CURLY].filter(k => !now.has(k));
+  check('curly apostrophes and quotes in labels: only the filed ones (#167 item 5; the list may only shrink)', unlisted.length === 0, { expected: 'no label outside the filed list', got: unlisted.join(' | ') });
+  check('every label on the filed curly-apostrophe list still carries one (a fixed label leaves the list)', stale.length === 0, { expected: 'none stale', got: stale.join(' | ') }); }
+check('the typography scan reaches the catalog it claims to (>= 450 module options, >= 60 chain-embedded options)', ty.labels.length >= 520 && ty.labels.filter(x => x.at.includes('.params.')).length >= 60, { expected: '>= 520 / 60', got: `${ty.labels.length} / ${ty.labels.filter(x => x.at.includes('.params.')).length}` });
+{   // non-vacuity: the scan sees each planted defect in each place it claims to look, and passes the clean variant
+    const plant = fn => { const d = clone(); fn(d); return typography(d); };
+    const m0 = d => Object.values(d.intake_modules).find(m => (m.client_response || []).length >= 2);
+    const base0 = typography(DB);
+    const a = plant(d => { const m = m0(d); m.client_response[0].label = 'Yes‑no'; });
+    check('(non-vacuity) a planted non-breaking hyphen in a module option label is seen as a label dash and as an invisible character', a.dashes.length === base0.dashes.length + 1 && a.invisible.length === base0.invisible.length + 1, { expected: '+1 / +1', got: `${a.dashes.length - base0.dashes.length} / ${a.invisible.length - base0.invisible.length}` });
+    const b = plant(d => { const m = m0(d); m.client_response[0].label = 'Two – three'; });
+    check('(non-vacuity) a planted en dash in a label is a label dash (and not an invisible character: it is visible)', b.dashes.length === base0.dashes.length + 1 && b.invisible.length === base0.invisible.length, { expected: '+1 / +0', got: `${b.dashes.length - base0.dashes.length} / ${b.invisible.length - base0.invisible.length}` });
+    const c = plant(d => { d.services[0].name = 'Fix‑it'; });
+    check('(non-vacuity) a planted non-breaking hyphen in a service name (not a label) is an invisible character and not a label dash', c.invisible.length === base0.invisible.length + 1 && c.dashes.length === base0.dashes.length, { expected: '+1 / +0', got: `${c.invisible.length - base0.invisible.length} / ${c.dashes.length - base0.dashes.length}` });
+    const e = plant(d => { const dd = Object.values(d.dynamic_services).find(x => (x.intake_chain || []).some(ch => ch && ch.params && ch.params.client_response)); const ch = dd && dd.intake_chain.find(x => x && x.params && x.params.client_response); if (ch) ch.params.client_response[0].label = 'Plain — dash'; else d.services.forEach(s => (s.intake_chain || []).forEach(x => { if (x && x.params && x.params.client_response) x.params.client_response[0].label = 'Plain — dash'; })); });
+    check('(non-vacuity) a planted em dash in a chain-embedded option label is seen (the scan reads past the module catalog)', e.dashes.length >= base0.dashes.length + 1, { expected: '>= +1', got: e.dashes.length - base0.dashes.length });
+    const f = plant(d => { const m = m0(d); m.client_response[0].label = 'Brand-new it’s'; });
+    check('(non-vacuity) a planted curly apostrophe in a new label is outside the filed list', f.curly.map(x => x.key).filter(k => !FILED_CURLY.has(k)).length === base0.curly.map(x => x.key).filter(k => !FILED_CURLY.has(k)).length + 1, { expected: '+1 unlisted', got: 'no change' });
+    const g = plant(d => { const m = m0(d); m.client_response[1].label = m.client_response[0].label.toUpperCase().replace(/-/g, '–') + ' '; });
+    check('(non-vacuity) two options that differ only by case, dash and a trailing space collide', g.collisions.length === base0.collisions.length + 1, { expected: '+1', got: g.collisions.length - base0.collisions.length });
+    const h = plant(d => { const m = m0(d); m.client_response[0].label = 'Plain ASCII - label'; });
+    check('(non-vacuity) a plain ASCII label with a spaced hyphen adds no finding of any kind', h.dashes.length === base0.dashes.length - (VISIBLE_DASH.test(m0(DB).client_response[0].label) || INVISIBLE.test(m0(DB).client_response[0].label) ? 1 : 0) && h.invisible.length <= base0.invisible.length, { expected: 'no new finding', got: JSON.stringify([h.dashes.length, h.invisible.length]) });
+}
+
 finish();

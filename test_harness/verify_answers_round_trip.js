@@ -171,11 +171,11 @@ console.log('\n=== Multiple sequential chip clicks all accumulate (not just the 
     const routeAfterFirstClick = sandbox.executeWorkflow(ctx, DB);
     check('first click present after first re-run', routeAfterFirstClick.answers.disposal_request === DISPOSAL_LABEL);
 
-    ctx.answers['urgency'] = 'Urgent \u2014 today or tomorrow';
+    ctx.answers['urgency'] = 'Urgent - today or tomorrow';
     const routeAfterSecondClick = sandbox.executeWorkflow(ctx, DB);
     check('first click STILL present after a second, different click (this is exactly what was broken before the fix)',
         routeAfterSecondClick.answers.disposal_request === DISPOSAL_LABEL);
-    check('second click also present', routeAfterSecondClick.answers.urgency === 'Urgent \u2014 today or tomorrow');
+    check('second click also present', routeAfterSecondClick.answers.urgency === 'Urgent - today or tomorrow');
     check('both answers now carry real fees in feeBreakdown',
         ['disposal_request', 'urgency'].every(k => (routeAfterSecondClick.quote.feeBreakdown || []).some(f => f.moduleKey === k)));
 }
