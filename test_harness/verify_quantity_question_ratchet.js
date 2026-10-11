@@ -134,6 +134,8 @@ for (const id of WALLS) { const x = DB.services.find(s => s.id === id); const st
 check(`n walls cost n x the base price on both paths, for the four wall services, including beyond the top band through the overflow (${wallRows} cases; "4 walls x $70 = $280", 8 walls = $560)`, wallBad.length === 0 && wallRows === 16, { expected: 0, got: wallBad.slice(0, 4) });
 
 // ---- G. ratchet: a question that declares it affects price must change something -------------------------------------------------------------------------------------
+// T170 (PENDING_DECISIONS #180): `internal_hardware_replacement:computer_component` and `system_restore_or_reset:device_state` left this list: their "something else" / "dead" / "overheating" answers now hand the job to the diagnostic
+// (route_to), so the question moves the price. The list only shrinks.
 const LEGACY = [
         "angle_stop_replacement:plumbing_fixture",
     "bidet_attachment_install_or_removal:action",
@@ -143,7 +145,6 @@ const LEGACY = [
     "furniture_disassembly_for_moving:item_type",
     "furniture_repair_hourly:furn_item",
     "generic_mounting_service:mounting_item",
-    "internal_hardware_replacement:computer_component",
     "leak_under_sink_repair:leak_loc",
     "leak_under_sink_repair:leak_type",
     "leak_under_sink_repair:location",
@@ -156,7 +157,6 @@ const LEGACY = [
     "smart_speaker_setup:brand",
     "squeaky_floor_repair:floor_type",
     "stove_repair:stove_symptom",
-    "system_restore_or_reset:device_state",
     "toilet_install:toilet_style_pref",
     "washer_repair:location",
     "washer_repair:washer_type",
@@ -164,11 +164,23 @@ const LEGACY = [
     "window_ac_setup:window_type",
     "window_hardware_repair:window_type"
 ];
+// A question is judged where it is SHOWN, not in a vacuum (T170, PENDING_DECISIONS #180): a question that is only visible after another answer (its own `depends_on`, or the answer of the step whose `then` opens it,
+// up the chain) did nothing in the probe below because the probe never made it visible, so a question whose answers hand the job to another service looked like a question that changes nothing.
+const prereq = (s, key, seen = new Set()) => {
+    if (seen.has(key)) return {}; seen.add(key);
+    const out = Object.assign({}, (DB.intake_modules[key] || {}).depends_on || {});
+    for (const st of s.intake_chain) {
+        const via = Object.entries(st.then || {}).find(([, ts]) => (ts || []).includes(key));
+        if (via && mod(st) !== key) { Object.assign(out, prereq(s, mod(st), seen), { [mod(st)]: via[0] }); break; }
+    }
+    return out;
+};
 const found = [];
 for (const s of DB.services) for (const st of s.intake_chain) {
     const k = mod(st); if (QTYPE.has(k)) continue; const m = DB.intake_modules[k]; if (!m) continue; if (!(m.affects_price === true || m.purpose === 'pricing')) continue;
     const labels = bandsOf(st).map(b => b.label); if (labels.length < 2) continue;
-    const rs = labels.map(l => { try { return orch(s, { answers: { [k]: l } }); } catch (e) { return null; } }).filter(Boolean);
+    const pre = prereq(s, k);
+    const rs = labels.map(l => { try { return orch(s, { answers: Object.assign({}, pre, { [k]: l }) }); } catch (e) { return null; } }).filter(Boolean);
     const u = f => new Set(rs.map(f)).size > 1; const chains = new Set(rs.map(r => (r.route.intakeChain || []).map(q => q.moduleKey || q.module).join(',')));
     const branch = st.then && Object.keys(st.then).some(b => (st.then[b] || []).length);
     if (!(u(r => r.price) || u(r => r.time) || u(r => r.tier) || chains.size > 1 || branch)) found.push(`${s.id}:${k}`);

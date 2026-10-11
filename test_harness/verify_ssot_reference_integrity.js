@@ -22,6 +22,8 @@
  *   1. RESOLUTION      tag pointers (service default/suggested tags, dynamic suggested/smart tags, option tags, tag requires/mutually_exclusive) -> smart_tags; chain and `then` modules -> intake_modules;
  *                      `then` keys -> a label of the module they hang off; tag `answers` (module, label) -> a real module and a real label; modifier_ref -> global_rules.modifiers; formula_override ->
  *                      pricing_formulas; checkout_state_override -> checkout_states; tag scoping (categories, groups, excluded services); intent mapping targets; group/category/service membership.
+ *                      T170 (#180) added three: an answer's `route_to` (service -> a real service; each carried answer -> a real module and a real label), a module's `depends_on` (module and label), and a group's
+ *                      authored picker (a symptom tile's id -> real_symptom_ids and its tags -> smart_tags; a known-need tile -> an explicit service of the group).
  *   2. ONE SPELLING    option tags are "#id" strings -- the only form the engine compares against (and the form the proposed one-spelling reference model, #165, settles on).
  *   3. THE VALIDATOR   the compiler's validate_structural reports each class above on a copy of the SSOT broken in exactly that one way, and reports nothing on the SSOT as it is.
  *   4. NON-VACUITY     the walker is shown to find a planted dangling tag, a planted unmatched `then` key and a planted bare option tag, in every place it claims to look.
@@ -91,7 +93,30 @@ function walk(D) {
         if (o.modifier_ref && !modifs[o.modifier_ref]) dang('modifier', `intake_modules[${id}].client_response[${i}]`, o.modifier_ref);
         if (o.formula_override && !forms[o.formula_override]) dang('formula', `intake_modules[${id}].client_response[${i}]`, o.formula_override);
         if (o.checkout_state_override && !cstates[o.checkout_state_override]) dang('checkout-state', `intake_modules[${id}].client_response[${i}]`, o.checkout_state_override);
+        // T170 (#180): an answer that hands the job to another service names a real one; the answers it carries are real labels of real modules
+        if (o.route_to !== undefined) {
+            const at = `intake_modules[${id}].client_response[${i}].route_to`, rt = o.route_to || {};
+            if (!svcs.has(rt.service)) dang('route-to', at, `service ${rt.service}`);
+            Object.entries(rt.answers || {}).forEach(([mk, lbl]) => {
+                if (!mods[mk]) dang('route-to', at, `module ${mk}`);
+                else if (!(mods[mk].client_response || []).some(x => x.label === lbl)) dang('route-to', at, `${mk}: label "${lbl}"`);
+            });
+        }
     }));
+    // T170 (#180): a module shown only after another answer (`depends_on`) names a real module and a real label of it
+    Object.entries(mods).forEach(([id, m]) => Object.entries(m.depends_on || {}).forEach(([dk, dv]) => {
+        if (!mods[dk]) dang('depends-on', `intake_modules[${id}].depends_on`, `module ${dk}`);
+        else if (!(mods[dk].client_response || []).some(x => x.label === dv)) dang('depends-on', `intake_modules[${id}].depends_on`, `${dk}: label "${dv}"`);
+    }));
+    // T170 (#180): the picker's authored vocabulary: a tile's tags are smart tags, a tile is one of the group's real symptoms, a known-need tile is a real service of the group
+    Object.entries(D.routing_archetypes || {}).forEach(([gid, ra]) => {
+        const real = new Set(ra.real_symptom_ids || []), grp = D.group.find(g => g.id === gid) || {};
+        (ra.symptom_tiles || []).forEach((t, i) => {
+            if (!real.has(t.id)) dang('archetype-tile', `routing_archetypes[${gid}].symptom_tiles[${i}].id`, String(t.id));
+            (t.tags || []).forEach((r, j) => tagPtr('archetype-tile', `routing_archetypes[${gid}].symptom_tiles[${i}].tags[${j}]`, r));
+        });
+        (ra.known_need_tiles || []).forEach((k, i) => { if (!(grp.explicit_services || []).includes(k.service_id)) dang('archetype-tile', `routing_archetypes[${gid}].known_need_tiles[${i}].service_id`, String(k.service_id)); });
+    });
     // a fee map keyed by an option label (T167: S2 of RESHAPE_SCOPE_S1_S6.md lists it with `then` and tag answers): pricing reads `issue_type_fees[answers.issue]`, so a key that is no label of module `issue` is a fee that never applies
     Object.entries(forms).forEach(([fid, f]) => Object.keys((f && f.issue_type_fees) || {}).forEach(k => {
         if (!mods.issue || !(mods.issue.client_response || []).some(o => o.label === k)) dang('fee-key', `pricing_formulas[${fid}].issue_type_fees`, `"${k}"`);
@@ -123,7 +148,7 @@ const brief = xs => xs.slice(0, 6).map(x => `${x.at}: ${x.what}`).join(' | ') + 
 // ---- 1 + 2. the SSOT as it is ----
 const { dangling, spelling } = walk(DB);
 const byClass = {}; dangling.forEach(d => { (byClass[d.cls] = byClass[d.cls] || []).push(d); });
-const CLASSES = ['tag-pointer', 'chain-module', 'then-module', 'then-key', 'tag-answer', 'fee-key', 'modifier', 'formula', 'checkout-state', 'material', 'scoping', 'intent', 'membership'];
+const CLASSES = ['tag-pointer', 'chain-module', 'then-module', 'then-key', 'tag-answer', 'fee-key', 'modifier', 'formula', 'checkout-state', 'material', 'scoping', 'intent', 'membership', 'route-to', 'depends-on', 'archetype-tile'];
 for (const c of CLASSES) check(`no dangling ${c} pointer in the SSOT`, !(byClass[c] || []).length, { expected: 'none', got: brief(byClass[c] || []) });
 check('every option tag is spelled "#id" (the one form the engine compares against)', spelling.length === 0, { expected: 'none', got: brief(spelling) });
 
@@ -158,6 +183,11 @@ if (base) {
         'a dangling option tag': d => { const m = Object.values(d.intake_modules).find(x => (x.client_response || []).length); m.client_response[0].tags = ['#no_such_tag']; },
         'a `then` key that is no option label': d => { const s = d.services.find(x => x.intake_chain.some(c => Object.keys(c.then || {}).length)); const c = s.intake_chain.find(c => Object.keys(c.then || {}).length); const k = Object.keys(c.then)[0]; c.then[k + '‑'] = c.then[k]; delete c.then[k]; },
         'a `then` branch naming a module that does not exist': d => { const s = d.services.find(x => x.intake_chain.some(c => Object.keys(c.then || {}).length)); const c = s.intake_chain.find(c => Object.keys(c.then || {}).length); c.then[Object.keys(c.then)[0]].push('no_such_module'); },
+        'a route_to naming a service that does not exist': d => { Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to).route_to.service = 'no_such_service'; },
+        'a route_to carrying an answer that is no label of its module': d => { Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to && Object.keys(o.route_to.answers || {}).length).route_to.answers[Object.keys(Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to && Object.keys(o.route_to.answers || {}).length).route_to.answers)[0]] = 'No such label'; },
+        'a depends_on naming a label its module does not have': d => { const m = Object.values(d.intake_modules).find(x => x.depends_on); m.depends_on[Object.keys(m.depends_on)[0]] = 'No such label'; },
+        'a symptom tile carrying a tag that does not exist': d => { Object.values(d.routing_archetypes).find(r => (r.symptom_tiles || []).length).symptom_tiles[0].tags = ['#no_such_tag']; },
+        'a known-need tile naming a service the group does not offer': d => { Object.values(d.routing_archetypes).find(r => (r.known_need_tiles || []).length).known_need_tiles[0].service_id = 'no_such_service'; },
         'an unknown modifier_ref': d => { const m = Object.values(d.intake_modules).find(x => (x.client_response || []).some(o => o.modifier_ref)); m.client_response.find(o => o.modifier_ref).modifier_ref = 'no_such_modifier'; },
     };
     for (const [name, mutate] of Object.entries(breaks)) {

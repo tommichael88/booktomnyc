@@ -2035,7 +2035,7 @@ body.modal-active{overflow:hidden}
 
         function _resolveIntakeChain(svc) {
             if (!SERVICE_DATA.intake_modules) return [];
-            const resolved = [];
+            const resolved = /** @type {any[]} */ ([]);
             const seen = new Set();
             // v9.1: params support. A step can carry params:{item_noun,
             // client_response, question_override} to specialize a shared
@@ -2055,7 +2055,16 @@ body.modal-active{overflow:hidden}
             // intake_modules under its real, unparameterized name.
             const resolveOne = (lookupKey, thenMap, params) => {
                 const moduleKey = params?.item_noun ? `${lookupKey}::${params.item_noun}` : lookupKey;
-                if (seen.has(moduleKey)) return; // avoid duplicates/cycles
+                if (seen.has(moduleKey)) {
+                    // T170 (PENDING_DECISIONS #180): a module the chain names twice -- once as another step's branch target (injected with an empty `then`) and once as a step of its own that carries the branch
+                    // map -- keeps the map. Dropping it silently made a NESTED branch (the answer that opens the next question) impossible to author in the chain; the only way round was to write the branch
+                    // into the module's definition, which every service that asks the module would inherit. A module that already has a branch map is left as it is.
+                    if (thenMap && Object.keys(thenMap).length) {
+                        const prior = resolved.find(/** @param {any} m */ m => m.moduleKey === moduleKey);
+                        if (prior && !Object.keys(prior.then || {}).length) prior.then = thenMap;
+                    }
+                    return; // avoid duplicates/cycles
+                }
                 seen.add(moduleKey);
                 const mod = SERVICE_DATA.intake_modules[lookupKey];
                 if (!mod) return;
@@ -3753,8 +3762,88 @@ body.modal-active{overflow:hidden}
             }
             return ids;
         }
-        
+
+        // ROUTE_TO_MAX_HOPS -- LOGIC. The most times one resolution may move the job to another service (T170, PENDING_DECISIONS #180). A bound, not a business rule: the catalog's own route_to options are
+        // checked for sense by verify_route_to_resolution.js; this only guarantees that a catalog that is wrong cannot make the engine loop.
+        const ROUTE_TO_MAX_HOPS = 3;
+
+        // orch_find_route_tos -- LOGIC. The routing answers on a resolved route, in chain order: every visible module whose answer is an option carrying `route_to` ({service, answers, because}), minus
+        // the (module, answer) pairs the customer has declined ("Not right? Change my answer"). A hidden module's answer routes nothing: it is not a question the customer was asked.
+        /** @param {any} route @param {any} declined */
+        function orch_find_route_tos(route, declined) {
+            const skip = new Set(declined || []);
+            const answers = (route && route.answers) || {};
+            const hits = /** @type {any[]} */ ([]);
+            ((route && route.visibleChain) || []).forEach(/** @param {any} m */ m => {
+                const key = m.moduleKey || m.module;
+                const label = answers[key];
+                if (!label) return;
+                const o = (m.client_response || []).find(/** @param {any} x */ x => x.label === label);
+                if (!o || !o.route_to || typeof o.route_to !== 'object' || typeof o.route_to.service !== 'string') return;
+                if (skip.has(key + '|' + label)) return;
+                hits.push({ moduleKey: key, label, question: m.question || '', routeTo: o.route_to });
+            });
+            return hits;
+        }
+
+        // executeWorkflow -- LOGIC. THE gateway: every entry path (catalog tap, free text, other tile, an answered chip) resolves through this one function. It runs the workflow for the context's service and then,
+        // if the customer's answers include one whose option says "this means the job is service X" (`route_to`, PENDING_DECISIONS #180), moves the job to X and runs the workflow again -- carrying the answers
+        // given, adding the ones the route names, and recording WHY on the route (route.routedFrom) and on the context that produced it, so the card can say so and the customer can take it back (orch_unroute).
+        // A service already visited in this resolution is never re-entered and the number of moves is bounded (ROUTE_TO_MAX_HOPS), so a catalog that routes in a circle ends on the first service. A route_to to a
+        // service that does not exist is ignored (the catalog's reference-integrity test is where it is reported). This is the "single call in the right place" (Battle 7): no gateway decides this for itself.
+        /** @param {any} context @param {any} db */
         function executeWorkflow(context, db) {
+            let ctx = context;
+            let route = orch_run_workflow(ctx, db);
+            const visited = [route && route.entity && route.entity.id].filter(Boolean);
+            for (let hop = 0; hop < ROUTE_TO_MAX_HOPS; hop++) {
+                const hit = orch_find_route_tos(route, ctx.declinedRoutes).find(/** @param {any} h */ h => {
+                    const t = (db.services || []).find(/** @param {any} s */ s => s.id === h.routeTo.service);
+                    return t && !visited.includes(t.id);
+                });
+                if (!hit) break;
+                const target = (db.services || []).find(/** @param {any} s */ s => s.id === hit.routeTo.service);
+                const from = route.entity;
+                // the context as the customer left it, minus the record of any earlier move: what "Not right?" returns to
+                const hostContext = Object.assign({}, ctx, { answers: Object.assign({}, ctx.answers || {}) });
+                ctx = Object.assign({}, ctx, {
+                    selectedServiceId: target.id,
+                    selectedCategoryId: target.ui_taxonomy?.category_id || ctx.selectedCategoryId,
+                    selectedGroupId: target.ui_taxonomy?.group_id || ctx.selectedGroupId,
+                    answers: Object.assign({}, ctx.answers || {}, hit.routeTo.answers || {}),
+                    nlpIntent: ctx.nlpIntent ? Object.assign({}, ctx.nlpIntent, { recommendedSku: target.id }) : ctx.nlpIntent,
+                    routedFrom: {
+                        fromServiceId: from.id,
+                        fromServiceName: from.ui_taxonomy?.display_name || from.id,
+                        moduleKey: hit.moduleKey,
+                        question: hit.question,
+                        label: hit.label,
+                        because: typeof hit.routeTo.because === 'string' ? hit.routeTo.because : '',
+                        hostContext
+                    }
+                });
+                visited.push(target.id);
+                route = orch_run_workflow(ctx, db);
+            }
+            return route;
+        }
+
+        // orch_unroute -- LOGIC. "Not right? Change my answer": returns to the service that asked, with the answer that moved the job removed (the question is open again) and that route declined, so a tag that
+        // supplies the same answer (a sentence the customer typed) does not move them round again. A route that was not moved is returned unchanged.
+        /** @param {any} route @param {any} db */
+        function orch_unroute(route, db) {
+            const rf = route && route.context && route.context.routedFrom;
+            if (!rf || !rf.hostContext) return route;
+            const host = rf.hostContext;
+            const answers = Object.assign({}, host.answers || {});
+            delete answers[rf.moduleKey];
+            return executeWorkflow(Object.assign({}, host, {
+                answers,
+                declinedRoutes: [...(host.declinedRoutes || []), rf.moduleKey + '|' + rf.label]
+            }), db);
+        }
+
+        function orch_run_workflow(context, db) {
             const workflow = db.workflow;
             if (!workflow || !Array.isArray(workflow.steps)) {
                 throw new Error('OrchestratorError: db.workflow.steps is missing or not an array.');
@@ -3961,6 +4050,15 @@ body.modal-active{overflow:hidden}
                     intentGroupId: context.nlpIntent?._groupId || null,
                 }, db),
                 enrichment: resolution?.enrichment || null,
+                // Why the job is the service it is, when an answer moved it here (executeWorkflow / route_to): the facts a card needs to say so. The context that undoes it stays on route.context.
+                routedFrom: context.routedFrom ? {
+                    fromServiceId: context.routedFrom.fromServiceId,
+                    fromServiceName: context.routedFrom.fromServiceName,
+                    moduleKey: context.routedFrom.moduleKey,
+                    question: context.routedFrom.question,
+                    label: context.routedFrom.label,
+                    because: context.routedFrom.because
+                } : null,
                             trace,
                         };
 
@@ -3992,7 +4090,8 @@ body.modal-active{overflow:hidden}
             // Run object_based re-resolution FIRST, exactly matching the
             // legacy code's real ordering -- it can change which
             // category/SKU the rest of resolution targets.
-            const resolvedIntent = orch_apply_object_based_resolution(context, db);
+            // A job moved by one of the customer's answers (route_to) is already the service it was moved to: the words that first suggested another do not get to move it back.
+            const resolvedIntent = context.routedFrom ? context.nlpIntent : orch_apply_object_based_resolution(context, db);
             const effectiveContext = (resolvedIntent !== context.nlpIntent) ?
                 Object.assign({}, context, {
                     nlpIntent: resolvedIntent,
@@ -4708,7 +4807,9 @@ body.modal-active{overflow:hidden}
             const ctx = Object.assign({}, prevRoute.context, {
                 answers: Object.assign({}, prevRoute.context.answers || {}, {
                     [moduleKey]: label
-                })
+                }),
+                // a new answer to a question the customer had declined the route for is a new decision: the decline no longer stands
+                declinedRoutes: (prevRoute.context.declinedRoutes || []).filter(/** @param {any} d */ d => !d.startsWith(moduleKey + '|'))
             });
             const next = executeWorkflow(ctx, DB);
             return prevRoute.divergenceApplied === 'remote' ? orch_splice_remote_deep_dive(next, DB) : next;
@@ -5098,7 +5199,8 @@ body.modal-active{overflow:hidden}
             };
         }
 
-        function collectBookingContext_catalog(svc, category_id) {
+        /** @param {any} svc @param {any} category_id @param {any} [tapped] */
+        function collectBookingContext_catalog(svc, category_id, tapped) {
             if (typeof _traceStart === 'function') _traceStart({
                 tappedServiceId: svc.id
             }, 'catalog');
@@ -5109,6 +5211,11 @@ body.modal-active{overflow:hidden}
                 // No rawText, no nlpIntent — a directly-tapped service has no
                 // typed text behind it. See booking_context's documented
                 // contract: never synthesize rawText for this entry type.
+                //
+                // What the customer's TAP said (T170, PENDING_DECISIONS #180, P-CLIENT-NAVFACT): a symptom or part tile the picker rendered carries the smart tags its words stand for
+                // (routing_archetypes[group].symptom_tiles[].tags). Tapping is the customer choosing, not the NLP guessing, so they arrive as the tags the customer toggled -- the same
+                // field the guided builder fills -- and the SSOT's own tag `answers` retire the questions they answer. Absent for a plain service tap.
+                manuallyToggledTagIds: (tapped && Array.isArray(tapped.tagIds)) ? tapped.tagIds.slice() : [],
             });
         }
 
@@ -5197,7 +5304,9 @@ body.modal-active{overflow:hidden}
             // triggered #heavy_item, etc. This was confirmed as the root cause
             // of the screenshot regression.
             const detCat = nlpIntent?.category || 'other';
-            const detGroup = selectedGroupId; // the group resolver's answer alone: no NLP intent has ever carried a `_groupId` (T155 A2b, C-18)
+            // The group the tags are judged in: the group resolver's answer (no NLP intent has ever carried a `_groupId`: T155 A2b, C-18), and where it names none, the group of the named
+            // service the words reached -- one resolver owns that decision (T170, #180), so a tag scoped to a group is not dropped from a sentence already routed into it.
+            const detGroup = resolveTagScopeGroup(selectedGroupId, nlpIntent, thresholds.auto_select_named_service);
             const nlpTagResult = (typeof detectTagsNLP === 'function') ?
                 detectTagsNLP(rawText) : {
                     found: [],
@@ -7422,6 +7531,18 @@ body.modal-active{overflow:hidden}
             if (entity.ui_taxonomy?.description) {
                 html += `<p style="color:#555; margin-bottom:16px;">${entity.ui_taxonomy.description}</p>`;
             }
+            // The job was moved here by one of the customer's own answers (route_to; resolved by executeWorkflow): say what we concluded, why, what they told us, and give the way back. The words are the SSOT's
+            // (ui_config.route_notice); the reason is the catalog's own sentence. The renderer decides nothing -- it reads route.routedFrom.
+            const _rn = view && view.routeNotice;
+            if (route.routedFrom && _rn) {
+                const _svcName = entity.ui_taxonomy?.display_name || 'this service';
+                html += `<div class="route-notice" style="background:#f0f7ff; border:1px solid #bcd7f5; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:0.92rem;">
+                    <div style="font-weight:600;">${escapeHtml(String(_rn.headline || '').replace('{service}', _svcName))}</div>
+                    <div class="route-because" style="margin-top:4px;">${escapeHtml(route.routedFrom.because || '')}</div>
+                    <div class="route-said" style="margin-top:4px; color:#555;">${escapeHtml(_rn.said || '')} ${escapeHtml(route.routedFrom.label || '')}</div>
+                    <button type="button" class="route-undo" style="margin-top:6px; background:none; border:none; color:#8a0615; font-weight:600; text-decoration:underline; cursor:pointer; padding:0; font-size:inherit;">${escapeHtml(_rn.undo || '')}</button>
+                 </div>`;
+            }
             // Single-unit stance (per_unit_answers_vary; the route carries the resolved record as route.quantity): book-separately guidance, naming what the customer's own words implied (T147)
             if (route.quantity && route.quantity.stance === 'single_unit') {
                 const _asked = route.quantity.requestedQty > 1 ? `You mentioned ${route.quantity.requestedQty} \u2014 this quote is for one. ` : '';
@@ -7581,6 +7702,14 @@ body.modal-active{overflow:hidden}
                 });
             }
 
+            container.querySelectorAll('.route-undo').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const unroute = /** @type {any} */ (window).handleIntakeUnroute;
+                    if (typeof unroute === 'function') unroute();
+                    else console.warn('No handler for taking a route back');
+                });
+            });
+
             // Attach event listeners for chip clicks
             container.querySelectorAll('.ims-chip').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -7718,7 +7847,8 @@ body.modal-active{overflow:hidden}
             return humanized.charAt(0).toUpperCase() + humanized.slice(1);
         }
 
-        function resolveComponentSymptomTap(serviceIds, group, category_id, chosenAction) {
+        /** @param {any} serviceIds @param {any} group @param {any} category_id @param {any} chosenAction @param {any} [tapped] */
+        function resolveComponentSymptomTap(serviceIds, group, category_id, chosenAction, tapped) {
             // v9.6 FIX: now tries a real, exact service_type match against
             // chosenAction FIRST, when more than one real service maps to this
             // component/symptom -- confirmed via direct data check this genuinely
@@ -7747,7 +7877,7 @@ body.modal-active{overflow:hidden}
                     .map(id => (DB.services || []).find(s => s.id === id))
                     .filter(s => s && s.service_type === chosenAction);
                 if (typedMatches.length === 1) {
-                    prefillSmartQuoteFromService(typedMatches[0], category_id);
+                    prefillSmartQuoteFromService(typedMatches[0], category_id, tapped);
                     return;
                 }
             }
@@ -7758,7 +7888,7 @@ body.modal-active{overflow:hidden}
             if (serviceIds.length === 1) {
                 const svc = (DB.services || []).find(s => s.id === serviceIds[0]);
                 if (svc) {
-                    prefillSmartQuoteFromService(svc, category_id);
+                    prefillSmartQuoteFromService(svc, category_id, tapped);
                     return;
                 }
             }
@@ -7934,21 +8064,28 @@ body.modal-active{overflow:hidden}
                 return;
             }
 
+            // T170 (PENDING_DECISIONS #180): a group whose symptoms are AUTHORED (routing_archetypes[group].symptom_tiles: id, the customer's own words, and the smart tags those words stand for) renders those,
+            // in that order, in those words -- the humanised id ("Wont power on") is only the fallback for a group that has not authored them yet (#181). The prompt is the archetype's own too.
+            const authoredTiles = (isSymptomFirst && Array.isArray(ra.symptom_tiles) && ra.symptom_tiles.length) ? ra.symptom_tiles : null;
+            const tileEntries = authoredTiles ?
+                authoredTiles.map(/** @param {any} t */ t => ({ id: t.id, label: t.label, tagIds: Array.isArray(t.tags) ? t.tags : [] })) :
+                ids.map(rawId => ({ id: rawId, label: humanizeComponentSymptomId(rawId), tagIds: [] }));
             const prompt = create('div', {
                 class: 'picker-prompt',
-                text: isComponentFirst ? 'Which part?' : "What's happening?",
+                text: authoredTiles && ra.symptom_prompt ? ra.symptom_prompt : (isComponentFirst ? 'Which part?' : "What's happening?"),
                 style: 'grid-column:1/-1;font-weight:600;font-size:.95rem;margin-bottom:6px;color:#374151;'
             });
             container.appendChild(prompt);
 
-            ids.forEach(rawId => {
-                const label = humanizeComponentSymptomId(rawId);
+            tileEntries.forEach(/** @param {any} entry */ entry => {
+                const rawId = entry.id;
+                const label = entry.label;
                 const tile = document.createElement('div');
                 tile.className = 'group-tile';
                 tile.tabIndex = 0;
                 tile.role = 'button';
                 tile.innerHTML = `<span class="tile-name">${escapeHtml(label)}</span>`;
-                const handler = () => resolveComponentSymptomTap(mapping?.[rawId] || [], group, category_id, chosenAction);
+                const handler = () => resolveComponentSymptomTap(mapping?.[rawId] || [], group, category_id, chosenAction, { tagIds: entry.tagIds });
                 tile.addEventListener('click', handler);
                 tile.addEventListener('keydown', e => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -7987,7 +8124,36 @@ body.modal-active{overflow:hidden}
             // Furniture, Networking) -- confirmed directly, not assumed, that
             // their "dead" mapping is fully redundant with the live one, so
             // nothing there is actually orphaned.
-            const otherMapping = isComponentFirst ? ra.symptom_id_to_service_ids : ra.component_id_to_service_ids;
+            // "I know what I need" (T170, #180): a group that authors known_need_tiles (a customer who arrives with a part, a program or a file in mind does not describe a symptom) lists them beside the
+            // symptoms, in the customer's words, each straight to its service -- the same certainty as a direct catalog tap. That replaces the orphan-service tiles below for this group: they were the same
+            // idea, unlabelled and unordered (the service's catalog name, only the services no symptom happened to reach).
+            const knownNeeds = (Array.isArray(ra.known_need_tiles) && ra.known_need_tiles.length) ? ra.known_need_tiles : null;
+            if (knownNeeds) {
+                container.appendChild(create('div', {
+                    class: 'picker-prompt picker-prompt-known',
+                    text: ra.known_need_prompt || '',
+                    style: 'grid-column:1/-1;font-weight:600;font-size:.95rem;margin:10px 0 6px;color:#374151;'
+                }));
+                knownNeeds.forEach(/** @param {any} kn */ kn => {
+                    const svc = (DB.services || []).find(/** @param {any} s */ s => s.id === kn.service_id);
+                    if (!svc) return;
+                    const tile = document.createElement('div');
+                    tile.className = 'group-tile';
+                    tile.tabIndex = 0;
+                    tile.role = 'button';
+                    tile.innerHTML = `<span class="tile-name">${escapeHtml(kn.label || svc.ui_taxonomy?.display_name || svc.id)}</span>`;
+                    const handler = () => prefillSmartQuoteFromService(svc, category_id);
+                    tile.addEventListener('click', handler);
+                    tile.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handler();
+                        }
+                    });
+                    container.appendChild(tile);
+                });
+            }
+            const otherMapping = knownNeeds ? null : (isComponentFirst ? ra.symptom_id_to_service_ids : ra.component_id_to_service_ids);
             if (otherMapping) {
                 const liveServiceIds = new Set();
                 for (const svcIds of Object.values(mapping || {}))
@@ -8070,6 +8236,13 @@ body.modal-active{overflow:hidden}
             // BLD_ACTION_MAP for real, consistent labels/icons rather than
             // inventing a second labeling scheme.
             const types = (group.dynamic_service_types || []).filter(Boolean);
+
+            // A group whose customers arrive with a symptom, not an action, says so (routing_archetypes[group].ask_action_first === false, T170 #180): "Diagnose / Set up / Fix-Repair" is a question about
+            // the shop's catalogue, asked before the one question the customer can answer ("what's happening?"). The picker opens on the symptoms, with the services for those who know what they need beside them.
+            if (DB.routing_archetypes?.[group.id]?.ask_action_first === false) {
+                renderComponentSymptomPicker(container, group, category_id, null);
+                return;
+            }
 
             if (types.length <= 1) {
                 // Real, established "skip when unambiguous" pattern (matches
@@ -10723,7 +10896,8 @@ function addToCart(entry) {
             });
         }
 
-        function prefillSmartQuoteFromService(svc, category_id) {
+        /** @param {any} svc @param {any} category_id @param {any} [tapped] */
+        function prefillSmartQuoteFromService(svc, category_id, tapped) {
             sqClearCardHost(); // #114: every catalog tap starts from an empty card host, even one that is routed to the older intake panel below (a service that draws no card must not show the previous service's)
             const prof = getServiceProfile(svc);
 
@@ -10828,7 +11002,7 @@ function addToCart(entry) {
                 // Phase 6 rewire: route through the orchestrator instead of
                 // sqRenderSelfQuoteAdlib directly. Ensures consistent pricing
                 // (pricing_archetype dispatch), activeTags, and confidence.
-                const _selfQuoteCtx = collectBookingContext_catalog(svc, category_id);
+                const _selfQuoteCtx = collectBookingContext_catalog(svc, category_id, tapped);
                 const _selfQuoteRoute = executeWorkflow(_selfQuoteCtx, DB);
                 window._currentContext = _selfQuoteCtx;
                 window._currentRoute = _selfQuoteRoute;
@@ -10854,7 +11028,7 @@ function addToCart(entry) {
                     // renderCuratedCardFromRoute had (ceiling enforcement, branch visibility) and showed 74/74 agreement. The legacy curated-intake
                     // builder and its "orchestrator unavailable" fallback are retired: the orchestrator is part of this same file, so that
                     // branch could never be the one that ran.
-                    const _curatedCtx = collectBookingContext_catalog(svc, category_id);
+                    const _curatedCtx = collectBookingContext_catalog(svc, category_id, tapped);
                     const _curatedRoute = executeWorkflow(_curatedCtx, DB);
                     sqRenderCuratedCard(_curatedRoute, 'sqCardHost'); // records S._lastRoute / S._lastContainerId, then renders into the card's own host (#114: the step-3 skeleton is not its to overwrite)
                     const sb3 = document.getElementById('sqSb3');
@@ -11848,6 +12022,24 @@ function addToCart(entry) {
                 else renderRoute(next); // the dispatcher owns a change of template
             };
 
+            // T170 (PENDING_DECISIONS #180): "Not right? Change my answer" on a card the customer's own answer moved to another service. Dispatch only: Logic (orch_unroute) decides, the renderer draws.
+            // (The four references below are the same ones handleIntakeAnswer makes: S, DB and renderRoute are declared in the sibling script blocks, which the type checker reads one at a time; the
+            // handler is typed through `any` so it adds no error beyond the ones its twins already carry in archive/types_T170.txt.)
+            /** @type {any} */ (window).handleIntakeUnroute = function() {
+                // @ts-ignore -- S is declared in a sibling script block
+                const prev = S._lastRoute;
+                if (!prev || !prev.context) {
+                    toast('Cannot change the answer - context lost.', 'error');
+                    return;
+                }
+                // @ts-ignore -- DB is declared in a sibling script block
+                const next = orch_unroute(prev, DB);
+                // @ts-ignore -- S is declared in a sibling script block
+                if (next.uiTemplate === 'curated_card') sqRenderCuratedCard(next, S._lastContainerId);
+                // @ts-ignore -- renderRoute is declared in a sibling script block
+                else renderRoute(next); // the dispatcher owns a change of template
+            };
+
             // T64: orchestrator-native tag-affirmation handlers, following
             // handleIntakeAnswer's exact, established re-invocation pattern
             // immediately above. Real port of a legacy affirm handlers's core
@@ -12025,7 +12217,8 @@ function addToCart(entry) {
             const affectsPriceIcon = _ap ? (_ap.startsWith('ti ') ? _ap : 'ti ' + _ap) : null;
             renderCuratedCardFromRoute(route, containerId, {
                 divergencePath: S._divergencePath,
-                affectsPriceIcon
+                affectsPriceIcon,
+                routeNotice: DB.ui_config?.route_notice || null
             });
         }
 

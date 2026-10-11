@@ -97,8 +97,11 @@ check('the retired quantity arbiters (entityHasOwnQtyQuestion, QTY_AWARE_FORMULA
 // T159 (item B) / T161 (item D): the guided builder's strategy chain (a resolveBaseConfidenceStrategy result composed with `||`) is no longer a headline instance the detector can see:
 // sqPrepareFlow stopped calling its private escalation helper in T159 (the builder now asks resolveSessionConfidence) and T161 deleted the helper. The shape it carried is covered by
 // the INJECTED probe below, the same way T155 A2b handled the sites it deleted.
-const CANARY = ['executeWorkflow | orch_resolve_entity | ||'];
-check('non-vacuity: the detector SEES the headline instance that remains in the source (the entity chain in executeWorkflow)', CANARY.every(k => counts[k] >= 1), { expected: 'present', got: CANARY.filter(k => !counts[k]) });
+// T170 (PENDING_DECISIONS #180): the workflow body that holds these four compositions is now `orch_run_workflow`; `executeWorkflow` keeps its name and its callers and became the gateway that runs
+// it and then resolves an answer's `route_to` (one wrapper, the single call in the right place). The four sites moved with the body, unchanged: a RELOCATION of frozen debt, not a migration of it,
+// so the key follows the function and the count stays 4.
+const CANARY = ['orch_run_workflow | orch_resolve_entity | ||'];
+check('non-vacuity: the detector SEES the headline instance that remains in the source (the entity chain in the workflow body, orch_run_workflow)', CANARY.every(k => counts[k] >= 1), { expected: 'present', got: CANARY.filter(k => !counts[k]) });
 { const probes = [
     ['probeConfidenceChain', 'function probeConfidenceChain(e) { const s = resolveBaseConfidenceStrategy(e, null); const m = s.minimum_quote_confidence || 80; return m; }', 'resolveBaseConfidenceStrategy', '||'],
     ['probeArchetypeResult', 'function probeArchetypeResult(e) { const r = computeArchetypeQuote(e, "formula", {}, 1, DB, null); let l = 0; l = r.laborEstimate ?? l; return l; }', 'computeArchetypeQuote', '??'],
@@ -109,7 +112,7 @@ check('non-vacuity: the detector SEES the headline instance that remains in the 
     check(`non-vacuity: an INJECTED ${resolver} \`${op}\` composition (a kind that has been deleted from the source) is flagged by the detector`, injected.some(c => c.resolver === resolver && c.op === op), { expected: 'one flagged composition', got: injected }); } }
 // 1d. LEGACY resolvers: frozen; may only shrink
 const LEGACY = {
-    "executeWorkflow | orch_resolve_entity | ||": 4,
+    "orch_run_workflow | orch_resolve_entity | ||": 4,   // was "executeWorkflow | ..." until T170: the same four sites, in the body that executeWorkflow now wraps
     "orch_resolve_entity | resolveDynamicService | ||": 1,
     "prefillSmartQuoteFromOtherTile | resolveDynamicService | ??": 1,
     "prefillSmartQuoteFromOtherTile | resolveDynamicService | ||": 1,

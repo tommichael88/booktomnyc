@@ -528,6 +528,12 @@ def compile_formula_index(db: dict) -> Dict[str, dict]:
 # Group/routing archetype builder
 # ---------------------------------------------------------------------------
 
+# T170 (PENDING_DECISIONS #180): the hand-authored picker vocabulary of a group's routing_archetypes entry. The compiler owns the entry (it is rebuilt every run) but not these: they are the customer's own
+# words for the group's symptoms and for the services a customer who knows what they need asks for, and the SSOT is the one place they are written. Carried through unchanged, or the next compile
+# would drop the picker back to humanised ids ("Wont power on"). Everything else in the entry is derived or preserved exactly as before.
+AUTHORED_ARCHETYPE_KEYS = ("ask_action_first", "symptom_prompt", "symptom_tiles", "known_need_prompt", "known_need_tiles")
+
+
 def build_routing_archetypes(db: dict) -> Dict[str, dict]:
     # T132 FIX: this function, as received, always mechanically
     # re-derived every group from scratch on every run -- it carried
@@ -678,6 +684,9 @@ def build_routing_archetypes(db: dict) -> Dict[str, dict]:
             "symptom_id_to_service_ids": {k: sorted(v) for k, v in merged_symptom_to_skus.items()},
             "real_gaps": merged_gaps,
         }
+        for k in AUTHORED_ARCHETYPE_KEYS:
+            if k in existing_entry:
+                result[gid][k] = existing_entry[k]
     return result
 
 
@@ -1102,6 +1111,25 @@ def _validate_option_refs(db: dict) -> List[str]:
                 errors.append(f"{at}.formula_override '{resp['formula_override']}' is not in pricing_formulas")
             if resp.get("checkout_state_override") and resp["checkout_state_override"] not in states:
                 errors.append(f"{at}.checkout_state_override '{resp['checkout_state_override']}' is not in checkout_states")
+            # T170 (PENDING_DECISIONS #180): an answer that hands the job to another service names a real one, and the answers it carries are real labels of real modules
+            rt = resp.get("route_to")
+            if rt is not None:
+                svc, _ = get_entity(db, rt.get("service")) if isinstance(rt, dict) else (None, None)
+                if svc is None:
+                    errors.append(f"{at}.route_to.service '{rt.get('service') if isinstance(rt, dict) else rt}' is not a service")
+                for mk, lbl in ((rt.get("answers") or {}).items() if isinstance(rt, dict) else []):
+                    target = (db.get("intake_modules", {}) or {}).get(mk)
+                    if target is None:
+                        errors.append(f"{at}.route_to.answers names module '{mk}', which does not exist")
+                    elif lbl not in [o.get("label") for o in target.get("client_response", []) or []]:
+                        errors.append(f"{at}.route_to.answers['{mk}'] '{lbl}' is not an option label of that module")
+        # T170: a module shown only after another answer names a real module and a real label of it
+        for dk, dv in (mod.get("depends_on", {}) or {}).items():
+            dep = (db.get("intake_modules", {}) or {}).get(dk)
+            if dep is None:
+                errors.append(f"intake_modules['{mod_name}'].depends_on names module '{dk}', which does not exist")
+            elif dv not in [o.get("label") for o in dep.get("client_response", []) or []]:
+                errors.append(f"intake_modules['{mod_name}'].depends_on['{dk}'] '{dv}' is not an option label of that module")
     return errors
 
 
@@ -1160,6 +1188,20 @@ def _validate_archetypes(db: dict) -> List[str]:
         for gid in arch.get("member_group_ids", []) or []:
             if gid not in group_ids:
                 errors.append(f"archetypes['{name}'].member_group_ids references unknown group '{gid}'")
+    # T170: the picker's authored vocabulary points at real things. A tile's tags are smart tags, a tile is one of the group's real symptoms, a known-need tile is a real service of the group.
+    tags = db.get("smart_tags", {}) or {}
+    for gid, ra in (db.get("routing_archetypes", {}) or {}).items():
+        real = set(ra.get("real_symptom_ids", []) or [])
+        for i, t in enumerate(ra.get("symptom_tiles", []) or []):
+            if t.get("id") not in real:
+                errors.append(f"routing_archetypes['{gid}'].symptom_tiles[{i}].id '{t.get('id')}' is not in real_symptom_ids")
+            for tg in t.get("tags", []) or []:
+                if tg not in tags:
+                    errors.append(f"routing_archetypes['{gid}'].symptom_tiles[{i}].tags names '{tg}', which is not a smart tag")
+        group = next((g for g in db.get("group", []) if g.get("id") == gid), {}) or {}
+        for i, k in enumerate(ra.get("known_need_tiles", []) or []):
+            if k.get("service_id") not in (group.get("explicit_services", []) or []):
+                errors.append(f"routing_archetypes['{gid}'].known_need_tiles[{i}].service_id '{k.get('service_id')}' is not an explicit service of the group")
     return errors
 
 

@@ -18,7 +18,7 @@
  *                          that asks the module, the 76 named services AND the 82 dynamic ones (a module is flagged only when the fallback equals the other option EVERYWHERE the module is asked:
  *                          a module that moves the job in one place is wired; plumbing_fixture's "Other" opens no follow-up in the plumbing builder where "Toilet" does, so it is not flagged). The tuple is what the engine returns: labor, extra and per-visit fees, total minutes, complexity tier, checkout state, materials estimate, the
  *                          branch (the visible chain after the answer), the active tags, the fee breakdown and the forced modules.
- *   2. THE FILED LIST      The modules the check flags today are FILED (24 besides the two retired: 24 until T166, 23 after it, 24 again with `brand` in T169, see below), each citing the ledger entry that names them. A new flagged module is red;
+ *   2. THE FILED LIST      The modules the check flags today are FILED (24 besides the two retired: 24 until T166, 23 after it, 24 again with `brand` in T169, 23 after T170 Part C took `computer_component` out: its "something else" answer now hands the job to the diagnostic; see below), each citing the ledger entry that names them. A new flagged module is red;
  *                          a filed module that no longer flags is red too (delete its entry: the list only shrinks).
  *   3. THE TWO ARE GONE    door_size and space_ready are absent from the catalog (modules, chains, then-branches, compiled), from the page's component set and from the compiler's module lists. T170 adds `fixture_type` (retired by the operator's ruling of 2026-10-11 04:57 NY: a question that moves no price, time or scope; PENDING_DECISIONS #179).
  *   4. NO QUESTION, NO BAR A service whose intake chain is empty has no question to raise its confidence, so its bar must be one the keyword evidence can reach (minimum_quote_confidence <=
@@ -68,7 +68,7 @@ const RETIRED = ['door_size', 'space_ready', 'fixture_type'];   // fixture_type:
 const FILED_LEDGER = '#158';
 const FILED = [
     // asked in a named service (16):
-    'angle_stop_condition', 'appliance_type', 'cable_install_item', 'computer_component', 'computer_symptom', 'disposal_size', 'dishwasher_symptom', 'door_style_pref', 'existing_toilet_type',
+    'angle_stop_condition', 'appliance_type', 'cable_install_item', 'computer_symptom', 'disposal_size', 'dishwasher_symptom', 'door_style_pref', 'existing_toilet_type',
     'furn_item', 'inwall_power_for_tv', 'leak_loc', 'software_install_type', 'switch_wiring', 'washer_type', 'window_ac_support',
     // asked only in dynamic services (7; 8 until T166): found when the check was widened from the 76 named services to the 82 dynamic ones (see the header and PENDING_DECISIONS #158).
     // T166 delisted `electrical_item`: its option "Under\u2011cabinet light" (non-breaking hyphen) had a follow-up branch keyed with an ASCII hyphen, so the branch never opened; the key was renamed

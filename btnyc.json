@@ -3152,7 +3152,7 @@
         "group_id": "tech_trouble_computer_repair",
         "display_name": "Computer Diagnostic",
         "icon": "🔍",
-        "description": "Find why computer is slow, crashing, or won't start.",
+        "description": "Find why a computer loses power, won't start, or is slow, crashing, overheating or loud.",
         "sort_order": 540,
         "presentation_strategy": {
           "display_enabled": true,
@@ -3171,11 +3171,62 @@
       "intake_chain": [
         {
           "module": "device_type",
-          "then": {}
+          "then": {
+            "Laptop": [
+              "laptop_power_signs"
+            ],
+            "Desktop (tower)": [
+              "desktop_power_signs"
+            ]
+          }
         },
         {
           "module": "computer_symptom",
           "then": {}
+        },
+        {
+          "module": "laptop_power_signs",
+          "then": {
+            "Nothing at all (no lights, no sound, no fan)": [
+              "laptop_charger_check"
+            ]
+          }
+        },
+        {
+          "module": "laptop_charger_check",
+          "then": {}
+        },
+        {
+          "module": "desktop_power_signs",
+          "then": {
+            "Nothing at all (no lights, no sound, no fan)": [
+              "desktop_outlet_check"
+            ]
+          }
+        },
+        {
+          "module": "desktop_outlet_check",
+          "then": {}
+        },
+        {
+          "module": "startup_screen",
+          "then": {}
+        },
+        {
+          "module": "slow_pattern",
+          "then": {}
+        },
+        {
+          "module": "heat_signs",
+          "then": {}
+        },
+        {
+          "module": "battery_signs",
+          "then": {
+            "It will not charge, even when plugged in": [
+              "laptop_charger_check"
+            ]
+          }
         }
       ],
       "default_tags": [],
@@ -4682,9 +4733,9 @@
       "ui_taxonomy": {
         "category_id": "tech_trouble",
         "group_id": "tech_trouble_computer_repair",
-        "display_name": "Internal Hardware Replacement",
+        "display_name": "Computer Part Replacement",
         "icon": "🪫",
-        "description": "Replace RAM, SSD, battery, fan, or other internal parts.",
+        "description": "Replace or upgrade RAM, a storage drive, a battery, a charger, a power supply, a fan or other parts.",
         "sort_order": 570,
         "presentation_strategy": {
           "display_enabled": true,
@@ -4698,7 +4749,12 @@
         "pricing_archetype": "flat_simple",
         "_inherits_checkout_state_from_archetype": "electronic_device"
       },
-      "aliases": [],
+      "aliases": [
+        "part upgrade",
+        "computer part upgrade",
+        "computer part replacement",
+        "replace a computer part"
+      ],
       "service_type": "Repair",
       "intake_chain": [
         {
@@ -13704,33 +13760,110 @@
         ]
       },
       "real_symptom_ids": [
+        "sym.battery",
         "sym.lost_files",
         "sym.overheating",
         "sym.slow_laggy",
         "sym.virus_malware",
-        "sym.wont_power_on"
+        "sym.wont_power_on",
+        "sym.wont_start_up"
       ],
       "symptom_id_to_service_ids": {
+        "sym.wont_power_on": [
+          "computer_diagnostic"
+        ],
+        "sym.wont_start_up": [
+          "computer_diagnostic"
+        ],
+        "sym.slow_laggy": [
+          "computer_diagnostic"
+        ],
+        "sym.overheating": [
+          "computer_diagnostic"
+        ],
+        "sym.battery": [
+          "computer_diagnostic"
+        ],
         "sym.virus_malware": [
           "virus_or_malware_removal"
         ],
         "sym.lost_files": [
           "data_backup_or_transfer"
-        ],
-        "sym.wont_power_on": [
-          "computer_diagnostic",
-          "system_restore_or_reset"
-        ],
-        "sym.slow_laggy": [
-          "computer_diagnostic",
-          "system_restore_or_reset"
-        ],
-        "sym.overheating": [
-          "computer_diagnostic",
-          "internal_hardware_replacement"
         ]
       },
-      "real_gaps": []
+      "real_gaps": [],
+      "ask_action_first": false,
+      "symptom_prompt": "What's happening with the computer?",
+      "symptom_tiles": [
+        {
+          "id": "sym.wont_power_on",
+          "label": "Won't turn on",
+          "tags": [
+            "#wont_turn_on"
+          ]
+        },
+        {
+          "id": "sym.wont_start_up",
+          "label": "Turns on, but won't start up",
+          "tags": [
+            "#wont_start_up"
+          ]
+        },
+        {
+          "id": "sym.slow_laggy",
+          "label": "Slow or freezing",
+          "tags": [
+            "#slow_computer"
+          ]
+        },
+        {
+          "id": "sym.overheating",
+          "label": "Gets hot, or the fan is loud",
+          "tags": [
+            "#overheating"
+          ]
+        },
+        {
+          "id": "sym.battery",
+          "label": "Battery drains fast or won't charge",
+          "tags": [
+            "#battery_trouble"
+          ]
+        },
+        {
+          "id": "sym.virus_malware",
+          "label": "Pop-ups or a possible virus",
+          "tags": [
+            "#virus"
+          ]
+        },
+        {
+          "id": "sym.lost_files",
+          "label": "Lost or deleted files",
+          "tags": [
+            "#lost_files"
+          ]
+        }
+      ],
+      "known_need_prompt": "Already know what you need?",
+      "known_need_tiles": [
+        {
+          "service_id": "internal_hardware_replacement",
+          "label": "Replace or upgrade a part"
+        },
+        {
+          "service_id": "software_or_driver_install",
+          "label": "Install software or drivers"
+        },
+        {
+          "service_id": "data_backup_or_transfer",
+          "label": "Back up or move my files"
+        },
+        {
+          "service_id": "system_restore_or_reset",
+          "label": "Reset or reinstall Windows or macOS"
+        }
+      ]
     },
     "tech_trouble_cable_management": {
       "display_name": "Cable Management",
@@ -15660,6 +15793,16 @@
           "complexity_override": "routine"
         },
         {
+          "label": "Charger or power adapter (laptop)",
+          "tags": [],
+          "complexity_override": "routine"
+        },
+        {
+          "label": "Power supply (desktop)",
+          "tags": [],
+          "complexity_override": "routine"
+        },
+        {
           "label": "Fan",
           "tags": [],
           "complexity_override": "routine"
@@ -15667,10 +15810,15 @@
         {
           "label": "Something else (please describe in notes)",
           "tags": [],
-          "complexity_override": "routine"
+          "complexity_override": "routine",
+          "route_to": {
+            "service": "computer_diagnostic",
+            "answers": {},
+            "because": "We can only price the parts listed here up front, so a diagnostic will find the right one first."
+          }
         }
       ],
-      "purpose": "pricing",
+      "purpose": "routing",
       "confidence_gain": 20,
       "affects_price": true
     },
@@ -15705,7 +15853,14 @@
             "#board_level",
             "#two_trip_minimum"
           ],
-          "complexity_override": "specialized"
+          "complexity_override": "specialized",
+          "route_to": {
+            "service": "computer_diagnostic",
+            "answers": {
+              "computer_symptom": "Won’t power on at all"
+            },
+            "because": "A computer that will not turn on cannot be restored or reset until we find out why, so a diagnostic comes first."
+          }
         },
         {
           "label": "Very slow or laggy",
@@ -15720,10 +15875,17 @@
         {
           "label": "Overheating",
           "tags": [],
-          "complexity_override": "routine"
+          "complexity_override": "routine",
+          "route_to": {
+            "service": "computer_diagnostic",
+            "answers": {
+              "computer_symptom": "Overheating or fan very loud"
+            },
+            "because": "Restoring or resetting the software will not cool a computer down, so a diagnostic comes first."
+          }
         }
       ],
-      "purpose": "pricing",
+      "purpose": "routing",
       "confidence_gain": 20,
       "affects_price": true
     },
@@ -17356,6 +17518,284 @@
       "confidence_gain": 20,
       "affects_price": true,
       "_note": "T170 (PENDING_DECISIONS #179, operator 2026-10-11 04:57 NY): replaces `distance` for the water line. `distance` asked 'About how far does the wiring or cable need to run?' of a refrigerator water line, in feet. Same three outcomes and the same values as the old three bands (<10 ft, 10 to 25 ft, over 25 ft); the customer can see how far the fridge is from the sink."
+    },
+    "laptop_power_signs": {
+      "question": "Plug the charger in and press the power button. What happens?",
+      "type": "single",
+      "depends_on": {
+        "computer_symptom": "Won’t power on at all"
+      },
+      "client_response": [
+        {
+          "label": "It turns on, but shuts off as soon as I unplug the charger",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "Battery",
+              "device_type": "Laptop"
+            },
+            "because": "A laptop that only runs while it is plugged in usually needs a new battery."
+          }
+        },
+        {
+          "label": "Nothing at all (no lights, no sound, no fan)"
+        },
+        {
+          "label": "Lights or a fan come on, but the screen stays black"
+        },
+        {
+          "label": "It starts up, then shuts itself off"
+        }
+      ],
+      "purpose": "routing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): one observable thing a customer can see with a charger and a button. Battery is the one answer that settles the part from a chair; \"nothing at all\" opens the charger question (the next likeliest part, and a thing the customer can look at); the black-screen and shuts-itself-off answers cannot be retired remotely and stay on the diagnostic. Shown only for a laptop whose symptom is \"won't power on\". The mapping from observation to part is standard triage practice and is filed for a technician's review (#180)."
+    },
+    "laptop_charger_check": {
+      "question": "Look at the charger and its cable. What do you see?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "The cable or plug is frayed, bent or burnt",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "Charger or power adapter (laptop)",
+              "device_type": "Laptop"
+            },
+            "because": "A charger with a damaged cable or plug cannot power the laptop, so a replacement charger is the likely fix."
+          }
+        },
+        {
+          "label": "The charger has a light, and it stays off when plugged into the wall",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "Charger or power adapter (laptop)",
+              "device_type": "Laptop"
+            },
+            "because": "A charger whose light stays off at the wall has most likely stopped working, so a replacement charger is the likely fix."
+          }
+        },
+        {
+          "label": "It looks fine, or the charger has no light"
+        }
+      ],
+      "purpose": "routing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): asked only after \"nothing at all\" on a dead laptop (or a laptop that will not charge). A damaged cable, or a charger light that stays off at the wall, retires the uncertainty to the charger; a charger that looks fine does not (it can still be dead inside), so that answer stays on the diagnostic. Filed for a technician's review (#180)."
+    },
+    "desktop_power_signs": {
+      "question": "Press the power button on the computer. What happens?",
+      "type": "single",
+      "depends_on": {
+        "computer_symptom": "Won’t power on at all"
+      },
+      "client_response": [
+        {
+          "label": "Nothing at all (no lights, no sound, no fan)"
+        },
+        {
+          "label": "Lights or fans come on, but the screen stays black"
+        },
+        {
+          "label": "It starts up, then shuts itself off within seconds"
+        },
+        {
+          "label": "I hear a pop, see a spark or smell burning",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "Power supply (desktop)",
+              "device_type": "Desktop (tower)"
+            },
+            "because": "A pop, a spark or a burning smell means the power supply has failed. Keep the computer unplugged until it is replaced."
+          }
+        }
+      ],
+      "purpose": "routing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): the desktop counterpart of laptop_power_signs. A pop, a spark or a burning smell is the power supply, at once, and carries a safety instruction in its because-sentence. \"Nothing at all\" opens the one thing that rules out the wall (desktop_outlet_check). Filed for a technician's review (#180)."
+    },
+    "desktop_outlet_check": {
+      "question": "Try a different wall outlet and a different power cord. Is the computer still completely dead?",
+      "type": "single",
+      "client_response": [
+        {
+          "label": "Still nothing at all",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "Power supply (desktop)",
+              "device_type": "Desktop (tower)"
+            },
+            "because": "A desktop that stays completely dead on a different outlet and cord has most likely lost its power supply."
+          }
+        },
+        {
+          "label": "I can't try that right now"
+        }
+      ],
+      "purpose": "routing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): asked only after \"nothing at all\" on a desktop. Still dead on another outlet and cord is the power supply; \"I can't try that\" does not pretend to know and stays on the diagnostic. A customer for whom another outlet fixed it has nothing to book, so that answer is not offered. Filed for a technician's review (#180)."
+    },
+    "startup_screen": {
+      "question": "When it turns on, what does the screen show?",
+      "type": "single",
+      "depends_on": {
+        "computer_symptom": "Turns on but won’t boot / stuck on loading"
+      },
+      "client_response": [
+        {
+          "label": "A message that the operating system or drive was not found",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "SSD (storage drive)"
+            },
+            "because": "A message that the operating system or drive was not found usually means the storage drive has failed, so a new drive is the likely fix."
+          }
+        },
+        {
+          "label": "A repair or recovery screen",
+          "route_to": {
+            "service": "system_restore_or_reset",
+            "answers": {
+              "device_state": "Showing error messages"
+            },
+            "because": "A repair or recovery screen usually means the system software is damaged, which a restore or reset can fix."
+          }
+        },
+        {
+          "label": "The logo or a loading circle that never finishes"
+        },
+        {
+          "label": "A blue screen with an error code"
+        }
+      ],
+      "purpose": "routing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): one observable thing: what the screen shows during start-up. Two answers settle the job (a missing drive; a recovery screen) and route to the part or the restore service; a logo that never finishes and a blue screen cannot be retired from a chair and stay on the diagnostic. Filed for a technician's review (#180)."
+    },
+    "slow_pattern": {
+      "question": "Which of these is closest?",
+      "type": "single",
+      "depends_on": {
+        "computer_symptom": "Very slow or freezing"
+      },
+      "client_response": [
+        {
+          "label": "Pop-ups, new toolbars or ads I did not install",
+          "route_to": {
+            "service": "virus_or_malware_removal",
+            "answers": {
+              "tech_problem_type": "Virus or pop-ups"
+            },
+            "because": "Pop-ups and toolbars you did not install are the signs of unwanted software, so a virus and malware cleanup is the likely fix."
+          }
+        },
+        {
+          "label": "It takes several minutes to start up (an older computer)",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "SSD (storage drive)"
+            },
+            "because": "An older computer that takes minutes to start up is usually held back by a worn-out storage drive, which a new drive fixes."
+          }
+        },
+        {
+          "label": "Fine at first, then slow once I open many tabs or programs",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "RAM (memory)"
+            },
+            "because": "A computer that slows down as you open more tabs and programs usually needs more memory (RAM)."
+          }
+        },
+        {
+          "label": "It freezes at random, or none of these"
+        }
+      ],
+      "purpose": "routing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): replaces the nine-answer symptom list a customer who tapped \"Slow or freezing\" used to be shown again. Three patterns each point at one thing (unwanted software; an old drive; too little memory) and route there; random freezes stay on the diagnostic. \"slow computer\" is no longer a virus synonym (it priced every slow computer as a virus). Whether the RAM answer is right for a machine whose memory is soldered (many thin laptops) is bench knowledge filed for a technician (#180)."
+    },
+    "heat_signs": {
+      "question": "What is the fan doing?",
+      "type": "single",
+      "depends_on": {
+        "computer_symptom": "Overheating or fan very loud"
+      },
+      "client_response": [
+        {
+          "label": "It rattles, grinds or squeals",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "Fan"
+            },
+            "because": "A fan that rattles, grinds or squeals is wearing out, so a new fan is the likely fix."
+          }
+        },
+        {
+          "label": "It is always loud and the computer is hot to the touch"
+        },
+        {
+          "label": "It gets very hot, then shuts itself off"
+        }
+      ],
+      "purpose": "routing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): a noisy, failing fan is a part; heat with a steady fan, or heat that shuts the machine off, cannot be retired remotely (dust, airflow and paste are bench findings) and stays on the diagnostic. Filed for a technician's review (#180)."
+    },
+    "battery_signs": {
+      "question": "What is the battery doing?",
+      "type": "single",
+      "depends_on": {
+        "computer_symptom": "Battery won’t charge or drains quickly",
+        "device_type": "Laptop"
+      },
+      "client_response": [
+        {
+          "label": "It drains much faster than it used to",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "Battery",
+              "device_type": "Laptop"
+            },
+            "because": "A battery that drains much faster than it used to is worn out, so a new battery is the likely fix."
+          }
+        },
+        {
+          "label": "It will not charge, even when plugged in"
+        },
+        {
+          "label": "The case is bulging or the trackpad is lifting",
+          "route_to": {
+            "service": "internal_hardware_replacement",
+            "answers": {
+              "computer_component": "Battery",
+              "device_type": "Laptop"
+            },
+            "because": "A bulging case or a lifting trackpad is a swollen battery, which is a fire risk. Stop charging this laptop and have the battery replaced."
+          }
+        }
+      ],
+      "purpose": "routing",
+      "confidence_gain": 20,
+      "affects_price": true,
+      "_note": "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): a laptop battery question, shown only for a laptop. Fast drain and a swollen battery are the battery (the swollen one with a safety instruction); \"will not charge\" opens the charger question first (laptop_charger_check) because a bad charger looks the same. Filed for a technician's review (#180)."
     }
   },
   "pricing_formulas": {
@@ -20178,7 +20618,6 @@
         "virus",
         "malware",
         "pop ups",
-        "slow computer",
         "infected",
         "ransomware"
       ],
@@ -20196,7 +20635,8 @@
       ],
       "mutually_exclusive": [
         "#data_recovery",
-        "#wifi_dead_zone"
+        "#wifi_dead_zone",
+        "#lost_files"
       ],
       "is_logistic": true,
       "ui_phrase": "virus / malware",
@@ -20382,6 +20822,528 @@
         "wall_mounting_drywall_or_plaster"
       ],
       "note": "T166 (PENDING_DECISIONS #163): \"plaster wall\" and \"plaster\" were synonyms of #drywall, whose answer is wall_type \"Drywall (standard)\". A customer who said plaster was therefore recorded as drywall and never reached the Plaster branch of wall_type, which is where flatscreen_mounting_standard, flatscreen_mounting_with_hidden_cables and wall_hole_or_crack_repair ask lath_check. The two synonyms moved here, with the answer they always meant."
+    },
+    "#laptop": {
+      "synonyms": [
+        "laptop",
+        "macbook",
+        "macbook pro",
+        "macbook air",
+        "notebook",
+        "chromebook",
+        "thinkpad"
+      ],
+      "answers": {
+        "device_type": "Laptop"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#desktop",
+        "#all_in_one"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "on a laptop",
+      "negation_phrase": ""
+    },
+    "#desktop": {
+      "synonyms": [
+        "desktop",
+        "desktop computer",
+        "desktop pc",
+        "tower",
+        "pc tower",
+        "gaming pc",
+        "gaming computer"
+      ],
+      "answers": {
+        "device_type": "Desktop (tower)"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#laptop",
+        "#all_in_one",
+        "#battery_trouble",
+        "#new_battery",
+        "#new_charger"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "on a desktop",
+      "negation_phrase": ""
+    },
+    "#all_in_one": {
+      "synonyms": [
+        "all in one",
+        "all-in-one",
+        "imac"
+      ],
+      "answers": {
+        "device_type": "All-in-one"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#laptop",
+        "#desktop",
+        "#battery_trouble",
+        "#new_battery",
+        "#new_charger"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "on an all-in-one",
+      "negation_phrase": ""
+    },
+    "#wont_turn_on": {
+      "synonyms": [
+        "won't turn on",
+        "wont turn on",
+        "won't power on",
+        "wont power on",
+        "won't switch on",
+        "wont switch on",
+        "doesn't turn on",
+        "doesnt turn on",
+        "does not turn on",
+        "not turning on",
+        "no power",
+        "completely dead",
+        "totally dead",
+        "dead computer",
+        "dead laptop",
+        "dead pc"
+      ],
+      "answers": {
+        "computer_symptom": "Won’t power on at all"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#wont_start_up",
+        "#slow_computer",
+        "#overheating",
+        "#battery_trouble"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "won't turn on",
+      "negation_phrase": ""
+    },
+    "#wont_start_up": {
+      "synonyms": [
+        "won't boot",
+        "wont boot",
+        "won't start up",
+        "wont start up",
+        "stuck on loading",
+        "stuck loading",
+        "stuck on the logo",
+        "stuck on logo",
+        "stuck on boot",
+        "boot loop"
+      ],
+      "answers": {
+        "computer_symptom": "Turns on but won’t boot / stuck on loading"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#wont_turn_on",
+        "#slow_computer",
+        "#overheating",
+        "#battery_trouble"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "turns on but won't start up",
+      "negation_phrase": ""
+    },
+    "#slow_computer": {
+      "synonyms": [
+        "is slow",
+        "so slow",
+        "very slow",
+        "really slow",
+        "too slow",
+        "runs slow",
+        "running slow",
+        "slow computer",
+        "slow laptop",
+        "sluggish",
+        "laggy",
+        "lagging",
+        "freezing",
+        "freezes",
+        "keeps freezing",
+        "frozen"
+      ],
+      "answers": {
+        "computer_symptom": "Very slow or freezing"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#wont_turn_on",
+        "#wont_start_up",
+        "#overheating",
+        "#battery_trouble"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "slow or freezing",
+      "negation_phrase": ""
+    },
+    "#overheating": {
+      "synonyms": [
+        "overheating",
+        "overheats",
+        "too hot",
+        "getting hot",
+        "gets hot",
+        "runs hot",
+        "burning hot",
+        "fan is loud",
+        "loud fan",
+        "fan noise",
+        "fan running loud",
+        "fan is noisy",
+        "noisy fan"
+      ],
+      "answers": {
+        "computer_symptom": "Overheating or fan very loud"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#wont_turn_on",
+        "#wont_start_up",
+        "#slow_computer",
+        "#battery_trouble"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "overheating",
+      "negation_phrase": ""
+    },
+    "#battery_trouble": {
+      "synonyms": [
+        "battery trouble",
+        "battery problem",
+        "battery problems",
+        "battery drains",
+        "battery draining",
+        "drains fast",
+        "drains quickly",
+        "battery dies",
+        "battery dies fast",
+        "battery won't charge",
+        "battery wont charge",
+        "won't charge",
+        "wont charge",
+        "not charging"
+      ],
+      "answers": {
+        "computer_symptom": "Battery won’t charge or drains quickly",
+        "device_type": "Laptop"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#desktop",
+        "#all_in_one",
+        "#wont_turn_on",
+        "#wont_start_up",
+        "#slow_computer",
+        "#overheating"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "battery trouble",
+      "negation_phrase": ""
+    },
+    "#lost_files": {
+      "synonyms": [
+        "lost my files",
+        "lost files",
+        "lost my photos",
+        "lost photos",
+        "lost documents",
+        "files are gone",
+        "files disappeared",
+        "missing files",
+        "files missing",
+        "corrupted files",
+        "can't open my files"
+      ],
+      "answers": {
+        "tech_issue_source": "Files may already be lost or corrupted - need recovery"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#virus"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "lost files",
+      "negation_phrase": ""
+    },
+    "#ram_upgrade": {
+      "synonyms": [
+        "ram",
+        "more ram",
+        "add ram",
+        "upgrade ram",
+        "ram upgrade",
+        "more memory",
+        "add memory",
+        "memory upgrade",
+        "upgrade memory"
+      ],
+      "answers": {
+        "computer_component": "RAM (memory)"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#ssd_upgrade",
+        "#new_battery",
+        "#new_charger",
+        "#power_supply",
+        "#new_fan"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "RAM",
+      "negation_phrase": ""
+    },
+    "#ssd_upgrade": {
+      "synonyms": [
+        "ssd",
+        "solid state drive",
+        "new ssd",
+        "upgrade ssd",
+        "ssd upgrade",
+        "replace hard drive",
+        "replace my hard drive",
+        "new hard drive",
+        "upgrade storage",
+        "more storage",
+        "bigger hard drive",
+        "hard drive upgrade"
+      ],
+      "answers": {
+        "computer_component": "SSD (storage drive)"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#ram_upgrade",
+        "#new_battery",
+        "#new_charger",
+        "#power_supply",
+        "#new_fan"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "an SSD",
+      "negation_phrase": ""
+    },
+    "#new_battery": {
+      "synonyms": [
+        "new battery",
+        "replace battery",
+        "replace the battery",
+        "replace my battery",
+        "replace my laptop battery",
+        "replace laptop battery",
+        "new laptop battery",
+        "battery replacement",
+        "replacement battery"
+      ],
+      "answers": {
+        "computer_component": "Battery",
+        "device_type": "Laptop"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#desktop",
+        "#all_in_one",
+        "#ram_upgrade",
+        "#ssd_upgrade",
+        "#new_charger",
+        "#power_supply",
+        "#new_fan"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "a new battery",
+      "negation_phrase": ""
+    },
+    "#new_charger": {
+      "synonyms": [
+        "laptop charger",
+        "replace charger",
+        "replace my charger",
+        "new charger",
+        "charger replacement",
+        "replacement charger",
+        "broken charger",
+        "lost my charger",
+        "power adapter",
+        "laptop power supply"
+      ],
+      "answers": {
+        "computer_component": "Charger or power adapter (laptop)",
+        "device_type": "Laptop"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#desktop",
+        "#all_in_one",
+        "#ram_upgrade",
+        "#ssd_upgrade",
+        "#new_battery",
+        "#power_supply",
+        "#new_fan"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "a new charger",
+      "negation_phrase": ""
+    },
+    "#power_supply": {
+      "synonyms": [
+        "power supply",
+        "replace power supply",
+        "new power supply",
+        "bad power supply",
+        "dead power supply",
+        "psu"
+      ],
+      "answers": {
+        "computer_component": "Power supply (desktop)"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#ram_upgrade",
+        "#ssd_upgrade",
+        "#new_battery",
+        "#new_charger",
+        "#new_fan"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "a new power supply",
+      "negation_phrase": ""
+    },
+    "#new_fan": {
+      "synonyms": [
+        "replace fan",
+        "replace the fan",
+        "replace my fan",
+        "new fan",
+        "fan replacement",
+        "replace laptop fan",
+        "new cpu fan"
+      ],
+      "answers": {
+        "computer_component": "Fan"
+      },
+      "requires": [],
+      "display_group": "Tech Conditions",
+      "applicable_categories": [
+        "tech_trouble"
+      ],
+      "applicable_group_ids": [
+        "tech_trouble_computer_repair"
+      ],
+      "mutually_exclusive": [
+        "#ram_upgrade",
+        "#ssd_upgrade",
+        "#new_battery",
+        "#new_charger",
+        "#power_supply"
+      ],
+      "is_logistic": false,
+      "ui_phrase": "a new fan",
+      "negation_phrase": ""
     }
   },
   "checkout_states": {
@@ -20469,7 +21431,12 @@
       "Repair",
       "Setup"
     ],
-    "default_item_noun": "items"
+    "default_item_noun": "items",
+    "route_notice": {
+      "headline": "Based on your answer, this looks like {service}.",
+      "said": "You told us:",
+      "undo": "Not right? Change my answer"
+    }
   },
   "adlib_phrase_overrides": {
     "adlib": {
@@ -22377,7 +23344,12 @@
           "recover data",
           "lost files",
           "corrupted disk",
-          "back up"
+          "back up",
+          "deleted files",
+          "lost my files",
+          "recover my files",
+          "recover files",
+          "recover deleted files"
         ],
         "default_dynamic_category": "tech_trouble",
         "default_service_sku": "data_backup_or_transfer",
@@ -22385,7 +23357,14 @@
         "default_service_type": "Setup",
         "is_object": false,
         "names_the_job": true,
-        "subject_phrase": "a data backup"
+        "subject_phrase": "a data backup",
+        "full_weight_synonyms": [
+          "deleted files",
+          "lost my files",
+          "recover my files",
+          "recover files",
+          "recover deleted files"
+        ]
       },
       {
         "keyword": "bathroom fan",
@@ -22543,7 +23522,9 @@
           "internal parts",
           "computer internals",
           "ram",
-          "memory upgrade"
+          "memory upgrade",
+          "power supply",
+          "psu"
         ],
         "default_dynamic_category": "tech_trouble",
         "default_service_sku": "internal_hardware_replacement",
@@ -22568,9 +23549,12 @@
           "internal parts",
           "computer internals",
           "ram",
-          "memory upgrade"
+          "memory upgrade",
+          "power supply",
+          "psu"
         ],
-        "_note_t166": "T166 (PENDING_DECISIONS #163): the service this keyword routes to is named 'Internal Hardware Replacement' ('Replace RAM, SSD, battery, fan, or other internal parts') and had no alias and no synonym of its own, so a customer who typed its name was routed by accident: through the substring 'cement' in 'replacement' to a concrete-repair category. With the substring defect fixed the name matched nothing at all (verify_confidence_convergence.js, Part 3). The service's own name, its description's words, and 'ram' / 'memory upgrade' are synonyms here, at full weight."
+        "_note_t166": "T166 (PENDING_DECISIONS #163): the service this keyword routes to is named 'Internal Hardware Replacement' ('Replace RAM, SSD, battery, fan, or other internal parts') and had no alias and no synonym of its own, so a customer who typed its name was routed by accident: through the substring 'cement' in 'replacement' to a concrete-repair category. With the substring defect fixed the name matched nothing at all (verify_confidence_convergence.js, Part 3). The service's own name, its description's words, and 'ram' / 'memory upgrade' are synonyms here, at full weight.",
+        "_note_t170": "T170 (#180): 'power supply' and 'psu' are the name of a part the Computer Repair part service now offers (computer_component 'Power supply (desktop)'); without them 'my psu is dead' and 'install a power supply' matched nothing and fell to a wall-mounting question. Full weight, like 'ram' and 'ssd': a distinct word from this entry's keyword, so at half weight it missed the 50-point gate. 'new power supply for my desktop' still names a computer, which is a stronger object (85); the service's description decides that sibling (see the descriptions of computer_diagnostic and internal_hardware_replacement)."
       },
       {
         "keyword": "cabinet knob",
@@ -25359,8 +26343,13 @@
           "corrupted disk",
           "data backup",
           "data recovery",
+          "deleted files",
           "lost files",
+          "lost my files",
           "recover data",
+          "recover deleted files",
+          "recover files",
+          "recover my files",
           "transfer data"
         ],
         "candidate_services": [
@@ -25493,6 +26482,8 @@
           "internal hardware replacement",
           "internal parts",
           "memory upgrade",
+          "power supply",
+          "psu",
           "ram",
           "ssd",
           "storage drive"
@@ -27316,11 +28307,62 @@
         "intake_chain": [
           {
             "module": "device_type",
-            "then": {}
+            "then": {
+              "Laptop": [
+                "laptop_power_signs"
+              ],
+              "Desktop (tower)": [
+                "desktop_power_signs"
+              ]
+            }
           },
           {
             "module": "computer_symptom",
             "then": {}
+          },
+          {
+            "module": "laptop_power_signs",
+            "then": {
+              "Nothing at all (no lights, no sound, no fan)": [
+                "laptop_charger_check"
+              ]
+            }
+          },
+          {
+            "module": "laptop_charger_check",
+            "then": {}
+          },
+          {
+            "module": "desktop_power_signs",
+            "then": {
+              "Nothing at all (no lights, no sound, no fan)": [
+                "desktop_outlet_check"
+              ]
+            }
+          },
+          {
+            "module": "desktop_outlet_check",
+            "then": {}
+          },
+          {
+            "module": "startup_screen",
+            "then": {}
+          },
+          {
+            "module": "slow_pattern",
+            "then": {}
+          },
+          {
+            "module": "heat_signs",
+            "then": {}
+          },
+          {
+            "module": "battery_signs",
+            "then": {
+              "It will not charge, even when plugged in": [
+                "laptop_charger_check"
+              ]
+            }
           }
         ],
         "pricing": {
@@ -27364,8 +28406,16 @@
           "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
         },
         "modules_needed_for_exact": [
+          "battery_signs",
           "computer_symptom",
-          "device_type"
+          "desktop_outlet_check",
+          "desktop_power_signs",
+          "device_type",
+          "heat_signs",
+          "laptop_charger_check",
+          "laptop_power_signs",
+          "slow_pattern",
+          "startup_screen"
         ]
       },
       "data_backup_or_transfer": {
@@ -28656,11 +29706,16 @@
         ]
       },
       "internal_hardware_replacement": {
-        "name": "Internal Hardware Replacement",
+        "name": "Computer Part Replacement",
         "service_type": "Repair",
         "category": "tech_trouble",
         "group": "tech_trouble_computer_repair",
-        "aliases": [],
+        "aliases": [
+          "part upgrade",
+          "computer part upgrade",
+          "computer part replacement",
+          "replace a computer part"
+        ],
         "intake_chain": [
           {
             "module": "computer_component",
@@ -39066,10 +40121,10 @@
       "computer_component": {
         "classification": "component",
         "type": "single",
-        "purpose": "pricing",
+        "purpose": "routing",
         "affects_price": true,
         "confidence_gain": 20,
-        "option_count": 5,
+        "option_count": 7,
         "used_by": [
           "internal_hardware_replacement"
         ],
@@ -39094,7 +40149,7 @@
       "device_state": {
         "classification": "symptom",
         "type": "single",
-        "purpose": "pricing",
+        "purpose": "routing",
         "affects_price": true,
         "confidence_gain": 20,
         "option_count": 4,
@@ -39981,6 +41036,110 @@
           "skilled",
           "specialized"
         ]
+      },
+      "laptop_power_signs": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 4,
+        "used_by": [
+          "computer_diagnostic"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": []
+      },
+      "laptop_charger_check": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 3,
+        "used_by": [
+          "computer_diagnostic"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": []
+      },
+      "desktop_power_signs": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 4,
+        "used_by": [
+          "computer_diagnostic"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": []
+      },
+      "desktop_outlet_check": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 2,
+        "used_by": [
+          "computer_diagnostic"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": []
+      },
+      "startup_screen": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 4,
+        "used_by": [
+          "computer_diagnostic"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": []
+      },
+      "slow_pattern": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 4,
+        "used_by": [
+          "computer_diagnostic"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": []
+      },
+      "heat_signs": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 3,
+        "used_by": [
+          "computer_diagnostic"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": []
+      },
+      "battery_signs": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": true,
+        "confidence_gain": 20,
+        "option_count": 3,
+        "used_by": [
+          "computer_diagnostic"
+        ],
+        "tag_setters": [],
+        "complexity_overrides": []
       }
     },
     "smart_tag_index": {
@@ -41176,7 +42335,6 @@
           "virus",
           "malware",
           "pop ups",
-          "slow computer",
           "infected",
           "ransomware"
         ],
@@ -41188,7 +42346,8 @@
         ],
         "mutually_exclusive": [
           "#data_recovery",
-          "#wifi_dead_zone"
+          "#wifi_dead_zone",
+          "#lost_files"
         ],
         "applicable_categories": [
           "tech_trouble"
@@ -41416,6 +42575,588 @@
         "applicable_group_ids": [
           "minor_home_repairs_walls",
           "wall_mounting_drywall_or_plaster"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#laptop": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "on a laptop",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "laptop",
+          "macbook",
+          "macbook pro",
+          "macbook air",
+          "notebook",
+          "chromebook",
+          "thinkpad"
+        ],
+        "answers": {
+          "device_type": "Laptop"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#desktop",
+          "#all_in_one"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#desktop": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "on a desktop",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "desktop",
+          "desktop computer",
+          "desktop pc",
+          "tower",
+          "pc tower",
+          "gaming pc",
+          "gaming computer"
+        ],
+        "answers": {
+          "device_type": "Desktop (tower)"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#laptop",
+          "#all_in_one",
+          "#battery_trouble",
+          "#new_battery",
+          "#new_charger"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#all_in_one": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "on an all-in-one",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "all in one",
+          "all-in-one",
+          "imac"
+        ],
+        "answers": {
+          "device_type": "All-in-one"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#laptop",
+          "#desktop",
+          "#battery_trouble",
+          "#new_battery",
+          "#new_charger"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#wont_turn_on": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "won't turn on",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "won't turn on",
+          "wont turn on",
+          "won't power on",
+          "wont power on",
+          "won't switch on",
+          "wont switch on",
+          "doesn't turn on",
+          "doesnt turn on",
+          "does not turn on",
+          "not turning on",
+          "no power",
+          "completely dead",
+          "totally dead",
+          "dead computer",
+          "dead laptop",
+          "dead pc"
+        ],
+        "answers": {
+          "computer_symptom": "Won’t power on at all"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#wont_start_up",
+          "#slow_computer",
+          "#overheating",
+          "#battery_trouble"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#wont_start_up": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "turns on but won't start up",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "won't boot",
+          "wont boot",
+          "won't start up",
+          "wont start up",
+          "stuck on loading",
+          "stuck loading",
+          "stuck on the logo",
+          "stuck on logo",
+          "stuck on boot",
+          "boot loop"
+        ],
+        "answers": {
+          "computer_symptom": "Turns on but won’t boot / stuck on loading"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#wont_turn_on",
+          "#slow_computer",
+          "#overheating",
+          "#battery_trouble"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#slow_computer": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "slow or freezing",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "is slow",
+          "so slow",
+          "very slow",
+          "really slow",
+          "too slow",
+          "runs slow",
+          "running slow",
+          "slow computer",
+          "slow laptop",
+          "sluggish",
+          "laggy",
+          "lagging",
+          "freezing",
+          "freezes",
+          "keeps freezing",
+          "frozen"
+        ],
+        "answers": {
+          "computer_symptom": "Very slow or freezing"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#wont_turn_on",
+          "#wont_start_up",
+          "#overheating",
+          "#battery_trouble"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#overheating": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "overheating",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "overheating",
+          "overheats",
+          "too hot",
+          "getting hot",
+          "gets hot",
+          "runs hot",
+          "burning hot",
+          "fan is loud",
+          "loud fan",
+          "fan noise",
+          "fan running loud",
+          "fan is noisy",
+          "noisy fan"
+        ],
+        "answers": {
+          "computer_symptom": "Overheating or fan very loud"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#wont_turn_on",
+          "#wont_start_up",
+          "#slow_computer",
+          "#battery_trouble"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#battery_trouble": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "battery trouble",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "battery trouble",
+          "battery problem",
+          "battery problems",
+          "battery drains",
+          "battery draining",
+          "drains fast",
+          "drains quickly",
+          "battery dies",
+          "battery dies fast",
+          "battery won't charge",
+          "battery wont charge",
+          "won't charge",
+          "wont charge",
+          "not charging"
+        ],
+        "answers": {
+          "computer_symptom": "Battery won’t charge or drains quickly",
+          "device_type": "Laptop"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#desktop",
+          "#all_in_one",
+          "#wont_turn_on",
+          "#wont_start_up",
+          "#slow_computer",
+          "#overheating"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#lost_files": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "lost files",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "lost my files",
+          "lost files",
+          "lost my photos",
+          "lost photos",
+          "lost documents",
+          "files are gone",
+          "files disappeared",
+          "missing files",
+          "files missing",
+          "corrupted files",
+          "can't open my files"
+        ],
+        "answers": {
+          "tech_issue_source": "Files may already be lost or corrupted - need recovery"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#virus"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#ram_upgrade": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "RAM",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "ram",
+          "more ram",
+          "add ram",
+          "upgrade ram",
+          "ram upgrade",
+          "more memory",
+          "add memory",
+          "memory upgrade",
+          "upgrade memory"
+        ],
+        "answers": {
+          "computer_component": "RAM (memory)"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#ssd_upgrade",
+          "#new_battery",
+          "#new_charger",
+          "#power_supply",
+          "#new_fan"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#ssd_upgrade": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "an SSD",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "ssd",
+          "solid state drive",
+          "new ssd",
+          "upgrade ssd",
+          "ssd upgrade",
+          "replace hard drive",
+          "replace my hard drive",
+          "new hard drive",
+          "upgrade storage",
+          "more storage",
+          "bigger hard drive",
+          "hard drive upgrade"
+        ],
+        "answers": {
+          "computer_component": "SSD (storage drive)"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#ram_upgrade",
+          "#new_battery",
+          "#new_charger",
+          "#power_supply",
+          "#new_fan"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#new_battery": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "a new battery",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "new battery",
+          "replace battery",
+          "replace the battery",
+          "replace my battery",
+          "replace my laptop battery",
+          "replace laptop battery",
+          "new laptop battery",
+          "battery replacement",
+          "replacement battery"
+        ],
+        "answers": {
+          "computer_component": "Battery",
+          "device_type": "Laptop"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#desktop",
+          "#all_in_one",
+          "#ram_upgrade",
+          "#ssd_upgrade",
+          "#new_charger",
+          "#power_supply",
+          "#new_fan"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#new_charger": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "a new charger",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "laptop charger",
+          "replace charger",
+          "replace my charger",
+          "new charger",
+          "charger replacement",
+          "replacement charger",
+          "broken charger",
+          "lost my charger",
+          "power adapter",
+          "laptop power supply"
+        ],
+        "answers": {
+          "computer_component": "Charger or power adapter (laptop)",
+          "device_type": "Laptop"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#desktop",
+          "#all_in_one",
+          "#ram_upgrade",
+          "#ssd_upgrade",
+          "#new_battery",
+          "#power_supply",
+          "#new_fan"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#power_supply": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "a new power supply",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "power supply",
+          "replace power supply",
+          "new power supply",
+          "bad power supply",
+          "dead power supply",
+          "psu"
+        ],
+        "answers": {
+          "computer_component": "Power supply (desktop)"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#ram_upgrade",
+          "#ssd_upgrade",
+          "#new_battery",
+          "#new_charger",
+          "#new_fan"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
+        ],
+        "excluded_service_ids": [],
+        "used_by_services": []
+      },
+      "#new_fan": {
+        "display_group": "Tech Conditions",
+        "ui_phrase": "a new fan",
+        "negation_phrase": "",
+        "is_logistic": false,
+        "is_default_for_group": null,
+        "escalate_complexity": null,
+        "synonyms": [
+          "replace fan",
+          "replace the fan",
+          "replace my fan",
+          "new fan",
+          "fan replacement",
+          "replace laptop fan",
+          "new cpu fan"
+        ],
+        "answers": {
+          "computer_component": "Fan"
+        },
+        "requires": [],
+        "mutually_exclusive": [
+          "#ram_upgrade",
+          "#ssd_upgrade",
+          "#new_battery",
+          "#new_charger",
+          "#power_supply"
+        ],
+        "applicable_categories": [
+          "tech_trouble"
+        ],
+        "applicable_group_ids": [
+          "tech_trouble_computer_repair"
         ],
         "excluded_service_ids": [],
         "used_by_services": []

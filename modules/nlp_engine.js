@@ -2278,6 +2278,25 @@
          return null;
      }
 
+     // T170 (PENDING_DECISIONS #180; Charter Battle 7, "a single call in the right place"): the group a request is in when its TAGS are validated. The keyword resolver above names a group
+     // from the object words, and two things go wrong with it for a request that has already reached a named service. (1) It can name NO group: "I need more RAM" is routed to Computer Repair's
+     // part service on other evidence (an object mapping's default service, a synonym, a description match) and holds none of the resolver's words. (2) It can name a group of ANOTHER
+     // category: its cross-category table sends the word "fan" to the ceiling-fan group whatever category the request is in, so "my laptop fan is loud" (category: Tech Trouble) was judged
+     // in Electrical's fan group. Either way a tag scoped to the group the request is really in (applicable_group_ids) was dropped from a sentence that had just been routed into that group,
+     // and the question it answers was asked again. The service's own group (ui_taxonomy.group_id) is the SSOT's answer to "which group is this service in": it stands in where the resolver
+     // named no group, or a group outside the request's own category, and the match clears the bar that selects a named service. It judges tags only; it does not route. The decision is owned
+     // here so no caller composes a second source after the resolver (R-INVARIANT-CANONICAL; verify_r-invariant-provenance_caller_composition.js).
+     /** @param {any} resolvedGroupId @param {any} nlpIntent @param {any} autoSelectThreshold */
+     function resolveTagScopeGroup(resolvedGroupId, nlpIntent, autoSelectThreshold) {
+         const db = /** @type {any} */ (typeof window !== 'undefined' ? window : {}).DB || {};
+         const resolved = resolvedGroupId ? (db.group || []).find(/** @param {any} g */ g => g.id === resolvedGroupId) : null;
+         const inOwnCategory = !!resolved && (!nlpIntent || !nlpIntent.category || resolved.category_id === nlpIntent.category);
+         if (inOwnCategory) return resolvedGroupId;
+         if (!nlpIntent || !nlpIntent.recommendedSku || !(nlpIntent._matchConfidence >= autoSelectThreshold)) return resolvedGroupId || null;
+         const svc = (db.services || []).find(/** @param {any} s */ s => s.id === nlpIntent.recommendedSku);
+         return (svc && svc.ui_taxonomy && svc.ui_taxonomy.group_id) || resolvedGroupId || null;
+     }
+
      function isServiceVerb(word, verbSet) {
          if (!word) return false;
          if (verbSet.has(word)) return true;
