@@ -1865,6 +1865,8 @@ if (charterHtmlContent) {
     // T158: the Charter's 2026-10-09 revision names two more classes (R-COMPLEX-AXES; R-INTAKE-NONRETIRING) and no longer names DEFECT-STALE-SANDBOX / DEFECT-SILENT-SKIP
     // (added at T156, operator ruling #105; the new Charter does not carry that amendment -- PENDING_DECISIONS). Detectors are `@detects`-tagged tests (see below).
     'DEFECT-AXIS-CONFLATION','DEFECT-NON-RETIRING-ANSWER',
+    // T167: named on the operator's ruling of 2026-10-10 (PENDING_DECISIONS #163); the class detectors are verify_tag_detection_precision.js and verify_ssot_reference_integrity.js.
+    'DEFECT-WITHIN-WORD-MATCH','DEFECT-DANGLING-REFERENCE',
   ]);
   if (charterHtmlContent) {
     const charterClasses = new Set();

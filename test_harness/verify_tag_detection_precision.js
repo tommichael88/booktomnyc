@@ -4,8 +4,9 @@
  *
  * @enforces R-INVARIANT-DISEASE
  * @enforces R-INVARIANT-CANONICAL
+ * @detects DEFECT-WITHIN-WORD-MATCH
  *
- * THE CLASS (proposed name DEFECT-WITHIN-WORD-MATCH, PENDING_DECISIONS #163; the Charter does not name it yet, so no @detects tag): text matching that finds a phrase INSIDE a longer word, or finds a
+ * THE CLASS (DEFECT-WITHIN-WORD-MATCH; named in Charter Part X on the operator's ruling of 2026-10-10, PENDING_DECISIONS #163, and this file is its class detector): text matching that finds a phrase INSIDE a longer word, or finds a
  * multi-word phrase whose words are merely scattered through the text. The Charter has met it twice: Battle 1 (T13 to T14, T27, T38 to T39, T43, T112: "washer" inside "dishwasher") and Battle 10 (T78 and T32: a
  * tag synonym that collided, "the same class of bug as a word-boundary collision fixed twice before"), and Battle 10's answer was the data one ("fix a collision at the data level when you can"). It came back
  * because the tag matcher itself never changed: detectTagsNLP matched with String.indexOf while detectIntentNLP, three functions up, already had a

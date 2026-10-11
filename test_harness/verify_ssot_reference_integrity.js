@@ -3,8 +3,9 @@
  * verify_ssot_reference_integrity.js -- every pointer inside btnyc.json points at something, and means the same thing to every reader.
  *
  * @enforces R-INVARIANT-DISEASE
+ * @detects DEFECT-DANGLING-REFERENCE
  *
- * THE CLASS (proposed name DEFECT-DANGLING-REFERENCE, PENDING_DECISIONS #163; the Charter does not name it yet, so this file carries no @detects tag): a hand-authored pointer in the SSOT that
+ * THE CLASS (DEFECT-DANGLING-REFERENCE; named in Charter Part X on the operator's ruling of 2026-10-10, PENDING_DECISIONS #163, and this file is its class detector): a hand-authored pointer in the SSOT that
  * resolves to nothing, or that is spelled in a way one of its readers does not recognise, so the thing it was meant to do silently does not happen. Nothing crashes. A branch never opens, a tag is
  * never cleared, a suggestion is never made. Three instances were found by the T166 audit, each with a different mechanism:
  *   - a TAG POINTER to a tag that no longer exists     dynamic_services['tech_trouble+Install'].suggested_tags[1] = #pets_on_site (retired in v9.5 when pets became a module)
