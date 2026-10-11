@@ -1,0 +1,156 @@
+# T171: the 27 JSON-level citations in the operator's message of 2026-10-11 14:35 NY, each checked on this tree (commit before this one: 6593cbf).
+#
+# Method: for each citation, (1) is the JSON path/value there as cited; (2) is the question on a card a customer reaches, with the cited answers, and did the system already hold the fact;
+# (3) does the class detector (verify_state_ignorance.js) find it. The probes were run from a scratch directory against the real page (jsdom); the facts they establish are held in the
+# repository by verify_state_ignorance.js checks 3.1-3.7, 4.4 and 5.1. Raw outputs follow the table.
+#
+# VERDICT (27 citations)
+#   7  "REASKED 1-7" (weight / dmg_size named in a `then` AND as the next step): the JSON is exactly as cited, and the customer is asked once. The resolver keeps one of a module named twice
+#      (`_resolveIntakeChain`, the `seen` set; its T170 comment describes this very pattern), and a module that is another step's branch target is visible only after the parent is answered,
+#      so `weight` appears once, after the wall type. Catalog-wide: 0 of 76 services repeat a module in their resolved chain; 0 of 102 cards show a question twice (check 5.1).
+#   1  "REASKED 8" (internal_hardware_replacement asks the computer form twice): STALE. It was the T169 fix you ruled on 2026-10-10 19:45 NY: the chain is computer_component > device_type >
+#      customer_supplied_part; `laptop_or_desktop` is in no chain (the module is still defined, orphaned: #158).
+#   8  real, on a card, and already found by the detector before today: TRAVERSAL 1 Brick>Mirror, 3 Brick>Frame, 7 Doors>Deadbolt (Fix/Repair and Install); UNPRUNED 1 and 2 (Drywall or Plaster >
+#      TV Flatscreen, standard and hidden cables), 4 (Brick>Mirror again), 9 (Deadbolt again), 10 (Cabinets>Drawer). The eight citations name six distinct questions: UNPRUNED 4 is TRAVERSAL 1
+#      and UNPRUNED 9 is TRAVERSAL 7 (your two lists overlap: a question whose fact the path declared is both "asked anyway" and "offers answers that cannot be true"). They are #189, #190, #192.
+#   1  real, on a card, and MISSED by the detector until today: TRAVERSAL 2 Brick>Shelf (the tile names two of the five answers, so the one-answer tile rule did not fire). Now found
+#      (the second form of the tile rule), filed under #190: it prunes two answers, it does not retire the question.
+#   10 JSON true, but not a question a customer is asked on a path that declared the fact: TRAVERSAL 4 / UNPRUNED 5 (Blinds: the archetype has one component, so there is no "Blinds" tile;
+#      the group tile opens the card, and "What's being mounted?" is the right question of a group named Blinds | Curtains | Shades); TRAVERSAL 5, 6, 8, 9 and UNPRUNED 6, 7, 8 (Computer Repair
+#      RAM, Laptop, OS, Hard Drive: those component tiles were replaced in T170 Part C by seven symptom tiles and four "already know" tiles, none of which names a part; the
+#      `component_id_to_service_ids` entries remain in the routing archetype and the typed route answers from the tag, e.g. "I need more RAM" asks no part); UNPRUNED 3 (Drywall or Plaster >
+#      Blinds: wall_type is in the chain, but the service's own default tag #drywall answers it and the card does not ask it: the card shows two questions, neither a wall type).
+#   --  found by the second pass, in nobody's list: Drywall or Plaster > TV Flatscreen > Cables. The card opens with two questions; answering "Hide or run cables through a wall/floor" adds
+#      "What kind of wall are we drilling into?" with Brick or concrete among the answers (real DOM, below). Filed under #189. This may be the one you saw as "Same in Drywall".
+#   Total 27 = 7 + 1 + 8 + 1 + 10.
+#
+# Instances after this pass: 29 (27 + Shelf + Cables). Traversal sweep: #189 (4), #190 (3), #192 (13) = 20. Typed-fact sweep: #191 (8), #193 (1) = 9.
+
+######## 1. the cited JSON paths and values, read from btnyc.json
+flatscreen_mounting_standard: chain[0].then={"Drywall (standard)": ["weight"], "Plaster (older homes)": ["lath_check", "weight"], "Brick or concrete": ["masonry_anchor", "weight"]}; chain[1].module=weight
+flatscreen_mounting_with_hidden_cables: chain[0].then={"Drywall (standard)": ["weight"], "Plaster (older homes)": ["lath_check", "weight"], "Brick or concrete": ["masonry_anchor", "weight"]}; chain[1].module=weight
+wall_hole_or_crack_repair: chain[0].then={"Drywall (standard)": ["dmg_size"], "Plaster (older homes)": ["lath_check", "dmg_size"], "Brick or concrete": ["dmg_size"]}; chain[1].module=dmg_size
+internal_hardware_replacement chain: ['computer_component', 'device_type', 'customer_supplied_part'] | laptop_or_desktop in any chain: False | defined in intake_modules: True
+routing_archetypes.wall_mounting_brick_or_concrete.component_id_to_service_ids['comp.mirror'] = ['shelf_mortar_mounting_buy_the_hour']
+routing_archetypes.wall_mounting_brick_or_concrete.component_id_to_service_ids['comp.shelf'] = ['shelf_mortar_mounting_buy_the_hour']
+routing_archetypes.wall_mounting_brick_or_concrete.component_id_to_service_ids['comp.frame'] = ['shelf_mortar_mounting_buy_the_hour']
+routing_archetypes.wall_mounting_blinds_curtain.component_id_to_service_ids['comp.blinds'] = ['blinds_shades_curtains_buy_the_hour']
+routing_archetypes.tech_trouble_computer_repair.component_id_to_service_ids['comp.ram'] = ['internal_hardware_replacement']
+routing_archetypes.tech_trouble_computer_repair.component_id_to_service_ids['comp.laptop'] = ['internal_hardware_replacement']
+routing_archetypes.minor_home_repairs_doors.component_id_to_service_ids['comp.deadbolt'] = ['door_lock_or_handle_install']
+routing_archetypes.tech_trouble_computer_repair.component_id_to_service_ids['comp.os'] = ['software_or_driver_install', 'system_restore_or_reset']
+routing_archetypes.tech_trouble_computer_repair.component_id_to_service_ids['comp.hard_drive'] = ['data_backup_or_transfer', 'internal_hardware_replacement']
+routing_archetypes.minor_home_repairs_cabinets_drawers.component_id_to_service_ids['comp.drawer'] = ['cabinet_door_or_drawer_adjustment']
+
+######## 2. the resolved chain and the branches (does any module appear twice?)
+has _resolveIntakeChain: function | _isModVisible: function
+flatscreen_mounting_standard 
+  resolved chain keys: wall_type, weight, lath_check, masonry_anchor, mounting_height, mount_sourcing 
+  duplicate keys in the resolved chain: none
+  raw chain: wall_type > weight > mounting_height > mount_sourcing
+   answer "Drywall (standard)" -> visible: wall_type, weight, mounting_height, mount_sourcing
+   answer "Plaster (older homes)" -> visible: wall_type, weight, lath_check, mounting_height, mount_sourcing
+   answer "Brick or concrete" -> visible: wall_type, weight, masonry_anchor, mounting_height, mount_sourcing
+flatscreen_mounting_with_hidden_cables 
+  resolved chain keys: wall_type, weight, lath_check, masonry_anchor, mounting_height, inwall_power_for_tv, mount_sourcing 
+  duplicate keys in the resolved chain: none
+  raw chain: wall_type > weight > mounting_height > inwall_power_for_tv > mount_sourcing
+   answer "Drywall (standard)" -> visible: wall_type, weight, mounting_height, inwall_power_for_tv, mount_sourcing
+   answer "Plaster (older homes)" -> visible: wall_type, weight, lath_check, mounting_height, inwall_power_for_tv, mount_sourcing
+   answer "Brick or concrete" -> visible: wall_type, weight, masonry_anchor, mounting_height, inwall_power_for_tv, mount_sourcing
+wall_hole_or_crack_repair 
+  resolved chain keys: wall_type, dmg_size, lath_check, item_count_template::walls, mounting_height 
+  duplicate keys in the resolved chain: none
+  raw chain: wall_type > dmg_size > item_count_template > mounting_height
+   answer "Drywall (standard)" -> visible: wall_type, dmg_size, item_count_template::walls, mounting_height
+   answer "Plaster (older homes)" -> visible: wall_type, dmg_size, lath_check, item_count_template::walls, mounting_height
+   answer "Brick or concrete" -> visible: wall_type, dmg_size, item_count_template::walls, mounting_height
+internal_hardware_replacement 
+  resolved chain keys: computer_component, device_type, customer_supplied_part 
+  duplicate keys in the resolved chain: none
+  raw chain: computer_component > device_type > customer_supplied_part
+   answer "RAM (memory)" -> visible: computer_component, device_type, customer_supplied_part
+   answer "SSD (storage drive)" -> visible: computer_component, device_type, customer_supplied_part
+   answer "Battery" -> visible: computer_component, device_type, customer_supplied_part
+   answer "Charger or power adapter (laptop)" -> visible: computer_component, device_type, customer_supplied_part
+   answer "Power supply (desktop)" -> visible: computer_component, device_type, customer_supplied_part
+   answer "Fan" -> visible: computer_component, device_type, customer_supplied_part
+   answer "Something else (please describe in notes)" -> visible: computer_component, device_type, customer_supplied_part
+
+######## 3. the cards a customer reaches for the cited services (walk of the real page): question counts
+Minor Home Repairs > Cabinets & Drawers > Cabinet door  [cabinet_door_or_drawer_adjustment]  tile changed nothing=True
+      open: [('cabinet_issue', 5), ('item_count_template::cabinet doors/drawers', 5)]
+Minor Home Repairs > Cabinets & Drawers > Drawer  [cabinet_door_or_drawer_adjustment]  tile changed nothing=True
+      open: [('cabinet_issue', 5), ('item_count_template::cabinet doors/drawers', 5)]
+Minor Home Repairs > Cabinets & Drawers > Hinge  [cabinet_door_or_drawer_adjustment]  tile changed nothing=True
+      open: [('cabinet_issue', 5), ('item_count_template::cabinet doors/drawers', 5)]
+Minor Home Repairs > Cabinets & Drawers > Shelf  [cabinet_door_or_drawer_adjustment]  tile changed nothing=True
+      open: [('cabinet_issue', 5), ('item_count_template::cabinet doors/drawers', 5)]
+Minor Home Repairs > Doors > Fix / Repair > Deadbolt  [door_lock_or_handle_install]  tile changed nothing=True
+      open: [('hardware_type', 7)]
+Minor Home Repairs > Doors > Fix / Repair > Door handle  [door_lock_or_handle_install]  tile changed nothing=True
+      open: [('hardware_type', 7)]
+Minor Home Repairs > Doors > Fix / Repair > Door lock  [door_lock_or_handle_install]  tile changed nothing=True
+      open: [('hardware_type', 7)]
+Minor Home Repairs > Doors > Install > Deadbolt  [door_lock_or_handle_install]  tile changed nothing=True
+      open: [('hardware_type', 7)]
+Minor Home Repairs > Doors > Install > Door handle  [door_lock_or_handle_install]  tile changed nothing=True
+      open: [('hardware_type', 7)]
+Minor Home Repairs > Doors > Install > Door lock  [door_lock_or_handle_install]  tile changed nothing=True
+      open: [('hardware_type', 7)]
+Wall Mounting > Drywall or Plaster > Blinds | Curtains | Shades Mounting ⏰ Buy-the-Hour  [blinds_shades_curtains_buy_the_hour]  tile changed nothing=False
+      open: [('blind_curtain_shade_items', 5), ('buy_the_hour_qty', 2)]
+Wall Mounting > Drywall or Plaster > TV Flatscreen > Monitor  [flatscreen_mounting_standard]  tile changed nothing=False
+      open: [('wall_type', 3), ('mounting_height', 3)]
+Wall Mounting > Drywall or Plaster > TV Flatscreen > Tv > service flatscreen_mounting_standard  [flatscreen_mounting_standard]  tile changed nothing=False
+      open: [('wall_type', 3), ('mounting_height', 3)]
+Wall Mounting > Drywall or Plaster > TV Flatscreen > Tv > service flatscreen_mounting_with_hidden_cables  [flatscreen_mounting_with_hidden_cables]  tile changed nothing=False
+      open: [('wall_type', 3), ('mounting_height', 3)]
+Wall Mounting > Brick or Concrete > Frame  [shelf_mortar_mounting_buy_the_hour]  tile changed nothing=True
+      open: [('wall_mount_items', 5), ('mounting_height', 3), ('hybrid_qty', 0)]
+Wall Mounting > Brick or Concrete > Mirror  [shelf_mortar_mounting_buy_the_hour]  tile changed nothing=True
+      open: [('wall_mount_items', 5), ('mounting_height', 3), ('hybrid_qty', 0)]
+Wall Mounting > Brick or Concrete > Shelf  [shelf_mortar_mounting_buy_the_hour]  tile changed nothing=True
+      open: [('wall_mount_items', 5), ('mounting_height', 3), ('hybrid_qty', 0)]
+Tech Trouble > Computer Repair > Lost or deleted files  [data_backup_or_transfer]  tile changed nothing=False
+      open: [('backup_source_device', 4)]
+Tech Trouble > Computer Repair > Replace or upgrade a part  [internal_hardware_replacement]  tile changed nothing=False
+      open: [('computer_component', 7), ('device_type', 3), ('customer_supplied_part', 2)]
+Tech Trouble > Computer Repair > Install software or drivers  [software_or_driver_install]  tile changed nothing=False
+      open: [('software_install_type', 4)]
+Tech Trouble > Computer Repair > Back up or move my files  [data_backup_or_transfer]  tile changed nothing=False
+      open: [('tech_issue_source', 4), ('backup_source_device', 4)]
+Tech Trouble > Computer Repair > Reset or reinstall Windows or macOS  [system_restore_or_reset]  tile changed nothing=False
+      open: [('device_state', 4)]
+
+######## 4. Drywall or Plaster > Blinds: the card as the customer sees it
+tiles in Drywall or Plaster: [
+  'Blinds | Curtains | Shades Mounting ⏰ Buy-the-Hour',
+  'Frames | Shelves | Misc',
+  'TV Flatscreen'
+]
+Blinds card, as the customer sees it (every question, answered or not):
+   blind_curtain_shade_items | answered: null | 1. What's being mounted? | 5 options
+   buy_the_hour_qty | answered: null | 2. How many items? | 2 options
+
+######## 5. Drywall or Plaster > TV Flatscreen > Cables: before and after the first answer (real DOM)
+BEFORE answering:
+   cable_install_item | answered: null | 1. What kind of cable work are we doing? | Hide or run cables through a wall/floor / Install a new cable box, raceway, or organizer / Run new cable for a TV or device / Other (describe in notes)
+   mounting_height | answered: null | 2. How would you reach the spot, from the floor or with a ladder? | Within reach from the floor or a step stool / Needs a stepladder (high or vaulted ceiling) / Needs an extension ladder or scaffold (stairwell, two-story or cathedral ceiling)
+AFTER "Hide or run cables through a wall/floor":
+   cable_install_item | answered: Hide or run cables through a wall/floor | 1. What kind of cable work are we doing? | Hide or run cables through a wall/floor / Install a new cable box, raceway, or organizer / Run new cable for a TV or device / Other (describe in notes)
+   wall_type | answered: null | 2. What kind of wall are we drilling into? | Drywall (standard) / Plaster (older homes) / Brick or concrete
+   mounting_height | answered: null | 3. How would you reach the spot, from the floor or with a ladder? | Within reach from the floor or a step stool / Needs a stepladder (high or vaulted ceiling) / Needs an extension ladder or scaffold (stairwell, two-story or cathedral ceiling)
+
+######## 6. every service chain: a repeated module, or two modules of one chain sharing 2 or more identical answers
+services with a duplicate key in their resolved chain: 0 of 76
+module pairs sharing >=2 identical option labels (or Jaccard>=.5) inside one chain: 3
+   pax_wardrobe_assembly | pax_cabinet_count | pax_hinge_count | 6 | 0.86 
+         How many PAX cabinet frames need to be assembled? 
+         How many hinged doors need to be installed?
+   pax_wardrobe_assembly | pax_cabinet_count | pax_sliding_count | 4 | 0.50 
+         How many PAX cabinet frames need to be assembled? 
+         How many sliding doors need to be installed?
+   pax_wardrobe_assembly | pax_hinge_count | pax_sliding_count | 5 | 0.63 
+         How many hinged doors need to be installed? 
+         How many sliding doors need to be installed?

@@ -26,7 +26,16 @@
  *     the others are ruled out ("Drywall or Plaster" offers #drywall and #plaster_wall, so #brick_wall -- "Brick or concrete" -- is ruled out), via the engine's own tagValidForCategory;
  *   - a held tag declares its option, and rules out the rest of that question.
  * The one text rule: a picker tile whose tap changed nothing (the sibling tiles open the identical card) and whose label names EXACTLY ONE answer of a question the card asks, as
- * whole words ("Mirror" -> "Heavy mirror (over 50 lbs)"). It is bounded that tightly because it is the only place a name is matched against a label.
+ * whole words ("Mirror" -> "Heavy mirror (over 50 lbs)"). It is bounded that tightly because it is the only place a name is matched against a label. Second form (T171, the operator's
+ * Brick or Concrete > Shelf): a tile that names TWO or more answers ("Shelf" -> "Single shelf", "Multiple shelves") rules out the answers a SIBLING tile names ("Frame" -> "Picture
+ * frames or art", "Mirror" -> "Heavy mirror"), and no other: an answer that no tile names ("Mixed items") stays, and a tile that names nothing ("Door lock", a kind of which is "Deadbolt")
+ * rules out nothing, because a tile's name can be broader than the answers beside it.
+ *
+ * QUESTIONS SHOWN LATER (T171). A card is not only the questions on it when it opens: answering one can reveal the next (a `then` branch, a `depends_on`). Each card, catalog and
+ * typed, is therefore also read one answer deep: every answer to every open question is given to the engine (executeWorkflow, the renderer's own gateway), and a question that
+ * becomes visible and is still unanswered AFTER the engine has applied the facts it holds (tags, defaults) is judged with that answer added. "TV Flatscreen > Cables" asks no wall type
+ * when it opens and asks "What kind of wall are we drilling into?" the moment the cable question is answered. A revealed question whose job moved to another service (route_to) is not
+ * judged here: it belongs to the service the job moved to.
  *
  * MEASURED BY WHAT THE RULES CLAIM (P-GOVERN-GOODHART): the REAL page (jsdom), driven the way a customer drives it, and read where the customer reads it.
  *   1. THE WALK     every group of the catalog, every picker level, every tile: the card each tap opens is read from the DOM (the questions the customer sees, answered or not).
@@ -40,7 +49,9 @@
  * WHAT THIS DOES NOT COVER (named, not hidden): (a) the guided builder ("Write it for me") and the Other tile, whose cards are built from chips, not from a service's chain;
  * (b) an answer that is only IMPLIED in words the tag vocabulary does not know ("a brick fireplace" with no tag for it) -- that is a vocabulary gap (DEFECT-WITHIN-WORD-MATCH's mirror), not this
  * class; (c) the half of "no answer could change anything" that needs no known fact -- a question every one of whose answers prices the same -- is DEFECT-NON-RETIRING-ANSWER's
- * (verify_non_retiring_answers.js); (d) the typed corpus is the catalog's own phrases (each service's name plus each tag phrase that answers one of its questions), not every sentence a customer can write.
+ * (verify_non_retiring_answers.js); (d) the typed corpus is the catalog's own phrases (each service's name plus each tag phrase that answers one of its questions), not every sentence a customer can write;
+ * (e) a question revealed two answers deep (the reveal is read one answer deep; no chain on today's catalog is deeper than that for a fact a path declares); (f) a module named in a chain
+ * twice is NOT an instance: the resolver keeps one of them (`_resolveIntakeChain`'s `seen`), the card shows it once, and check 5.1 holds that for every service and every card.
  *
  * RUN ON ANOTHER TREE (G-INVARIANT-PREFIX): BTNYC_ROOT=<tree> node test_harness/verify_state_ignorance.js
  * LIST WHAT IT FINDS:                       STATE_IGNORANCE_LIST=1 node test_harness/verify_state_ignorance.js     (add STATE_IGNORANCE_JSON=<file> to write the instances as JSON)
@@ -121,7 +132,8 @@ function makeJudge(DB, tagValid) {
             // (3) a tile whose tap changed nothing, and whose label names exactly one answer
             if (leaf.tile && leaf.tile.dropped) {
                 const named = opts.filter(o => names(leaf.tile.label, o.label));
-                if (named.length === 1) for (const o of opts) if (o !== named[0]) rule(o.label, 'path', `the tapped tile "${leaf.tile.label}" names "${named[0].label}" and the tap changed nothing`);
+                if (named.length === 1) { for (const o of opts) if (o !== named[0]) rule(o.label, 'path', `the tapped tile "${leaf.tile.label}" names "${named[0].label}" and the tap changed nothing`); }
+                else if (named.length > 1) for (const sib of leaf.tile.siblings || []) for (const o of opts) if (!named.includes(o) && names(sib, o.label)) rule(o.label, 'path', `the tapped tile "${leaf.tile.label}" names ${named.map(n => `"${n.label}"`).join(' and ')}, and the tile "${sib}" beside it names "${o.label}", so the tap did not choose it`);
             }
             if (!ruledOut.size) continue;
             const top = [...ruledOut.values()].reduce((a, b) => (PRIORITY[b.source] > PRIORITY[a.source] ? b : a));
@@ -168,11 +180,13 @@ async function walk(page, { onlyGroups } = {}) {
                         entity: r.entity.id, cat, ownGroup: (DB.services.find(s => s.id === r.entity.id) || { ui_taxonomy: {} }).ui_taxonomy.group_id || (r.context && r.context.selectedGroupId) || null,
                         pathGroups, tile: { label: labs[labs.length - 1], dropped: false }, tags: r.activeTags || [], answers: r.answers || {},
                         open: shown().filter(q => !q.answered).map(q => ({ mod: q.mod, options: q.options })),
+                        mods: shown().map(q => q.mod),
+                        reveal: { ctx: JSON.parse(JSON.stringify(r.context || {})), answers: JSON.parse(JSON.stringify((r.context && r.context.answers) || {})) },
                     });
                 } else if (JSON.stringify(after) !== JSON.stringify(here) && depth < 4) await visit(p.concat([i]), depth + 1);
             }
             // a tile "changed nothing" when a sibling with a different label opened the identical card
-            for (const a of sibs) if (sibs.some(b => b !== a && b.label !== a.label && b.snap === a.snap)) leaves[a.idx].tile.dropped = true;
+            for (const a of sibs) if (sibs.some(b => b !== a && b.label !== a.label && b.snap === a.snap)) { leaves[a.idx].tile.dropped = true; leaves[a.idx].tile.siblings = [...new Set(sibs.filter(b => b !== a && b.label !== a.label && b.snap === a.snap).map(b => b.label))]; }
         };
         await visit([], 0);
     }
@@ -211,7 +225,28 @@ function typedLeaf(page, text, said) {
     const entity = r.entity && r.entity.id; if (!entity || !(DB.services || []).find(s => s.id === entity)) return null;
     const svc = DB.services.find(s => s.id === entity);
     const open = (r.visibleChain || []).filter(m => !(r.answers || {})[m.moduleKey || m.module]).map(m => ({ mod: m.moduleKey || m.module }));
-    return { entry: 'typed', where: `"${text}"`, entity, cat: svc.ui_taxonomy.category_id, ownGroup: svc.ui_taxonomy.group_id, pathGroups: [], tile: null, tags: r.activeTags || [], said: said || [], answers: r.answers || {}, open };
+    return { entry: 'typed', where: `"${text}"`, entity, cat: svc.ui_taxonomy.category_id, ownGroup: svc.ui_taxonomy.group_id, pathGroups: [], tile: null, tags: r.activeTags || [], said: said || [], answers: r.answers || {}, open,
+        mods: (r.visibleChain || []).map(m => m.moduleKey || m.module), reveal: { ctx: Object.assign({}, c, { tagsAffirmed: true }), answers: r.answers || {} } };
+}
+
+// ---- 3. the questions shown later ------------------------------------------------------------------------------------------------------------------------------------------
+// Give the engine each answer to each open question, one at a time, and read what becomes visible. A question counts only if it is STILL UNANSWERED after the engine has applied
+// what it holds (r2.answers carries the tag-synthesized answers), and only if the job stayed with the same service. Returns one pseudo-leaf per revealed question.
+function revealed(page, leaf) {
+    const { w, DB } = page, MODS = DB.intake_modules || {}, rv = leaf.reveal; if (!rv) return [];
+    const optsOf = k => ((MODS[String(k).split('::')[0]] || {}).client_response || []).filter(o => o && o.label).map(o => o.label);
+    const run = answers => w.executeWorkflow(Object.assign({}, rv.ctx, { answers: Object.assign({}, rv.answers, answers) }), w.DB);
+    const keys = r => (r.visibleChain || []).map(m => m.moduleKey || m.module);
+    const base = run({}), bs = new Set(keys(base)), seen = new Map(), eid = r => r.entity && r.entity.id;
+    for (const k of keys(base)) {
+        if (rv.answers[k] || (base.answers || {})[k]) continue;
+        for (const o of optsOf(k).slice(0, 8)) {
+            const r2 = run({ [k]: o });
+            if (eid(r2) !== eid(base)) continue;
+            for (const m of keys(r2)) if (!bs.has(m) && !seen.has(m) && !(r2.answers || {})[m]) seen.set(m, { via: k, option: o });
+        }
+    }
+    return [...seen].map(([m, v]) => Object.assign({}, leaf, { answers: Object.assign({}, leaf.answers, { [v.via]: v.option }), open: [{ mod: m, options: optsOf(m) }], where: `${leaf.where} (shown after ${v.via})` }));
 }
 
 // ---- the instances today ---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -219,13 +254,22 @@ const keyOf = i => [i.shape, i.entry, i.where, i.entity, i.question].join(' | ')
 async function findAll(page, opts = {}) {
     const judge = makeJudge(page.DB, (t, cat, g) => { try { return !!page.w.tagValidForCategory(t, cat, g); } catch (e) { return false; } });
     const found = new Map(); let leaves = 0, typed = 0, corpusSize = 0;
-    if (!opts.skipWalk) for (const l of await walk(page, opts)) { leaves++; for (const i of judge(l)) found.set(keyOf(i), i); }
+    const dupCards = [];
+    if (!opts.skipWalk) for (const l of await walk(page, opts)) {
+        leaves++; for (const i of judge(l)) found.set(keyOf(i), i);
+        if (new Set(l.mods).size !== l.mods.length) dupCards.push(l.where);
+        if (!opts.skipReveal) for (const rl of revealed(page, l)) for (const i of judge(rl)) found.set(keyOf(i), i);
+    }
     if (!opts.skipTyping) {
         const corpus = opts.phrases || typedCorpus(page.DB);
         corpusSize = corpus.length;
-        for (const p of corpus) { let l = null; try { l = typedLeaf(page, p.text, p.said); } catch (e) { continue; } if (!l) continue; typed++; for (const i of judge(l)) found.set(keyOf(i), i); }
+        for (const p of corpus) {
+            let l = null; try { l = typedLeaf(page, p.text, p.said); } catch (e) { continue; } if (!l) continue; typed++;
+            for (const i of judge(l)) found.set(keyOf(i), i);
+            if (!opts.skipReveal) { let rs = []; try { rs = revealed(page, l); } catch (e) { rs = []; } for (const rl of rs) for (const i of judge(rl)) found.set(keyOf(i), i); }
+        }
     }
-    return { found, leaves, typed, corpusSize, judge };
+    return { found, leaves, typed, corpusSize, judge, dupCards };
 }
 
 (async () => {
@@ -267,6 +311,19 @@ async function findAll(page, opts = {}) {
         check('3.5 the ratchet is live: an instance missing from the baseline is reported as new, and an invented one as stale', freshWithout.length === 1 && keyOf(freshWithout[0]) === k0 && staleWithGhost.length === 1, { expected: '1 new, 1 stale', got: { fresh: freshWithout.length, stale: staleWithGhost.length } });
     }
 
+    // ===== 3b. the second pass: examples the operator gave that the first pass could not see (2026-10-11 14:35 NY) ===============================================================
+    check('3.6 NAMED, second pass: Brick or Concrete > Shelf (the tile names two answers, the tiles beside it name the others) and Drywall or Plaster > TV Flatscreen > Cables (the wall type is asked once the cable question is answered) are found',
+        has(SHAPES.path, /Brick or Concrete > Shelf$/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour') && has(SHAPES.path, /TV Flatscreen > Cables \(shown after cable_install_item\)/, 'wall_type', 'cable_management'),
+        { expected: 'both', got: list.filter(i => /Shelf|Cables/.test(i.where)).map(i => i.where) });
+    {   // the one-answer-deep read is what finds Cables: the walk of the same group without it finds none there
+        const g = ['wall_mounting_drywall_or_plaster'], without = await findAll(page, { skipTyping: true, skipReveal: true, onlyGroups: g }), withIt = await findAll(page, { skipTyping: true, onlyGroups: g });
+        const cables = r => [...r.found.values()].filter(i => /> Cables/.test(i.where));
+        check('3.7 the question shown LATER is found only by reading a card one answer deep (the first view of the Cables card asks no wall type)', cables(without).length === 0 && cables(withIt).length === 1, { expected: '0 without the reveal pass, 1 with it', got: { without: cables(without).length, with: cables(withIt).length } });
+    }
+
+    check('3.8 the tile rule does not over-reach: "Door lock" and "Door handle" (tiles that name no answer, and a Deadbolt tile beside them naming "Deadbolt lock") rule out nothing, because a tile\'s name can be broader than the answers beside it',
+        !list.some(i => /Doors > .*> Door (lock|handle)/.test(i.where)) && list.some(i => /Doors > .*> Deadbolt/.test(i.where)), { expected: 'Deadbolt found, Door lock / Door handle not', got: list.filter(i => /Doors >/.test(i.where)).map(i => i.where) });
+
     // ===== 4. each shape fails on a planted defect ==================================================================================================================================
     const mutants = [];
     {   // REASKED -- the engine stops turning a tag into its answer: a customer who typed "drywall" is asked what kind of wall
@@ -293,7 +350,23 @@ async function findAll(page, opts = {}) {
         mutants.push(['4.3 UNPRUNED: typed "mount a tv", a service that lives in the Brick or Concrete group and asks the wall type is found as a fact of the job itself (the real page finds none)',
             !!hit && hit.shape === SHAPES.job && hit.determined && real.found.size === 0, { planted: hit && [hit.shape, hit.determined, hit.why], real: [...real.found.values()].map(i => i.question) }]);
     }
+    {   // the reveal pass -- a service in the Brick or Concrete group names the wall type as the branch of one of its answers: nothing asks it when the card opens, and the class finds it once "Single shelf" is answered
+        const db = JSON.parse(JSON.stringify(DB0)), s = db.services.find(x => x.id === 'shelf_mortar_mounting_buy_the_hour');
+        s.intake_chain[0].then = { 'Single shelf': ['wall_type'] };
+        const g = ['wall_mounting_brick_or_concrete'], real = await findAll(page, { skipTyping: true, onlyGroups: g }), planted = await findAll(await boot({ db }), { skipTyping: true, onlyGroups: g });
+        const hit = [...planted.found.values()].find(i => i.question === 'wall_type'), noReveal = await findAll(await boot({ db }), { skipTyping: true, skipReveal: true, onlyGroups: g });
+        mutants.push(['4.4 REVEAL: a wall-type question that opens only after an answer, in the Brick or Concrete group, is found by the one-answer-deep read (and not by the first view; the real page asks it nowhere in that group)',
+            !!hit && hit.shape === SHAPES.path && /shown after wall_mount_items/.test(hit.where) && ![...noReveal.found.values()].some(i => i.question === 'wall_type') && ![...real.found.values()].some(i => i.question === 'wall_type'),
+            { planted: hit && [hit.shape, hit.where], withoutReveal: [...noReveal.found.values()].map(i => i.question), real: [...real.found.values()].map(i => i.question) }]);
+    }
     for (const [name, ok, got] of mutants) check(name, ok, { expected: 'found on the planted copy only', got });
+
+    // ===== 5. a question is shown once (the operator's "weight is named in a `then` and at the top of the chain") ================================================================
+    {   // The resolver keeps one of a module named twice (`_resolveIntakeChain`'s `seen`), so a module listed both as another step's branch target and as a step of its own is shown once, after the
+        // answer that opens it. This holds that for every service's resolved chain and for every card the walk opened (the card's DOM, not the data).
+        const dupChains = (page.DB.services || []).filter(s => { const k = (page.w._resolveIntakeChain(s) || []).map(m => m.moduleKey || m.module); return new Set(k).size !== k.length; }).map(s => s.id);
+        check('5.1 no question is shown twice: no service\'s resolved chain repeats a module, and no card the walk opened shows one twice (a module named in a branch and again as a step is one question)', dupChains.length === 0 && all.dupCards.length === 0, { expected: 'none', got: { chains: dupChains.slice(0, 5), cards: all.dupCards.slice(0, 5) } });
+    }
 
     finish();
     process.exit(0);
