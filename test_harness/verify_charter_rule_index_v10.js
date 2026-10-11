@@ -1867,6 +1867,9 @@ if (charterHtmlContent) {
     'DEFECT-AXIS-CONFLATION','DEFECT-NON-RETIRING-ANSWER',
     // T167: named on the operator's ruling of 2026-10-10 (PENDING_DECISIONS #163); the class detectors are verify_tag_detection_precision.js and verify_ssot_reference_integrity.js.
     'DEFECT-WITHIN-WORD-MATCH','DEFECT-DANGLING-REFERENCE',
+    // T171: proposed on the operator's direction of 2026-10-11 11:52 NY (PENDING_DECISIONS #187); the class detector is verify_state_ignorance.js. The three shapes
+    // (DEFECT-REASKED-QUESTION, DEFECT-REDUNDANT-TRAVERSAL, DEFECT-UNPRUNED-FLOW) are named inside the one class's row, not declared as classes of their own.
+    'DEFECT-STATE-IGNORANCE',
   ]);
   if (charterHtmlContent) {
     const charterClasses = new Set();
