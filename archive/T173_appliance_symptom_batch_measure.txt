@@ -1,0 +1,72 @@
+# test_harness/tools/symptom_batches/appliance_symptoms_T173_proposal.json applied IN MEMORY to btnyc.json -- nothing is written. Read-only measurement.
+
+## 1. The data contract: no appliance group's service or fallback chain names a symptom module another appliance owns
+before: 17 violation(s) in 23 symptom-module references; after the batch: 0 in 23.
+  before: symptom (owned by washer) is named by 17: service microwave_repair, service repair_appliances, service window_ac_repair, fb Diagnostic, fb appl+Diagnostic, fb appl+Repair, fb appl_dryer+Diagnostic, fb appl_dryer+Repair, fb appl_stove_range+Diagnostic, fb appl_stove_range+Repair, fb appl_refrigerator+Diagnostic, fb appl_refrigerator+Repair, fb appl_dishwasher+Diagnostic, fb appl_dishwasher+Repair, fb appl_microwave+Diagnostic, fb appl_microwave+Repair, fb appl_other+Diagnostic
+
+## 2. Every option of every new module, quoted (the service's own base plus the modifier's minutes; no new fee)
+
+### refrigerator_symptom -> repair_appliances   "What’s the issue with the refrigerator?"   (other questions answered with their first option)
+  Not cooling / food is warm                     $493 / 220 min [diagnostic] today: not offered today
+  Freezer frosting up / ice build-up             $438 / 190 min             today: not offered today
+  Leaking water                                  $493 / 220 min [diagnostic] today: $493 / 220 min [diagnostic]
+  Making strange noises                          $356 / 145 min             today: $356 / 145 min
+  Ice maker or water dispenser not working       $356 / 145 min             today: not offered today
+  Burning smell                                  $493 / 220 min [diagnostic] today: $493 / 220 min [diagnostic]
+  Other (describe in notes)                      $273 / 100 min             today: not offered today   (no tile)
+  -- the washer-shaped options this service is asked today, and what they quote (they would no longer be asked):
+  Won’t spin / no movement                       $356 / 145 min             leaves this service
+  Won’t drain (water stays inside)               $438 / 190 min [diagnostic] leaves this service
+
+### microwave_symptom -> microwave_repair   "What’s the issue with the microwave?"   (other questions answered with their first option)
+  Runs but won’t heat                            $493 / 220 min [diagnostic] today: not offered today
+  Won’t turn on / display is dead                $493 / 220 min [diagnostic] today: not offered today
+  Turntable won’t turn                           $356 / 145 min             today: not offered today
+  Sparks, arcing or burning smell                $493 / 220 min [diagnostic] today: not offered today
+  Making strange noises                          $356 / 145 min             today: $356 / 145 min
+  Keypad or door latch not working               $356 / 145 min             today: not offered today
+  Other (describe in notes)                      $273 / 100 min             today: not offered today   (no tile)
+  -- the washer-shaped options this service is asked today, and what they quote (they would no longer be asked):
+  Won’t spin / no movement                       $356 / 145 min             leaves this service
+  Won’t drain (water stays inside)               $438 / 190 min [diagnostic] leaves this service
+
+### window_ac_symptom -> window_ac_repair   "What’s the issue with the window air conditioner?"   (other questions answered with their first option)
+  Not cooling                                    $437 / 200 min [diagnostic] today: not offered today
+  Won’t turn on                                  $437 / 200 min [diagnostic] today: not offered today
+  Leaking water inside                           $437 / 200 min [diagnostic] today: not offered today
+  Freezing up / ice on the coil                  $382 / 170 min             today: not offered today
+  Making strange noises                          $299 / 125 min             today: $299 / 125 min
+  Burning smell                                  $437 / 200 min [diagnostic] today: $437 / 200 min [diagnostic]
+  Other (describe in notes)                      $217 / 80 min              today: not offered today   (no tile)
+  -- the washer-shaped options this service is asked today, and what they quote (they would no longer be asked):
+  Won’t spin / no movement                       $299 / 125 min             leaves this service
+  Won’t drain (water stays inside)               $382 / 170 min [diagnostic] leaves this service
+
+## 3. The sixteen dynamic fallbacks: the same words must quote the same (a re-point is not a price change)
+36 (fallback, option) pairs whose words exist in both modules: 35 quote the same, 1 move.
+  MOVED minor_home_repairs_appliances_dishwasher+Repair "Leaking water": $455 / 210 min [diagnostic] -> $455 / 210 min
+14 of the 16 fallbacks change module (the 2 Washer entries keep the washer's); options that are new wording are quoted in section 2 for the services and are not compared here.
+Dynamic fallbacks quoted AFTER, one option per effort class (Repair entries):
+  appl_washer+Repair                 symptom                Won’t spin / no movement: $318 / 135 min | Won’t drain (water stays inside): $400 / 180 min [diagnostic] | Leaking water: $455 / 210 min [diagnostic]
+  appl_dryer+Repair                  dryer_symptom          Won't power on: $455 / 210 min [diagnostic] | Overheating / getting too hot: $455 / 210 min [diagnostic] | Runs constantly / won't shut off: $318 / 135 min
+  appl_stove_range+Repair            stove_symptom          Won't power on / no burners work: $455 / 210 min [diagnostic] | Overheating / burners too hot: $455 / 210 min [diagnostic] | Burning or gas smell: $455 / 210 min [diagnostic]
+  appl_dishwasher+Repair             dishwasher_symptom     Won't fill with water: $318 / 135 min | Won't drain / standing water inside: $400 / 180 min | Won't clean dishes properly: $198 / 90 min
+  appl_refrigerator+Repair           refrigerator_symptom   Not cooling / food is warm: $455 / 210 min [diagnostic] | Freezer frosting up / ice build-up: $400 / 180 min | Leaking water: $455 / 210 min [diagnostic]
+  appl_microwave+Repair              microwave_symptom      Runs but won’t heat: $455 / 210 min [diagnostic] | Won’t turn on / display is dead: $455 / 210 min [diagnostic] | Turntable won’t turn: $318 / 135 min
+  appl+Repair                        general_symptom        Leaking water: $455 / 210 min [diagnostic] | Making strange noises: $318 / 135 min | Burning smell: $455 / 210 min [diagnostic]
+
+## 4. The picker tiles each symptom-first group would show (derived from the module the repair service asks)
+  washer       now 4: Leaking water, Strange noises, Wont drain, Wont spin
+               derived from symptom 7: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises, Burning smell, Works intermittently, Trips breaker immediately
+  dryer        now 5: Bad smell, Overheating, Runs constantly, Strange noises, Wont power on
+               derived from dryer_symptom 5: Won't power on, Overheating / getting too hot, Runs constantly / won't shut off, Making strange noises, Burning smell
+  stove_range  now 3: Bad smell, Overheating, Wont power on
+               derived from stove_symptom 3: Won't power on / no burners work, Overheating / burners too hot, Burning or gas smell
+  dishwasher   now 4: Leaking water, Strange noises, Wont drain, Wont spin
+               derived from dishwasher_symptom 7: Won't fill with water, Won't drain / standing water inside, Won't clean dishes properly, Leaking water, Won't start / no lights on the panel, Making strange noises, Leaving residue or film on dishes
+  refrigerator now 4: Leaking water, Strange noises, Wont drain, Wont spin
+               derived from refrigerator_symptom 6: Not cooling / food is warm, Freezer frosting up / ice build-up, Leaking water, Making strange noises, Ice maker or water dispenser not working, Burning smell
+  microwave    now 4: Leaking water, Strange noises, Wont drain, Wont spin
+               derived from microwave_symptom 6: Runs but won’t heat, Won’t turn on / display is dead, Turntable won’t turn, Sparks, arcing or burning smell, Making strange noises, Keypad or door latch not working
+
+A tile that is an option also answers its question when tapped: the card does not ask it again.
