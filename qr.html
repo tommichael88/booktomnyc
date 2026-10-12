@@ -2233,6 +2233,22 @@ body.modal-active{overflow:hidden}
             };
         }
 
+        // resolveChargeableAnswers -- LOGIC. The answers a quote may PRICE while the customer has not yet affirmed what the words detected (#161, T174): the answers as they would
+        // stand if only the CHARGEABLE tags (chosen and inherent, never merely detected) had spoken. The gate says a detected tag is chargeable only once it is affirmed or the
+        // quote is confident without asking; the answers a detected tag synthesizes carry their own modifiers, and they were computed before the gate from every tag, so the gate
+        // gated only the tag's direct effect, the small part. This takes back the answers whose synthesizing tag is not chargeable (a module that is still the tag's own value,
+        // by synthesizeAnswersFromTags's own rule: a customer's override is theirs and prices) and lets the chargeable tags synthesize on top of what is left. It prices; it does
+        // not ask: the answer stays on the session, the question stays retired (P-INTAKE-INFER), and once the tag is affirmed the answer prices as before. Pure; one definition for
+        // both entry paths (computeQuoteFromState and orch_compute_quote, R-CLIENT-CONVERGE, R-INVARIANT-PROVENANCE: the price is traceable to the tags the customer affirmed).
+        function resolveChargeableAnswers(answers, synthesizedModules, chargeableTagIds, DB) {
+            const smartTags = DB.smart_tags || {};
+            const explicit = Object.assign({}, answers || {});
+            for (const [moduleKey, tid] of Object.entries(synthesizedModules || {})) {
+                if (explicit[moduleKey] === smartTags[tid]?.answers?.[moduleKey]) delete explicit[moduleKey];
+            }
+            return synthesizeAnswersFromTags(chargeableTagIds, explicit, {}, DB).answers;
+        }
+
         function _isModVisible(mod, answers, allMods) {
             if (mod.depends_on) {
                 for (const [k, v] of Object.entries(mod.depends_on)) {
@@ -3626,13 +3642,16 @@ body.modal-active{overflow:hidden}
             // Gate: if not affirmed and not already confident, exclude detTagIds from price
             const detTagsChargeable = state._tagsAffirmed || fullQuote.meetsConfidenceBar;
             const activeTagIds = resolveSessionTagIds(state, !!detTagsChargeable);
+            // The gate covers what an unaffirmed tag DERIVES as well as what it is (#161, T174): the answers it synthesized do not price until it is affirmed or the bar is met.
+            // When the gate is open the chargeable set IS the full set, and the function returns the answers as they stand, so no condition is written here.
+            const pricedAnswers = resolveChargeableAnswers(state.answers, state._tagSynthesizedModules, activeTagIds, DB);
 
             // Final quote with correctly gated tag set
             const u = detTagsChargeable ? fullQuote : computeUnifiedQuote({
                 svc,
                 dynDef,
                 activeTagIds,
-                answers: state.answers || {},
+                answers: pricedAnswers,
                 qty: state.qty || 1,
                 intentKeyword: state.intent?.key || null,
                 entry: resolveSessionEntry(state),
@@ -4720,8 +4739,13 @@ body.modal-active{overflow:hidden}
             // (computeQuoteFromState: `_tagsAffirmed || meetsConfidenceBar`), applied here so a detected tag's direct effect is gated identically on every entry
             // path (R-CLIENT-CONVERGE). Customer-chosen tags are always chargeable.
             if (!(context.detectedTagIds || []).length || context.tagsAffirmed || full.meetsConfidenceBar) return full;
+            // ... and so is what they DERIVE (#161, T174): the answers a detected tag synthesized do not price either, on this path as on the state path
+            // (resolveChargeableAnswers, one definition). The record of what was synthesized is the one executeWorkflow made: the same pure function over the same inputs.
+            const chargeableTagIds = closeTagsOverRequires(context.manuallyToggledTagIds || [], context.negatedTagIds, db);
+            const synthesizedByAll = synthesizeAnswersFromTags(activeTagIds || [], context.answers || {}, {}, db).synthesized;
             const gated = computeUnifiedQuote(Object.assign({}, common, {
-                activeTagIds: closeTagsOverRequires(context.manuallyToggledTagIds || [], context.negatedTagIds, db)
+                activeTagIds: chargeableTagIds,
+                answers: resolveChargeableAnswers(common.answers, synthesizedByAll, chargeableTagIds, db)
             }));
             // The gate decides what is CHARGED, not how confident the request is: the confidence the customer's whole evidence earns is the full set's, as the
             // state path reports it (computeQuoteFromState returns fullQuote.meetsConfidenceBar next to the gated price). Without this the gated quote answered

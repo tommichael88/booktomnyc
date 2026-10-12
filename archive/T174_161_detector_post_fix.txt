@@ -1,0 +1,29 @@
+
+=== 1-3. the real tree: the gate, the affirmation, the question stays retired ===
+  (state path: 1108 (service, detected tag) pairs, 1060 unaffirmed with the bar unmet, 48 confident without asking; orchestrator: 1097 pairs, 1049 gated; free text: 176 phrases, 34 land on the tag-affirmation card)
+  ✓ state path: no unaffirmed detected tag changes the quote (labor, minutes, checkout state, fee breakdown) -- violations: 0
+  ✓ orchestrator path (typed entries, whose gate closes): no unaffirmed detected tag changes the quote -- violations: 0
+  ✓ free text: no phrase that lands on the tag-affirmation card is priced by the tags it asks about -- violations: 0
+  ✓ affirming a detected tag prices exactly what choosing it would, on the state path (1108 pairs)
+  ✓ and on the orchestrator path (1097 pairs)
+  ✓ the gate prices, it does not ask: every answer a detected tag synthesizes is still on the session (821 answers), so the question stays retired
+
+=== 4. one definition ===
+  ✓ resolveChargeableAnswers is defined exactly once
+  ✓ and is what both gated sites call (computeQuoteFromState and orch_compute_quote): 2 call sites
+  ✓ no second copy of the rule is written in a gated site (no filtering of _tagSynthesizedModules by hand)
+
+=== 5. non-vacuity: mutants of the page's own source fail the check that guards them ===
+  ✓ mutant "state path priced from every answer" changed the source (pricing_engine.js)
+  ✓   -> the state-path gate check goes red (566 violations)
+  ✓ mutant "orchestrator path priced from every answer" changed the source (orchestrator_engine.js)
+  ✓   -> the orchestrator gate check goes red (557 violations)
+  ✓ mutant "the gate also deletes the answers (the re-ask option)" changed the source (pricing_engine.js)
+  ✓   -> the "question stays retired" check goes red (821 answers lost)
+  ✓ mutant "a gate that never opens" changed the source (pricing_engine.js)
+  ✓   -> the affirmation check goes red (594 pairs no longer price once affirmed)
+  ✓ mutant "the helper turned into a no-op" changed the source (pricing_engine.js)
+  ✓   -> both gate checks go red (566 state, 557 orchestrator)
+
+[unaffirmed tag cannot price] 19 passed, 0 failed
+
