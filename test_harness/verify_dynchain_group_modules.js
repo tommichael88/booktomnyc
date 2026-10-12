@@ -2,14 +2,14 @@
 /**
  * verify_dynchain_group_modules.js -- the data contract behind R-DOMAIN-DYNCHAIN's remedy.
  *
- * T128 (door_issue), T144 (window_ac_issue) and T149 (garbage_disposal_issue, plumbing_fixture_issue, water_line_issue) each replaced the generic shared `symptom` module in a
+ * T128 (door_issue), T144 (window_ac_issue), T149 (garbage_disposal_issue, plumbing_fixture_issue, water_line_issue) and T174 (general_symptom) each replaced the generic shared `symptom` module in a
  * component_first group's fallback chain with a module that "copies every applicable generic answer with IDENTICAL effects". Each carries a `_note` making that claim. A claim in a
  * note is not evidence, so this test holds every derived module to an explicit REGISTRY of what it drops, adds and relabels, and checks the claim answer by answer:
  *   - every generic answer is retained deep-equal, or relabelled with every other field equal, or dropped -- and only as declared (no silent drop, no silent edit);
- *   - every added answer carries NO effect (no tags, no complexity/checkout override, no modifier) so it cannot move a price;
+ *   - every added answer carries NO effect (no tags, no complexity/checkout override, no modifier) so it cannot move a price -- except an answer whose effect the registry declares to the field (addedEffects, T174);
  *   - the question names a different thing than the generic's ("the appliance"), and the module's structural fields equal the generic's;
  *   - BEHAVIOR: the real route for every dynamic entry that uses a derived module asks that module first and still prices.
- * The audit is a pure function and is proven able to fail (three mutants) before it is trusted.
+ * The audit is a pure function and is proven able to fail (five mutants) before it is trusted.
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -25,7 +25,12 @@ const REGISTRY = {
   garbage_disposal_issue: { dropped: [], added: [], relabeled: {}, nounMustNotBe: 'appliance' },
   plumbing_fixture_issue: { dropped: [WONT_SPIN], added: [], relabeled: {}, nounMustNotBe: 'appliance' },
   water_line_issue: { dropped: [WONT_SPIN, WONT_DRAIN], added: [], relabeled: {}, nounMustNotBe: 'appliance' },
-  window_ac_issue: { dropped: [WONT_DRAIN], added: ['Not cooling properly', 'Other (describe in notes)'], relabeled: { [WONT_SPIN]: 'Won\u2019t turn on / fan won\u2019t spin' } },
+  // T174 (#199): two added answers carry an effect now, each an EXISTING modifier, declared here to the field (addedEffects): a window AC that does not cool is a diagnostic, not a firm price (the Dryer's dead machine);
+  // ice on the coil is the 90-minute blocked-passage job. Every other added answer still carries none.
+  window_ac_issue: { dropped: [WONT_DRAIN], added: ['Not cooling properly', 'Freezing up / ice on the coil', 'Other (describe in notes)'], relabeled: { [WONT_SPIN]: 'Won\u2019t turn on / fan won\u2019t spin' },
+    addedEffects: { 'Not cooling properly': { modifier_ref: 'symptom_works_intermittently', checkout_state_override: 'diagnostic' }, 'Freezing up / ice on the coil': { modifier_ref: 'symptom_won_t_drain_water_stays_inside' } } },
+  // T174 (#199): the symptom question of a fallback that does not know the appliance (the Appliances group, Other, the category-level Diagnostic): the generic's five answers that name no machine.
+  general_symptom: { dropped: [WONT_SPIN, WONT_DRAIN], added: [], relabeled: {}, nounMustNotBe: 'appliance' },
 };
 const EFFECT_FIELDS = ['modifier_ref', 'complexity_override', 'checkout_state_override'];
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -45,7 +50,11 @@ function auditDerived(mods, registry) {
     for (const [label, d] of got) {
       if (accounted.has(label)) continue;
       if (!spec.added.includes(label)) { v.push(`${name}: answer "${label}" is not generic, not relabelled and not declared added`); continue; }
-      if (EFFECT_FIELDS.some(f => d[f] != null) || (d.tags || []).length) v.push(`${name}: added answer "${label}" carries an effect (it must not move a price)`);
+      const declared = (spec.addedEffects || {})[label];
+      if (declared) {
+        const got = {}; for (const f of EFFECT_FIELDS) if (d[f] != null) got[f] = d[f];
+        if (!same(got, declared) || (d.tags || []).length) v.push(`${name}: added answer "${label}" carries ${JSON.stringify(got)}${(d.tags || []).length ? ' and tags' : ''}, declared exactly ${JSON.stringify(declared)}`);
+      } else if (EFFECT_FIELDS.some(f => d[f] != null) || (d.tags || []).length) v.push(`${name}: added answer "${label}" carries an effect (it must not move a price)`);
     }
     for (const a of spec.added) if (!got.has(a)) v.push(`${name}: declared-added answer "${a}" is absent`);
     if (m.question === gen.question) v.push(`${name}: question is still the generic's`);
@@ -55,14 +64,18 @@ function auditDerived(mods, registry) {
   return v;
 }
 
-console.log('\n=== 1. the audit can fail (three mutants) ===');
+console.log('\n=== 1. the audit can fail (five mutants) ===');
 { const c = () => JSON.parse(JSON.stringify(DB.intake_modules));
   const m1 = c(); m1.plumbing_fixture_issue.client_response.find(r => r.label === 'Leaking water').complexity_override = 'routine';
   check('MUTANT: an edited effect on a retained answer is caught', auditDerived(m1, REGISTRY).some(x => /differs from the generic answer/.test(x)));
   const m2 = c(); m2.water_line_issue.client_response = m2.water_line_issue.client_response.filter(r => r.label !== 'Leaking water');
   check('MUTANT: a silently dropped answer is caught', auditDerived(m2, REGISTRY).some(x => /silently dropped/.test(x)));
   const m3 = c(); m3.window_ac_issue.client_response.find(r => r.label === 'Other (describe in notes)').modifier_ref = 'x';
-  check('MUTANT: an added answer that carries an effect is caught', auditDerived(m3, REGISTRY).some(x => /carries an effect/.test(x))); }
+  check('MUTANT: an added answer that carries an effect is caught', auditDerived(m3, REGISTRY).some(x => /carries an effect/.test(x)));
+  const m4 = c(); m4.window_ac_issue.client_response.find(r => r.label === 'Not cooling properly').modifier_ref = 'symptom_leaking_water';
+  check('MUTANT: a declared added effect that drifts from its declaration is caught', auditDerived(m4, REGISTRY).some(x => /declared exactly/.test(x)));
+  const m5 = c(); delete m5.window_ac_issue.client_response.find(r => r.label === 'Not cooling properly').checkout_state_override;
+  check('MUTANT: a declared added effect that goes missing is caught', auditDerived(m5, REGISTRY).some(x => /declared exactly/.test(x))); }
 
 console.log('\n=== 2. the data: every derived module keeps the claim its _note makes ===');
 const violations = auditDerived(DB.intake_modules, REGISTRY);
@@ -75,10 +88,10 @@ console.log('\n=== 3. behavior: the real route asks the derived module first, an
 const sb = { DB, SERVICE_DATA: DB, window: { DB }, console }; sb.global = sb; vm.createContext(sb);
 for (const f of ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sb, { filename: f });
 const users = Object.entries(DB.dynamic_services).filter(([k, d]) => (d.intake_chain || []).some(s => Object.keys(REGISTRY).includes(s.module)));
-check(`population: ${users.length} dynamic entries use a derived module (>= 7)`, users.length >= 7);
+check(`population: ${users.length} dynamic entries use a derived module (>= 11)`, users.length >= 11);
 const bad = [];
 for (const [key, d] of users) {
-  const [cat, grp, stype] = key.split('+');
+  const parts = key.split('+'), cat = parts[0], stype = parts[parts.length - 1], grp = parts.length === 3 ? parts[1] : null; // a category-level key (category+type) names no group
   try {
     const ctx = sb.collectBookingContext_otherTile({ ui_taxonomy: { group_id: grp }, service_type: stype, uncovered_service_types: [stype] }, cat);
     const route = sb.executeWorkflow(ctx, DB);

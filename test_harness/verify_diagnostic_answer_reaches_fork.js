@@ -135,8 +135,9 @@ async function pageLeg(html, db, opts) {
   const groups = opts.noBuilder ? [] : DYN.map(k => k.split('+')).filter(p => p.length === 3 && p[2] === 'Repair' && !capable(db.dynamic_services[p.join('+')]).isStatic);
   for (const [cat, grp] of groups) {
     const key = cat + '+' + grp + '+Repair', e = db.dynamic_services[key], mk = capable(e).mods[0];
-    const diagLabel = diagOptions(mk)[0].label, plainLabel = IM[mk].client_response.find(o => o.checkout_state_override !== 'diagnostic' && !/other/i.test(o.label)).label;
-    for (const [label, wantDiag] of [[diagLabel, true], [plainLabel, false]]) {
+    const diagLabel = diagOptions(mk)[0].label, plain = IM[mk].client_response.find(o => o.checkout_state_override !== 'diagnostic' && !/other/i.test(o.label));
+    // a module whose every real answer is diagnostic (the Stove's three, #199) has no plain option to control with
+    for (const [label, wantDiag] of [[diagLabel, true]].concat(plain ? [[plain.label, false]] : [])) {
       out.builderN++;
       try {
         w.sqRestart();

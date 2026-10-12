@@ -531,7 +531,30 @@ def compile_formula_index(db: dict) -> Dict[str, dict]:
 # T170 (PENDING_DECISIONS #180): the hand-authored picker vocabulary of a group's routing_archetypes entry. The compiler owns the entry (it is rebuilt every run) but not these: they are the customer's own
 # words for the group's symptoms and for the services a customer who knows what they need asks for, and the SSOT is the one place they are written. Carried through unchanged, or the next compile
 # would drop the picker back to humanised ids ("Wont power on"). Everything else in the entry is derived or preserved exactly as before.
-AUTHORED_ARCHETYPE_KEYS = ("ask_action_first", "symptom_prompt", "symptom_tiles", "known_need_prompt", "known_need_tiles")
+AUTHORED_ARCHETYPE_KEYS = ("ask_action_first", "symptom_prompt", "symptom_tiles", "known_need_prompt", "known_need_tiles", "symptom_module")
+
+
+def symptom_tile_options(db: dict, module_key: str) -> List[dict]:
+    """The options of a group's declared symptom module that are offered as picker tiles (T174, PENDING_DECISIONS #199). An option marked `tile: false` (an 'Other (describe in notes)') is
+    still a question option -- it is only not a tile, because the picker already ends in 'Something else'."""
+    mod = (db.get("intake_modules", {}) or {}).get(module_key) or {}
+    return [r for r in (mod.get("client_response", []) or []) if r.get("label") and r.get("tile") is not False]
+
+
+def symptom_tile_id(label: str) -> str:
+    """The compiled id of a tile derived from an option: 'sym.' + the label's words (apostrophes dropped). Ids are internal handles, never shown; the customer's words are the option's label."""
+    words = re.sub(r"[^a-z0-9]+", "_", label.replace("\u2019", "").replace("'", "").lower()).strip("_")
+    return "sym." + words
+
+
+def services_asking_module(db: dict, gid: str, module_key: str) -> List[str]:
+    """The services of the group (by the service's own ui_taxonomy.group_id: a group's `explicit_services` list is empty for the Dryer and the Stove although their repair services say they belong
+    there) whose intake chain asks `module_key` -- the services a tapped symptom resolves to."""
+    out = []
+    for svc in db.get("services", []) or []:
+        if (svc.get("ui_taxonomy", {}) or {}).get("group_id") == gid and module_key in flatten_intake_chain(svc.get("intake_chain", [])):
+            out.append(svc.get("id"))
+    return sorted(out)
 
 
 def build_routing_archetypes(db: dict) -> Dict[str, dict]:
@@ -659,6 +682,15 @@ def build_routing_archetypes(db: dict) -> Dict[str, dict]:
         # Actions are a much narrower, cleaner signal (real service_type
         # values, not free-form answer labels) -- no equivalent noise
         # risk, safe to keep the union.
+        # T174 (PENDING_DECISIONS #199): a SYMPTOM-FIRST group that DECLARES its symptom module (routing_archetypes[group].symptom_module) has no hand-kept list of symptoms. Its real_symptom_ids and
+        # symptom_id_to_service_ids are compiled from that module's options (the same ones the picker draws as tiles and the guided builder offers as chips), so a symptom can no longer be
+        # in one place and not another. Overrides the curated copy above for this group only.
+        declared_module = existing_entry.get("symptom_module")
+        if declared_module and existing_entry.get("routing_archetype") == "symptom_first":
+            asking = services_asking_module(db, gid, declared_module)
+            ids = [symptom_tile_id(r["label"]) for r in symptom_tile_options(db, declared_module)]
+            merged_symptoms = set(ids)
+            merged_symptom_to_skus = {i: set(asking) for i in ids}
         merged_actions = actions | existing_actions
 
         merged_gaps = sorted(set(KNOWN_UNRESOLVED_COMPONENTS.get(gid, [])) | set(existing_entry.get("real_gaps", [])))
@@ -1181,6 +1213,51 @@ def _validate_dynamic_service_keys(db: dict) -> List[str]:
     return errors
 
 
+def _validate_declared_symptom_module(db: dict, gid: str, ra: dict) -> List[str]:
+    """T174 (PENDING_DECISIONS #199): a group's declared symptom module is a real module that something of the group asks (one of its services, or its Repair/Diagnostic fallbacks), and the picker's
+    tiles and the guided builder's chips for the group are its options. A SYMPTOM-FIRST group OWNS the module it declares: it offers at least one tile, its compiled symptom ids are that module's,
+    one of its own services asks it (a tapped tile lands there), no other group declares it and nothing outside the group asks it (so another appliance can never be asked this appliance's question).
+    A group that is not symptom-first (a parent, a catch-all, a component-first group) only USES a module for its builder chips; it may share a general one."""
+    errors: List[str] = []
+    mod_key = ra.get("symptom_module")
+    if mod_key is None:
+        return errors
+    modules = db.get("intake_modules", {}) or {}
+    if mod_key not in modules:
+        errors.append(f"routing_archetypes['{gid}'].symptom_module '{mod_key}' is not an intake module")
+        return errors
+    asked_by_group = services_asking_module(db, gid, mod_key) or [
+        k for k, d in (db.get("dynamic_services", {}) or {}).items()
+        if parse_dynamic_key(k)["group"] == gid and mod_key in flatten_intake_chain(d.get("intake_chain", []))
+    ]
+    if not asked_by_group:
+        errors.append(f"routing_archetypes['{gid}'].symptom_module '{mod_key}' is asked by nothing of the group (no service, no Repair/Diagnostic fallback)")
+    if ra.get("routing_archetype") != "symptom_first":
+        return errors
+    if not services_asking_module(db, gid, mod_key):
+        errors.append(f"routing_archetypes['{gid}'].symptom_module '{mod_key}' is asked by no service of the group, so a tapped tile would land nowhere")
+    tiles = symptom_tile_options(db, mod_key)
+    if not tiles:
+        errors.append(f"routing_archetypes['{gid}'].symptom_module '{mod_key}' offers no tile")
+    ids = [symptom_tile_id(r["label"]) for r in tiles]
+    if len(set(ids)) != len(ids):
+        errors.append(f"routing_archetypes['{gid}'].symptom_module '{mod_key}' has two options whose tile ids collide")
+    if set(ra.get("real_symptom_ids", []) or []) != set(ids):
+        errors.append(f"routing_archetypes['{gid}'].real_symptom_ids is not the compiled tile ids of '{mod_key}'")
+    for other, ora in (db.get("routing_archetypes", {}) or {}).items():
+        if other != gid and ora.get("symptom_module") == mod_key:
+            errors.append(f"routing_archetypes['{gid}'] owns symptom module '{mod_key}' but ['{other}'] declares it too")
+    for svc in db.get("services", []):
+        sg = (svc.get("ui_taxonomy", {}) or {}).get("group_id")
+        if sg != gid and mod_key in flatten_intake_chain(svc.get("intake_chain", [])):
+            errors.append(f"service '{svc.get('id')}' (group '{sg}') asks '{mod_key}', the symptom module group '{gid}' owns")
+    for key, dyn in (db.get("dynamic_services", {}) or {}).items():
+        dg = parse_dynamic_key(key)["group"]
+        if dg != gid and mod_key in flatten_intake_chain(dyn.get("intake_chain", [])):
+            errors.append(f"dynamic_services['{key}'] asks '{mod_key}', the symptom module group '{gid}' owns")
+    return errors
+
+
 def _validate_archetypes(db: dict) -> List[str]:
     errors: List[str] = []
     group_ids = {g.get("id") for g in db.get("group", []) if g.get("id")}
@@ -1199,6 +1276,7 @@ def _validate_archetypes(db: dict) -> List[str]:
                 if tg not in tags:
                     errors.append(f"routing_archetypes['{gid}'].symptom_tiles[{i}].tags names '{tg}', which is not a smart tag")
         group = next((g for g in db.get("group", []) if g.get("id") == gid), {}) or {}
+        errors.extend(_validate_declared_symptom_module(db, gid, ra))
         for i, k in enumerate(ra.get("known_need_tiles", []) or []):
             if k.get("service_id") not in (group.get("explicit_services", []) or []):
                 errors.append(f"routing_archetypes['{gid}'].known_need_tiles[{i}].service_id '{k.get('service_id')}' is not an explicit service of the group")
@@ -1343,7 +1421,8 @@ def compile_v10(input_file: Path, output_file: Path) -> int:
     }
 
     # Multi-category structural validation
-    structural = validate_structural(db)
+    # Validated against the archetypes JUST COMPILED, not the ones the input carried: a declared symptom module's compiled ids (#199) are checked against the module they come from.
+    structural = validate_structural(dict(db, routing_archetypes=routing_archetypes))
     flat_errors = [e for errs in structural.values() for e in errs]
     output["_validation"] = {
         "errors": flat_errors,

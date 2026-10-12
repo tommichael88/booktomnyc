@@ -14,6 +14,14 @@
  * (washer_repair, dishwasher_repair, microwave_repair,
  * repair_appliances) for exactly this purpose -- no new module
  * needed, this batch is a pure, direct substitution.
+ *
+ * T174 (PENDING_DECISIONS #199): the shared `symptom` was the washer's, so each
+ * appliance group now DECLARES its own symptom module
+ * (routing_archetypes[group].symptom_module) and its fallbacks and services ask
+ * that. The claim this file holds is unchanged -- a symptom_first appliance
+ * fallback asks a real symptom question, never surface_type -- and is now stated
+ * against the declaration instead of the washer's module name.
+ * verify_group_symptoms_one_derivation.js holds the declaration itself.
  */
 const fs = require('fs');
 const path = require('path');
@@ -38,10 +46,11 @@ const targets = [
     'minor_home_repairs+minor_home_repairs_appliances_window_ac+Repair',
 ];
 
-console.log('=== All 8 appliance +Repair fallbacks now ask symptom, not surface_type ===');
+console.log('=== All 8 appliance +Repair fallbacks ask their group\'s symptom question, not surface_type ===');
 for (const key of targets) {
     const chain = DB.dynamic_services[key].intake_chain.map(s => s.module);
-    check(`${key} -> ['symptom']`, JSON.stringify(chain) === JSON.stringify(['symptom']));
+    const group = key.split('+')[1], declared = DB.routing_archetypes[group] && DB.routing_archetypes[group].symptom_module;
+    check(`${key} -> ['${declared}'] (the group's declared symptom module)`, !!declared && JSON.stringify(chain) === JSON.stringify([declared]) && !chain.includes('surface_type'));
 }
 
 console.log('\n=== Regression: surface_type is not orphaned -- it remains correctly used by real surface_repair-archetype groups ===');
@@ -58,12 +67,13 @@ console.log('\n=== Regression: surface_type is not orphaned -- it remains correc
     check('surface_type still has at least one real referrer elsewhere in the catalog', stillReferenced);
 }
 
-console.log('\n=== Regression: the real, named appliance-repair services (the reference shape this batch matched) are untouched ===');
+console.log('\n=== Regression: the real, named appliance-repair services (the reference shape this batch matched) still ask their group\'s symptom question ===');
 {
-    for (const sid of ['washer_repair', 'dishwasher_repair', 'microwave_repair', 'repair_appliances']) {
+    for (const sid of ['washer_repair', 'dishwasher_repair', 'microwave_repair', 'repair_appliances', 'window_ac_repair']) {
         const svc = DB.services.find(s => s.id === sid);
-        check(`${sid} still includes symptom in its own chain (unaffected by this batch)`,
-            svc.intake_chain.some(s => s.module === 'symptom'));
+        const declared = DB.routing_archetypes[svc.ui_taxonomy.group_id].symptom_module;
+        check(`${sid} still asks its group's symptom module (${declared}) in its own chain (unaffected by this batch)`,
+            !!declared && svc.intake_chain.some(s => s.module === declared));
     }
 }
 

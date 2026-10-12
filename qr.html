@@ -3597,6 +3597,40 @@ body.modal-active{overflow:hidden}
             return { found: true, base: dynDef.financial_engine?.base_price, suggestedTagIds };
         }
 
+        // resolveGroupSymptoms -- LOGIC. The symptom question a group's repair asks, as the customer is offered it: ONE derivation read by the picker (its tiles) and by the guided builder (its condition chips), so a
+        // symptom is never offered in one place and missing from the other (#199, T174; closes D-C11-3 for the groups that declare). The group NAMES the module (routing_archetypes[group].symptom_module); the module's
+        // own options are the symptoms, in its order and in its words. An option marked `tile: false` (an 'Other (describe in notes)') stays an answer to the question but is not offered as a tile or a chip (the picker ends in
+        // 'Something else'; the builder has no free-text chip). `serviceIds` are the group's services whose chain asks that module: where a tapped symptom goes, and whose card the tap pre-answers. Pure. null when the group
+        // declares no module (the builder then keeps its legacy discovery, bldGetConditionChoices, until it declares one).
+        function resolveGroupSymptoms(groupId, db) {
+            const moduleKey = db?.routing_archetypes?.[groupId]?.symptom_module;
+            const mod = moduleKey ? db.intake_modules?.[moduleKey] : null;
+            if (!mod || !Array.isArray(mod.client_response)) return null;
+            const asksIt = (/** @type {any} */ svc) => (svc.intake_chain || []).some(/** @type {any} */ step => step && step.module === moduleKey);
+            return {
+                moduleKey,
+                question: mod.question,
+                options: mod.client_response.map(/** @type {any} */ r => r.label),
+                offered: mod.client_response.filter(/** @type {any} */ r => r.tile !== false).map(/** @type {any} */ r => r.label),
+                serviceIds: (db.services || []).filter(/** @type {any} */ svc => svc.ui_taxonomy?.group_id === groupId && asksIt(svc)).map(/** @type {any} */ svc => svc.id),
+            };
+        }
+
+        // resolveTappedAnswers -- LOGIC. What a tapped symptom ALREADY ANSWERS on the service it lands on (#199, T174; the DEFECT-STATE-IGNORANCE instance #192 for these groups). A tile is an option of the question the
+        // service asks, so the tap is the customer's answer to it and the card must not ask it again. Only answers the service really asks (its chain names the module, the module has an option of that exact label) are
+        // carried; anything else answers nothing. Pure: returns {moduleKey: label}.
+        function resolveTappedAnswers(svc, tapped, db) {
+            const out = {};
+            const given = tapped && tapped.answers;
+            if (!given || !svc) return out;
+            const asked = new Set((svc.intake_chain || []).map(/** @type {any} */ step => step && step.module));
+            for (const [moduleKey, label] of Object.entries(given)) {
+                const mod = db?.intake_modules?.[moduleKey];
+                if (asked.has(moduleKey) && (mod?.client_response || []).some(/** @type {any} */ r => r.label === label)) out[moduleKey] = label;
+            }
+            return out;
+        }
+
         // resolveBuilderConditionAnswer -- LOGIC. The condition the customer chose in the guided builder, as the intake answer it IS (#204, T174). The builder offers the labels of a condition
         // module's own options as its condition chips (bldGetConditionChoices, lower-cased), and the dynamic service that prices the job asks that same module, so a chosen chip IS the
         // customer's answer to that question and prices as one: the option's modifier, its checkout state (a diagnostic answer is a diagnostic quote). Before this the choice reached the price
@@ -5279,6 +5313,8 @@ body.modal-active{overflow:hidden}
                 // (routing_archetypes[group].symptom_tiles[].tags). Tapping is the customer choosing, not the NLP guessing, so they arrive as the tags the customer toggled -- the same
                 // field the guided builder fills -- and the SSOT's own tag `answers` retire the questions they answer. Absent for a plain service tap.
                 manuallyToggledTagIds: (tapped && Array.isArray(tapped.tagIds)) ? tapped.tagIds.slice() : [],
+                // A symptom tile IS an option of the question the service asks (#199): the tap answers it, and the card does not ask it again (resolveTappedAnswers keeps only what this service really asks).
+                answers: resolveTappedAnswers(svc, tapped, DB),
             });
         }
 
@@ -5639,7 +5675,7 @@ body.modal-active{overflow:hidden}
             chain.forEach(step => {
                 const mod = step.moduleKey || step.module;
                 if (COMPONENT_MODULE_NAMES.has(mod)) c++;
-                else if (SYMPTOM_MODULE_NAMES.has(mod)) s++;
+                else if (SYMPTOM_MODULE_NAMES.has(mod) || mod === groupData.symptom_module) s++; // the group's DECLARED module is a symptom module by declaration (#199): the literal set above is the legacy, shrinking definition
             });
             if (c + s < 2) return null; // genuinely not enough real signal in this service's own chain to compare
 
@@ -8130,9 +8166,14 @@ body.modal-active{overflow:hidden}
             // T170 (PENDING_DECISIONS #180): a group whose symptoms are AUTHORED (routing_archetypes[group].symptom_tiles: id, the customer's own words, and the smart tags those words stand for) renders those,
             // in that order, in those words -- the humanised id ("Wont power on") is only the fallback for a group that has not authored them yet (#181). The prompt is the archetype's own too.
             const authoredTiles = (isSymptomFirst && Array.isArray(ra.symptom_tiles) && ra.symptom_tiles.length) ? ra.symptom_tiles : null;
-            const tileEntries = authoredTiles ?
-                authoredTiles.map(/** @param {any} t */ t => ({ id: t.id, label: t.label, tagIds: Array.isArray(t.tags) ? t.tags : [] })) :
-                ids.map(rawId => ({ id: rawId, label: humanizeComponentSymptomId(rawId), tagIds: [] }));
+            // #199 (T174): a group that DECLARES its symptom module (routing_archetypes[group].symptom_module) draws that module's own options as its tiles, in its order and its words, and a tap ANSWERS the
+            // question (resolveGroupSymptoms is the one derivation the guided builder's chips read too). The humanised id is now only the fallback for a group that declares nothing.
+            const declaredSymptoms = isSymptomFirst ? resolveGroupSymptoms(group.id, DB) : null;
+            const tileEntries = declaredSymptoms ?
+                declaredSymptoms.offered.map(/** @param {any} label */ label => ({ id: label, label, tagIds: [], answers: { [declaredSymptoms.moduleKey]: label }, serviceIds: declaredSymptoms.serviceIds })) :
+                authoredTiles ?
+                authoredTiles.map(/** @param {any} t */ t => ({ id: t.id, label: t.label, tagIds: Array.isArray(t.tags) ? t.tags : [], answers: undefined, serviceIds: mapping?.[t.id] || [] })) :
+                ids.map(/** @param {any} rawId */ rawId => ({ id: rawId, label: humanizeComponentSymptomId(rawId), tagIds: [], answers: undefined, serviceIds: mapping?.[rawId] || [] }));
             const prompt = create('div', {
                 class: 'picker-prompt',
                 text: authoredTiles && ra.symptom_prompt ? ra.symptom_prompt : (isComponentFirst ? 'Which part?' : "What's happening?"),
@@ -8148,7 +8189,7 @@ body.modal-active{overflow:hidden}
                 tile.tabIndex = 0;
                 tile.role = 'button';
                 tile.innerHTML = `<span class="tile-name">${escapeHtml(label)}</span>`;
-                const handler = () => resolveComponentSymptomTap(mapping?.[rawId] || [], group, category_id, chosenAction, { tagIds: entry.tagIds });
+                const handler = () => resolveComponentSymptomTap(entry.serviceIds, group, category_id, chosenAction, { tagIds: entry.tagIds, answers: entry.answers });
                 tile.addEventListener('click', handler);
                 tile.addEventListener('keydown', e => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -9234,6 +9275,10 @@ body.modal-active{overflow:hidden}
         }
 
         function bldGetConditionChoices(action, groupId) {
+            // A group that DECLARES its symptom module (routing_archetypes[group].symptom_module, #199) offers that module's options -- the very ones its picker draws as tiles (resolveGroupSymptoms is the one
+            // derivation). No module name is a literal here for such a group; the discovery below is the legacy path for a group that has not declared one yet (D-C11-3 stays open for those).
+            const declared = groupId ? resolveGroupSymptoms(groupId, DB) : null;
+            if (declared) return declared.offered.map(label => ({ label, icon: '🔍', value: label.toLowerCase() }));
             // Try to find a relevant intake_module for this group's services
             if (DB && groupId) {
                 // Find services in this group and check their intake_chain for symptom/issue modules

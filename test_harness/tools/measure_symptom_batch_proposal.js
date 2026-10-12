@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 /**
+ * HISTORICAL (T174): the proposal this measures was built under #199 (with the deviations the ledger lists), so the catalog already holds its modules; run against the built catalog
+ * it measures a proposal that is applied. Kept as the record of how the batch was measured before it was approved.
+ *
  * measure_symptom_batch_proposal.js -- PENDING_DECISIONS #199: what would the proposed appliance symptom modules change? A read-only measurement, not a test: it writes nothing and exits 0.
  *
  *   node test_harness/tools/measure_symptom_batch_proposal.js [proposal.json]

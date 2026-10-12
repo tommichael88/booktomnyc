@@ -990,7 +990,8 @@ logHeader('3. Domain Architecture & Compiler Output (R-DOMAIN)');
     } else if (arch === 'symptom_first') {
       const hasAnySymptom = moduleNames.some(m =>
         GENERIC_SHARED_SYMPTOM_MODULES.has(m) ||
-        GROUP_SPECIFIC_DIAGNOSTIC_MODULES.has(m)
+        GROUP_SPECIFIC_DIAGNOSTIC_MODULES.has(m) ||
+        m === routing[groupId]?.symptom_module // T174 (#199): a group's declared symptom module counts by declaration
       );
       if (!hasAnySymptom) {
         violations.push(`${key}: symptom_first group has no symptom-flavoured module (only${moduleNames.join(', ')})`);

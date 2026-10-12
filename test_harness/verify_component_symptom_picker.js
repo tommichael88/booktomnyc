@@ -313,7 +313,7 @@ function tap(t, w) {
             (w.S?.svc?.id || w.S?._svc?.id || w.S?.intent?.key) === 'dishwasher_install');
         await checkAction('minor_home_repairs_appliances_dishwasher', /fix.*repair/i);
         check('Dishwasher: Repair still shows the real symptom picker (not skipped, unlike Install)',
-            tileLabels(doc).some(l => /wont drain/i.test(l)));
+            tileLabels(doc).some(l => /won.?t drain/i.test(l))); // #199 (T174): the tiles are the dishwasher module's own options ("Won't drain / standing water inside"), no longer the humanised id "Wont drain"
 
         await checkAction('minor_home_repairs_appliances_refrigerator', /^install$/i);
         check('Refrigerator: Install resolves directly to the newly-authored refrigerator_install',

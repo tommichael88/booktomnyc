@@ -923,8 +923,9 @@ logHeader('SUITE 2 — LEGACY-REGEX (original verify_charter_rule_index.js)');
         violations.push(`${key}: component_first leads with GENERIC symptom '${firstReal}'`);
       }
     } else if (arch === 'symptom_first' && SYMPTOM_BEARING_TYPES.has(parts[parts.length - 1])) {
+      // T174 (#199): a group's DECLARED symptom module (routing_archetypes[group].symptom_module) is symptom-flavoured by declaration, read from the data, so a new appliance module is not another literal here
       const hasAnySymptom = moduleNames.some(m =>
-        GENERIC_SHARED_SYMPTOM_MODULES.has(m) || GROUP_SPECIFIC_DIAGNOSTIC_MODULES.has(m));
+        GENERIC_SHARED_SYMPTOM_MODULES.has(m) || GROUP_SPECIFIC_DIAGNOSTIC_MODULES.has(m) || m === routing[groupId]?.symptom_module);
       if (!hasAnySymptom) {
         violations.push(`${key}: symptom_first has no symptom-flavoured module (only ${moduleNames.join(', ')})`);
       }
@@ -2217,7 +2218,7 @@ if (charterHtmlContent) {
       if (f && GEN_SYMPT.has(f)) violations.push(`${key}: component_first leads with GENERIC symptom '${f}'`);
     } else if (/^(Diagnostic|Repair)$/.test(parts[parts.length - 1])) {
       // T149: a symptom is only asked about when something is WRONG; Install/Setup entries carry none by design (see the legacy copy of this rule above).
-      if (!mods.some(m => GEN_SYMPT.has(m) || GRP_SYMPT.has(m))) violations.push(`${key}: symptom_first has no symptom module`);
+      if (!mods.some(m => GEN_SYMPT.has(m) || GRP_SYMPT.has(m) || m === routing[gid]?.symptom_module)) violations.push(`${key}: symptom_first has no symptom module`); // T174 (#199): the group's declared module counts by declaration
     }
   }
   assertStructural('R-DOMAIN-DYNCHAIN', violations.length === 0,

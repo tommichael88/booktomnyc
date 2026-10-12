@@ -70,10 +70,12 @@ const FILED = [
     // asked in a named service (16):
     'angle_stop_condition', 'appliance_type', 'cable_install_item', 'computer_symptom', 'disposal_size', 'dishwasher_symptom', 'door_style_pref', 'existing_toilet_type',
     'furn_item', 'inwall_power_for_tv', 'leak_loc', 'software_install_type', 'switch_wiring', 'washer_type', 'window_ac_support',
-    // asked only in dynamic services (7; 8 until T166): found when the check was widened from the 76 named services to the 82 dynamic ones (see the header and PENDING_DECISIONS #158).
+    // asked only in dynamic services (6; 8 until T166, 7 until T174): found when the check was widened from the 76 named services to the 82 dynamic ones (see the header and PENDING_DECISIONS #158).
     // T166 delisted `electrical_item`: its option "Under\u2011cabinet light" (non-breaking hyphen) had a follow-up branch keyed with an ASCII hyphen, so the branch never opened; the key was renamed
     // in the catalog (btnyc.json, no code), the fallback now moves the job, and the list shrinks by design.
-    'appliance_item', 'cable_symptom', 'generic_tech_symptom', 'install_target', 'network_symptom', 'smart_device_symptom', 'window_ac_issue',
+    // T174 delisted `window_ac_issue` (#199): its "Other (describe in notes)" equalled "Not cooling properly" (neither carried an effect); "Not cooling properly" is now a diagnostic answer with the
+    // Dryer's dead-machine effect, so the fallback no longer equals any other answer, and the list shrinks by design.
+    'appliance_item', 'cable_symptom', 'generic_tech_symptom', 'install_target', 'network_symptom', 'smart_device_symptom',
     // T169 ADDED `brand` (asked in smart_speaker_setup): PENDING_DECISIONS #167 gave it the "Other / don't know" way out its open set lacked (leg 6b). `brand` moves nothing the engine reports, so the
     // new fallback equals every brand: the module is a retirement candidate (R-INTAKE-WIREREMOVE), filed here and in #167 by the operator's rule for this session (no removals; "extend the #158
     // list"). It leaves this list by an explicit ruling (wire it to something, or retire it), not by editing this file.

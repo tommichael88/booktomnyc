@@ -28,7 +28,7 @@ function findFn(name) {
     return '';
 }
 
-const FNS = ['makeBookingContext', 'collectBookingContext_catalog'];
+const FNS = ['makeBookingContext', 'resolveTappedAnswers', 'collectBookingContext_catalog']; // resolveTappedAnswers: what a tapped symptom already answers (#199); collectBookingContext_catalog reads it
 const sandbox = { DB, window: { DB }, console };
 sandbox.global = sandbox;
 vm.createContext(sandbox);
@@ -55,6 +55,16 @@ console.log('\n=== collectBookingContext_catalog, named directly in #33 ===');
     check('it defaults to an empty object', typeof ctx.answers === 'object' && ctx.answers !== null && Object.keys(ctx.answers).length === 0);
     check('other real fields are still correctly set (this fix did not disturb them)',
         ctx.selectedServiceId === svc.id && ctx.selectedCategoryId === svc.ui_taxonomy.category_id);
+}
+
+console.log('\n=== a tapped symptom carries its answer, and only an answer the service really asks (#199) ===');
+{
+    const svc = DB.services.find(s => s.id === 'dishwasher_repair');
+    const real = DB.intake_modules.dishwasher_symptom.client_response[0].label;
+    const ctx = sandbox.collectBookingContext_catalog(svc, svc.ui_taxonomy.category_id, { answers: { dishwasher_symptom: real } });
+    check('the tapped option is the context\'s answer to the question the service asks', ctx.answers.dishwasher_symptom === real);
+    const other = sandbox.collectBookingContext_catalog(svc, svc.ui_taxonomy.category_id, { answers: { dryer_symptom: 'Burning smell', dishwasher_symptom: 'not an option of the module' } });
+    check('an answer to a question the service does not ask, or an option the module does not have, answers nothing', Object.keys(other.answers).length === 0);
 }
 
 console.log('\n=== An explicit override still wins (Object.assign order is unaffected) ===');
