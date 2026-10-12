@@ -75,7 +75,10 @@ function walk(dir, rel = '') {
 // T174 (#202): files a script writes. Never manifest entries (see the header). Kept in step with .gitignore and with extract_modules.js by verify_file_integrity_generated_outputs.js.
 const GENERATED_ROOT_MODULES = ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js', 'UIRenderer.js', 'AppController.js', 'appReducer.js', 'store.js', 'cart_logic.js'];   // extract_modules.js writes these
 const GENERATED_OUTPUTS = ['ui_test_report.json', 'state_mutation_classification.json', 'smoke_test_result.json', 'SWEEP_RESULTS.json'];                                              // tests write these
-const isGenerated = f => GENERATED_ROOT_MODULES.includes(f) || GENERATED_OUTPUTS.includes(path.basename(f)) || /^failure_.*\.png$/.test(path.basename(f));
+// A DERIVED record is a file a test rewrites from the sources AND the repository tracks on purpose (it is read by people, not by the harness): purity_audit.json is verify_purity_audit.js's by-product of qr.html. Same rule as above
+// (T174, found committing #204: the suite rewrote it after the manifest was refreshed, and the integrity check called the rewrite "modified outside test suite"), but git-tracked, so it is not in .gitignore.
+const DERIVED_TRACKED_OUTPUTS = ['purity_audit.json'];
+const isGenerated = f => GENERATED_ROOT_MODULES.includes(f) || GENERATED_OUTPUTS.includes(path.basename(f)) || DERIVED_TRACKED_OUTPUTS.includes(path.basename(f)) || /^failure_.*\.png$/.test(path.basename(f));
 const localOnlyFlag = new Set(((process.argv.find(a => a.startsWith('--local-only=')) || '').slice('--local-only='.length)).split(',').filter(Boolean));
 const isTestName = f => /^verify_.*\.(js|py)$/.test(path.basename(f)) || /^find_.*\.py$/.test(path.basename(f));
 const isRunnerTest = f => isTestName(f) && !f.includes('/');           // only top-level tests run; retired/ keeps its tests but they are not part of the suite

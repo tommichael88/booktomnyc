@@ -24,7 +24,7 @@ let pass = 0, fail = 0;
 const check = (name, ok, detail) => { if (ok) { pass++; console.log('  ✓ ' + name); } else { fail++; console.log('  ✗ ' + name + (detail ? '\n      ' + detail : '')); } };
 const h16 = p => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex').slice(0, 16);
 
-const GENERATED_FILES = (root, th) => [path.join(root, 'ui_test_report.json'), path.join(root, 'state_mutation_classification.json'), path.join(th, 'failure_Cart_Operations.png'), path.join(th, 'failure_Guided_Builder.png'), path.join(root, 'nlp_engine.js'), path.join(root, 'UIRenderer.js')];
+const GENERATED_FILES = (root, th) => [path.join(root, 'ui_test_report.json'), path.join(root, 'state_mutation_classification.json'), path.join(th, 'failure_Cart_Operations.png'), path.join(th, 'failure_Guided_Builder.png'), path.join(th, 'purity_audit.json'), path.join(root, 'nlp_engine.js'), path.join(root, 'UIRenderer.js')];
 
 function mkRepo(toolSource) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'integrity-gen-')), th = path.join(root, 'test_harness');
@@ -45,7 +45,7 @@ const toolSrc = fs.readFileSync(TOOL, 'utf8');
 
 function writeGenerated(root, th, content) { for (const f of GENERATED_FILES(root, th)) fs.writeFileSync(f, content); }
 function removeGenerated(root, th) { for (const f of GENERATED_FILES(root, th)) try { fs.unlinkSync(f); } catch (e) { } }
-const GENERATED_NAMES = ['ui_test_report.json', 'state_mutation_classification.json', 'failure_Cart_Operations.png', 'failure_Guided_Builder.png', 'nlp_engine.js', 'UIRenderer.js'];
+const GENERATED_NAMES = ['ui_test_report.json', 'state_mutation_classification.json', 'failure_Cart_Operations.png', 'failure_Guided_Builder.png', 'purity_audit.json', 'nlp_engine.js', 'UIRenderer.js'];
 
 console.log('\n=== 1. --update never writes a generated file, and drops one an older manifest carried ===');
 { const { root, th } = mkRepo(toolSrc); writeGenerated(root, th, 'first run output\n');
@@ -108,7 +108,7 @@ console.log('\n=== 4. an operator-local entry: reported not counted when absent,
 
 console.log('\n=== 5. the real tree: no generated entry; the tool\'s lists agree with .gitignore and extract_modules.js ===');
 { const m = JSON.parse(fs.readFileSync(path.join(__dirname, 'FILE_MANIFEST.json'), 'utf8'));
-  const listed = Object.keys(m).filter(n => /^failure_.*\.png$/.test(path.basename(n)) || ['ui_test_report.json', 'state_mutation_classification.json', 'smoke_test_result.json', 'SWEEP_RESULTS.json', 'pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js', 'UIRenderer.js', 'AppController.js', 'appReducer.js', 'store.js', 'cart_logic.js'].includes(n));
+  const listed = Object.keys(m).filter(n => /^failure_.*\.png$/.test(path.basename(n)) || ['ui_test_report.json', 'state_mutation_classification.json', 'smoke_test_result.json', 'SWEEP_RESULTS.json', 'purity_audit.json', 'pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js', 'UIRenderer.js', 'AppController.js', 'appReducer.js', 'store.js', 'cart_logic.js'].includes(n));
   check('the real FILE_MANIFEST.json lists no generated file', listed.length === 0, listed.join(', '));
   const grab = name => { const mt = toolSrc.match(new RegExp('const ' + name + ' = \\[([^\\]]*)\\]')); return mt ? mt[1].split(',').map(x => x.trim().replace(/^'|'$/g, '')).filter(Boolean) : null; };
   const mods = grab('GENERATED_ROOT_MODULES'), outs = grab('GENERATED_OUTPUTS');
@@ -119,6 +119,11 @@ console.log('\n=== 5. the real tree: no generated entry; the tool\'s lists agree
   const ignored = n => gi.includes(n) || gi.includes('/' + n) || gi.includes('test_harness/' + n);
   check('every generated root module is git-ignored (root-anchored)', mods && mods.every(n => gi.includes('/' + n)), (mods || []).filter(n => !gi.includes('/' + n)).join(', '));
   check('every generated test output is git-ignored', outs && outs.every(ignored) && gi.some(l => /failure_\*\.png$/.test(l)), (outs || []).filter(n => !ignored(n)).join(', '));
+  // a DERIVED record (T174): written by a test from the sources, tracked on purpose, so it is NOT git-ignored -- but it must be tracked, and a test must write it
+  const derived = grab('DERIVED_TRACKED_OUTPUTS');
+  const tracked = require('child_process').execFileSync('git', ['ls-files'], { cwd: REPO, encoding: 'utf8' }).split('\n');
+  const writers = fs.readdirSync(__dirname).filter(f => /^verify_.*\.(js|py)$/.test(f)).filter(f => derived && derived.some(d => fs.readFileSync(path.join(__dirname, f), 'utf8').includes(d)));
+  check('every derived tracked output is tracked by git and written by a test (purity_audit.json by verify_purity_audit.js)', derived && derived.length > 0 && derived.every(d => tracked.includes('test_harness/' + d)) && writers.some(f => /verify_purity_audit/.test(f)), 'derived: ' + (derived || []).join(',') + '; writers: ' + writers.join(','));
   // the screenshots the real tests write are all covered by the failure_*.png rule
   const uiSrc = fs.readFileSync(path.join(__dirname, 'verify_ui_surfaces.js'), 'utf8');
   check('the tests that write screenshots and reports write the names the tool treats as generated', /failure_\$\{/.test(uiSrc) && /ui_test_report\.json/.test(uiSrc)); }
