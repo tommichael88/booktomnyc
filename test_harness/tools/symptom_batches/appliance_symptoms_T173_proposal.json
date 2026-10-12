@@ -1,0 +1,126 @@
+{
+  "_about": "PROPOSAL, NOT APPLIED (PENDING_DECISIONS #199; T173 follow-up, 2026-10-12 NY). The operator's ruling of 01:43 NY: 'approve the shape, propose the specifics ... the wording and fee anchors are what the customer reads and pays: propose them as a batch for my approval, don't author them unasked. Same pattern as the 11 synonyms.' Nothing here is read by the engine or by any test, and nothing is in btnyc.json. node test_harness/tools/measure_symptom_batch_proposal.js applies this file IN MEMORY to a copy of the catalog and reports every option's quote (before and after), the picker tiles it would derive, and the data-contract check (red now, green after). Approval is a ssot_patch.js 'set' of the modules, the chain repoints and the tile rule, then the golden-master attribution, the render differential, the typed-phrase corpus and the contract test.",
+  "_rules_the_proposals_follow": [
+    "NO NEW FEE ANCHOR. Every option takes an existing symptom_* modifier (fee 0; minutes 45, 90 or 120) or none, exactly as dryer_symptom, stove_symptom and dishwasher_symptom already do. A price is then the service's own base (Refrigerator, Microwave, Window AC: $70 hourly) plus the modifier's minutes at the tier rate, i.e. the engine's existing arithmetic; no number below is new. The measure tool prints each resulting quote.",
+    "An option is mapped to a modifier by EFFORT, the way the Dryer's and the Stove's are (Dryer 'Runs constantly' takes the 45-minute noise modifier; 'Won't power on' the 120-minute intermittent one): 45 = a simple, visible fault; 90 = a drain or a blocked passage; 120 = a fault that needs diagnosing. The mapping is bench knowledge and is the part a technician should read (the same status as #183 for the computer parts).",
+    "Where the washer's list already says the right thing for the appliance (Leaking water, Making strange noises, Burning smell), the option is copied unchanged: same label, tags, modifier and overrides. 'mirrors' names the existing option each new one is modelled on.",
+    "Wording is the customer's, short, and has no appliance word the question already says. The question carries the appliance ('What's the issue with the refrigerator?', as 'What's the issue with the dishwasher?' does).",
+    "A 'general' module names no appliance's symptoms. It is the washer module's five generic options, unchanged, so it adds no new wording: it exists so a fallback that does not know the appliance (the Appliances group, Other, the category-level Diagnostic) stops asking a washer's question.",
+    "The picker's tiles are derived from the group's service's symptom module: a tile is an option (label and answer), so a tap answers the question and the card does not ask it again (the DEFECT-STATE-IGNORANCE instance #192 for these groups). 'tile: false' on an option keeps it out of the picker (the 'Other' options: the picker already ends in 'Something else')."
+  ],
+  "owners": {
+    "symptom": "washer",
+    "dishwasher_symptom": "dishwasher",
+    "dryer_symptom": "dryer",
+    "stove_symptom": "stove_range",
+    "refrigerator_symptom": "refrigerator",
+    "microwave_symptom": "microwave",
+    "window_ac_symptom": "window_ac",
+    "general_symptom": "*"
+  },
+  "group_of_owner": {
+    "washer": "minor_home_repairs_appliances_washer",
+    "dishwasher": "minor_home_repairs_appliances_dishwasher",
+    "dryer": "minor_home_repairs_appliances_dryer",
+    "stove_range": "minor_home_repairs_appliances_stove_range",
+    "refrigerator": "minor_home_repairs_appliances_refrigerator",
+    "microwave": "minor_home_repairs_appliances_microwave",
+    "window_ac": "minor_home_repairs_appliances_window_ac"
+  },
+  "modules": {
+    "refrigerator_symptom": {
+      "question": "What’s the issue with the refrigerator?",
+      "options": [
+        { "label": "Not cooling / food is warm", "tags": [], "modifier_ref": "symptom_works_intermittently", "checkout_state_override": "diagnostic", "mirrors": "dryer_symptom: Won't power on (same modifier, same override)", "why": "A refrigerator that does not cool has several causes (compressor, fan, thermostat, seals); the registered diagnostic is the honest path, as for the Dryer's dead machine." },
+        { "label": "Freezer frosting up / ice build-up", "tags": [], "modifier_ref": "symptom_won_t_drain_water_stays_inside", "mirrors": "symptom: Won't drain (water stays inside) -- the modifier only", "why": "The usual cause is a blocked defrost drain: the same job as a blocked drain, 90 minutes." },
+        { "label": "Leaking water", "tags": ["#water_hazard", "#part_order_likely"], "complexity_override": "specialized", "modifier_ref": "symptom_leaking_water", "checkout_state_override": "diagnostic", "mirrors": "symptom: Leaking water (copied unchanged)", "why": "The washer's option already fits." },
+        { "label": "Making strange noises", "tags": [], "complexity_override": "routine", "modifier_ref": "symptom_making_strange_noises", "mirrors": "symptom: Making strange noises (copied unchanged)", "why": "The washer's option already fits." },
+        { "label": "Ice maker or water dispenser not working", "tags": [], "complexity_override": "routine", "modifier_ref": "symptom_won_t_spin_no_movement", "mirrors": "dishwasher_symptom: Won't fill with water (the 45-minute modifier)", "why": "A supply or valve fault on a visible part; the Dishwasher's equivalent already takes this modifier." },
+        { "label": "Burning smell", "tags": ["#emergency"], "modifier_ref": "symptom_burning_smell", "checkout_state_override": "diagnostic", "mirrors": "symptom: Burning smell (copied unchanged)", "why": "The washer's option already fits." },
+        { "label": "Other (describe in notes)", "tags": [], "complexity_override": "routine", "tile": false, "mirrors": "dishwasher_symptom: Other (describe in notes)", "why": "As the Dishwasher's: no fee." }
+      ]
+    },
+    "microwave_symptom": {
+      "question": "What’s the issue with the microwave?",
+      "options": [
+        { "label": "Runs but won’t heat", "tags": [], "modifier_ref": "symptom_works_intermittently", "checkout_state_override": "diagnostic", "mirrors": "dryer_symptom: Won't power on (same modifier, same override)", "why": "Several causes (the high-voltage parts, the door switches); needs diagnosing." },
+        { "label": "Won’t turn on / display is dead", "tags": [], "modifier_ref": "symptom_works_intermittently", "checkout_state_override": "diagnostic", "mirrors": "dryer_symptom: Won't power on", "why": "As above." },
+        { "label": "Turntable won’t turn", "tags": [], "complexity_override": "routine", "modifier_ref": "symptom_won_t_spin_no_movement", "mirrors": "symptom: Won't spin / no movement (the same words, the same modifier)", "why": "The washer's 'Won't spin' is the one option of its list that is exactly a microwave's turntable." },
+        { "label": "Sparks, arcing or burning smell", "tags": ["#emergency"], "modifier_ref": "symptom_burning_smell", "checkout_state_override": "diagnostic", "mirrors": "symptom: Burning smell", "why": "Safety first, as the washer's option." },
+        { "label": "Making strange noises", "tags": [], "complexity_override": "routine", "modifier_ref": "symptom_making_strange_noises", "mirrors": "symptom: Making strange noises (copied unchanged)", "why": "The washer's option already fits." },
+        { "label": "Keypad or door latch not working", "tags": [], "complexity_override": "routine", "modifier_ref": "symptom_won_t_spin_no_movement", "mirrors": "dishwasher_symptom: Won't start / no lights on the panel (the 45-minute modifier)", "why": "A visible, replaceable part." },
+        { "label": "Other (describe in notes)", "tags": [], "complexity_override": "routine", "tile": false, "mirrors": "dishwasher_symptom: Other (describe in notes)", "why": "As the Dishwasher's: no fee." }
+      ]
+    },
+    "window_ac_symptom": {
+      "question": "What’s the issue with the window air conditioner?",
+      "options": [
+        { "label": "Not cooling", "tags": [], "modifier_ref": "symptom_works_intermittently", "checkout_state_override": "diagnostic", "mirrors": "dryer_symptom: Won't power on (same modifier, same override)", "why": "Several causes (refrigerant, fan, thermostat, a dirty coil); needs diagnosing." },
+        { "label": "Won’t turn on", "tags": [], "modifier_ref": "symptom_works_intermittently", "checkout_state_override": "diagnostic", "mirrors": "dryer_symptom: Won't power on", "why": "As above." },
+        { "label": "Leaking water inside", "tags": ["#water_hazard", "#part_order_likely"], "complexity_override": "specialized", "modifier_ref": "symptom_leaking_water", "checkout_state_override": "diagnostic", "mirrors": "symptom: Leaking water", "why": "The washer's option fits, with 'inside' to separate it from normal outdoor drip." },
+        { "label": "Freezing up / ice on the coil", "tags": [], "modifier_ref": "symptom_won_t_drain_water_stays_inside", "mirrors": "symptom: Won't drain -- the modifier only", "why": "A blocked drain or airflow; 90 minutes." },
+        { "label": "Making strange noises", "tags": [], "complexity_override": "routine", "modifier_ref": "symptom_making_strange_noises", "mirrors": "symptom: Making strange noises (copied unchanged)", "why": "The washer's option already fits." },
+        { "label": "Burning smell", "tags": ["#emergency"], "modifier_ref": "symptom_burning_smell", "checkout_state_override": "diagnostic", "mirrors": "symptom: Burning smell (copied unchanged)", "why": "The washer's option already fits." },
+        { "label": "Other (describe in notes)", "tags": [], "complexity_override": "routine", "tile": false, "mirrors": "dishwasher_symptom: Other (describe in notes)", "why": "As the Dishwasher's: no fee." }
+      ]
+    },
+    "general_symptom": {
+      "question": "What’s the issue?",
+      "options": [
+        { "label": "Leaking water", "copy_of": "symptom", "mirrors": "symptom: Leaking water (copied unchanged)" },
+        { "label": "Making strange noises", "copy_of": "symptom", "mirrors": "symptom: Making strange noises (copied unchanged)" },
+        { "label": "Burning smell", "copy_of": "symptom", "mirrors": "symptom: Burning smell (copied unchanged)" },
+        { "label": "Works intermittently", "copy_of": "symptom", "mirrors": "symptom: Works intermittently (copied unchanged)" },
+        { "label": "Trips breaker immediately", "copy_of": "symptom", "mirrors": "symptom: Trips breaker immediately (copied unchanged)" }
+      ],
+      "note": "The washer module's five options that name no machine. The two washer-shaped ones (Won't spin / no movement, Won't drain) stay with the Washer."
+    }
+  },
+  "repoint": {
+    "services": {
+      "repair_appliances": { "from": "symptom", "to": "refrigerator_symptom" },
+      "microwave_repair": { "from": "symptom", "to": "microwave_symptom" },
+      "window_ac_repair": { "from": "symptom", "to": "window_ac_symptom" }
+    },
+    "dynamic": {
+      "minor_home_repairs+minor_home_repairs_appliances_washer+Diagnostic": "symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_washer+Repair": "symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_dryer+Diagnostic": "dryer_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_dryer+Repair": "dryer_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_stove_range+Diagnostic": "stove_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_stove_range+Repair": "stove_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_dishwasher+Diagnostic": "dishwasher_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_dishwasher+Repair": "dishwasher_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_refrigerator+Diagnostic": "refrigerator_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_refrigerator+Repair": "refrigerator_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_microwave+Diagnostic": "microwave_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_microwave+Repair": "microwave_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances+Diagnostic": "general_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances+Repair": "general_symptom",
+      "minor_home_repairs+minor_home_repairs_appliances_other+Diagnostic": "general_symptom",
+      "minor_home_repairs+Diagnostic": "general_symptom"
+    }
+  },
+  "tiles": {
+    "rule": "The picker's tiles for a symptom_first group are the options of the symptom module its repair service asks (label = the option's label; a tap answers that question), minus options marked tile:false. routing_archetypes.<group>.real_symptom_ids and symptom_id_to_service_ids stop being a separately maintained copy for these groups.",
+    "exclude": { "dishwasher_symptom": ["Other (describe in notes)"] },
+    "groups": {
+      "minor_home_repairs_appliances_washer": "symptom",
+      "minor_home_repairs_appliances_dryer": "dryer_symptom",
+      "minor_home_repairs_appliances_stove_range": "stove_symptom",
+      "minor_home_repairs_appliances_dishwasher": "dishwasher_symptom",
+      "minor_home_repairs_appliances_refrigerator": "refrigerator_symptom",
+      "minor_home_repairs_appliances_microwave": "microwave_symptom"
+    }
+  },
+  "optional": {
+    "rename_symptom_to_washer_symptom": "Cosmetic: the key 'symptom' becomes 'washer_symptom' so the owner is visible in the name. Not needed for the contract (the owners table above says it); it touches washer_repair's chain, two dynamic entries and every test that names 'symptom'. Default: not done."
+  },
+  "code_half": {
+    "what": "One shared derivation of 'the symptom module a group's repair asks', read by BOTH the picker tiles and the guided builder's condition chips (bldGetConditionChoices in qr.html), so that no module name is a literal in code.",
+    "why": "bldGetConditionChoices finds a chain module by the literal names [symptom, issue, damage_type, state]. After the repoint, the builder's 'What's the issue?' chips for dryer, stove_range, dishwasher, refrigerator, microwave, appliances and appliances_other fall to the generic 22-chip list (tools/probe_fallback_rendered_state.js, section B; archive/T173_fallback_rendered_state_probe.txt). The data half alone is a regression on that surface.",
+    "closes": "PENDING_DECISIONS D-C11-3 (three definitions of 'which intake modules describe the condition')",
+    "contract_clause": "the builder's chips for a group are the options of the module that group's repair asks",
+    "not_part_of_this_batch": "#204: the Repair fallbacks draw a firm price for an answer whose option carries checkout_state_override: diagnostic. Identical with and without this batch (probe section A)."
+  }
+}

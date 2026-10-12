@@ -16,12 +16,15 @@
  *   C  hostile data: an <img onerror> in a category name, in an item (a popover option) and in the status band's
  *      data-source attribute. Reported for BASE (informational: did the payload run?) and required inert for HEAD.
  *
+ * With --ws the DOM strings are compared with whitespace between tags collapsed (>\s+< becomes ><): the Charter re-flow of #198 puts line breaks between block tags, which a
+ * parser keeps as whitespace-only text nodes; tools/charter_reflow_proof.js proves the rest (bytes, tree, code, layout, pixels).
  * Exit 0 = A and B identical and C inert in HEAD. Exit 1 = a difference or an executed payload. Exit 2 = cannot run.
  * Needs puppeteer-core and a Chrome (CHROME_PATH, or the usual locations).
  */
 'use strict';
 const fs = require('fs'), http = require('http');
-const [BASE, HEAD] = process.argv.slice(2);
+const WS = process.argv.includes('--ws');                 // compare with whitespace between tags collapsed: for a re-flow (#198), where the only difference is a line break between two tags
+const [BASE, HEAD] = process.argv.slice(2).filter(a => !a.startsWith('--'));
 if (!BASE || !HEAD) { console.error('usage: charter_dom_proof.js <base.html> <head.html>'); process.exit(2); }
 let puppeteer; try { puppeteer = require('puppeteer-core'); } catch { console.error('puppeteer-core not found'); process.exit(2); }
 const chrome = [process.env.CHROME_PATH, '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium', '/opt/pw-browsers/chromium']
@@ -30,6 +33,7 @@ if (!chrome) { console.error('No Chrome found: set CHROME_PATH'); process.exit(2
 
 const SIDECAR = "window.CHARTER_STATUS={orientationHTML:'<p>Sidecar <b>state</b></p>',radarCount:3};";
 const norm = s => s.replace(/status-body-inner-[a-z0-9]+/g, 'status-body-inner-X');
+const nw = s => WS ? s.replace(/>[\t\n\f\r ]+</g, '><') : s;
 
 function serve(html, sidecar) {
   return new Promise(res => {
@@ -56,20 +60,20 @@ async function snapshot(browser, url) {
   await pg.goto(url, { waitUntil: 'load' });
   await new Promise(r => setTimeout(r, 2300));                      // the sidecar probe times out at 1500ms
   const out = {};
-  out.liveStatus = norm(await pg.$eval('#live-status', e => e.outerHTML));
+  out.liveStatus = nw(norm(await pg.$eval('#live-status', e => e.outerHTML)));
   out.bandLinks = await pg.$$eval('#live-status a', as => as.map(a => a.getAttribute('href')));
   const fr = pg.frames().find(f => f !== pg.mainFrame());
   if (!fr) { out.noFrame = true; await pg.close(); return { out, errs }; }
   await fr.waitForSelector('#tiles .tile', { timeout: 5000 });
   const snap = async tag => {
     out[tag] = {};
-    for (const id of ['tiles', 'preview', 'hint', 'editor', 'chips']) out[tag][id] = await fr.$eval('#' + id, e => e.outerHTML);
+    for (const id of ['tiles', 'preview', 'hint', 'editor', 'chips']) out[tag][id] = nw(await fr.$eval('#' + id, e => e.outerHTML));
   };
   const wait = ms => new Promise(r => setTimeout(r, ms));
   await snap('boot');
   for (const slot of ['qty', 'items', 'action', 'location']) {                // open every popover, record it, pick its 2nd option
     await fr.click(`#preview .slot[data-slot="${slot}"]`); await fr.waitForSelector('.pop.show');
-    out['pop_' + slot] = await fr.$eval('.pop', e => e.outerHTML);
+    out['pop_' + slot] = nw(await fr.$eval('.pop', e => e.outerHTML));
     const opts = await fr.$$('.pop .opt'); out['pop_' + slot + '_n'] = opts.length;
     await opts[Math.min(1, opts.length - 1)].click(); await wait(300);
   }
@@ -79,7 +83,7 @@ async function snapshot(browser, url) {
   await tiles[2].click(); await snap('tile_2');
   await fr.type('#freeText', 'I need 2 shelf mounted in the kitchen urgent'); await wait(200); await snap('typed');
   await fr.click('#preview .slot[data-slot="items"]'); await fr.waitForSelector('.pop.show');
-  out.pop_typed = await fr.$eval('.pop', e => e.outerHTML);
+  out.pop_typed = nw(await fr.$eval('.pop', e => e.outerHTML));
   await fr.click('.pop .opt-clear'); await wait(300); await snap('cleared');
   await pg.close(); return { out, errs };
 }

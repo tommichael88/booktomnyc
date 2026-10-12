@@ -103,6 +103,18 @@ Proposed sessions, if you give the go: **session A** = S1, S3, S5 (all three are
 
 ---
 
+## A related reshape that is not S1 to S6: the Charter's scripts (#200)
+
+Filed at T173 on the operator's 01:43 NY ruling on #198 ("Extracting the scripts (B) is a reshape: file it as its own proposal, cross-referenced from #165's scope doc"). It is listed here so that anyone planning the reshape sees it, and it is **not part of S1 to S6 and not started**.
+
+The Charter (`PROJECT_CHARTER.html`) carries three `<script>` blocks: the status band's code, and, inside the appendix `<template>`, the builder demo's data and code. Option B of #198 would move them into `.js` files beside the Charter so they are linted, type-checked and scanned by CodeQL as JavaScript, and a Charter edit never touches them. #198 A (the one-block-per-line re-flow, done at T173) already removed the cost that mattered (a revision-log row no longer shares a line with the scripts); B would remove the remaining one at the price of the Charter being a document that opens as one file from `file://`.
+
+It has the same shape as **S5** (`compiled` moved out of the file humans edit): if the single-file property is to be kept, a build step emits the single-file Charter from the sources, and the file people read is generated. The two should be decided together, because they choose the same build step: whichever of S5 or #200 lands first fixes how "edit the sources, publish one file" is done in this repository.
+
+Options, detector and reversal are in `PENDING_DECISIONS.md` #200 (B1: the status band only; B2: all three with a build; B3: leave as it is, the default). The detectors that already exist for it: `verify_charter_line_shape.js`, `tools/charter_reflow_proof.js`, `tools/charter_dom_proof.js`.
+
+---
+
 ## What this plan does not touch
 
 The content (questions, labels, tags, prices), the confidence values (#168, held under #140), the tag-gate bypass (#161, its own session), and the cart. A step that would change what a customer is asked or charged is not in this plan; it would be filed and ruled first, as every content change is.
