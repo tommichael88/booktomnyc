@@ -19,6 +19,14 @@
  * IMPORTANT: FILE_MANIFEST.json itself is tracked. Modifying it without
  * running --update causes the suite to fail, preventing silent manifest tampering.
  *
+ * T174 (#202) -- A COUNT THAT DEPENDS ON TEST ORDER IS NOT A COUNT: on a fresh checkout this tool read 12 failures in one suite run and 10 in the next, on the same tree, because the manifest
+ * listed files that scripts WRITE (test screenshots and reports, and the root copies extract_modules.js generates). Whether those existed, and what they held, when this test ran
+ * depended on which tests had finished first. Two rules now, both stated where they are enforced:
+ *   - GENERATED files are never manifest entries. --update skips them (and drops any an old manifest carried), verify fails a manifest that lists one. Their sources are tracked
+ *     instead: qr.html, and now every file in modules/ (the root copies were a hash of a derivative).
+ *   - OPERATOR-LOCAL files (an entry flagged `local_only` by --local-only=a,b, a flag --update only ever preserves, never invents) must match IF PRESENT and are reported, not counted,
+ *     when this checkout does not have them. An unflagged entry that is absent is still a failure.
+ *
  * T151 -- WHO IS THE AUTHORITY (the circularity this tool used to have): --update hashes whatever is on disk, and verify compared disk to that, so after any --update
  * verify passed by construction: it could catch drift BETWEEN an --update and the next verify, never "the whole set has drifted since Claude's last delivery". Now:
  *   - TEST files (verify_*.js|py, find_*.py in test_harness/) are verified against MASTER_TEST_SUITE.json's `test_hashes`, a file Claude writes at delivery. --update never
@@ -64,6 +72,11 @@ function walk(dir, rel = '') {
     }
     return out;
 }
+// T174 (#202): files a script writes. Never manifest entries (see the header). Kept in step with .gitignore and with extract_modules.js by verify_file_integrity_generated_outputs.js.
+const GENERATED_ROOT_MODULES = ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js', 'UIRenderer.js', 'AppController.js', 'appReducer.js', 'store.js', 'cart_logic.js'];   // extract_modules.js writes these
+const GENERATED_OUTPUTS = ['ui_test_report.json', 'state_mutation_classification.json', 'smoke_test_result.json', 'SWEEP_RESULTS.json'];                                              // tests write these
+const isGenerated = f => GENERATED_ROOT_MODULES.includes(f) || GENERATED_OUTPUTS.includes(path.basename(f)) || /^failure_.*\.png$/.test(path.basename(f));
+const localOnlyFlag = new Set(((process.argv.find(a => a.startsWith('--local-only=')) || '').slice('--local-only='.length)).split(',').filter(Boolean));
 const isTestName = f => /^verify_.*\.(js|py)$/.test(path.basename(f)) || /^find_.*\.py$/.test(path.basename(f));
 const isRunnerTest = f => isTestName(f) && !f.includes('/');           // only top-level tests run; retired/ keeps its tests but they are not part of the suite
 const excludedByFlag = new Set(((process.argv.find(a => a.startsWith('--exclude=')) || '').slice('--exclude='.length)).split(',').filter(Boolean));
@@ -118,14 +131,15 @@ if (process.argv.includes('--update')) {
     // with every root-level name already tracked in the existing
     // manifest, so --update preserves coverage instead of narrowing it.
     const existingRootNames = Object.keys(existing).filter(name =>
-        name !== 'FILE_MANIFEST.json' &&
+        name !== 'FILE_MANIFEST.json' && !isGenerated(name) &&
         !fs.existsSync(path.join(TEST_DIR, name)) &&
         fs.existsSync(path.join(REPO_ROOT, name))
     );
     const sourceFiles = [...new Set([
         'qr.html', 'btnyc.json', 'schema/btnyc_schema.json',
-        'pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js',
-        'UIRenderer.js', 'AppController.js', 'cms_bridge.js',
+        'cms_bridge.js',
+        ...(fs.existsSync(path.join(REPO_ROOT, 'modules')) ? walk(path.join(REPO_ROOT, 'modules')).map(f => 'modules/' + f) : []),   // T174 (#202): the SOURCES of the modules extract_modules.js generates
+
         'btnyc_v10_compiler.py', 'btnyc_v8_compiler.py', 'btnyc_v7_compiler.py', 'btnyc_master_deprecated.py',
         // v9.6+ FIX (2026-08-28 recovery session): these 7 real,
         // hand-maintained source files existed but were never tracked at
@@ -147,15 +161,15 @@ if (process.argv.includes('--update')) {
         // hardcoded list at all, which is real, separate, future work.
         'CHANGELOG_v9_5_divergence_resolution.md', 'OBJECTIVES_', 'PROJECT_GOALS',
         'COMPONENT_LAYER_MAP.md',
-        'dumb_ui_prototype.html', 'qr_loader.js', 'innerhtml_audit.json', 'ui_test_report.json',
+        'dumb_ui_prototype.html', 'qr_loader.js', 'innerhtml_audit.json',
         ...existingRootNames,
-    ])];
+    ])].filter(n => !isGenerated(n));
     for (const name of sourceFiles) {
         const filePath = path.join(REPO_ROOT, name);
         if (!fs.existsSync(filePath)) continue;
         const result = sha256(filePath);
         const label = (existing[name] || {}).label || name;
-        manifest[name] = { hash: result.hash, lines: result.lines, bytes: result.bytes, label, updated: new Date().toISOString().slice(0, 19) };
+        manifest[name] = { hash: result.hash, lines: result.lines, bytes: result.bytes, label, updated: new Date().toISOString().slice(0, 19), ...(((existing[name] || {}).local_only || localOnlyFlag.has(name)) ? { local_only: true } : {}) };
         console.log(`  [src]  ${name}: ${result.hash} (${result.lines} lines)`);
     }
 
@@ -167,7 +181,7 @@ if (process.argv.includes('--update')) {
     // the moment it's rewritten after this loop already recorded its
     // pre-rewrite hash. Confirmed directly this was a real, live issue --
     // verify mode failed on it immediately after a fresh --update.
-    const testFiles = walk(TEST_DIR).filter(f => f !== 'FILE_MANIFEST.json.sha256' && !excludedByFlag.has(f));   // T151: recursive (was readdirSync of the top level only)
+    const testFiles = walk(TEST_DIR).filter(f => f !== 'FILE_MANIFEST.json.sha256' && !excludedByFlag.has(f) && !isGenerated(f));   // T151: recursive (was readdirSync of the top level only)
     for (const fname of testFiles) {
         const filePath = path.join(TEST_DIR, fname);
         const result = sha256(filePath);
@@ -185,7 +199,7 @@ if (process.argv.includes('--update')) {
     // bootstrap instead of before, which would have shipped a manifest whose
     // own self-hash silently didn't match its own final content.
     if (process.argv.includes('--keep-absent')) {   // T151: a sandbox that lacks some of the operator's local files must not silently drop their entries
-        for (const name of Object.keys(existing)) { if (name === 'FILE_MANIFEST.json' || name === '_meta' || manifest[name]) continue; manifest[name] = existing[name]; console.log(`  [kept] ${name} (not present here; entry preserved verbatim)`); }
+        for (const name of Object.keys(existing)) { if (name === 'FILE_MANIFEST.json' || name === '_meta' || manifest[name] || isGenerated(name)) continue; manifest[name] = { ...existing[name], ...(localOnlyFlag.has(name) ? { local_only: true } : {}) }; console.log(`  [kept] ${name} (not present here; entry preserved verbatim)`); }
     }
     if (process.env.CLAUDE_SESSION_LABEL) {
         manifest._meta = {
@@ -370,6 +384,15 @@ if (fs.existsSync(forbiddenPath)) {
     fail++;
 }
 
+// T174 (#202): the manifest may not list a file a script writes. Its presence and content when this test runs depend on which tests ran first, so the count would be a function of
+// test order, not of the tree (a clean checkout read 12 in one suite run and 10 in the next). --update never writes such an entry; this fails one that arrived another way.
+{
+    const listed = Object.keys(manifest).filter(n => n !== '_meta' && isGenerated(n));
+    if (listed.length === 0) { console.log('\n  \u2713 the manifest lists no generated file (nothing here depends on which tests ran first)'); pass++; }
+    else { console.log(`\n  \u2717 the manifest lists ${listed.length} file(s) a script writes, so this count would depend on test order (#202): ${listed.join(', ')}`); console.log('      -> run: node test_harness/verify_file_integrity.js --update --keep-absent   (it drops them)'); fail++; }
+}
+let localOnlyAbsent = 0;
+
 for (const [name, expected] of Object.entries(manifest)) {
     // FILE_MANIFEST.json is the source of truth -- it cannot verify itself
     // without circularity. Skip it in the per-file loop.
@@ -378,6 +401,7 @@ for (const [name, expected] of Object.entries(manifest)) {
     // not a tracked file -- skip it here too.
     if (name === '_meta') continue;
     if (isRunnerTest(name)) continue;   // T151: a runner test's authority is MASTER_TEST_SUITE.json (checked above); the manifest's copy of its hash is accounting only
+    if (isGenerated(name)) continue;    // T174 (#202): reported once, above, as a failure of the manifest; not read as a file
     // Determine the file path: test_harness/ files or REPO_ROOT files
     const inTestDir = fs.existsSync(path.join(TEST_DIR, name));
     const inRepoRoot = fs.existsSync(path.join(REPO_ROOT, name));
@@ -385,6 +409,7 @@ for (const [name, expected] of Object.entries(manifest)) {
 
     const actual = sha256(filePath);
     if (!actual) {
+        if (expected.local_only) { localOnlyAbsent++; console.log(`  \u00b7 ${name}: operator-local, not in this checkout (not counted; it is checked wherever it exists)`); continue; }   // T174 (#202)
         console.log(`  ✗ ${name}: FILE MISSING`);
         fail++;
         continue;
@@ -403,5 +428,5 @@ for (const [name, expected] of Object.entries(manifest)) {
     }
 }
 
-console.log(`\n[File integrity] ${pass} passed, ${fail} failed (of ${pass + fail} files checked)\n`);
+console.log(`\n[File integrity] ${pass} passed, ${fail} failed (of ${pass + fail} files checked)${localOnlyAbsent ? `; ${localOnlyAbsent} operator-local file(s) not in this checkout, not counted` : ''}\n`);
 process.exit(fail > 0 ? 1 : 0);

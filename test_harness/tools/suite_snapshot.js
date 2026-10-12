@@ -16,9 +16,10 @@
  * --accept <test.js>: it is printed as ACCEPTED, so it appears in the log; an --accept that did not deepen is itself an error, so the list cannot rot into a loophole.
  * The failing-assertion count is the "N failed" in the test's own summary line; for a red test that prints assertion lines but no such summary (the Charter tests, a
  * browser test that stops on an ERROR) it is the number of lines that begin with a cross (the "marks" column, written by this tool from T173). A red test with neither
- * (it crashes before printing one) cannot be held to part 2; it is counted and reported on every run. Order of operations that matters: run `node test_harness/extract_modules.js` first (the tests read the generated root modules; a stale root module crashes
- * verify_confidence_strategy_inheritance.js before its summary) and refresh the manifest first (`node test_harness/verify_file_integrity.js --update --keep-absent`;
- * verify_file_integrity.js's count is the manifest's staleness, and moves with every commit otherwise). The comparison itself is a pure function (compare), tested in
+ * (it crashes before printing one) cannot be held to part 2; it is counted and reported on every run. T174 (#202): the runner now regenerates the root modules itself before the first test (`extract_modules.js`; `--no-extract` skips it), so a clean checkout needs no
+ * step beforehand -- the tests read the generated root modules, and a stale one crashes verify_confidence_strategy_inheritance.js before its summary. The manifest no longer lists
+ * generated files, so verify_file_integrity.js's count is a function of the tree and not of test order; refresh the manifest after a deliberate change to a tracked source
+ * (`node test_harness/verify_file_integrity.js --update --keep-absent`). The comparison itself is a pure function (compare), tested in
  * verify_suite_gate_red_to_worse.js on planted snapshots and on the archived ones.
  *
  * An environment gap (a browser test that could not run its browser half and says "environment gap") is recorded with a trailing "[GAP]" in the summary column, because exit 0
@@ -112,6 +113,12 @@ function main() {
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i < 0 ? d : (process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : true); };
 const OUT = arg('out', null), CMP = arg('compare', null), JOBS = +arg('jobs', 6), TIMEOUT = +arg('timeout', 300) * 1000, ONLY = arg('only', null), FAIL_ON_GAP = process.argv.includes('--fail-on-gap');
 const env = Object.assign({}, process.env, { CHROME_PATH: process.env.CHROME_PATH || '/opt/pw-browsers/chromium' });
+
+if (process.argv.includes('--help') || process.argv.includes('-h')) { console.log('usage: node test_harness/tools/suite_snapshot.js --out snapshot.tsv [--compare base.tsv] [--accept a.js,b.js] [--jobs 6] [--timeout 300] [--only <substring>] [--fail-on-gap] [--no-extract]'); process.exit(0); }
+if (!process.argv.includes('--no-extract')) {   // T174 (#202): a clean checkout has no generated root modules; regenerate them rather than make the person remember to
+  const ex = require('child_process').spawnSync('node', [path.join(HARNESS, 'extract_modules.js')], { cwd: HARNESS, env, encoding: 'utf8' });
+  if (ex.status !== 0) { console.error('[suite_snapshot] extract_modules.js failed (exit ' + ex.status + '); no test was run:\n' + String(ex.stdout || '').slice(-600) + String(ex.stderr || '').slice(-600)); process.exit(2); }
+}
 
 const names = fs.readdirSync(HARNESS).filter(f => /^(verify_.*\.(js|py)|find_.*\.py)$/.test(f)).filter(f => !ONLY || f.includes(ONLY)).sort();
 
