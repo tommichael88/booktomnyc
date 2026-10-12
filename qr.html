@@ -3597,6 +3597,26 @@ body.modal-active{overflow:hidden}
             return { found: true, base: dynDef.financial_engine?.base_price, suggestedTagIds };
         }
 
+        // resolveBuilderConditionAnswer -- LOGIC. The condition the customer chose in the guided builder, as the intake answer it IS (#204, T174). The builder offers the labels of a condition
+        // module's own options as its condition chips (bldGetConditionChoices, lower-cased), and the dynamic service that prices the job asks that same module, so a chosen chip IS the
+        // customer's answer to that question and prices as one: the option's modifier, its checkout state (a diagnostic answer is a diagnostic quote). Before this the choice reached the price
+        // only as words in the ad-lib description, so "Leaking water" on a dishwasher quoted a firm price while the same answer on the Washer service drew the Fork. Matched against the
+        // PRICED entity's own chain, in chain order, so a chip that entity does not ask (the universal fallback conditions, a label from another service's module) answers nothing and is
+        // exactly what it was: words. Pure: returns {moduleKey, label} (the option's own label) or null; sets nothing.
+        function resolveBuilderConditionAnswer({ category, stype, groupId, condition }) {
+            const chosen = String(condition || '').trim().toLowerCase();
+            if (!chosen) return null;
+            const dynDef = resolveDynamicService(category, stype || 'Repair', groupId);
+            if (!dynDef) return null;
+            // [].concat, not `dynDef.intake_chain || []`: a second source composed with a resolver's return is arbitration (verify_r-invariant-provenance_caller_composition.js); an absent chain is simply no step
+            for (const step of [].concat(dynDef.intake_chain)) {
+                const mod = step && DB.intake_modules?.[step.module];
+                const hit = (mod?.client_response || []).find(r => String(r.label || '').toLowerCase() === chosen);
+                if (hit) return { moduleKey: step.module, label: hit.label };
+            }
+            return null;
+        }
+
         function computeQuoteFromState(state) {
             // Safety net: ensures state.answers reflects currently-active tags
             // even if this is called without render() having just run
@@ -4801,6 +4821,16 @@ body.modal-active{overflow:hidden}
                     }];
                 }
             });
+            // T174 (#204): the renderer draws route.visibleChain, the branch-visible subset executeWorkflow resolved BEFORE this splice, so a question appended to the intake chain alone was
+            // never drawn: Path A ("Answer a few more questions") changed the route and showed the customer the same questions. The visible subset is re-resolved here with the same filter
+            // executeWorkflow applies (a route that carries no visibleChain keeps none: its renderer falls back to the whole chain).
+            if (route.visibleChain) {
+                const _answers = route.answers || {};
+                const _chain = route.intakeChain || [];
+                route.visibleChain = (typeof _isModVisible === 'function')
+                    ? _chain.filter(m => _isModVisible(m, _answers, _chain))
+                    : _chain;
+            }
             route.divergenceApplied = 'remote';
             return route;
         }
@@ -4808,9 +4838,18 @@ body.modal-active{overflow:hidden}
         function orch_apply_remote_divergence(prevRoute, DB) {
             // Re-run the real, canonical composition, then splice the entity's own authored remote_deep_dive_modules onto the resulting chain
             // (orch_splice_remote_deep_dive).
-            const svc = prevRoute.entity;
-            const category_id = prevRoute.context?.category_id || svc.ui_taxonomy?.category_id;
-            const ctx = collectBookingContext_catalog(svc, category_id);
+            //
+            // T174 (#204): on the context the route CARRIES (route.context, T145: the one that produced it), as orch_apply_answer does, so it serves every entry path. It used
+            // to rebuild a CATALOG context from the route's entity, which only a named service has: for a dynamic fallback (the guided builder's and a typed request's "Something
+            // else" cards) the rebuild composed an empty chain, so Path A ("Answer a few more questions") drew a card with no questions. A route that carries no context (the
+            // catastrophic fallback) keeps the catalog rebuild it always had.
+            let ctx;
+            if (prevRoute.context) {
+                ctx = Object.assign({}, prevRoute.context);
+            } else {
+                const svc = prevRoute.entity;
+                ctx = collectBookingContext_catalog(svc, svc.ui_taxonomy?.category_id);
+            }
             // Carry the customer's already-given answers forward -- these are exactly what got them to the diagnostic dead-end that triggered
             // this fork in the first place. Without this, the newly-appended remote_deep_dive module re-competes with already-answered
             // questions for the same ceiling slot instead of being the one, new, unanswered question it should be (confirmed directly: this
@@ -11695,6 +11734,18 @@ function addToCart(entry) {
                 requestedQty: BLD.qty
             }).units;
             S.stype = normStype;
+            // T174 (#204): the chosen condition is the customer's answer to the question the priced entity asks (resolveBuilderConditionAnswer), so it reaches the price as one. The module the
+            // PREVIOUS finish carried is dropped first: going Back and choosing another condition replaces the answer, it does not leave two.
+            S.answers = Object.assign({}, S.answers);
+            if (S._builderConditionModule) delete S.answers[S._builderConditionModule];
+            const _condAnswer = resolveBuilderConditionAnswer({
+                category: BLD._cat,
+                stype: normStype,
+                groupId: BLD._groupId,
+                condition: cond
+            });
+            S._builderConditionModule = _condAnswer ? _condAnswer.moduleKey : null;
+            if (_condAnswer) S.answers[_condAnswer.moduleKey] = _condAnswer.label;
             // Resolve display label from group if we have a groupId
             const _grpObj = BLD._groupId ? (DB.group || []).find(g => g.id === BLD._groupId) : null;
             const _label = _grpObj?.display_name || obj;
@@ -12347,6 +12398,7 @@ function addToCart(entry) {
                 _escalatedBy: null,
                 _forceModules: null,
                 _fromBuilder: false,
+                _builderConditionModule: null,
                 _isOtherTileEntry: false,
                 _autoSelectedFrom: null,
                 _nlpSeedDesc: null,

@@ -389,7 +389,8 @@ console.log('=== Layer 5: dynamic_services deep-dive data + interactive-fork sco
 // category-level entries (now correctly recognized as diagnostic, but
 // honestly missing their own remote_deep_dive_modules content -- a
 // real, separate, newly-visible gap surfaced BY the governance fix, not
-// caused by it, and not fabricated here to force a pass).
+// caused by it, and not fabricated here to force a pass). T174 (#204): that gap is closed -- the three now author
+// their second path and are asserted positively below.
 const ALL_DIAG_DYN_KEYS = Object.keys(DB.dynamic_services).filter(
     k => DB.dynamic_services[k].financial_engine?.checkout_state === 'diagnostic'
 );
@@ -421,23 +422,20 @@ check('zero redundant modules (already in the base intake_chain) across all 24',
 check('all 24 group-level entries compute divergenceEligible via computeUnifiedQuote(dynDef)',
     DIAG_DYN_KEYS.every(k => computeUnifiedQuote({ dynDef: DB.dynamic_services[k], activeTagIds: [], answers: {}, qty: 1 }).divergenceEligible));
 
-console.log('\n=== The 3 real, category-level entries: correctly diagnostic now, honestly missing remote-dive content ===');
+console.log('\n=== The 3 real, category-level entries: diagnostic, and (T174, #204) with the second path their group-level siblings carry ===');
+// They had no remote_deep_dive_modules -- an honest, open content gap, asserted here as divergenceEligible FALSE until it was closed. #204 closed it (the catalog's own
+// rule: a diagnostic entity offers the two paths, and the category-level fallbacks mirror their group-level siblings), so the assertion is now the positive one; the
+// invariant over EVERY diagnostic-capable entity, rendered, is verify_diagnostic_answer_reaches_fork.js.
 for (const k of CATEGORY_LEVEL_DIAG_KEYS) {
     const dynDef = DB.dynamic_services[k];
     check(`${k}: checkout_state correctly resolves to 'diagnostic', matching its own variability_tier (the governance fix)`,
         dynDef.financial_engine?.checkout_state === 'diagnostic');
     const q = computeUnifiedQuote({ dynDef, activeTagIds: [], answers: {}, qty: 1 });
     check(`${k}: isDiagnostic is correctly true`, q.isDiagnostic === true);
-    // Deliberately NOT asserting divergenceEligible:true here -- these 3
-    // entries have zero real remote_deep_dive_modules authored (confirmed
-    // directly), so divergenceEligible correctly, honestly evaluates
-    // false per its own real definition (checkoutStateKey==='diagnostic'
-    // && remoteDeepDiveModules.length>0), the same as any other real
-    // diagnostic entity with no deep-dive content yet (e.g.
-    // garbage_disposal_replacement, already covered in Layer 1 above).
-    // This is a real, separate, open content gap -- not invented here.
-    check(`${k}: divergenceEligible correctly false (no remote_deep_dive_modules authored yet -- a real, open content gap, not a bug)`,
-        q.divergenceEligible === false);
+    const mods = dynDef.remote_deep_dive_modules || [];
+    check(`${k}: authors a real second path (T174, #204): ${mods.join(', ')}`,
+        mods.length > 0 && mods.every(m => DB.intake_modules[m]) && !mods.some(m => (dynDef.intake_chain || []).some(s => s.module === m)));
+    check(`${k}: divergenceEligible is true (it offers the Fork)`, q.divergenceEligible === true);
 }
 
 // The interactive-fork scoping fix, exercised end-to-end: a dynamic-
