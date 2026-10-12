@@ -1,0 +1,51 @@
+# test_harness/tools/symptom_batches/appliance_symptoms_T173_proposal.json applied IN MEMORY to btnyc.json; qr.html loaded in jsdom. Nothing is written. Read-only probe.
+
+## A. The same answer ("Leaking water", whose option carries checkout_state_override: diagnostic), on a service and on a fallback
+  washer_repair (a service; the control)   catalog as it is  -> entity washer_repair [service], asks symptom (15 answer chips on the card)
+      engine's own state for the answer: diagnostic
+      drawn: THE FORK ("On-site quote ... Book an on-site diagnostic")
+  washer_repair (a service; the control)   with the batch    -> entity washer_repair [service], asks symptom (15 answer chips on the card)
+      engine's own state for the answer: diagnostic
+      drawn: THE FORK ("On-site quote ... Book an on-site diagnostic")
+  the Dishwasher Repair fallback           catalog as it is  -> entity (dynamic fallback) [dynamic], asks symptom (7 answer chips on the card)
+      engine's own state for the answer: diagnostic
+      drawn: a card with price $455, button "Add to Request", diagnostic markers on the card: none
+      after "Add to Request": cart Subtotal (1 items): $455; Due Today: $455; line: Curated intakeAnswers: {"symptom":"Leaking water"}+ Materials $0‑$0
+  the Dishwasher Repair fallback           with the batch    -> entity (dynamic fallback) [dynamic], asks dishwasher_symptom (8 answer chips on the card)
+      engine's own state for the answer: standard_flat_rate
+      drawn: a card with price $455, button "Add to Request", diagnostic markers on the card: none
+      after "Add to Request": cart Subtotal (1 items): $455; Due Today: $455; line: Curated intakeAnswers: {"dishwasher_symptom":"Leaking water"}+ Materials $0‑$0
+  a second fallback (Window AC)            catalog as it is  -> entity (dynamic fallback) [dynamic], asks window_ac_issue (8 answer chips on the card)
+      engine's own state for the answer: diagnostic
+      drawn: a card with price $455, button "Add to Request", diagnostic markers on the card: none
+      after "Add to Request": cart Subtotal (1 items): $455; Due Today: $455; line: Curated intakeAnswers: {"window_ac_issue":"Leaking water"}+ Materials $0‑$0
+  a second fallback (Window AC)            with the batch    -> entity (dynamic fallback) [dynamic], asks window_ac_issue (8 answer chips on the card)
+      engine's own state for the answer: diagnostic
+      drawn: a card with price $455, button "Add to Request", diagnostic markers on the card: none
+      after "Add to Request": cart Subtotal (1 items): $455; Due Today: $455; line: Curated intakeAnswers: {"window_ac_issue":"Leaking water"}+ Materials $0‑$0
+
+## B. The guided builder's "What's the issue?" chips (bldGetConditionChoices), per group
+  washer         as it is:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+                 with batch:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+  dryer          as it is:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+                 with batch: 22 chips (the GENERIC fallback list): Won'T Turn On, Can'T Close, Not Closing, Can'T Open   <-- CHANGES
+  stove_range    as it is:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+                 with batch: 22 chips (the GENERIC fallback list): Won'T Turn On, Can'T Close, Not Closing, Can'T Open   <-- CHANGES
+  dishwasher     as it is:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+                 with batch: 22 chips (the GENERIC fallback list): Won'T Turn On, Can'T Close, Not Closing, Can'T Open   <-- CHANGES
+  refrigerator   as it is:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+                 with batch: 22 chips (the GENERIC fallback list): Won'T Turn On, Can'T Close, Not Closing, Can'T Open   <-- CHANGES
+  microwave      as it is:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+                 with batch: 22 chips (the GENERIC fallback list): Won'T Turn On, Can'T Close, Not Closing, Can'T Open   <-- CHANGES
+  appliances     as it is:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+                 with batch: 22 chips (the GENERIC fallback list): Won'T Turn On, Can'T Close, Not Closing, Can'T Open   <-- CHANGES
+  other          as it is:  7 chips: Won’t spin / no movement, Won’t drain (water stays inside), Leaking water, Making strange noises
+                 with batch: 22 chips (the GENERIC fallback list): Won'T Turn On, Can'T Close, Not Closing, Can'T Open   <-- CHANGES
+
+## C. The guided builder driven to its quote (Dishwasher > Fix / Repair > Something else > a symptom > 1 > Next > Construct > Calculate), catalog as it is
+  Won’t spin / no movement     -> ✅ Fixed price, $49
+  Burning smell                -> ✅ Fixed price, $49
+  Leaking water                -> ✅ Fixed price, $99  (includes: Urgent - today or tomorrow+$50)
+  The chosen symptom does not reach the price as its modifier or its checkout state: "Won't spin" and "Burning smell" quote the same; "Leaking water" differs only by the urgent surcharge a detected tag adds.
+
+Why B changes: bldGetConditionChoices looks for a chain module whose NAME is one of [symptom, issue, damage_type, state] (a literal list in qr.html). The batch re-points the chains to modules with other names.
