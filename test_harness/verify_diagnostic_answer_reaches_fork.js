@@ -45,8 +45,10 @@ const SVC = DB0.services.filter(isCapable);
 function dataLeg(db) {
   const out = { missing: [], bogus: [], redundant: [], mirror: [] };
   const idx = (db.compiled && db.compiled.service_index) || {};
-  for (const k of DYN) {
-    const e = db.dynamic_services[k], mods = e.remote_deep_dive_modules || [];
+  // T174 (#201): the real services are held to the same four claims as the fallbacks (the Computer Diagnostic became one of them: a registered diagnostic with no second path is the dead end the Charter forbids)
+  const entities = DYN.map(k => [k, db.dynamic_services[k]]).concat(SVC.map(sv => [sv.id, db.services.find(x => x.id === sv.id)]));
+  for (const [k, e] of entities) {
+    const mods = e.remote_deep_dive_modules || [];
     if (!mods.length) out.missing.push(k);
     for (const m of mods) { if (!db.intake_modules[m]) out.bogus.push(k + ':' + m); if (chainMods(e).includes(m)) out.redundant.push(k + ':' + m); }
     if (JSON.stringify(idx[k] ? idx[k].remote_deep_dive_modules || [] : null) !== JSON.stringify(mods)) out.mirror.push(k);
@@ -68,6 +70,21 @@ const chipOf = (doc, label) => [...doc.querySelectorAll('.ims-chip')].find(c => 
 const btnOf = (doc, re) => [...doc.querySelectorAll('button')].find(b => re.test(b.textContent));
 const hasFork = doc => !!(btnOf(doc, /Answer a few more questions/) && btnOf(doc, /Book an on-site diagnostic/));
 const drawn = (doc, mk) => !!doc.querySelector('.ims-label[data-mod="' + mk + '"]');
+
+// T174 (#201): an entity whose own questions can still name the part (route.triagePending) does not offer the Fork yet: the customer answers its triage first. Walk it to the dead end the way a
+// customer would: the first drawn question that is not answered, an option that does not route the job away; return the steps so a second visit can repeat them.
+function settle(w, doc) {
+  const steps = [];
+  for (let i = 0; i < 8 && w.S._lastRoute.triagePending && !hasFork(doc); i++) {
+    const R = w.S._lastRoute;
+    const q = (R.visibleChain || []).find(m => !R.answers[m.moduleKey]);
+    if (!q) break;
+    const opt = (q.client_response || []).find(o => !o.route_to);
+    const chip = opt && chipOf(doc, opt.label); if (!chip) break;
+    steps.push(chip.dataset.label); tapOn(w, chip);
+  }
+  return steps;
+}
 
 // reach an entity the way its entry reaches it: a service by its card, a dynamic fallback by its tile
 function reach(w, key, isSvc) {
@@ -92,7 +109,8 @@ async function pageLeg(html, db, opts) {
     out.entities++;
     try {
       const route = reach(w, t.key, t.svc);
-      // 2. the Fork: diagnostic from the start, or once its diagnostic option is chosen
+      // 2. the Fork: diagnostic from the start (once its own triage has nothing left that could name the part), or once its diagnostic option is chosen
+      const triage = c.isStatic ? settle(w, doc) : [];
       if (!c.isStatic) {
         const mk = c.mods.find(m => doc.querySelector('.ims-label[data-mod="' + m + '"]'));
         const opt = mk && diagOptions(mk)[0], chip = opt && chipOf(doc, opt.label);
@@ -116,6 +134,7 @@ async function pageLeg(html, db, opts) {
       // 3. Path A: re-reach, choose the diagnostic option again, then ask for more questions
       reach(w, t.key, t.svc);
       if (!c.isStatic) tap(chipOf(doc, diagOptions(c.mods.find(m => doc.querySelector('.ims-label[data-mod="' + m + '"]')))[0].label));
+      else triage.forEach(lab => tap(chipOf(doc, lab)));
       tap(btnOf(doc, /Answer a few more questions/));
       const second = e.remote_deep_dive_modules || [], first = second[0];
       // the entity's own ceiling lets it ask only so many unanswered questions at once: answer what is drawn until the second-path question has its slot
@@ -172,7 +191,7 @@ function mutantHtml(label, fn) {
   console.log('\n=== 1. data: every entity that can turn diagnostic authors a second path ===');
   console.log('  (' + DYN.length + ' dynamic entities and ' + SVC.length + ' services can turn diagnostic)');
   const D = dataLeg(DB0);
-  check('every diagnostic-capable dynamic entity has a non-empty remote_deep_dive_modules -- missing: ' + D.missing.length, D.missing.length === 0, D.missing.join(', '));
+  check('every diagnostic-capable entity (dynamic and real service) has a non-empty remote_deep_dive_modules -- missing: ' + D.missing.length, D.missing.length === 0, D.missing.join(', '));
   check('each names a real intake module', D.bogus.length === 0, D.bogus.join(', '));
   check('none is a question the entity already asks', D.redundant.length === 0, D.redundant.join(', '));
   check('compiled.service_index says the same as dynamic_services for every one', D.mirror.length === 0, D.mirror.join(', '));

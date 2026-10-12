@@ -65,12 +65,14 @@ console.log('=== 65 services genuinely inherit; 3 documented exceptions + 2 extr
     // inherit checkout_state from their archetype (none needed an explicit
     // override), so the real, current count is 69 -- catalog growth, not
     // a regression in the inheritance mechanism itself.
-    check('exactly 69 services genuinely inherit (field removed, not just matching)', inherited.length === 69);
+    // T174 (#201): 68. computer_diagnostic left the inheriting set: it states its own checkout_state ('diagnostic') like the other registered diagnostics, instead of the
+    // electronic_device archetype's standard_flat_rate it used to inherit (an ordinary hourly service named "Diagnostic": $231, no $85, no credit).
+    check('exactly 68 services genuinely inherit (field removed, not just matching)', inherited.length === 68);
     for (const s of inherited) {
         check(`${s.id}: checkout_state genuinely absent`, !('checkout_state' in s.financial_engine));
     }
 
-    const documented = { dishwasher_repair: 'diagnostic', prehung_interior_door_install: 'project_based', toilet_install: 'project_based' };
+    const documented = { dishwasher_repair: 'diagnostic', computer_diagnostic: 'diagnostic', prehung_interior_door_install: 'project_based', toilet_install: 'project_based' };
     for (const [id, expected] of Object.entries(documented)) {
         const s = DB.services.find(x => x.id === id);
         check(`${id}: kept explicit at its real, documented value (${expected})`, s.financial_engine.checkout_state === expected);

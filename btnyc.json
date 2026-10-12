@@ -1572,6 +1572,11 @@
         "fee": 50,
         "minutes": 0,
         "scope": "per_unit"
+      },
+      "computer_attempted_fix_opened_or_replaced": {
+        "fee": 0,
+        "minutes": 10,
+        "scope": "per_unit"
       }
     }
   },
@@ -3162,9 +3167,9 @@
       },
       "financial_engine": {
         "type": "hourly",
-        "base_price": 75,
-        "pricing_archetype": "hourly_timed",
-        "_inherits_checkout_state_from_archetype": "electronic_device"
+        "base_price": 0,
+        "checkout_state": "diagnostic",
+        "pricing_archetype": "diagnostic_open"
       },
       "aliases": [],
       "service_type": "Repair",
@@ -3236,13 +3241,16 @@
         "maximum_followup_questions": 3,
         "diagnostic_threshold": 0,
         "base_confidence": 40,
-        "_variability_tier": "high",
+        "_variability_tier": "diagnostic",
         "_variability_score": null,
         "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values.",
         "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
       },
       "verb_natural": "assessed",
-      "per_unit_answers_vary": true
+      "per_unit_answers_vary": true,
+      "remote_deep_dive_modules": [
+        "computer_attempted_fix"
+      ]
     },
     {
       "id": "data_backup_or_transfer",
@@ -12161,7 +12169,7 @@
       },
       "merge_strategy": "extend",
       "remote_deep_dive_modules": [
-        "attempted_fix",
+        "computer_attempted_fix",
         "device_type"
       ]
     },
@@ -18051,6 +18059,26 @@
           ],
           "checkout_state_override": "diagnostic",
           "modifier_ref": "symptom_trips_breaker_immediately"
+        }
+      ]
+    },
+    "computer_attempted_fix": {
+      "question": "Have you or anyone else already tried to fix it?",
+      "type": "single",
+      "purpose": "diagnostic",
+      "confidence_gain": 10,
+      "affects_price": true,
+      "_note": "T174 ADDED (PENDING_DECISIONS.md #205, authored under the operator's delegation of 2026-10-12): the Computer Diagnostic's second-path question (Path A of the Fork, \"Answer a few more questions\"). It is the computer's own version of attempted_fix (\"Have you tried any DIY fixes already?\", whose answers are \"used a plunger\" / \"used chemical drain cleaner\" / \"snaked it myself\" and cannot be asked of a computer). It is NOT device_type (the Computer Diagnostic already asks it before any price: asking it again would be DEFECT-STATE-IGNORANCE) and not among the ten modules the card asks; none of the observation answers that end at the diagnostic says whether someone has already opened the machine, which a technician needs before a visit. NO NEW FIGURE: the one option with an effect takes a modifier of the same size, for the same meaning (a hands-on attempt the technician has to check first), as attempted_fix's \"snaked it myself\" (10 minutes). That mapping is bench knowledge and a technician's read (same standing as #183). The Computer Diagnostic is a gateway: the card shows the registered $85, credited toward the repair (#201).",
+      "client_response": [
+        {
+          "label": "No - I left it as is"
+        },
+        {
+          "label": "Yes - I restarted it, reset it or reinstalled the system"
+        },
+        {
+          "label": "Yes - it was opened up or a part was replaced",
+          "modifier_ref": "computer_attempted_fix_opened_or_replaced"
         }
       ]
     }
@@ -24294,11 +24322,11 @@
         "pricing_engine_key": "hourly_estimate",
         "is_real_registered_formula": false,
         "formula_params": {},
-        "pricing_archetype": "hourly_timed",
+        "pricing_archetype": "diagnostic_open",
         "pricing_type": "hourly",
         "formula_ref": null,
-        "base_price": 75,
-        "checkout_state": null
+        "base_price": 0,
+        "checkout_state": "diagnostic"
       },
       "data_backup_or_transfer": {
         "pricing_engine_key": "algorithmic_flat_rate",
@@ -28605,11 +28633,11 @@
           "pricing_engine_key": "hourly_estimate",
           "is_real_registered_formula": false,
           "formula_params": {},
-          "pricing_archetype": "hourly_timed",
+          "pricing_archetype": "diagnostic_open",
           "pricing_type": "hourly",
           "formula_ref": null,
-          "base_price": 75,
-          "checkout_state": null
+          "base_price": 0,
+          "checkout_state": "diagnostic"
         },
         "dynamic": false,
         "default_estimates": {
@@ -28629,14 +28657,16 @@
         "optional_materials": [],
         "default_tags": [],
         "behavior": null,
-        "remote_deep_dive_modules": [],
+        "remote_deep_dive_modules": [
+          "computer_attempted_fix"
+        ],
         "requires_furniture_selection": false,
         "confidence_strategy": {
           "minimum_quote_confidence": 90,
           "maximum_followup_questions": 3,
           "diagnostic_threshold": 0,
           "base_confidence": 40,
-          "_variability_tier": "high",
+          "_variability_tier": "diagnostic",
           "_variability_score": null,
           "_note": "v9.5.10 Phase 4 (Confidence Model Reconciliation, from DEVELOPERS_CHECKLIST_ROADMAP_TO_SEESAW.md): raised from 40 -- the checklist's own flagged contradiction was specialized tier sitting at the LOWEST minimum_quote_confidence in the system, across all (then-)16 specialized services, zero exceptions. Confirmed real and substantive before changing anything, not assumed: of this same set, 15 of 16 are checkout_state=standard_flat_rate at baseline (give a real, firm, final price), so this wasn't a case where low confidence was low-stakes because a diagnostic visit would catch any gap anyway. Checked whether skilled tier's own real 40/45/50 spread encoded a duration-based pattern worth extending faithfully (the way T20 extrapolated its 5 real progressive-band services) -- it doesn't: confidence=50 alone spans the entire real 30-90min duration range in skilled tier, no clean signal to extend. This is judgment-based content authoring, not extrapolation, and is labeled as such. Grounded the specific number in the one real, existing precedent already in this codebase: toilet_install (80) and prehung_interior_door_install (95) were already, independently raised above the tier default for their unusually large real scope (363min/700min baseline) -- proving duration/scope-driven escalation above the tier floor is already an accepted, real principle here, just never applied systematically. 65 is meaningfully above skilled's real ceiling (50, restoring the ordinal principle that specialized should require more scope-certainty than skilled, not less or equal, which was the literal, confirmed inversion) and meaningfully below the 80/95 reserved for the two genuinely exceptional, very-large-scope outliers -- this service's own baseline duration doesn't approach either of those. Flagged for business-owner review, not treated as final, same as T20/T67/T69's own placeholder values.",
           "_note_question_cap": "T135+ SET (PRICING_GUIDE B7, section 11's specific proposal): raised from 2 to 3 -- these are exactly the diagnostic/repair appliance services carrying remote_deep_dive_modules (attempted_fix), a real 3rd question once a service is divergence-eligible. At cap=2 this only survived because already-answered modules don't count against the cap (see PENDING_DECISIONS.md's divergence-resolution port) -- raising the cap removes that fragility rather than depending on it."
@@ -37252,7 +37282,7 @@
         "default_tags": [],
         "behavior": null,
         "remote_deep_dive_modules": [
-          "attempted_fix",
+          "computer_attempted_fix",
           "device_type"
         ],
         "requires_furniture_selection": false,
@@ -41456,6 +41486,17 @@
           "routine",
           "specialized"
         ]
+      },
+      "computer_attempted_fix": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "diagnostic",
+        "affects_price": true,
+        "confidence_gain": 10,
+        "option_count": 3,
+        "used_by": [],
+        "tag_setters": [],
+        "complexity_overrides": []
       }
     },
     "smart_tag_index": {
@@ -44733,7 +44774,6 @@
     "hourly_timed": {
       "definition": "base_price plus a real, computed labor-time estimate (operational_metrics.expected_minutes) at the entity's complexity-tier hourly rate.",
       "currently_assigned_to": [
-        "computer_diagnostic",
         "furniture_assembly_flat_pack",
         "furniture_disassembly_for_moving",
         "furniture_fixes_assembly+Assembly",
@@ -44771,6 +44811,7 @@
     "diagnostic_open": {
       "definition": "Real, deliberate non-commitment -- the honest price is the diagnostic/dispatch fee alone; the actual repair cost is genuinely unknown until a technician is on-site.",
       "currently_assigned_to": [
+        "computer_diagnostic",
         "dishwasher_repair",
         "dryer_repair",
         "minor_home_repairs+Diagnostic",

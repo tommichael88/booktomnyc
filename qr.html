@@ -1730,7 +1730,7 @@ body.modal-active{overflow:hidden}
             // Offered only where BOTH paths actually work: Path B needs nothing, Path A re-renders the route the customer is on
             // (orchChooseDivergencePath's own precondition is state._lastRoute.entity). This replaces the old `S._svc` test, which
             // existed because only the legacy curated builder could do Path A; that builder is retired.
-            if (q.isDiagnostic && q.divergenceEligible && !state._divergencePath && state._lastRoute && state._lastRoute.entity) {
+            if (q.isDiagnostic && q.divergenceEligible && !state._divergencePath && state._lastRoute && state._lastRoute.entity && !state._lastRoute.triagePending) {
                 return {
                     mode: 'fork',
                     q
@@ -3859,6 +3859,33 @@ body.modal-active{overflow:hidden}
             return hits;
         }
 
+        // orch_route_still_possible -- LOGIC. Whether the job can still be moved to another service by a question it has not yet been asked (T174, PENDING_DECISIONS #201): some module of the composed chain has an answer that carries
+        // `route_to`, is not yet answered, and can still come up given what the customer has answered (its `depends_on` holds or is not yet decided, and it is a branch target only of a question whose answer names it, or whose answer is
+        // still open and which can itself come up). The registered diagnostic is the last resort (the operator's rule for the Computer Repair group, #180): while this is true the Fork in the Road is not yet the right thing to
+        // offer, because the next answer may name the part. Read from the chain and the answers alone; it names no module and no service.
+        /** @param {any[]} intakeChain @param {any} answers */
+        function orch_route_still_possible(intakeChain, answers) {
+            const chain = intakeChain || [];
+            const given = answers || {};
+            const keyOf = /** @param {any} m */ m => m.moduleKey || m.module;
+            const isAnswered = /** @param {string} key */ key => given[key] !== undefined && given[key] !== null && given[key] !== '';
+            const carriesRoute = /** @param {any} m */ m => (m.client_response || []).some(/** @param {any} o */ o => !!o && !!o.route_to && typeof o.route_to === 'object' && typeof o.route_to.service === 'string');
+            const parentsOf = /** @param {string} key */ key => chain.filter(/** @param {any} m */ m => keyOf(m) !== key && m.then && Object.values(m.then).some(/** @param {any} t */ t => Array.isArray(t) && t.includes(key)));
+            /** @param {any} m @param {Set<string>} path */
+            const canComeUp = (m, path) => {
+                const key = keyOf(m);
+                if (isAnswered(key) || path.has(key)) return false;
+                for (const [k, v] of Object.entries(m.depends_on || {})) {
+                    if (given[k] !== undefined && given[k] !== v) return false;
+                }
+                const parents = parentsOf(key);
+                if (!parents.length) return true;
+                const here = new Set(path).add(key);
+                return parents.some(/** @param {any} p */ p => isAnswered(keyOf(p)) ? (p.then[given[keyOf(p)]] || []).includes(key) : canComeUp(p, here));
+            };
+            return chain.some(/** @param {any} m */ m => carriesRoute(m) && canComeUp(m, new Set()));
+        }
+
         // executeWorkflow -- LOGIC. THE gateway: every entry path (catalog tap, free text, other tile, an answered chip) resolves through this one function. It runs the workflow for the context's service and then,
         // if the customer's answers include one whose option says "this means the job is service X" (`route_to`, PENDING_DECISIONS #180), moves the job to X and runs the workflow again -- carrying the answers
         // given, adding the ones the route names, and recording WHY on the route (route.routedFrom) and on the context that produced it, so the card can say so and the customer can take it back (orch_unroute).
@@ -4086,7 +4113,11 @@ body.modal-active{overflow:hidden}
                 // (R-INVARIANT-BOUNDARY). Same filter the legacy curated path applies.
                 visibleChain: (typeof _isModVisible === 'function')
                     ? intakeChain.filter(m => _isModVisible(m, answers, intakeChain))
-                    : intakeChain,                // v9.5: expose activeTagIds on the route so downstream
+                    : intakeChain,
+                // T174 (#201): whether a question this job has not yet been asked can still move it to another service. The Fork in the Road waits while it can (the diagnostic is the last resort), and is offered
+                // when the chain has nothing left that could name the part. A fact the renderers read; they decide nothing.
+                triagePending: orch_route_still_possible(intakeChain, answers),
+                // v9.5: expose activeTagIds on the route so downstream
                 // renderers (renderCuratedCardFromRoute, renderSelfQuoteFromRoute)
                 // can pass the same tags to computeUnifiedQuote for live
                 // recompute. Without this, route.activeTags was always undefined
@@ -7622,7 +7653,7 @@ body.modal-active{overflow:hidden}
             // from computeUnifiedQuote, not something added here). This was
             // a UI-layer gap, not a data gap: the data already reached this
             // renderer, nothing displayed it.
-            if (route.quote?.divergenceEligible && !divergencePath) {
+            if (route.quote?.divergenceEligible && !divergencePath && !route.triagePending) {
                 container.innerHTML = buildDivergenceResolutionHtml(route.quote, 'orchChooseDivergencePath');
                 return;
             }
@@ -7764,6 +7795,9 @@ body.modal-active{overflow:hidden}
             const onsite = !!(q && q.isDiagnostic && q.divergenceEligible && divergencePath === 'onsite');
             // Terms resolved by the orchestrator (route.onsiteTerms); the renderer reads the fact.
             const terms = onsite ? (route.onsiteTerms || null) : null;
+            // T174 (#201): a registered diagnostic whose questions can still name the part has no price to show yet, on either path: the Fork is not offered (route.triagePending) and the hourly estimate
+            // behind the diagnostic is not a quote. The customer sees the questions and, as for any unfinished request, the line that asks them to answer.
+            const awaitingTriage = !!(q && q.divergenceEligible && route.triagePending && !divergencePath);
             if (q && onsite) {
                 html += `<div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
                     <span>${escapeHtml(terms.label)}</span>
@@ -7773,7 +7807,7 @@ body.modal-active{overflow:hidden}
                 html += `<div class="action-buttons" style="display:flex; gap:10px; margin-top:16px;">
                     <button class="book-now-button" id="btn-curated-add">Add to Request</button>
                  </div>`;
-            } else if (q) {
+            } else if (q && !awaitingTriage) {
                 html += `<div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
                     <span>Estimated labor:</span>
                     <span class="price-value">$${q.laborEstimate}</span>
