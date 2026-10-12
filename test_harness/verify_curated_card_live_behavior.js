@@ -131,7 +131,8 @@ function findChrome() {
         const price = () => (document.getElementById('sqSb3').querySelector('.price-value') || {}).textContent || null;
         const labels = () => [...document.getElementById('sqSb3').querySelectorAll('.ims-label')].map(l => l.textContent.replace(/^\s*\d+\.\s*/, '').trim());
         const out = { chips: [], services: 0, priceMoves: 0, pathA: [], purity: {} };
-        const out2 = { moves: [], hubs: 0 };
+        const out2 = { moves: [], hubs: 0, routes: [] };
+        const noticeOf = () => document.getElementById('sqSb3').querySelector('.route-notice');
         for (const svc of DB.services) {
             try {
                 await tap(svc);
@@ -140,7 +141,16 @@ function findChrome() {
                 out.services++; const prices = new Set();
                 for (let i = 0; i < texts.length; i++) {
                     if (i > 0) await tap(svc); // every answer is judged from the card exactly as the customer first sees it
-                    [...blocks()[0].querySelectorAll('.ims-chip')][i].click(); await sleep(5);
+                    const chipEl = [...blocks()[0].querySelectorAll('.ims-chip')][i];
+                    // T170 (#180): an answer whose option carries `route_to` settles WHICH service the job is, so the card legitimately becomes the target's, with the reason and the way back
+                    const rt = ((DB.intake_modules[chipEl.dataset.mod] || {}).client_response || []).find(o => o.label === chipEl.dataset.label)?.route_to || null;
+                    chipEl.click(); await sleep(5);
+                    if (rt) {
+                        const target = DB.services.find(x => x.id === rt.service), n = noticeOf(), head = (document.getElementById('sqSb3').querySelector('h3') || {}).textContent || '';
+                        const ok = !!target && !!n && !!n.querySelector('.route-undo') && head.trim() === (target.ui_taxonomy?.display_name || '') && n.textContent.includes(rt.because);
+                        out2.routes.push({ id: svc.id, i, to: rt.service, ok, head: head.trim(), notice: !!n });
+                        out.chips.push({ id: svc.id, i, ok, sel: ['(routed to ' + rt.service + ')'] }); continue;
+                    }
                     const bl = blocks(), hub = !!document.getElementById('sqSb3').querySelector('.divergence-hub');
                     // An answer may legitimately resolve the route to the diagnostic fork ("Not sure -- just want it checked"): the card then shows
                     // the hub and no question block. A card with neither is BLANK, and that is a failure.
@@ -151,7 +161,7 @@ function findChrome() {
                 if (prices.size > 1) out.priceMoves++;
                 if (texts.length > 1) { // the selection MOVES: answer one way, then another, in the same question
                     await tap(svc); [...blocks()[0].querySelectorAll('.ims-chip')][0].click(); await sleep(5);
-                    if (blocks().length) {
+                    if (blocks().length && !noticeOf()) {   // (a first answer that routes the job away leaves a different card: there is no second answer of the same question to move to)
                         [...blocks()[0].querySelectorAll('.ims-chip')][1].click(); await sleep(5);
                         const bl = blocks();
                         if (bl.length) { const sel = [...bl[0].querySelectorAll('.ims-chip.sel')].map(c => c.textContent.trim()); out2.moves.push({ id: svc.id, ok: sel.length === 1 && sel[0] === texts[1], sel }); }
@@ -159,7 +169,7 @@ function findChrome() {
                 }
             } catch (e) { out.chips.push({ id: svc.id, error: e.message }); }
         }
-        out.moves = out2.moves; out.hubs = out2.hubs;
+        out.moves = out2.moves; out.hubs = out2.hubs; out.routes = out2.routes;
         // the diagnostic fork: "answer a few more questions" appends deep-dive questions; answering one must not make the others disappear
         for (const svc of DB.services) {
             try {
@@ -227,6 +237,8 @@ function findChrome() {
     // answering
     const badChip = ans.chips.filter(r => r.error || !r.ok).map(r => r.error ? `${r.id}: ${r.error}` : `${r.id}[${r.i}] selected ${JSON.stringify(r.sel)}`);
     check(`answering: clicking a chip on the real card selects exactly that chip, for every answer of the first question of ${ans.services} services (${ans.chips.length} clicks)`, badChip.length === 0, { expected: 0, got: badChip.slice(0, 5) });
+    const badRoute = (ans.routes || []).filter(r => !r.ok).map(r => `${r.id}[${r.i}] -> ${r.to}: heading "${r.head}", notice ${r.notice}`);
+    check(`answering: an answer that hands the job to another service shows that service, why, and the way back (${(ans.routes || []).length} such answers)`, (ans.routes || []).length >= 3 && badRoute.length === 0, { expected: '>= 3 route_to answers (the first-question ones: the part, restore and reset services), all showing the target + because + undo', got: badRoute.slice(0, 4) });
     const badMove = ans.moves.filter(r => !r.ok).map(r => `${r.id}: ${JSON.stringify(r.sel)}`);
     check(`answering: the selection MOVES -- answering one way then another leaves only the second selected (${ans.moves.length} services)`, ans.moves.length >= 30 && badMove.length === 0, { expected: '>= 30 services, 0 failures', got: { n: ans.moves.length, bad: badMove.slice(0, 4) } });
     check(`answering: ${ans.hubs} answer(s) resolve the route to the diagnostic fork, and each shows the hub rather than a blank card`, ans.chips.every(r => r.ok !== false || !/blank/.test((r.sel || [])[0] || '')), { got: ans.chips.filter(r => /blank/.test((r.sel || [])[0] || '')).slice(0, 4) });

@@ -23,10 +23,10 @@
  *     components, plus a real, now-closed gap): confirms multi-
  *     component-one-service resolution and the "Something else"
  *     fallback's real, remaining scope.
- *   - Computer Repair (symptom_first, genuine multi-service symptoms):
- *     the real test of *why* the Action step matters -- the same
- *     symptom (wont_power_on) must resolve to two DIFFERENT, correct
- *     services depending on which action was tapped first.
+ *   - Computer Repair (symptom_first): until T170 the real test of *why* the Action step matters (the same symptom resolved to two different services
+ *     depending on the action tapped first). The operator ruled on 2026-10-11 04:57 NY that this group LEADS WITH THE SYMPTOM (ask_action_first: false;
+ *     PENDING_DECISIONS #180), so the group is now tested opening on its symptoms, and the Action step's disambiguation (a component that maps to two
+ *     services of different service types) is tested at the function that does it, on the data the group still has (comp.hard_drive).
  *   - Cabinets & Drawers (component_first, replacing a generic "Other"
  *     tile presentation): the real test of the project's core
  *     philosophy -- not authoring a bespoke named service for every
@@ -187,47 +187,37 @@ function tap(t, w) {
         check('the builder sentence genuinely reflects the pre-seeded group ("Toilets")', /toilets/i.test(sentence));
     }
 
-    console.log('\n=== Computer Repair (symptom_first): real Action tiles show symptoms, not components, per the real archetype ===');
+    console.log('\n=== Computer Repair (symptom_first): the group opens on its symptoms, in the customer\'s words (T170, #180) ===');
     const compGroup = w.DB.group.find(g => g.id === 'tech_trouble_computer_repair');
     check('Computer Repair group exists in the real catalog', !!compGroup);
     w.showSubGroups(compGroup, 'tech_trouble');
     await wait(50);
-    // T72 FIX: was 4 (Diagnostic/Install/Setup/Repair). Install confirmed
-    // a real dead end for this group -- no computer-repair symptom or
-    // component ever led to an Install-type service; removed. The other
-    // 3 (Diagnostic/Setup/Repair, all confirmed real) are unaffected. See
-    // TIMELINE.md's T72 entry.
-    check('3 real action tiles render (Diagnostic/Setup/Repair)',
-        tiles(doc).length === 3);
-    tap(findTile(doc, /set up/i), w);
-    await wait(50);
+    // T170 (operator, 2026-10-11 04:57 NY: "users in the computer repair often dont [know what they need] so we lead with a symptom-based approach"): this was
+    // "3 real action tiles render (Diagnostic/Setup/Repair)" and a tap on "Set up" before the symptoms. The Action step is a question about the answer to a
+    // question the customer has not been asked yet; the group authors ask_action_first: false and opens on what is happening.
+    check('no Action step (Diagnose / Set up / Fix-Repair) stands in front of the symptoms',
+        !tileLabels(doc).some(l => /^(diagnose|set up|fix)/i.test(l)) && tileLabels(doc).length >= 7);
     check('symptom tiles render (not components), matching the real symptom_first archetype', tileLabels(doc).some(l => /virus/i.test(l)));
-    check('the picker prompt ("What\'s happening?") is present, confirming symptom_first framing',
+    check('the picker prompt is the group\'s own (about the computer), confirming symptom_first framing',
         /what.s happening/i.test(doc.getElementById('serviceContainer').textContent));
     tap(findTile(doc, /virus/i), w);
     await wait(50);
     check('Virus resolves to virus_or_malware_removal', w.S?.svc?.id === 'virus_or_malware_removal' || w.S?._svc?.id === 'virus_or_malware_removal');
 
-    console.log('\n=== THE CORE VALUE PROPOSITION: the SAME symptom resolves to DIFFERENT, correct services depending on the chosen Action ===');
+    console.log('\n=== THE ACTION STEP still disambiguates where a group asks it: the same component resolves to DIFFERENT, correct services by the chosen Action ===');
     {
-        w.showSubGroups(compGroup, 'tech_trouble');
-        await wait(50);
-        tap(findTile(doc, /repair/i), w);
-        await wait(50);
-        check('a real "wont_power_on" symptom tile is present under Repair', tileLabels(doc).some(l => /power on/i.test(l)));
-        tap(findTile(doc, /power on/i), w);
+        // comp.hard_drive still maps to two services of different service types (Computer Repair's component map is kept); the Action step is no longer shown for this group,
+        // but resolveComponentSymptomTap is the function every group that does show it goes through, so it is tested here on that real data.
+        const two = (w.DB.routing_archetypes.tech_trouble_computer_repair.component_id_to_service_ids || {})['comp.hard_drive'] || [];
+        check('the real data still has a component that maps to two services of different service types', two.length === 2 && new Set(two.map(id => (w.DB.services.find(x => x.id === id) || {}).service_type)).size === 2);
+        w.resolveComponentSymptomTap(two, compGroup, 'tech_trouble', 'Repair');
         await wait(50);
         const viaRepair = w.S?.svc?.id || w.S?._svc?.id;
-        check('via Repair, wont_power_on resolves to computer_diagnostic', viaRepair === 'computer_diagnostic');
-
-        w.showSubGroups(compGroup, 'tech_trouble');
-        await wait(50);
-        tap(findTile(doc, /set up/i), w);
-        await wait(50);
-        tap(findTile(doc, /power on/i), w);
+        check('via Repair, the hard drive resolves to internal_hardware_replacement', viaRepair === 'internal_hardware_replacement');
+        w.resolveComponentSymptomTap(two, compGroup, 'tech_trouble', 'Setup');
         await wait(50);
         const viaSetup = w.S?.svc?.id || w.S?._svc?.id;
-        check('via Set up, the SAME symptom instead resolves to system_restore_or_reset', viaSetup === 'system_restore_or_reset');
+        check('via Set up, the SAME component instead resolves to data_backup_or_transfer', viaSetup === 'data_backup_or_transfer');
         check('the two resolutions are genuinely different services (the real reason the Action step exists)', viaRepair !== viaSetup && !!viaRepair && !!viaSetup);
     }
 
@@ -430,14 +420,11 @@ function tap(t, w) {
         // Confirm the DIFFERENT-service_type disambiguation (the original,
         // correct use of this mechanism) still works after the fix.
         const compGroup = w.DB.group.find(x => x.id === 'tech_trouble_computer_repair');
-        w.showSubGroups(compGroup, 'tech_trouble');
-        await wait(30);
-        tap(findTile(doc, /repair/i), w);
-        await wait(30);
-        tap(findTile(doc, /power on/i), w);
+        // T170: the group no longer shows an Action step (it opens on its symptoms), so the same disambiguation is exercised at the function, on the group's real hard-drive component.
+        w.resolveComponentSymptomTap(['internal_hardware_replacement', 'data_backup_or_transfer'], compGroup, 'tech_trouble', 'Repair');
         await wait(30);
         check('Regression check: different-service_type disambiguation (Computer Repair) still resolves directly and correctly',
-            (w.S?.svc?.id || w.S?._svc?.id) === 'computer_diagnostic');
+            (w.S?.svc?.id || w.S?._svc?.id) === 'internal_hardware_replacement');
     }
 
     console.log('\n=== Plumbing Help cluster: a real service hidden behind symptoms, and a whole group reclassified to expose real components ===');

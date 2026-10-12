@@ -1,0 +1,184 @@
+# T170 Part C: what a customer who TYPES gets, HEAD (Parts A+B, 0ba99df) vs this tree. Real collectBookingContext_freeText + executeWorkflow on the real page (jsdom); one line per phrase: service | answers carried from the words | questions still asked.
+# 69 phrases about computers, their parts, symptoms, files and software. "**" marks a phrase whose outcome changed; unchanged phrases are listed too (a regression would show as a change).
+# 42 of 69 phrases changed. The ones still unsatisfying are filed in PENDING_DECISIONS #188 (not fixed: the group resolver and the object table are held vocabulary-in-code, D-C11-2).
+
+** "my computer wont turn on"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Won’t power on at all | asks[device_type]
+** "my laptop wont turn on"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop / Won’t power on at all | asks[laptop_power_signs]
+** "my desktop wont power on"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Desktop (tower) / Won’t power on at all | asks[desktop_power_signs]
+** "my pc wont power on"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Won’t power on at all | asks[device_type]
+** "computer wont boot"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Turns on but won’t boot / stuck on loading | asks[device_type,startup_screen]
+** "my laptop is slow"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop / Very slow or freezing | asks[slow_pattern]
+** "my computer is slow"
+      HEAD: computer_diagnostic | Virus or pop-ups / Computer (desktop or laptop) | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Very slow or freezing | asks[device_type,slow_pattern]
+** "my pc keeps freezing"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Very slow or freezing | asks[device_type,slow_pattern]
+** "computer is overheating"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Overheating or fan very loud | asks[device_type,heat_signs]
+** "my laptop fan is loud"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : computer_diagnostic | Laptop / Overheating or fan very loud | asks[heat_signs]
+** "laptop wont charge"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop / Battery won’t charge or drains quickly | asks[battery_signs]
+** "laptop battery drains fast"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : internal_hardware_replacement | Laptop / Battery won’t charge or drains quickly | asks[computer_component,customer_supplied_part]
+** "replace my laptop battery"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : internal_hardware_replacement | Laptop / Battery | asks[customer_supplied_part]
+** "need a new laptop battery"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : internal_hardware_replacement | Laptop / Battery | asks[customer_supplied_part]
+** "my laptop charger stopped working"
+      HEAD: undefined |  | asks[computer_symptom]
+      NOW : internal_hardware_replacement | Laptop / Charger or power adapter (laptop) | asks[customer_supplied_part]
+** "new laptop charger"
+      HEAD: undefined |  | asks[computer_symptom]
+      NOW : internal_hardware_replacement | Laptop / Charger or power adapter (laptop) | asks[customer_supplied_part]
+** "I need more RAM"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : internal_hardware_replacement | RAM (memory) | asks[device_type,customer_supplied_part]
+** "upgrade my ram"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : internal_hardware_replacement | RAM (memory) | asks[device_type,customer_supplied_part]
+** "install an ssd"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : internal_hardware_replacement | SSD (storage drive) | asks[device_type,customer_supplied_part]
+** "replace my hard drive"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : internal_hardware_replacement | SSD (storage drive) | asks[device_type,customer_supplied_part]
+** "new hard drive for my pc"
+      HEAD: data_backup_or_transfer |  | asks[tech_issue_source,backup_source_device]
+      NOW : data_backup_or_transfer | SSD (storage drive) | asks[tech_issue_source,backup_source_device]
+** "replace the fan in my computer"
+      HEAD: internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+      NOW : internal_hardware_replacement | Fan | asks[device_type,customer_supplied_part]
+** "new power supply for my desktop"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : internal_hardware_replacement | Desktop (tower) / Power supply (desktop) | asks[customer_supplied_part]
+** "replace the power supply in my pc"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : internal_hardware_replacement | Power supply (desktop) | asks[device_type,customer_supplied_part]
+** "my psu is dead"
+      HEAD: undefined |  | asks[surface_type]
+      NOW : internal_hardware_replacement | Power supply (desktop) | asks[device_type,customer_supplied_part]
+** "install a power supply"
+      HEAD: undefined |  | asks[install_target,global_quantity]
+      NOW : internal_hardware_replacement | Power supply (desktop) | asks[device_type,customer_supplied_part]
+** "desktop power supply died"
+      HEAD: undefined |  | asks[computer_symptom]
+      NOW : internal_hardware_replacement | Desktop (tower) / Power supply (desktop) | asks[customer_supplied_part]
+** "power supply for the gaming pc"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : internal_hardware_replacement | Desktop (tower) / Power supply (desktop) | asks[customer_supplied_part]
+** "my computer wont turn on, i think its the power supply"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : internal_hardware_replacement | Won’t power on at all / Power supply (desktop) | asks[device_type,customer_supplied_part]
+   "pop ups on my computer"
+      HEAD: virus_or_malware_removal | Virus or pop-ups / Computer (desktop or laptop) | asks[]
+** "virus on my laptop"
+      HEAD: virus_or_malware_removal | Virus or pop-ups / Computer (desktop or laptop) | asks[]
+      NOW : virus_or_malware_removal | Virus or pop-ups / Laptop / Computer (desktop or laptop) | asks[]
+   "remove malware from my pc"
+      HEAD: system_restore_or_reset | Virus or pop-ups / Computer (desktop or laptop) | asks[device_state]
+   "back up my hard drive"
+      HEAD: data_backup_or_transfer |  | asks[tech_issue_source,backup_source_device]
+** "recover my deleted files"
+      HEAD: undefined |  | asks[surface_type]
+      NOW : data_backup_or_transfer | Lost or corrupted files | asks[tech_issue_source,backup_source_device]
+** "I lost my files"
+      HEAD: undefined |  | asks[surface_type]
+      NOW : data_backup_or_transfer | Files may already be lost or corrupted - need recovery | asks[backup_source_device]
+** "factory reset my laptop"
+      HEAD: system_restore_or_reset |  | asks[device_state]
+      NOW : system_restore_or_reset | Laptop | asks[device_state]
+   "reinstall windows"
+      HEAD: undefined |  | asks[window_issue]
+   "install software on my computer"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+   "install drivers"
+      HEAD: software_or_driver_install |  | asks[software_install_type]
+** "blue screen on my laptop"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop | asks[computer_symptom]
+   "computer repair"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+   "fix my computer"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+** "my screen is black on my laptop"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop | asks[computer_symptom]
+** "laptop is making a clicking noise"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop | asks[computer_symptom]
+** "upgrade my laptop"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : internal_hardware_replacement | Laptop | asks[computer_component,customer_supplied_part]
+** "upgrade my computer"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : internal_hardware_replacement |  | asks[computer_component,device_type,customer_supplied_part]
+   "my computer is making a beeping noise"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+** "spilled coffee on my laptop"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop | asks[computer_symptom]
+** "laptop screen cracked"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop | asks[computer_symptom]
+   "my mac wont start up"
+      HEAD: undefined |  | asks[tech_device]
+** "my macbook is slow"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop / Very slow or freezing | asks[slow_pattern]
+   "tv wont turn on"
+      HEAD: flatscreen_mounting_standard |  | asks[wall_type,mounting_height,mount_sourcing]
+   "my phone wont charge"
+      HEAD: undefined |  | asks[surface_type]
+   "ceiling fan wont turn on"
+      HEAD: ceiling_fan_install |  | asks[existing_box,mounting_height]
+   "my wifi router wont turn on"
+      HEAD: router_configuration |  | asks[router_owned,internet_active,mesh_network,item_count_template::devices]
+   "the power is out in my kitchen"
+      HEAD: undefined |  | asks[surface_type]
+   "need a new power strip"
+      HEAD: undefined |  | asks[surface_type]
+   "install a ceiling fan"
+      HEAD: ceiling_fan_install |  | asks[existing_box,mounting_height]
+   "replace the power supply on my router"
+      HEAD: router_configuration |  | asks[router_owned,internet_active,mesh_network,item_count_template::devices]
+   "my files are gone"
+      HEAD: undefined |  | asks[surface_type]
+   "I deleted my files by accident"
+      HEAD: undefined |  | asks[surface_type]
+** "lost files on my laptop"
+      HEAD: computer_diagnostic |  | asks[device_type,computer_symptom]
+      NOW : computer_diagnostic | Laptop / Files may already be lost or corrupted - need recovery | asks[computer_symptom]
+   "backup my computer"
+      HEAD: data_backup_or_transfer |  | asks[tech_issue_source,backup_source_device]
+   "back up my files"
+      HEAD: undefined |  | asks[tech_device]
+   "data recovery"
+      HEAD: undefined | Lost or corrupted files | asks[tech_device]
+   "I need data recovery"
+      HEAD: undefined | Lost or corrupted files | asks[tech_device]
+   "recover data from my hard drive"
+      HEAD: data_backup_or_transfer |  | asks[tech_issue_source,backup_source_device]
+   "transfer files to a new computer"
+      HEAD: data_backup_or_transfer |  | asks[tech_issue_source,backup_source_device]
+   "lost my photos"
+      HEAD: undefined |  | asks[surface_type]

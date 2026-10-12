@@ -68,7 +68,7 @@ if (!svc) throw new Error('Service not found');
 // 1. With a real, current fee-bearing answer (urgency's real $50 modifier_ref fee).
 const result = sandbox.computeUnifiedQuote({
     svc, dynDef: null, activeTagIds: [],
-    answers: { urgency: 'Urgent — today or tomorrow' },
+    answers: { urgency: 'Urgent - today or tomorrow' },
     qty: 1
 });
 

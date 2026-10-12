@@ -81,9 +81,9 @@ COMPONENT_MODULES: Set[str] = {
     "customer_supplied_part", "device_type", "distance",
     "door_style_pref", "door_type", "ducting", "electrical_item",
     "existing_box", "existing_frame", "existing_type", "faucet_type",
-    "fixture_type", "floor_type", "furn_item", "hardware_type",
+    "floor_type", "furn_item", "hardware_type",
     "has_matching_tiles", "install_target", "install_type", "item_type",
-    "laptop_or_desktop", "lath_check", "leak_loc", "length", "location",
+    "laptop_or_desktop", "lath_check", "leak_loc", "location",
     "masonry_anchor", "mesh_network", "mounting_item", "plumbing_fixture",
     "removal", "router_owned", "Setup", "sink_type", "surface_type",
     "tech_device", "thermostat_type", "toilet_style_pref", "wall_type",
@@ -93,6 +93,8 @@ COMPONENT_MODULES: Set[str] = {
     "pax_hinge_count", "pax_sliding_count", "pax_interior_count",
     "backup_source_device", "blind_curtain_shade_items", "appliance_item",
     "cable_install_item",
+    # T170 (PENDING_DECISIONS #179): the three questions that replaced `length` (twice) and `distance` (for the water line), same layer
+    "baseboard_length", "under_cabinet_length", "water_line_run",
 }
 
 # "What's wrong / what condition / what severity?" — describes the problem.
@@ -526,6 +528,12 @@ def compile_formula_index(db: dict) -> Dict[str, dict]:
 # Group/routing archetype builder
 # ---------------------------------------------------------------------------
 
+# T170 (PENDING_DECISIONS #180): the hand-authored picker vocabulary of a group's routing_archetypes entry. The compiler owns the entry (it is rebuilt every run) but not these: they are the customer's own
+# words for the group's symptoms and for the services a customer who knows what they need asks for, and the SSOT is the one place they are written. Carried through unchanged, or the next compile
+# would drop the picker back to humanised ids ("Wont power on"). Everything else in the entry is derived or preserved exactly as before.
+AUTHORED_ARCHETYPE_KEYS = ("ask_action_first", "symptom_prompt", "symptom_tiles", "known_need_prompt", "known_need_tiles")
+
+
 def build_routing_archetypes(db: dict) -> Dict[str, dict]:
     # T132 FIX: this function, as received, always mechanically
     # re-derived every group from scratch on every run -- it carried
@@ -676,6 +684,9 @@ def build_routing_archetypes(db: dict) -> Dict[str, dict]:
             "symptom_id_to_service_ids": {k: sorted(v) for k, v in merged_symptom_to_skus.items()},
             "real_gaps": merged_gaps,
         }
+        for k in AUTHORED_ARCHETYPE_KEYS:
+            if k in existing_entry:
+                result[gid][k] = existing_entry[k]
     return result
 
 
@@ -1010,6 +1021,115 @@ def _validate_smart_tag_refs(db: dict) -> List[str]:
         for ref in extract_refs(svc.get("default_tags", [])):
             if ref not in tags:
                 errors.append(f"Service '{sid}' default_tags references unknown tag '{ref}'")
+        # T166: suggested_tags on a named service were never read by this check
+        for ref in extract_refs(svc.get("suggested_tags", [])):
+            if ref not in tags:
+                errors.append(f"Service '{sid}' suggested_tags references unknown tag '{ref}'")
+    # T166: a dynamic service's suggested_tags / smart_tags, and the tags on every intake option, were never read
+    # either, which is how a pointer to a tag retired in v9.5 (#pets_on_site) stayed valid:true for a year.
+    for dyn_key, dyn in (db.get("dynamic_services", {}) or {}).items():
+        for field in ("suggested_tags", "smart_tags"):
+            for ref in extract_refs(dyn.get(field, [])):
+                if ref not in tags:
+                    errors.append(f"Dynamic service '{dyn_key}' {field} references unknown tag '{ref}'")
+    for mod_name, mod in modules.items():
+        for i, resp in enumerate(mod.get("client_response", []) or []):
+            for ref in extract_refs(resp.get("tags", [])):
+                if ref not in tags:
+                    errors.append(
+                        f"intake_modules['{mod_name}'].client_response[{i}].tags references unknown tag '{ref}'"
+                    )
+    # tag scoping: the categories, groups and services a tag says it applies to (or not to) must exist
+    category_ids = {c.get("id") for c in db.get("category", []) if c.get("id")}
+    group_ids = {g.get("id") for g in db.get("group", []) if g.get("id")}
+    service_ids = {s.get("id") for s in db.get("services", []) if s.get("id")}
+    for tag_name, tag in (db.get("smart_tags", {}) or {}).items():
+        for cid in tag.get("applicable_categories", []) or []:
+            if cid != "all" and cid not in category_ids:
+                errors.append(f"smart_tags['{tag_name}'].applicable_categories references unknown category '{cid}'")
+        for gid in tag.get("applicable_group_ids", []) or []:
+            if gid not in group_ids:
+                errors.append(f"smart_tags['{tag_name}'].applicable_group_ids references unknown group '{gid}'")
+        for sid in tag.get("excluded_service_ids", []) or []:
+            if sid not in service_ids:
+                errors.append(f"smart_tags['{tag_name}'].excluded_service_ids references unknown service '{sid}'")
+    return errors
+
+
+def _chain_steps(chain: Optional[List[Any]]) -> Iterable[Dict[str, Any]]:
+    """Every step dict of a chain, descending into `then` branches. A branch is a list whose items are module-id
+    strings (the catalog's real shape) or step dicts; flatten_intake_chain only descends into dicts, so a branch of
+    strings was never validated by anything."""
+    for step in (chain or []):
+        if isinstance(step, dict):
+            yield step
+            then_map = step.get("then")
+            if isinstance(then_map, dict):
+                for branch in then_map.values():
+                    if isinstance(branch, list):
+                        yield from _chain_steps([b for b in branch if isinstance(b, dict)])
+
+
+def _validate_chain_branches(db: dict) -> List[str]:
+    """T166: a `then` key must be the exact label of an option of the module it hangs off (a label spelled with U+2011
+    where the key used U+002D opened no branch, silently), and every module a branch names must exist."""
+    errors: List[str] = []
+    modules = db.get("intake_modules", {}) or {}
+    owners = [(f"Service '{s.get('id')}'", s.get("intake_chain")) for s in db.get("services", [])]
+    owners += [(f"Dynamic service '{k}'", d.get("intake_chain")) for k, d in (db.get("dynamic_services", {}) or {}).items()]
+    for owner, chain in owners:
+        for step in _chain_steps(chain):
+            then_map = step.get("then")
+            if not isinstance(then_map, dict) or not then_map:
+                continue
+            mod = modules.get(step.get("module"))
+            labels = {r.get("label") for r in ((mod or {}).get("client_response", []) or [])}
+            for key, branch in then_map.items():
+                if mod is not None and key not in labels:
+                    errors.append(
+                        f"{owner}: then-key {key!r} on module '{step.get('module')}' is not the label of any of its options"
+                    )
+                for item in (branch if isinstance(branch, list) else []):
+                    name = item if isinstance(item, str) else (item.get("module") if isinstance(item, dict) else None)
+                    if name and name not in modules:
+                        errors.append(f"{owner}: then-branch {key!r} names unknown intake module '{name}'")
+    return errors
+
+
+def _validate_option_refs(db: dict) -> List[str]:
+    """T166: what an intake option points at -- its modifier, formula override and checkout-state override -- must exist."""
+    errors: List[str] = []
+    modifiers = ((db.get("global_rules", {}) or {}).get("modifiers", {}) or {})
+    formulas = db.get("pricing_formulas", {}) or {}
+    states = db.get("checkout_states", {}) or {}
+    for mod_name, mod in (db.get("intake_modules", {}) or {}).items():
+        for i, resp in enumerate(mod.get("client_response", []) or []):
+            at = f"intake_modules['{mod_name}'].client_response[{i}]"
+            if resp.get("modifier_ref") and resp["modifier_ref"] not in modifiers:
+                errors.append(f"{at}.modifier_ref '{resp['modifier_ref']}' is not in global_rules.modifiers")
+            if resp.get("formula_override") and resp["formula_override"] not in formulas:
+                errors.append(f"{at}.formula_override '{resp['formula_override']}' is not in pricing_formulas")
+            if resp.get("checkout_state_override") and resp["checkout_state_override"] not in states:
+                errors.append(f"{at}.checkout_state_override '{resp['checkout_state_override']}' is not in checkout_states")
+            # T170 (PENDING_DECISIONS #180): an answer that hands the job to another service names a real one, and the answers it carries are real labels of real modules
+            rt = resp.get("route_to")
+            if rt is not None:
+                svc, _ = get_entity(db, rt.get("service")) if isinstance(rt, dict) else (None, None)
+                if svc is None:
+                    errors.append(f"{at}.route_to.service '{rt.get('service') if isinstance(rt, dict) else rt}' is not a service")
+                for mk, lbl in ((rt.get("answers") or {}).items() if isinstance(rt, dict) else []):
+                    target = (db.get("intake_modules", {}) or {}).get(mk)
+                    if target is None:
+                        errors.append(f"{at}.route_to.answers names module '{mk}', which does not exist")
+                    elif lbl not in [o.get("label") for o in target.get("client_response", []) or []]:
+                        errors.append(f"{at}.route_to.answers['{mk}'] '{lbl}' is not an option label of that module")
+        # T170: a module shown only after another answer names a real module and a real label of it
+        for dk, dv in (mod.get("depends_on", {}) or {}).items():
+            dep = (db.get("intake_modules", {}) or {}).get(dk)
+            if dep is None:
+                errors.append(f"intake_modules['{mod_name}'].depends_on names module '{dk}', which does not exist")
+            elif dv not in [o.get("label") for o in dep.get("client_response", []) or []]:
+                errors.append(f"intake_modules['{mod_name}'].depends_on['{dk}'] '{dv}' is not an option label of that module")
     return errors
 
 
@@ -1068,6 +1188,20 @@ def _validate_archetypes(db: dict) -> List[str]:
         for gid in arch.get("member_group_ids", []) or []:
             if gid not in group_ids:
                 errors.append(f"archetypes['{name}'].member_group_ids references unknown group '{gid}'")
+    # T170: the picker's authored vocabulary points at real things. A tile's tags are smart tags, a tile is one of the group's real symptoms, a known-need tile is a real service of the group.
+    tags = db.get("smart_tags", {}) or {}
+    for gid, ra in (db.get("routing_archetypes", {}) or {}).items():
+        real = set(ra.get("real_symptom_ids", []) or [])
+        for i, t in enumerate(ra.get("symptom_tiles", []) or []):
+            if t.get("id") not in real:
+                errors.append(f"routing_archetypes['{gid}'].symptom_tiles[{i}].id '{t.get('id')}' is not in real_symptom_ids")
+            for tg in t.get("tags", []) or []:
+                if tg not in tags:
+                    errors.append(f"routing_archetypes['{gid}'].symptom_tiles[{i}].tags names '{tg}', which is not a smart tag")
+        group = next((g for g in db.get("group", []) if g.get("id") == gid), {}) or {}
+        for i, k in enumerate(ra.get("known_need_tiles", []) or []):
+            if k.get("service_id") not in (group.get("explicit_services", []) or []):
+                errors.append(f"routing_archetypes['{gid}'].known_need_tiles[{i}].service_id '{k.get('service_id')}' is not an explicit service of the group")
     return errors
 
 
@@ -1097,6 +1231,8 @@ def validate_structural(db: dict) -> Dict[str, List[str]]:
         "material_references": _validate_material_refs(db),
         "intent_mapping_references": _validate_intent_mapping_refs(db),
         "smart_tag_references": _validate_smart_tag_refs(db),
+        "chain_branches": _validate_chain_branches(db),
+        "option_references": _validate_option_refs(db),
         "category_group_references": _validate_category_group_refs(db),
         "dynamic_service_keys": _validate_dynamic_service_keys(db),
         "archetypes": _validate_archetypes(db),

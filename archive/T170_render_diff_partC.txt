@@ -1,0 +1,53 @@
+# T170 Part C render differential: base = HEAD qr.html (Parts A+B, 0ba99df) with its own catalog; head = this tree (qr.html + modules/nlp_engine.js + btnyc.json). One catalog change per side, same driver.
+# command: node test_harness/tools/render_diff.js <HEAD qr.html> qr.html btnyc.json --base-ssot <btnyc.json at 0ba99df> --ignore routedFrom   (DUMP_DIFF=<file> for the entries below)
+# entries 1146 {"card":76,"panel":76,"route":76,"routeJson":76,"restart":76,"quote":380,"prefill":76,"adlib":228,"builder":82} | DIFFERENT: 23 | render errors in head: 0 | page errors base/head: 0/0 | ignored keys: routedFrom | renames: none | drops: 0
+# --ignore routedFrom: the route payload of EVERY service gained one key, "routedFrom": null (76 of 76 routeJson entries; the follow-the-route engine records where a request was routed from, null when it was not). Declared, not hidden: with the key kept, 76 routeJson entries differ for that one key alone, and nothing else in them.
+# differing entries (23): computer_diagnostic, internal_hardware_replacement (and its five quote / three adlib variants), system_restore_or_reset, and the guided builder for the Computer Repair group (3 action types). No other service, and no other group's builder, differs.
+# attribution, every fragment: (a) computer_diagnostic and internal_hardware_replacement DESCRIPTIONS reworded (they decide the sibling for typed phrases: "loses power ... loud"; "... a power supply ..."), (b) internal_hardware_replacement shows as Computer Part Replacement (the T169 alias), (c) computer_component gains Charger and Power supply, and its Something-else answer routes to the diagnostic (4 route_to payloads), (d) purpose "pricing" -> "routing" on computer_component and device_state (the price badge leaves; they decide a service, not a price), (e) device_state "Dead / won't power on" and "Overheating" route to the diagnostic (system_restore_or_reset: 2 route_to payloads), (f) the diagnostic's chain grows from 2 to 10 modules: device_type's `then`, laptop_power_signs, laptop_charger_check, desktop_power_signs, desktop_outlet_check, startup_screen, slow_pattern, heat_signs, battery_signs (every route_to and its because-sentence), (g) the legacy intake panel template numbers its last step by chain length ("11. Additional details" for a 2-question screen; reachable only for furniture and "Other" services, so not shown to a customer for this service; filed #186), (h) the builder's tag chips: the 15 new Computer Repair tags (device, symptom, lost files, six parts), in the Computer Repair group's builder only (the render differential of the first draft showed the six part tags in every Tech Trouble builder; scoping them is why this list is 3 builder entries, not 15). No other fragment.
+# 46 distinct changed fragments
+9 | "Internal Hardware Replacement" => "Computer Part Replacement" | internal_hardware_replacement
+5 | " Internal Hardware Replacement · Repair" => " Computer Part Replacement · Repair" | internal_hardware_replacement
+4 | "Find why computer is slow" => "Find why a computer loses power, won't start, or is slow" | computer_diagnostic
+4 | " or won't start." => " overheating or loud." | computer_diagnostic
+4 | "Replace RAM" => "Replace or upgrade RAM, a storage drive" | internal_hardware_replacement
+4 | " SSD" => " a battery" | internal_hardware_replacement
+4 | " battery" => " a charger" | internal_hardware_replacement
+4 | " fan" => " a power supply" | internal_hardware_replacement
+4 | " or other internal parts." => " a fan or other parts." | internal_hardware_replacement
+4 | "pricing" => "routing" | internal_hardware_replacement, system_restore_or_reset
+3 | "" => "<span class=\"chip\" data-tid=\"#laptop\" onclick=\"sqToggleTag(this,'#laptop')\"><i class=\"ti ti-plus\"></i> on a laptop</span><span class=\"chip\" data-tid=\"#desktop\" onclick=\"sqToggleTag(this,'#desktop')\"><i class=\"ti ti-plus\"></i> on a desktop</span><span class=\"chip\" data-tid=\"#all_in_one\" onclick=\"sqTo" | tech_trouble+tech_trouble_computer_repair+Diagnostic, tech_trouble+tech_trouble_computer_repair+Install, tech_trouble+tech_trouble_computer_repair+Setup
+2 | "" => "\"Laptop\":[\"laptop_power_signs\"],\"Desktop (tower)\":[\"desktop_power_signs\"]" | computer_diagnostic
+2 | "<span class=\"ims-badge\">💲 affects price</span>" => "" | internal_hardware_replacement, system_restore_or_reset
+2 | "" => "</button><button class=\"ims-chip \" data-mod=\"computer_component\" data-label=\"Charger or power adapter (laptop)\" style=\"padding:6px 12px; border-radius:16px; border:1px solid #ccc; background:#fff; cursor:pointer;\"> Charger or power adapter (laptop) </button><button class=\"ims-chip \" data-mod=\"comput" | internal_hardware_replacement
+2 | "" => "Charger or power adapter (laptop)\",\"tags\":[],\"complexity_override\":\"routine\"},{\"label\":\"Power supply (desktop)\",\"tags\":[],\"complexity_override\":\"routine\"},{\"label\":\"" | internal_hardware_replacement
+2 | "" => ",\"route_to\":{\"service\":\"computer_diagnostic\",\"answers\":{" | internal_hardware_replacement
+2 | "" => ",\"because\":\"We can only price the parts listed here up front, so a diagnostic will find the right one first.\"}}" | internal_hardware_replacement
+2 | "" => ",\"routedFrom\":null" | internal_hardware_replacement, system_restore_or_reset
+2 | "" => ",\"route_to\":{\"service\":\"computer_diagnostic\",\"answers\":{\"computer_symptom\":\"Won’t power on at all\"" | system_restore_or_reset
+2 | "" => "\"because\":\"A computer that will not turn on cannot be restored or reset until we find out why, so a diagnostic comes first.\"}}," | system_restore_or_reset
+2 | "" => ",\"route_to\":{\"service\":\"computer_diagnostic\",\"answers\":{\"computer_symptom\":\"Overheating or fan very loud\"" | system_restore_or_reset
+2 | "" => ",\"because\":\"Restoring or resetting the software will not cool a computer down, so a diagnostic comes first.\"}}" | system_restore_or_reset
+2 | "Internal Hardware" => "Computer Part" | internal_hardware_replacement
+1 | "ims-label" => "intake-module-step" | computer_diagnostic
+1 | "margin-top: 14px;" => "margin-top: 16px;\"><div class=\"ims-label" | computer_diagnostic
+1 | "Notes (optional)" => "11. Additional details" | computer_diagnostic
+1 | "<textarea class=" => "<textarea id=\"ssot_detail_ta\" class=" | computer_diagnostic
+1 | "Access notes" => "Describe specifics: measurements" | computer_diagnostic
+1 | " part brands" => " materials" | computer_diagnostic
+1 | " etc." => " current condition…" | computer_diagnostic
+1 | "2" => "3\" style=\"min-height: 75px; margin-top: 6px;" | computer_diagnostic
+1 | "" => "</div>" | computer_diagnostic
+1 | "" => "laptop_power_signs\",\"then\":{\"Nothing at all (no lights, no sound, no fan)\":[\"laptop_charger_check\"]},\"question\":\"Plug the charger in and press the power button. What happens?\",\"type\":\"single\",\"depends_on\":{\"" | computer_diagnostic
+1 | "" => ":\"Won’t power on at all\"}" | computer_diagnostic
+1 | "" => "client_response\":[{\"label\":\"It turns on, but shuts off as soon as I unplug the charger\",\"route_to\":{\"service\":\"internal_hardware_replacement\",\"answers\":{\"computer_component\":\"Battery\",\"device_type\":\"Laptop\"},\"because\":\"A laptop that only runs while it is plugged in usually needs a new battery.\"}},{\"" | computer_diagnostic
+1 | "" => "\"Nothing at all (no lights, no sound, no fan)\":[\"desktop_outlet_check\"]" | computer_diagnostic
+1 | "" => "question\":\"Press the power button on the computer. What happens?\",\"type\":\"single\",\"depends_on\":{\"computer_symptom\":\"Won’t power on at all\"},\"client_response\":[{\"label\":\"Nothing at all (no lights, no sound, no fan)\"},{\"label\":\"Lights or fans come on, but the screen stays black\"},{\"label\":\"It starts u" | computer_diagnostic
+1 | "" => "T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): the desktop counterpart of laptop_power_signs. A pop, a spark or a burning smell is the power supply, at once, and carries a safety instruction in its because-sentence. \\\"Nothing at all\\\" opens the one thing that rules out the wall" | computer_diagnostic
+1 | "" => ",{\"moduleKey\":\"laptop_charger_check\",\"then\":{},\"question\":\"Look at the charger and its cable. What do you see?\",\"type\":\"single\",\"client_response\":[{\"label\":\"The cable or plug is frayed, bent or burnt\",\"route_to\":{\"service\":\"internal_hardware_replacement\",\"answers\":{\"computer_component\":\"Charger or p" | computer_diagnostic
+1 | "" => "purpose\":\"routing\",\"confidence_gain\":20,\"affects_price\":true,\"_note\":\"T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): asked only after \\\"nothing at all\\\" on a dead laptop (or a laptop that will not charge). A damaged cable, or a charger light that stays off at the wall, retires " | computer_diagnostic
+1 | "" => "\"computer_component\":\"Power supply (desktop)\",\"device_type\":\"Desktop (tower)\"" | computer_diagnostic
+1 | "" => "because\":\"A desktop that stays completely dead on a different outlet and cord has most likely lost its power supply.\"}},{\"label\":\"I can't try that right now\"}],\"purpose\":\"routing\",\"confidence_gain\":20,\"affects_price\":true,\"_note\":\"T170 (PENDING_DECISIONS #180, operator mandate 2026-10-11 04:57 NY): " | computer_diagnostic
+1 | "" => "routedFrom\":null,\"" | computer_diagnostic
+1 | ":2" => ":10" | computer_diagnostic
+1 | "" => "</button><button class=\"ims-chip\" type=\"button\">Charger or power adapter (laptop)</button><button class=\"ims-chip\" type=\"button\">Power supply (desktop)" | internal_hardware_replacement
+1 | "Internal Hardwares" => "Computer Parts" | internal_hardware_replacement

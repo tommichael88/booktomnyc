@@ -120,11 +120,11 @@ function run() { return new Promise((resolve) => setTimeout(() => resolve(dom.wi
         const svc = w.DB.services.find(s => s.id === 'faucet_repair_drip');
         w.sqRestart();
         w.prefillSmartQuoteFromService(svc, 'plumbing_help');
-        w.S.answers = { faucet_type: 'Two\u2011handle (hot and cold separate)' };
+        w.S.answers = { faucet_type: 'Two-handle (hot and cold separate)' };
         w.sqBuildCuratedIntake(svc, 'plumbing_help');
         const priceBefore = doc.querySelector('.sq-ic-hdr-foot .sq-ic-price')?.textContent || '';
 
-        w.S.answers.urgency = 'Urgent — today or tomorrow';
+        w.S.answers.urgency = 'Urgent - today or tomorrow';
         w.sqBuildCuratedIntake(svc, 'plumbing_help');
         const priceAfter = doc.querySelector('.sq-ic-hdr-foot .sq-ic-price')?.textContent || '';
 

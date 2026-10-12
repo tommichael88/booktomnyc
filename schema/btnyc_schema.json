@@ -1198,6 +1198,13 @@
             },
             "note": {
               "type": "string"
+            },
+            "context_hints": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "T166: words that infer this tag from the text alone (inferTagsFromContext), matched as whole words. Distinct from `synonyms`, which detectTagsNLP matches. Was two regular expressions written into the function (#high_ceiling, #emergency); PENDING_DECISIONS #163."
             }
           },
           "required": [
@@ -1805,6 +1812,16 @@
                     "type": "string",
                     "description": "v9.4: top-level on the response, not nested under effects."
                   },
+                  "route_to": {
+                    "type": "object",
+                    "description": "T170: this answer settles the customer's question about WHICH service they need, so the engine hands them to that service instead of asking more. {service: a services/dynamic_services id; answers: {module: option label} carried over so nothing is asked twice; because: one customer-facing sentence saying why, shown with an undo}. Resolved in qr.html executeWorkflow (max 3 hops, never loops, always undoable).",
+                    "properties": {
+                      "service": { "type": "string" },
+                      "answers": { "type": "object", "additionalProperties": { "type": "string" } },
+                      "because": { "type": "string" }
+                    },
+                    "required": ["service", "because"]
+                  },
                   "formula_override": {
                     "type": "string",
                     "description": "v9.6: top-level on the response (was nested under effects pre-v9.6). References a pricing_formulas key -- when this answer is selected, computeUnifiedQuote routes pricing through the named formula instead of the entity's default engine."
@@ -1814,7 +1831,11 @@
                     "description": "v9.6: top-level on the response (was nested under effects pre-v9.6). Explicit numeric quantity this label represents (e.g. label '6 or more' -> qty_value 6), read instead of parsing the label text directly."
                   },
                   "tags": {
-                    "type": "array"
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "T166: the smart tags this answer owns, each spelled \"#id\" (the one form the pricing engine compares against; verify_ssot_reference_integrity.js holds the '#'). Before T166 the items were unconstrained and held three spellings of one thing: \"#id\", bare \"id\" and {\"$ref\":\"#id\"}."
                   },
                   "location_hints": {
                     "type": "array",
@@ -2396,6 +2417,10 @@
                   },
                   "checkout_state_override": {
                     "type": "string"
+                  },
+                  "route_to": {
+                    "type": "object",
+                    "description": "T170: see intake_modules.client_response.route_to for the shape and meaning."
                   },
                   "formula_override": {
                     "type": "string",

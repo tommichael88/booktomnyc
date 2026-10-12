@@ -1,0 +1,14 @@
+# T171: why the price golden master read 71 differences during Part C and 47 at the end (the question of 2026-10-11 11:52 NY).
+#
+# One sentence: the 71 was an earlier capture, taken while the six new part tags (RAM, SSD, battery, charger, power supply, fan) were still valid in EVERY Tech Trouble group, so the golden's tag sample
+# (it prices the LAST THREE valid tags in catalog order) moved onto them for four services outside Computer Repair as well; scoping the six tags to Computer Repair (applicable_group_ids) put those
+# four services' samples back on their old tags, their 24 points returned to identical, and 71 - 24 = 47.
+#
+# Reproduced from the two captures (not argued): capture 'd' (during Part C, before the tags were scoped) differed from archive/golden_master_T166_extended.json at 71 points; capture 'e' (the tree in 7e51ae0) at 47.
+#   points that differ in 'd' and not in 'e': 24 (8 orch-tags, 8 state-det, 8 state-tags)
+#   the services they belong to: router_configuration, smart_plug_configuration, smart_speaker_setup, wi_fi_extender_setup (all outside Computer Repair; scenario B, 2 quantities, 3 record families = 4 x 2 x 3 = 24)
+#   points that differ in 'e' and not in 'd': 0
+#   in 'e', all 24 of those points equal the golden again: True
+# So the 47 is not a revision of the 71 that dropped something: it is the same attribution (8 + 36 + 2 + 1, archive/T170_golden_compare_partC.txt) with a leak removed. The leak was real, not a measuring artifact:
+# before the scoping, a router configuration quote carried a charger tag (the render differential showed the same six tags as chips in the Networking, Smart Home and Cable Management builders).
+# I reported '71 of 2,988' as a status mid-stream without saying it was an earlier capture; that is what made 47 look like a changed claim.

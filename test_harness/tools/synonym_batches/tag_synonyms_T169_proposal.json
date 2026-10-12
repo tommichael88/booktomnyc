@@ -1,0 +1,176 @@
+{
+  "_about": "PROPOSAL, NOT APPLIED (PENDING_DECISIONS #177; T169, 2026-10-11 NY). The operator's ruling on #167 item 7 was 'do not invent, but propose, per tag, what synonyms and why; file it for approval, not executed'. Nothing here is read by the engine or by any test. node test_harness/tools/measure_tag_synonym_proposal.js applies each entry IN MEMORY to a copy of the catalog and reports what it would change; approval is a ssot_patch.js 'set' of smart_tags.<tag>.synonyms to the entry's final_synonyms, then the golden master, the corpus tests and the render differential.",
+  "_rules_the_proposals_follow": [
+    "A synonym is proposed only when the catalog itself already uses the words for the thing (the option label that sets the tag, the tag's own note, a service name in its scope). No customer-language corpus exists in the repository (R-SYSTEM-NODATA), so 'what customers say' is not a source here.",
+    "A tag with an EMPTY synonym list is matched on its own id-phrase ('#water_hazard' -> 'water hazard', detectTagsNLP). A tag with ANY synonym is matched on the list only. So every final_synonyms list below starts with the id-phrase, or the catalog's own question 'Is this tile work on a high or vaulted ceiling?' would stop finding #tile_work (measured).",
+    "A tag that moves a price gets no synonym unless the words mean the tag whoever says them: the detector has a negator list but no subject model.",
+    "'none' is an answer, with its reason."
+  ],
+  "_probes": [
+    "the grout is cracked",
+    "floor tiles are loose",
+    "regrout the shower",
+    "replace the cracked bathroom tile",
+    "ceiling tile replacement",
+    "a tile of a mosaic",
+    "laptop motherboard died",
+    "the logic board is fried",
+    "circuit board in the microwave",
+    "mother board",
+    "discontinued faucet",
+    "special order part for the oven",
+    "the basement is flooding",
+    "a pipe burst under the sink",
+    "the tub is overflowing",
+    "overflowing toilet",
+    "water everywhere",
+    "my laptop will not start",
+    "new desktop computer setup",
+    "my pc is slow",
+    "the printer is offline",
+    "please supply the anchors",
+    "I will supply the anchors",
+    "can you bring the anchors",
+    "I already have the anchors, you do not need to bring the anchors",
+    "I need help with some heavy lifting",
+    "I will do the heavy lifting myself"
+  ],
+  "tags": {
+    "#board_level": {
+      "recommend": "ADD (low value: the tag moves no number)",
+      "final_synonyms": [
+        "board level",
+        "motherboard",
+        "logic board",
+        "circuit board"
+      ],
+      "why": "These are the component a board-level repair is about, and the catalog's one real setter ('Dead / won't power on', system_restore_or_reset) is a no-power answer. The v9.6 review left the tag display-only 'rather than force a guess'; the three words are names of parts, not guesses at an intent. Three of its four option setters are door-lock hardware types (see #177), which is a separate finding."
+    },
+    "#flushometer_bidet": {
+      "recommend": "NONE (orphan; retirement candidate, not removed)",
+      "final_synonyms": [],
+      "why": "Retired in v9.5 ('relied on the dead derived_from mechanism'); v9.6 could not say whether it is a distinct concept or a stale duplicate. No option sets it, nothing reads it; the real combination is priced by existing_toilet_type's flushometer answer. Its id-phrase finds #flushometer, #bidet_attachment and itself together. Listed in verify_no_orphaned_data's unreviewed orphans."
+    },
+    "#heavy_lifting": {
+      "recommend": "NONE (same concept as #heavy_item; merge/retire candidate)",
+      "final_synonyms": [],
+      "why": "The catalog's own scoping note calls it 'identical concept' to #heavy_item. The words already belong to #heavy_item ('heavy mirror', 'over 50 lbs'...), #two_person_required ('heavy', 'bulky') and #very_heavy; a synonym here double-tags every heavy phrase. Its one setter ('Heavy mirror (over 50 lbs)') duplicates #heavy_item's own synonym 'heavy mirror'. It moves no number."
+    },
+    "#materials_supplied_anchors": {
+      "recommend": "NONE (measured: the words mean the opposite when the customer says them)",
+      "rejected": [
+        "supply the anchors",
+        "bring the anchors"
+      ],
+      "final_synonyms": [],
+      "why": "This tag moves the price (+$20 and +10 min on brick work, 10 of the 11 services it is valid for). 'Please supply the anchors' (the tag) and 'I will supply the anchors' (the opposite) match the same synonym: measured, both find the tag (`demos`). The detector has no subject model. The question that sets it (masonry_anchor) already asks."
+    },
+    "#part_order_likely": {
+      "recommend": "HOLD (the tag's meaning is the owner's to confirm; candidates listed)",
+      "candidates": [
+        "special order",
+        "discontinued"
+      ],
+      "final_synonyms_if_approved": [
+        "part order likely",
+        "special order",
+        "discontinued"
+      ],
+      "rejected": [
+        "part"
+      ],
+      "why": "v9.6: this is a diagnostic-outcome tag (set after a visit shows a part must be ordered), 'likely intentional, not a gap', 'flagged for confirmation'. Seven options set it: six 'Leaking water' answers and 'Water leak (dripping or pooling)'. 'special order' and 'discontinued' would encode a different thing (the customer already knows the part is hard to get). 'part' alone is the polysemy already filed in #169 item 3. Moves no number."
+    },
+    "#plaster_no_backing": {
+      "recommend": "NONE",
+      "final_synonyms": [],
+      "why": "It is the answer to a question about hidden construction (lath_check: is there solid backing behind the plaster), which a sentence cannot establish, and it moves the price (labor 70 to 105 on brick_or_concrete_crack_repair, 80 to 115 on plaster_wall_repair). A synonym would turn a guess into a charge."
+    },
+    "#plaster_unknown_backing": {
+      "recommend": "NONE",
+      "final_synonyms": [],
+      "why": "It is the customer's 'Not sure' to the same question; it can only be said as the generic 'not sure', which belongs to no tag. It moves the price (labor 70 to 85 on brick_or_concrete_crack_repair, 80 to 95 on plaster_wall_repair)."
+    },
+    "#tech_device_computer": {
+      "recommend": "HOLD (derived; nothing consumes it until `tech_device` is asked)",
+      "candidates": [
+        "laptop",
+        "desktop computer",
+        "pc"
+      ],
+      "final_synonyms_if_approved": [
+        "tech device computer",
+        "laptop",
+        "desktop computer",
+        "pc"
+      ],
+      "why": "A derived tag: #virus requires it, and its only other role is to pre-answer `tech_device`, a module no named service asks. Measured on the catalog's phrases the three words find it on 12 of them ('laptop repair', 'Desktop computer setup', ...) and move no number, so approving adds a chip, not a price. Worth doing only with a decision on `tech_device` (#167 item 1)."
+    },
+    "#tile_work": {
+      "recommend": "ADD, narrowed (low value: moves no number)",
+      "final_synonyms": [
+        "tile work",
+        "grout",
+        "floor tile",
+        "wall tile"
+      ],
+      "rejected": [
+        "tile",
+        "tiles"
+      ],
+      "why": "The option that sets it reads 'Tile (wall or floor)', so 'floor tile' and 'wall tile' are its own two readings, and 'grout' is tile-only vocabulary. The bare words 'tile'/'tiles' (my first draft) newly find it on 18 catalog phrases, including 'Ceiling Tile Replacement' and 'acoustic tile', and also fire on 'a tile of a mosaic' and beside #cracked_tile; the narrowed list finds 6 catalog phrases, none of those. v9.6 left it display-only as a 'broad context marker'; this keeps it that and lets the words reach it. (`demos` below reproduces the comparison.)"
+    },
+    "#two_trip_minimum": {
+      "recommend": "NONE",
+      "final_synonyms": [],
+      "why": "v9.6: a diagnostic outcome ('set after an on-site visit reveals a part must be ordered'), not something a customer says. It shares its scope with #part_order_likely and its four setters with #board_level. Moves no number."
+    },
+    "#water_hazard": {
+      "recommend": "HOLD (v9.6 asked whether it is distinct from #water_damage; candidates listed)",
+      "candidates": [
+        "flooding",
+        "burst pipe",
+        "overflowing"
+      ],
+      "final_synonyms_if_approved": [
+        "water hazard",
+        "flooding",
+        "burst pipe",
+        "overflowing"
+      ],
+      "why": "'flooding' is already a synonym of #emergency and 'burst pipe' already finds #plumbing (through 'pipe'), so two of the three would add a second tag to words that already have one; 'overflowing' is new. Twelve options set it (the leak and won't-drain answers of eight modules), so the tag means 'water is involved in a plumbing job', which is wider than these three. Scope is plumbing_help only. Moves no number."
+    }
+  },
+  "demos": [
+    {
+      "tag": "#tile_work",
+      "synonyms": [
+        "tile work",
+        "tile",
+        "tiles",
+        "grout"
+      ],
+      "why": "the bare words, my first draft",
+      "probes": [
+        "replace the cracked bathroom tile",
+        "ceiling tile replacement",
+        "a tile of a mosaic"
+      ]
+    },
+    {
+      "tag": "#materials_supplied_anchors",
+      "synonyms": [
+        "materials supplied anchors",
+        "supply the anchors",
+        "bring the anchors"
+      ],
+      "why": "who supplies? the detector has no subject",
+      "probes": [
+        "please supply the anchors",
+        "I will supply the anchors",
+        "can you bring the anchors",
+        "I already have the anchors, you do not need to bring the anchors"
+      ]
+    }
+  ]
+}

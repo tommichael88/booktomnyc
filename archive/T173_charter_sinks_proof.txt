@@ -1,0 +1,49 @@
+T173 -- CodeQL #196 option A: the three Charter sinks (PROJECT_CHARTER.html:133), fixed in their own commit
+======================================================================================================
+
+WHAT CODEQL FLAGGED (check-run 114550270773 on head 3fce2fa, rule "DOM text reinterpreted as HTML", 3 alerts, all high).
+The annotations carry columns as well as the line; read against line 133 they are exactly three sinks:
+
+  col 42482-42542  builder demo, category tile      t.innerHTML='<span class="ico">'+e.icon+"</span><span>"+e.name+"</span>"
+  col 43687-44047  builder demo, option popover     t.innerHTML='<div class="pop-head">'+i.label+... a.map(... '<button ... data-val="'+t+'">'+e+"</button>") ...
+  col 51633-52245  status band, renderOffline       container.innerHTML=`<div class="status-band status-offline">...${syncDate}...${source}...`
+
+Sources: the SSOT JSON's category icon/name and item/action/location strings (read from the page's own <script type=application/json>
+textContent), the footer's text (syncDate) and the band's data-source attribute (source).
+
+THE FIX (same rendering, no HTML parsing of data): createElement + textContent / dataset / append. The renderOffline view is built from
+nodes; its one attribute-carried value (source) is set as an href only when it parses to http(s)/file, so the sink moved from "HTML" to
+"URL" is not left open either. The static inline onclick="location.reload()" is kept as the same attribute so the DOM is identical.
+NOT touched, and not flagged: renderSuccess() puts the sidecar / AGGREGATOR.html orientation markup into the band with innerHTML. That is
+HTML from a sibling document on the same origin, rendered as HTML by design, and CodeQL's flow did not reach it. If a later run flags it,
+the fix is a sanitiser or a text-only sidecar, which is a design change and would be its own ticket.
+
+PROOF (tools/charter_dom_proof.js, real headless Chromium, both files served over http as the Charter instructs):
+  PASS  A offline band + builder demo: 18 snapshot keys compared, 0 differ; page errors base/head: 0/0
+  PASS  B sidecar band + builder demo: 18 snapshot keys compared, 0 differ; page errors base/head: 0/0
+  INFO  C hostile data, BASE: payloads that ran = [tile, pop, src], injected <img> elements = 4
+  PASS  C hostile data, HEAD: payloads that ran = [], injected <img> elements = 0
+  
+  ALL PASS
+
+  Negative control (the OLD Charter given as HEAD) -- the tool fails, so it is not vacuous:
+  PASS  A offline band + builder demo: 18 snapshot keys compared, 0 differ; page errors base/head: 0/0
+  PASS  B sidecar band + builder demo: 18 snapshot keys compared, 0 differ; page errors base/head: 0/0
+  INFO  C hostile data, BASE: payloads that ran = [tile, pop, src], injected <img> elements = 4
+  FAIL  C hostile data, HEAD: payloads that ran = [tile, pop, src], injected <img> elements = 4
+  
+  1 FAILED
+
+  Hand-made non-vacuity check on the DOM comparison: changing one string ("pop-body " -> "pop-body") in the new file made 5 snapshot keys
+  differ (pop_qty, pop_items, pop_action, pop_location, pop_after_text) -- the comparison sees a one-attribute change.
+
+WHAT "IDENTICAL" COVERS: 18 snapshot keys per scenario = band markup, band links, and for the builder demo (#tiles, #preview, #hint, #editor,
+#chips) at boot / after picking an option in each of the four popovers / editor open / second tile selected / free text typed / selection
+cleared, plus the outerHTML of each of the four popovers and the popover after typing. No page errors in either build.
+
+HOSTILE DATA (scenario C): <img src=x onerror=...> placed in the first category's name, the first item (a popover option) and the band's
+data-source attribute. OLD: all three payloads ran, 4 <img> elements injected. NEW: none ran, 0 <img>; the same strings are displayed as text.
+
+TESTS: the Charter-reading tests produce byte-identical output on the old and the new Charter (verify_charter_rules, verify_charter_rule_index_v10,
+verify_r-system-layers_full_matrix, verify_curated_card_live_behavior: same rc, same output; verify_architectural_conformance 86/86;
+verify_r-invariant-comply_ship_gate green; verify_access_removed_catalog_wide green).

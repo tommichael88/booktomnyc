@@ -108,7 +108,7 @@ function findChrome() {
         console.log('\n=== feeBreakdown UI wiring: itemized rows replace the old opaque single number ===');
         {
             await page.evaluate(() => {
-                window.S.answers = { urgency: 'Urgent — today or tomorrow' };
+                window.S.answers = { urgency: 'Urgent - today or tomorrow' };
                 window.sqRenderQuote();
             });
             await new Promise(r => setTimeout(r, 500));

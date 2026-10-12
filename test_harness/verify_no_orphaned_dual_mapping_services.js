@@ -106,6 +106,10 @@ for (const [gid, ra] of dualMappedGroups) {
 
         if (KNOWN_FIXED_ORPHANS.has(svcId)) {
             confirmedStillFixed.add(svcId);
+        } else if ((ra.known_need_tiles || []).some(k => k.service_id === svcId)) {
+            // T170 (PENDING_DECISIONS #180): a group that AUTHORS an "I know what I need" lane (routing_archetypes[group].known_need_tiles) lists those services as tiles of their own, in the
+            // customer's words, beside the symptoms (renderComponentSymptomPicker draws the lane instead of the unlabelled orphan tiles). That is a path to the service, so it is not an orphan;
+            // verify_computer_repair_intake.js (1.4) holds that every lane tile is drawn and is a real service of the group.
         } else if (!pickerEnabledGroups.has(gid)) {
             // Real, data-level orphan, but this group never reaches
             // renderComponentSymptomPicker at all today -- the older,

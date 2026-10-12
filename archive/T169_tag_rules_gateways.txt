@@ -1,0 +1,47 @@
+[tag rules across gateways] 158 entities (82 dynamic, 76 named), 29256 fact sets
+     175  dynamic | tapped | group default | tags differ, same price
+    6875  dynamic | tapped | no rule fired | same
+       2  dynamic | typed | default + exclusion | PRICE DIFFERS
+       3  dynamic | typed | default + exclusion | tags differ, same price
+      49  dynamic | typed | exclusion | PRICE DIFFERS
+      97  dynamic | typed | exclusion | tags differ, same price
+     175  dynamic | typed | group default | tags differ, same price
+    6875  dynamic | typed | no rule fired | same
+    7426  named | tapped | no rule fired | same
+      56  named | typed | exclusion | PRICE DIFFERS
+      22  named | typed | exclusion | same
+      75  named | typed | exclusion | tags differ, same price
+    7426  named | typed | no rule fired | same
+  no rule fired: 28602 fact sets, 0 differ
+  a rule fired:  654 fact sets: price differs in 107, only the tags shown differ in 525
+
+  13 distinct tag situations move the price (labor delta = the builder's minus the free-text/state path's):
+    17x  named | typed | exclusion | held #high_ceiling + #very_high_ceiling | rules added - removed #very_high_ceiling  | labor 40, 95, 124 | minutes 30 | e.g. bathroom_exhaust_fan_replacement, brick_or_concrete_crack_repair
+    15x  dynamic | typed | exclusion | held #data_recovery + #virus | rules added - removed #virus  | labor 30, 76, 113 | minutes 25 | e.g. dyn:tech_trouble+Diagnostic, dyn:tech_trouble+Setup
+    12x  named | typed | exclusion | held #clogged_drain + #toilet_running | rules added - removed #toilet_running  | labor -10 | minutes -10 | e.g. angle_stop_replacement, bidet_attachment_install_or_removal
+    12x  named | typed | exclusion | held #leaky_faucet + #toilet_running | rules added - removed #toilet_running  | labor -10 | minutes -10, -5 | e.g. angle_stop_replacement, bidet_attachment_install_or_removal
+    12x  dynamic | typed | exclusion | held #clogged_drain + #toilet_running | rules added - removed #toilet_running  | labor -28, -10 | minutes -10 | e.g. dyn:plumbing_help+Install, dyn:plumbing_help+Diagnostic
+    12x  dynamic | typed | exclusion | held #leaky_faucet + #toilet_running | rules added - removed #toilet_running  | labor -28, -10 | minutes -10 | e.g. dyn:plumbing_help+Install, dyn:plumbing_help+Diagnostic
+     9x  named | typed | exclusion | held #data_recovery + #virus | rules added - removed #virus  | labor 30, 76 | minutes 25 | e.g. computer_diagnostic, data_backup_or_transfer
+     6x  dynamic | typed | exclusion | held #high_ceiling + #very_high_ceiling | rules added - removed #very_high_ceiling  | labor 40 | minutes 30 | e.g. dyn:wall_mounting+wall_mounting_frames_shelves+Mount, dyn:wall_mounting+wall_mounting_tv_flatscreen+Mount
+     3x  named | typed | exclusion | held #brick_wall + #drywall | rules added - removed #drywall  | labor 25 | minutes 20 | e.g. brick_or_concrete_crack_repair, wall_hole_or_crack_repair
+     3x  named | typed | exclusion | held #brick_wall + #plaster_wall | rules added - removed #plaster_wall  | labor 25 | minutes 20 | e.g. brick_or_concrete_crack_repair, wall_hole_or_crack_repair
+     2x  dynamic | typed | exclusion | held #brick_wall + #drywall | rules added - removed #drywall  | labor 62 | minutes 20 | e.g. dyn:minor_home_repairs+minor_home_repairs_walls+Diagnostic, dyn:minor_home_repairs+minor_home_repairs_walls+Repair
+     2x  dynamic | typed | exclusion | held #brick_wall + #plaster_wall | rules added - removed #plaster_wall  | labor 62 | minutes 20 | e.g. dyn:minor_home_repairs+minor_home_repairs_walls+Diagnostic, dyn:minor_home_repairs+minor_home_repairs_walls+Repair
+     2x  dynamic | typed | default + exclusion | held #high_ceiling + #very_high_ceiling | rules added #drywall removed #very_high_ceiling  | labor 132 | minutes 30 | e.g. dyn:minor_home_repairs+minor_home_repairs_walls+Diagnostic, dyn:minor_home_repairs+minor_home_repairs_walls+Repair
+
+  ordinary sentences, end to end:
+   "patch a hole in a brick wall and a plaster wall" -> brick_or_concrete_crack_repair
+       free-text: labor 70, 80 min | builder: labor 95, 100 min | the rules removed ["#plaster_wall"] added [] | DIFFERENT
+   "virus on my laptop and I need data recovery" -> data_backup_or_transfer
+       free-text: labor 99, 109 min | builder: labor 129, 134 min | the rules removed ["#virus"] added [] | DIFFERENT
+   "very high ceiling light fixture replacement" -> light_fixture_replacement
+       free-text: labor 60, 70 min | builder: labor 100, 100 min | the rules removed ["#very_high_ceiling"] added [] | DIFFERENT
+   "clogged drain and a leaky faucet" -> faucet_repair_drip
+       free-text: labor 125, 90 min | builder: labor 125, 90 min | the rules removed ["#leaky_faucet"] added [] | same
+   "my toilet keeps running and the kitchen faucet leaks" -> toilet_flapper_or_fill_valve_replacement
+       free-text: labor 105, 65 min | builder: labor 105, 65 min | the rules removed ["#toilet_running"] added [] | same
+   "replace a light fixture on a high ceiling" -> light_fixture_replacement
+       free-text: labor 100, 100 min | builder: labor 100, 100 min | the rules removed [] added [] | same
+   "hang a mirror" -> shelf_mounting_standard_buy_the_hour
+       free-text: labor 159, 70 min | builder: labor 159, 70 min | the rules removed [] added [] | same

@@ -1,0 +1,21 @@
+# T169 render differential: base catalog = the tree at fde902f (T168), head catalog = this tree; same qr.html on both sides
+# command: node test_harness/tools/render_diff.js qr.html qr.html btnyc.json --base-ssot <btnyc.json at fde902f>
+base: /home/claude/work/btnyc_repo_T156/qr.html
+head: /home/claude/work/btnyc_repo_T156/qr.html
+entries 1146 {"card":76,"panel":76,"route":76,"routeJson":76,"restart":76,"quote":380,"prefill":76,"adlib":228,"builder":82} | DIFFERENT: 30 | render errors in head: 0 | page errors base/head: 0/0 | ignored keys: none | renames: none | drops: 0
+
+# attribution (every one of the 30 differing entries, by cause; an entry can carry more than one cause: routeJson:smart_speaker_setup is both a new brand option and a new purpose key, so the causes below add to 31 entries for 30 distinct entries):
+  removal label: "(+$25)" dropped: 6 entries -> ['panel:baseboard_install', 'routeJson:baseboard_install', 'panel:toilet_install', 'route:toilet_install', 'routeJson:toilet_install', 'prefill:toilet_install']
+  badge added: 3 entries -> ['panel:blinds_shades_curtains_buy_the_hour', 'panel:data_backup_or_transfer', 'panel:prehung_interior_door_install']
+  purpose key added: 14 entries -> ['routeJson:blinds_shades_curtains_buy_the_hour', 'routeJson:cabinet_knob_or_pull_install', 'routeJson:data_backup_or_transfer', 'routeJson:furniture_assembly_flat_pack', 'routeJson:furniture_disassembly_for_moving', 'routeJson:furniture_repair_hourly', 'routeJson:loose_tile_replacement', 'routeJson:prehung_interior_door_install', 'routeJson:scratch_or_water_ring_removal', 'routeJson:shelf_mortar_mounting_buy_the_hour', 'routeJson:shelf_mounting_standard_buy_the_hour', 'routeJson:smart_speaker_setup', 'routeJson:generic_mounting_service', 'routeJson:pax_wardrobe_assembly']
+  IHR: laptop_or_desktop question gone: 4 entries -> ['panel:internal_hardware_replacement', 'route:internal_hardware_replacement', 'routeJson:internal_hardware_replacement', 'prefill:internal_hardware_replacement']
+  brand: "Other / don't know" added: 4 entries -> ['panel:smart_speaker_setup', 'route:smart_speaker_setup', 'routeJson:smart_speaker_setup', 'prefill:smart_speaker_setup']
+  classifier residue: 2 entries (renumbering; explained below)
+  panel:internal_hardware_replacement
+      ('replace', '5. Additional details', '4. Additional details')
+      ('replace', 'Answer 4 questions above', 'Answer 3 questions above')
+  routeJson:internal_hardware_replacement
+      ('replace', ':4', ':3')
+
+# the 2 residue entries listed above are the same cause as the IHR line: one question fewer renumbers the next label ("5. Additional details" -> "4."), the counter text ("Answer 4 questions above" -> "Answer 3 questions above") and a count in the route payload (4 -> 3). They sit in entries already attributed to the IHR change (panel:internal_hardware_replacement, routeJson:internal_hardware_replacement). Net: 30 of 30 attributed, 0 unattributed.
+# engine level (fee_attrib.js): toilet_install and baseboard_install x qty 1,2,3 x the 3 removal answers (18 runs): the only quote field that differs is feeBreakdown[].label (6 runs: the label text without "(+$25)"); fee 25 and scope per_unit are identical; laborEstimate, extraFee, totalMin, complexityTier, checkoutStateKey identical in all 18.

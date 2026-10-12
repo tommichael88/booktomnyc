@@ -274,7 +274,7 @@
   },
   {
     "name": "_resolveIntakeChain",
-    "lines": 72,
+    "lines": 81,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
@@ -419,12 +419,11 @@
   },
   {
     "name": "applySSOTRules",
-    "lines": 47,
+    "lines": 15,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
-      "has",
-      "tagValidForCategory"
+      "resolveTagRules"
     ]
   },
   {
@@ -707,7 +706,7 @@
   },
   {
     "name": "collectBookingContext_catalog",
-    "lines": 13,
+    "lines": 18,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
@@ -716,7 +715,7 @@
   },
   {
     "name": "collectBookingContext_freeText",
-    "lines": 202,
+    "lines": 224,
     "direct_impure": false,
     "transitively_impure": true,
     "calls": [
@@ -729,6 +728,8 @@
       "inferTagsFromContext",
       "makeBookingContext",
       "resolveGroupFromIntent",
+      "resolveTagRules",
+      "resolveTagScopeGroup",
       "sqPrepareFlow",
       "tagValidForCategory",
       "understandRequest"
@@ -830,6 +831,13 @@
     ]
   },
   {
+    "name": "coveredBy",
+    "lines": 1,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
+  },
+  {
     "name": "create",
     "lines": 15,
     "direct_impure": true,
@@ -920,7 +928,7 @@
   },
   {
     "name": "detectIntentNLP",
-    "lines": 556,
+    "lines": 524,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -936,11 +944,14 @@
   },
   {
     "name": "detectTagsNLP",
-    "lines": 39,
+    "lines": 70,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
-      "has"
+      "coveredBy",
+      "excl",
+      "nearTokens",
+      "wordBoundaryMatch"
     ]
   },
   {
@@ -1010,29 +1021,20 @@
     ]
   },
   {
+    "name": "excl",
+    "lines": 1,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
+  },
+  {
     "name": "executeWorkflow",
-    "lines": 233,
+    "lines": 35,
     "direct_impure": false,
     "transitively_impure": true,
     "calls": [
-      "_isModVisible",
-      "catastrophicFallbackRoute",
-      "closeTagsOverRequires",
-      "onsiteDiagnosticTerms",
-      "orch_apply_intake_bypass_rules",
-      "orch_apply_location_hints",
-      "orch_compose_intake_chain",
-      "orch_compute_confidence",
-      "orch_compute_quote",
-      "orch_compute_variability_flags",
-      "orch_max_followup_questions",
-      "orch_merge_materials_estimate",
-      "orch_recommended_service_ids",
-      "orch_resolve_entity",
-      "orch_select_ui_template",
-      "resolveQuantityUnits",
-      "synthesizeAnswersFromTags",
-      "validateRoute"
+      "orch_find_route_tos",
+      "orch_run_workflow"
     ]
   },
   {
@@ -1190,11 +1192,12 @@
   },
   {
     "name": "inferTagsFromContext",
-    "lines": 55,
+    "lines": 51,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
-      "tagValidForCategory"
+      "tagValidForCategory",
+      "wordBoundaryIncludes"
     ]
   },
   {
@@ -1396,6 +1399,13 @@
     "calls": []
   },
   {
+    "name": "nearTokens",
+    "lines": 15,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
+  },
+  {
     "name": "objWordBoundaryIncludes",
     "lines": 16,
     "direct_impure": false,
@@ -1461,7 +1471,7 @@
   },
   {
     "name": "orch_apply_answer",
-    "lines": 10,
+    "lines": 12,
     "direct_impure": false,
     "transitively_impure": true,
     "calls": [
@@ -1564,6 +1574,15 @@
     "calls": []
   },
   {
+    "name": "orch_find_route_tos",
+    "lines": 15,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "has"
+    ]
+  },
+  {
     "name": "orch_max_followup_questions",
     "lines": 12,
     "direct_impure": false,
@@ -1593,7 +1612,7 @@
   },
   {
     "name": "orch_resolve_entity",
-    "lines": 210,
+    "lines": 211,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -1608,6 +1627,33 @@
     "direct_impure": false,
     "transitively_impure": false,
     "calls": []
+  },
+  {
+    "name": "orch_run_workflow",
+    "lines": 242,
+    "direct_impure": false,
+    "transitively_impure": true,
+    "calls": [
+      "_isModVisible",
+      "catastrophicFallbackRoute",
+      "closeTagsOverRequires",
+      "executeWorkflow",
+      "onsiteDiagnosticTerms",
+      "orch_apply_intake_bypass_rules",
+      "orch_apply_location_hints",
+      "orch_compose_intake_chain",
+      "orch_compute_confidence",
+      "orch_compute_quote",
+      "orch_compute_variability_flags",
+      "orch_max_followup_questions",
+      "orch_merge_materials_estimate",
+      "orch_recommended_service_ids",
+      "orch_resolve_entity",
+      "orch_select_ui_template",
+      "resolveQuantityUnits",
+      "synthesizeAnswersFromTags",
+      "validateRoute"
+    ]
   },
   {
     "name": "orch_select_ui_template",
@@ -1625,6 +1671,15 @@
     "transitively_impure": false,
     "calls": [
       "has"
+    ]
+  },
+  {
+    "name": "orch_unroute",
+    "lines": 11,
+    "direct_impure": false,
+    "transitively_impure": true,
+    "calls": [
+      "executeWorkflow"
     ]
   },
   {
@@ -1830,7 +1885,7 @@
   },
   {
     "name": "renderComponentSymptomPicker",
-    "lines": 265,
+    "lines": 301,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -1848,7 +1903,7 @@
   },
   {
     "name": "renderCuratedCardFromRoute",
-    "lines": 284,
+    "lines": 304,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -2092,7 +2147,7 @@
   },
   {
     "name": "resolveOne",
-    "lines": 33,
+    "lines": 42,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
@@ -2191,6 +2246,23 @@
     "calls": [
       "closeTagsOverRequires"
     ]
+  },
+  {
+    "name": "resolveTagRules",
+    "lines": 53,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "has",
+      "tagValidForCategory"
+    ]
+  },
+  {
+    "name": "resolveTagScopeGroup",
+    "lines": 9,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
   },
   {
     "name": "restoreCategoryView",
@@ -2322,7 +2394,7 @@
   },
   {
     "name": "showServiceTypesForGroup",
-    "lines": 56,
+    "lines": 63,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -2606,7 +2678,7 @@
   },
   {
     "name": "sqRenderCuratedCard",
-    "lines": 11,
+    "lines": 12,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -2929,7 +3001,7 @@
   },
   {
     "name": "wireGlobalEvents",
-    "lines": 280,
+    "lines": 298,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -2946,6 +3018,7 @@
       "openTel",
       "orch_apply_answer",
       "orch_apply_quantity",
+      "orch_unroute",
       "prefillSmartQuoteFromService",
       "renderCart",
       "renderCategoryCards",
@@ -2967,6 +3040,15 @@
   },
   {
     "name": "wordBoundaryIncludes",
+    "lines": 1,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "wordBoundaryMatch"
+    ]
+  },
+  {
+    "name": "wordBoundaryMatch",
     "lines": 16,
     "direct_impure": false,
     "transitively_impure": false,
