@@ -242,9 +242,13 @@ PR #20 was approved for merge at your word. **Rulings recorded:** #201 A, staged
 
 My default for the next sessions, within my own remit: **land before filing.** #202 and #161 first; then the items above as you rule them; a new "measured, not applied" item is filed only when it blocks a landing or carries the priority flag, and anything else found is a line in the TIMELINE's "found, not fixed". If you want it as a rule rather than my practice, it is a Charter sentence for you to enact.
 
+## Addendum, T174 closeout (2026-10-14)
+
+**The landing queue above is superseded.** #202, #161, #204, #199, #205 and #201 landed on branch `t174-landing` (TIMELINE T174); #184 was started and stopped (design and a partial engine patch are in the #184 ledger entry and `archive/T174_184_wip_engine_gate.patch`; nothing of it is in the catalog); #185 stays with a technician. The current state, the checks actually run, the known failures and the intended sequence (entity-first SSOT authoring first) are in **`HANDOFF_CURRENT_STATE.md`**, which is the file a fresh session reads first; this plan is history from here.
+
 ## Next-session priorities
 
-*(appended after the work lands; empty until then)*
+*(appended after the work lands; empty until then. Superseded by `HANDOFF_CURRENT_STATE.md` section 7 as of the T174 closeout.)*
 
 **After the T173 follow-up (your order: #202 first, before any baseline is recorded; then #161, the tag-gate-bypass fix, its own session):** #184 is the first content item after it (PRIORITY); then #201 (your A, B or C on the diagnostic), #199's batch (your approval of the wording and the effort mapping) and #185/#183 (a technician's figures); #202 is a small test-hygiene fix that can ride with #161. #200 and #165 are reshapes and wait for their own session.
 
