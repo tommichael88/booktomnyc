@@ -1,0 +1,713 @@
+{
+  "generated": "by test_harness/tools/entity_first/report.js; never edit by hand",
+  "source_schema_version": "1.0.0",
+  "ledger": [
+    {
+      "legacy": "service_types.<Type>",
+      "source": "registries.actions[]",
+      "how": "keyed object -> array with id act.<type>; label keeps the legacy key",
+      "count": 6,
+      "note": ""
+    },
+    {
+      "legacy": "category[]",
+      "source": "registries.categories[]",
+      "how": "ids -> cat.<id>; group_ids -> grp.<id>",
+      "count": 6,
+      "note": ""
+    },
+    {
+      "legacy": "group[]",
+      "source": "registries.groups[]",
+      "how": "ids -> grp.<id>; category/parent/explicit_services/dynamic_service_types normalised",
+      "count": 39,
+      "note": ""
+    },
+    {
+      "legacy": "global_rules.modifiers.<slug>",
+      "source": "registries.modifiers[]",
+      "how": "keyed object -> array with id mod.<slug>; affects computed from fee/minutes",
+      "count": 189,
+      "note": ""
+    },
+    {
+      "legacy": "archetypes.<class>",
+      "source": "registries.behavioral_classes[]",
+      "how": "keyed object -> array with id cls.<key>; default_confidence_strategy -> default_confidence_policy.exact_at (0-1) + runtime_compat",
+      "count": 9,
+      "note": ""
+    },
+    {
+      "legacy": "intake_modules.<module>",
+      "source": "questions (entities[].questions[] | shared_questions[])",
+      "how": "keyed object -> question id q.<module>; question -> prompt; client_response -> options; depends_on -> {question_id, option_id} terms",
+      "count": 135,
+      "note": ""
+    },
+    {
+      "legacy": "services[]",
+      "source": "entities[].services[]",
+      "how": "one entity-owned service per legacy service: entity_id/action_id added; fields regrouped into presentation / pricing / intake / tags; intake_chain -> intake.steps (resolved order, depends_on)",
+      "count": 76,
+      "note": ""
+    },
+    {
+      "legacy": "dynamic_services.<category[+group]+Type>",
+      "source": "entities[].default_compositions[]",
+      "how": "keyed object -> composition cmp.<group|category>.<action> on the group head / generic entity (entity, action, no modifiers); fields regrouped; merge_strategy kept in runtime_compat",
+      "count": 82,
+      "note": ""
+    },
+    {
+      "legacy": "smart_tags.<#tag>",
+      "source": "registries.tags[]",
+      "how": "keyed object -> array with id tag.<name>; answers {module: label} -> [{question_id, option_id}]; requires/mutually_exclusive/scoping normalised",
+      "count": 59,
+      "note": ""
+    },
+    {
+      "legacy": "routing_archetypes.<group> (curated part)",
+      "source": "registries.groups[].picker",
+      "how": "entry_mode (was routing_archetype), symptom_question_id (was symptom_module), prompts and tiles, real_gaps, component_links (curated component -> service map, verbatim), symptoms with no intake question; symptom links of groups with a symptom_question_id are compiled from that question",
+      "count": 39,
+      "note": ""
+    },
+    {
+      "legacy": "intent_mappings.objects[]",
+      "source": "vocabulary.nlp_objects[]",
+      "how": "carried; category/type/service/tag/formula references normalised",
+      "count": 81,
+      "note": ""
+    },
+    {
+      "legacy": "intent_mappings.default_fallback",
+      "source": "vocabulary.nlp_default_fallback",
+      "how": "carried; references normalised",
+      "count": 1,
+      "note": ""
+    }
+  ],
+  "counts": {
+    "modifiersWithNoEffect": 0,
+    "furnitureIdsNormalised": 1,
+    "optionsWithoutIdBefore": 516,
+    "serviceEntityBasis": {
+      "decision table": 11,
+      "single mapped component": 47,
+      "first of 2 mapped components": 6,
+      "first of 4 mapped components": 1,
+      "first of 3 mapped components": 4,
+      "the group's single component": 7
+    },
+    "componentLinks": 84,
+    "questionPlacement": {
+      "entity": 105,
+      "shared": 31,
+      "context": 13,
+      "unused": 5
+    },
+    "questionEntityCountHistogram": {
+      "0": 5,
+      "1": 86,
+      "2": 21,
+      "3": 8,
+      "4": 2,
+      "5": 3,
+      "6": 2,
+      "7": 4,
+      "14": 1,
+      "20": 1,
+      "29": 2
+    },
+    "unknownOptions": 48,
+    "questionsAllUnknown": 0,
+    "ambiguousCompositionPoints": 6,
+    "servicesInAmbiguousPoints": 13,
+    "gateNone": 6,
+    "legacyBarsUnreachable": 41,
+    "entities": 105,
+    "entityKinds": {
+      "component": 82,
+      "generic_category": 6,
+      "generic_group": 17
+    },
+    "questions": 154,
+    "instanceQuestions": 19,
+    "options": 593,
+    "services": 76,
+    "compositions": 82,
+    "uncertaintyClasses": 154,
+    "gated": 152,
+    "refsNormalised": {
+      "q": 20,
+      "cat": 129,
+      "grp": 267,
+      "svc": 175,
+      "act": 160,
+      "tag_ref": 5,
+      "tag_hash": 92,
+      "cat_or_all": 93,
+      "mod": 7,
+      "chk": 9,
+      "fml": 5
+    },
+    "optionsWithEffects": 472
+  },
+  "findings": [
+    {
+      "what": "legacy real_action_ids holds an action spelled as an id, beside its label spelling",
+      "detail": "minor_home_repairs_ceilings: \"act.repair\" (declared normalisation: one action, one spelling)"
+    }
+  ],
+  "decisions": [
+    {
+      "kind": "scope",
+      "text": "A question asked by at least 5 distinct entities is given an explicit context scope (13 questions); fewer than that, its scope is the exact set of entities that ask it. Questions no chain asks are scoped by who references them (defaults, actions) or declared unreferenced (5).",
+      "default": "as migrated"
+    }
+  ],
+  "declared_normalizations": {
+    "action_double_spelling": {
+      "reason": "legacy routing_archetypes[minor_home_repairs_ceilings].real_action_ids holds both \"Repair\" and the id-spelled \"act.repair\"; one action has one spelling after migration (the compiler preserves the curated union, so it carries into compiled too)",
+      "where": [
+        "minor_home_repairs_ceilings"
+      ]
+    },
+    "empty_branch_lists": {
+      "reason": "a `then` label with an empty target list (\"this answer opens nothing\") authors no dependency and has no runtime effect; the option is recorded with no `branch` effect instead",
+      "where": [
+        "plumbing_help+Install :: plumbing_fixture :: Other (describe in notes)"
+      ]
+    },
+    "compiler_derived_symptom_groups": {
+      "reason": "a symptom-first group that declares symptom_module has real_symptom_ids and symptom_id_to_service_ids compiled from that question's options (T174 / #199); they are not authored, so the seed carries none",
+      "where": [
+        "minor_home_repairs_appliances_dishwasher",
+        "minor_home_repairs_appliances_dryer",
+        "minor_home_repairs_appliances_microwave",
+        "minor_home_repairs_appliances_refrigerator",
+        "minor_home_repairs_appliances_stove_range",
+        "minor_home_repairs_appliances_washer"
+      ]
+    },
+    "chain_layout": {
+      "reason": "compiled.service_index[*].intake_chain is the compiler's verbatim copy of the authored chain layout (entry order, redundant `then` targets, target-list order). The source holds steps + depends_on and regenerates a canonical layout; these chains differ in raw layout from the legacy spelling but have the same resolved order, branch map, params and annotations",
+      "where": [
+        "computer_diagnostic",
+        "electric_lighting+Install",
+        "flatscreen_mounting_standard",
+        "flatscreen_mounting_with_hidden_cables",
+        "plumbing_help+Install",
+        "wall_hole_or_crack_repair"
+      ]
+    }
+  },
+  "reference_table": {
+    "categories": [
+      {
+        "path": [
+          "[]",
+          "id"
+        ],
+        "kind": "value",
+        "t": "cat"
+      },
+      {
+        "path": [
+          "[]",
+          "group_ids",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "grp"
+      }
+    ],
+    "groups_base": [
+      {
+        "path": [
+          "[]",
+          "id"
+        ],
+        "kind": "value",
+        "t": "grp"
+      },
+      {
+        "path": [
+          "[]",
+          "category_id"
+        ],
+        "kind": "value",
+        "t": "cat"
+      },
+      {
+        "path": [
+          "[]",
+          "parent_group"
+        ],
+        "kind": "value",
+        "t": "grp"
+      },
+      {
+        "path": [
+          "[]",
+          "explicit_services",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "svc"
+      },
+      {
+        "path": [
+          "[]",
+          "dynamic_service_types",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "act"
+      }
+    ],
+    "tags_base": [
+      {
+        "path": [
+          "[]",
+          "requires",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "tag_ref"
+      },
+      {
+        "path": [
+          "[]",
+          "derived_from",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "tag_ref"
+      },
+      {
+        "path": [
+          "[]",
+          "mutually_exclusive",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "tag_hash"
+      },
+      {
+        "path": [
+          "[]",
+          "applicable_categories",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "cat_or_all"
+      },
+      {
+        "path": [
+          "[]",
+          "applicable_group_ids",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "grp"
+      },
+      {
+        "path": [
+          "[]",
+          "excluded_service_ids",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "svc"
+      }
+    ],
+    "actions": [
+      {
+        "path": [
+          "[]",
+          "required_intake_modules",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "q"
+      }
+    ],
+    "classes": [
+      {
+        "path": [
+          "[]",
+          "member_group_ids",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "grp"
+      },
+      {
+        "path": [
+          "[]",
+          "typical_actions",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "act"
+      },
+      {
+        "path": [
+          "[]",
+          "default_checkout_state"
+        ],
+        "kind": "value",
+        "t": "chk"
+      }
+    ],
+    "nlp_objects": [
+      {
+        "path": [
+          "[]",
+          "default_dynamic_category"
+        ],
+        "kind": "value",
+        "t": "cat"
+      },
+      {
+        "path": [
+          "[]",
+          "default_service_type"
+        ],
+        "kind": "value",
+        "t": "act"
+      },
+      {
+        "path": [
+          "[]",
+          "default_service_sku"
+        ],
+        "kind": "value",
+        "t": "svc"
+      },
+      {
+        "path": [
+          "[]",
+          "contextual_overrides",
+          "[]",
+          "override_sku"
+        ],
+        "kind": "value",
+        "t": "svc"
+      },
+      {
+        "path": [
+          "[]",
+          "contextual_overrides",
+          "[]",
+          "smart_tag"
+        ],
+        "kind": "value",
+        "t": "tag_ref"
+      },
+      {
+        "path": [
+          "[]",
+          "dynamic_rule"
+        ],
+        "kind": "value",
+        "t": "fml"
+      },
+      {
+        "path": [
+          "[]",
+          "fallback",
+          "category"
+        ],
+        "kind": "value",
+        "t": "cat"
+      },
+      {
+        "path": [
+          "[]",
+          "fallback",
+          "service_type"
+        ],
+        "kind": "value",
+        "t": "act"
+      }
+    ],
+    "nlp_default_fallback": [
+      {
+        "path": [
+          "category"
+        ],
+        "kind": "value",
+        "t": "cat"
+      },
+      {
+        "path": [
+          "service_type"
+        ],
+        "kind": "value",
+        "t": "act"
+      }
+    ],
+    "global_rules": [
+      {
+        "path": [
+          "intake_defaults",
+          "group_defaults"
+        ],
+        "kind": "keys",
+        "t": "grp"
+      },
+      {
+        "path": [
+          "intake_defaults",
+          "group_defaults",
+          "*",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "q"
+      },
+      {
+        "path": [
+          "intake_defaults",
+          "category_defaults"
+        ],
+        "kind": "keys",
+        "t": "cat"
+      },
+      {
+        "path": [
+          "intake_defaults",
+          "category_defaults",
+          "*",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "q"
+      },
+      {
+        "path": [
+          "force_modules_by_variability_DEPRECATED",
+          "*",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "q"
+      }
+    ],
+    "ui_config": [
+      {
+        "path": [
+          "step2_types",
+          "[]"
+        ],
+        "kind": "value",
+        "t": "act"
+      }
+    ],
+    "formulas": [
+      {
+        "path": [
+          "[]",
+          "patch_modifier_ref"
+        ],
+        "kind": "value",
+        "t": "mod"
+      },
+      {
+        "path": [
+          "[]",
+          "texture_modifier_ref"
+        ],
+        "kind": "value",
+        "t": "mod"
+      },
+      {
+        "path": [
+          "[]",
+          "grout_modifier_ref"
+        ],
+        "kind": "value",
+        "t": "mod"
+      },
+      {
+        "path": [
+          "[]",
+          "water_damage_modifier_ref"
+        ],
+        "kind": "value",
+        "t": "mod"
+      },
+      {
+        "path": [
+          "[]",
+          "high_ceiling_modifier_ref"
+        ],
+        "kind": "value",
+        "t": "mod"
+      },
+      {
+        "path": [
+          "[]",
+          "disposal_modifier_ref"
+        ],
+        "kind": "value",
+        "t": "mod"
+      },
+      {
+        "path": [
+          "[]",
+          "membrane_modifier_ref"
+        ],
+        "kind": "value",
+        "t": "mod"
+      }
+    ]
+  },
+  "residuals": [
+    {
+      "kind": "unknown_option_with_cost_effect",
+      "count": 8,
+      "ids": [
+        "q.faucet_part_available/not_sure_what_part_i_need",
+        "q.masonry_anchor/not_sure_whats_needed",
+        "q.existing_box/no_im_not_sure_may_need_a_new_box",
+        "q.existing_type/not_sure_the_tech_can_check_may_add_time",
+        "q.internet_active/im_not_sure_might_be_a_provider_issue",
+        "q.lath_check/not_sure",
+        "q.surface_type/other_please_describe_in_notes",
+        "q.wiring/not_sure_describe_in_notes_may_add_time"
+      ]
+    },
+    {
+      "kind": "uncertainty_weight_unauthored",
+      "count": 5,
+      "ids": [
+        "u.blind_curtain_shade_items",
+        "u.buy_the_hour_qty",
+        "u.cable_symptom",
+        "u.backup_source_device",
+        "u.tech_issue_source"
+      ]
+    },
+    {
+      "kind": "confidence_gate_none",
+      "count": 6,
+      "ids": [
+        "svc.dishwasher_install",
+        "svc.data_backup_or_transfer",
+        "svc.microwave_setup",
+        "svc.refrigerator_install",
+        "svc.washer_install",
+        "cmp.tech_trouble_cable_management.diagnostic"
+      ]
+    },
+    {
+      "kind": "recovery_no_authored_path",
+      "count": 5,
+      "ids": [
+        "svc.dishwasher_install",
+        "svc.data_backup_or_transfer",
+        "svc.microwave_setup",
+        "svc.refrigerator_install",
+        "svc.washer_install"
+      ]
+    },
+    {
+      "kind": "composition_ambiguous",
+      "count": 13,
+      "ids": [
+        "svc.high_ceiling_bulb_replacement",
+        "svc.led_bulb_upgrade",
+        "svc.computer_diagnostic",
+        "svc.internal_hardware_replacement",
+        "svc.furniture_disassembly_for_moving",
+        "svc.furniture_repair_hourly",
+        "svc.scratch_or_water_ring_removal",
+        "svc.software_or_driver_install",
+        "svc.system_restore_or_reset",
+        "svc.shelf_mortar_mounting_buy_the_hour",
+        "svc.shelf_mounting_standard_buy_the_hour",
+        "svc.flatscreen_mounting_standard",
+        "svc.flatscreen_mounting_with_hidden_cables"
+      ]
+    },
+    {
+      "kind": "dangling_legacy_reference",
+      "count": 6,
+      "ids": [
+        "$.registries.actions[2].required_intake_modules[0]",
+        "$.registries.actions[4].required_intake_modules[0]",
+        "$.policy.global_rules.force_modules_by_variability_DEPRECATED.low[1]",
+        "$.policy.global_rules.force_modules_by_variability_DEPRECATED.medium[1]",
+        "$.policy.global_rules.force_modules_by_variability_DEPRECATED.high[1]",
+        "$.policy.global_rules.force_modules_by_variability_DEPRECATED.diagnostic[1]"
+      ]
+    },
+    {
+      "kind": "question_asked_by_nothing",
+      "count": 4,
+      "ids": [
+        "q.item_volume",
+        "q.laptop_or_desktop",
+        "q.parking_difficulty",
+        "q.urgency"
+      ]
+    },
+    {
+      "kind": "unknown_option",
+      "count": 48,
+      "ids": [
+        "q.angle_stop_condition/not_sure",
+        "q.cable_install_item/other_describe_in_notes",
+        "q.cable_symptom/other_describe_in_notes",
+        "q.computer_component/something_else_please_describe_in_notes",
+        "q.tech_problem_type/running_slow_not_sure_why",
+        "q.switch_wiring/not_sure",
+        "q.dishwasher_symptom/sym.other_describe_in_notes",
+        "q.door_issue/other_describe_in_notes",
+        "q.ducting/not_sure_ill_describe_in_notes",
+        "q.faucet_part_available/not_sure_what_part_i_need",
+        "q.toilet_symptom/not_sure_just_want_it_checked",
+        "q.floor_issue/other_describe_in_notes",
+        "q.disposal_size/not_sure_whatevers_standard",
+        "q.install_target/other_describe_in_notes",
+        "q.appliance_item/other_describe_in_notes",
+        "q.generic_tech_symptom/other_describe_in_notes",
+        "q.gfci_location/other_interior_room",
+        "q.microwave_symptom/sym.other_describe_in_notes",
+        "q.software_install_type/not_sure_describe_in_notes",
+        "q.door_style_pref/not_sure",
+        "q.refrigerator_symptom/sym.other_describe_in_notes",
+        "q.leak_loc/not_sure_ill_describe_in_notes",
+        "q.brand/other_dont_know",
+        "q.inwall_power_for_tv/not_sure",
+        "q.masonry_anchor/not_sure_whats_needed",
+        "q.wall_issue/other_describe_in_notes",
+        "q.washer_type/not_sure_describe_in_notes",
+        "q.window_issue/other_describe_in_notes",
+        "q.window_ac_issue/sym.other_describe_in_notes",
+        "q.window_ac_support/not_sure",
+        "q.appliance_type/not_sure_ill_describe_in_the_notes",
+        "q.cabinet_issue/other_describe_in_notes",
+        "q.computer_symptom/other_describe_in_notes",
+        "q.electrical_item/other_describe_in_notes",
+        "q.existing_box/no_im_not_sure_may_need_a_new_box",
+        "q.existing_toilet_type/not_sure",
+        "q.existing_type/not_sure_the_tech_can_check_may_add_time",
+        "q.furn_item/other_please_describe_in_notes",
+        "q.furniture_issue/other_describe_in_notes",
+        "q.internet_active/im_not_sure_might_be_a_provider_issue",
+        "q.lath_check/not_sure",
+        "q.mounting_item/other_describe_in_notes",
+        "q.network_symptom/other_describe_in_notes",
+        "q.plumbing_fixture/other_describe_in_notes",
+        "q.smart_device_symptom/other_describe_in_notes",
+        "q.surface_type/other_please_describe_in_notes",
+        "q.tech_device/other_describe_in_notes",
+        "q.wiring/not_sure_describe_in_notes_may_add_time"
+      ]
+    }
+  ]
+}

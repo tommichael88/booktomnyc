@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tommichael88.github.io/booktomnyc/schema/btnyc-source.schema.json",
+  "title": "BTNYC entity-first authored SSOT",
+  "description": "Schema 1.0.0 of ssot/btnyc_source.json (T175). Source is nested by OWNERSHIP (an entity owns its questions, uncertainty classes, curated services and default compositions) and flat by REFERENCE (every cross-node relationship is a bare id string whose prefix names the target type; labels and aliases are never keys). The semantic rules the schema cannot express (dangling references, scope, dependencies, thresholds, option effects, composition safety) are test_harness/tools/entity_first/validate_source.js. Nothing derived is in this file: no compiled.*, no generated index, no resolved graph (ssot/derived/ is generated and kept apart). ssot/ENTITY_FIRST_DESIGN_NOTE.md is the design.",
+  "type": "object",
+  "required": ["source_schema_version", "meta", "legacy_envelope", "provenance", "registries", "entities", "shared_questions", "shared_uncertainty_classes", "policy", "vocabulary"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "source_schema_version": { "const": "1.0.0" },
+    "meta": { "type": "object" },
+    "legacy_envelope": {
+      "description": "What btnyc.json needs back verbatim during the dual-source period (ssot/TRANSITION_DUALSOURCE.md): its own $schema/$id and the order of its top-level members.",
+      "type": "object", "required": ["$schema", "$id", "top_level_order"],
+      "properties": { "$schema": { "type": "string" }, "$id": { "type": "string" }, "top_level_order": { "type": "array", "items": { "type": "string" } } },
+      "additionalProperties": false
+    },
+    "provenance": { "type": "object" },
+    "registries": {
+      "type": "object",
+      "required": ["categories", "groups", "actions", "modifiers", "tags", "materials", "furniture", "checkout_states", "pricing_formulas", "pricing_archetypes", "behavioral_classes", "contexts", "service_order"],
+      "properties": {
+        "categories": { "type": "array", "items": { "$ref": "#/$defs/registry_item_cat" } },
+        "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } },
+        "modifiers": { "type": "array", "items": { "$ref": "#/$defs/modifier" } },
+        "tags": { "type": "array", "items": { "$ref": "#/$defs/tag" } },
+        "materials": { "type": "array", "items": { "$ref": "#/$defs/registry_item_mat" } },
+        "furniture": { "type": "array", "items": { "$ref": "#/$defs/registry_item_fur" } },
+        "checkout_states": { "type": "array", "items": { "$ref": "#/$defs/registry_item_chk" } },
+        "pricing_formulas": { "type": "array", "items": { "$ref": "#/$defs/registry_item_fml" } },
+        "pricing_archetypes": { "type": "array", "items": { "type": "object", "required": ["id"], "properties": { "id": { "$ref": "#/$defs/id_par" } }, "additionalProperties": false } },
+        "behavioral_classes": { "type": "array", "items": { "$ref": "#/$defs/registry_item_cls" } },
+        "contexts": { "type": "array", "items": { "type": "object", "required": ["id", "label", "description"], "properties": { "id": { "$ref": "#/$defs/id_ctx" }, "label": { "type": "string" }, "description": { "type": "string" } }, "additionalProperties": false } },
+        "service_order": { "description": "The authored order of the curated services (a permutation of every services[].id); order is content because the legacy services[] array is.", "type": "array", "items": { "$ref": "#/$defs/id_svc" } }
+      },
+      "additionalProperties": false
+    },
+    "entities": { "type": "array", "items": { "$ref": "#/$defs/entity" } },
+    "shared_questions": { "description": "Questions asked by more than one entity, or by every entity in a context. A question asked by exactly one entity lives under that entity.", "type": "array", "items": { "$ref": "#/$defs/question" } },
+    "shared_uncertainty_classes": { "type": "array", "items": { "$ref": "#/$defs/uncertainty_class" } },
+    "policy": { "type": "object", "required": ["workflow", "invariants", "global_rules", "ui_config"] },
+    "vocabulary": { "type": "object", "required": ["negation_library", "adlib_phrase_overrides", "nlp_objects", "nlp_default_fallback"] }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "id_ent": { "type": "string", "pattern": "^ent\\.[A-Za-z0-9_+\\-]+(\\.[A-Za-z0-9_+\\-]+)*$" },
+    "id_act": { "type": "string", "pattern": "^act\\.[A-Za-z0-9_+\\-]+$" },
+    "id_mod": { "type": "string", "pattern": "^mod\\.[A-Za-z0-9_+\\-]+$" },
+    "id_svc": { "type": "string", "pattern": "^svc\\.[A-Za-z0-9_+\\-]+$" },
+    "id_cmp": { "type": "string", "pattern": "^cmp\\.[A-Za-z0-9_+\\-]+(\\.[A-Za-z0-9_+\\-]+)*$" },
+    "id_q": { "type": "string", "pattern": "^q\\.[A-Za-z0-9_+\\-]+(\\.[A-Za-z0-9_+\\-]+)*$" },
+    "id_u": { "type": "string", "pattern": "^u\\.[A-Za-z0-9_+\\-]+(\\.[A-Za-z0-9_+\\-]+)*$" },
+    "id_tag": { "type": "string", "pattern": "^tag\\.[A-Za-z0-9_+\\-]+$" },
+    "id_mat": { "type": "string", "pattern": "^mat\\.[A-Za-z0-9_+\\-]+$" },
+    "id_fml": { "type": "string", "pattern": "^fml\\.[A-Za-z0-9_+\\-]+$" },
+    "id_chk": { "type": "string", "pattern": "^chk\\.[A-Za-z0-9_+\\-]+$" },
+    "id_cat": { "type": "string", "pattern": "^cat\\.[A-Za-z0-9_+\\-]+$" },
+    "id_grp": { "type": "string", "pattern": "^grp\\.[A-Za-z0-9_+\\-]+$" },
+    "id_cls": { "type": "string", "pattern": "^cls\\.[A-Za-z0-9_+\\-]+$" },
+    "id_ctx": { "type": "string", "pattern": "^ctx\\.[A-Za-z0-9_+\\-]+$" },
+    "id_par": { "type": "string", "pattern": "^par\\.[A-Za-z0-9_+\\-]+$" },
+    "id_fur": { "type": "string", "pattern": "^fur\\.[A-Za-z0-9_+\\-]+$" },
+    "option_id": { "description": "Unique within its question; always referenced as a {question_id, option_id} pair. A symptom question's options are sym.<slug>.", "type": "string", "pattern": "^[a-z0-9][a-z0-9_.]*$" },
+
+    "q_or_unresolved": { "description": "A question id, or {unresolved_name}: a name the legacy file used that names no intake module (kept visibly; the validator reports it as a residual).",
+      "oneOf": [ { "$ref": "#/$defs/id_q" }, { "type": "object", "required": ["unresolved_name"], "properties": { "unresolved_name": { "type": "string", "minLength": 1 } }, "additionalProperties": false } ] },
+
+    "term": { "description": "One dependency/answer term. Never a label.", "type": "object", "required": ["question_id", "option_id"], "properties": { "question_id": { "$ref": "#/$defs/id_q" }, "option_id": { "$ref": "#/$defs/option_id" } }, "additionalProperties": false },
+    "depends_on": { "description": "ANDed. Each element is a term or {any_of: [terms]} (ORed).", "type": "array", "items": { "oneOf": [ { "$ref": "#/$defs/term" }, { "type": "object", "required": ["any_of"], "properties": { "any_of": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/term" } } }, "additionalProperties": false } ] } },
+
+    "entity": {
+      "type": "object",
+      "required": ["id", "label", "kind", "parent_id", "aliases", "questions", "uncertainty_classes", "services", "default_compositions"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id_ent" },
+        "label": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["component", "generic_group", "generic_category"] },
+        "parent_id": { "oneOf": [ { "$ref": "#/$defs/id_ent" }, { "type": "null" } ] },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "questions": { "type": "array", "items": { "$ref": "#/$defs/question" } },
+        "uncertainty_classes": { "type": "array", "items": { "$ref": "#/$defs/uncertainty_class" } },
+        "services": { "type": "array", "items": { "$ref": "#/$defs/service" } },
+        "default_compositions": { "type": "array", "items": { "$ref": "#/$defs/composition" } },
+        "decision": { "description": "Why this entity exists / how its label was derived (a business-taxonomy call recorded, not hidden).", "oneOf": [ { "type": "string" }, { "type": "object" } ] }
+      },
+      "additionalProperties": false
+    },
+
+    "question": {
+      "type": "object",
+      "required": ["id", "entity_scope", "depends_on"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id_q" },
+        "prompt": { "type": "string", "minLength": 1 },
+        "type": { "type": "string" },
+        "purpose": { "type": "string" },
+        "entity_scope": { "description": "Which entities this question applies to: an array of entity ids, or {context} for a question that describes the job's circumstances rather than any one entity.",
+          "oneOf": [ { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id_ent" } }, { "type": "object", "required": ["context"], "properties": { "context": { "$ref": "#/$defs/id_ctx" } }, "additionalProperties": false } ] },
+        "depends_on": { "$ref": "#/$defs/depends_on" },
+        "options": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/option" } },
+        "instance_of": { "$ref": "#/$defs/id_q" },
+        "item_noun": { "type": "string" },
+        "prompt_override": { "type": "string" },
+        "runtime_compat": { "type": "object" },
+        "min_val": {}, "max_val": {}, "ui_render_type": {}, "config": {}, "effects": {}
+      },
+      "patternProperties": { "^_": {} },
+      "additionalProperties": false
+    },
+
+    "option": {
+      "type": "object",
+      "required": ["id", "label", "affects"],
+      "properties": {
+        "id": { "$ref": "#/$defs/option_id" },
+        "label": { "type": "string", "minLength": 1 },
+        "affects": { "description": "What choosing this answer changes. An empty array is a declared no-op. Each member is backed by a field of the option (the validator checks both directions).",
+          "type": "array", "uniqueItems": true, "items": { "enum": ["price", "minutes", "branch", "prep", "checkout_state", "complexity", "quantity", "materials", "tags"] } },
+        "evidence": { "description": "'unknown' marks a 'not sure' answer; it can never retire an uncertainty class.", "const": "unknown" },
+        "tag_ids": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } },
+        "complexity_override": { "type": "string" },
+        "modifier_id": { "$ref": "#/$defs/id_mod" },
+        "checkout_state_id": { "$ref": "#/$defs/id_chk" },
+        "formula_id": { "$ref": "#/$defs/id_fml" },
+        "qty_value": {},
+        "mat_min": {}, "mat_max": {}, "location_hints": {}, "tile": {},
+        "route_to": { "type": "object", "required": ["service_id", "answers"], "properties": { "service_id": { "$ref": "#/$defs/id_svc" }, "answers": { "type": "array", "items": { "$ref": "#/$defs/term" } }, "because": { "type": "string" } }, "additionalProperties": false }
+      },
+      "patternProperties": { "^_": {} },
+      "additionalProperties": false
+    },
+
+    "uncertainty_class": {
+      "type": "object",
+      "required": ["id", "label", "retired_by", "weight_basis"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id_u" },
+        "label": { "type": "string" },
+        "retired_by": { "description": "The authored retirement relation: the question and the qualifying answers that retire this uncertainty. 'Not sure' answers never qualify. A numeric question (no options) retires on any value.",
+          "type": "array", "minItems": 1,
+          "items": { "oneOf": [
+            { "type": "object", "required": ["question_id", "option_ids"], "properties": { "question_id": { "$ref": "#/$defs/id_q" }, "option_ids": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/option_id" } } }, "additionalProperties": false },
+            { "type": "object", "required": ["question_id", "any_value"], "properties": { "question_id": { "$ref": "#/$defs/id_q" }, "any_value": { "const": true } }, "additionalProperties": false } ] } },
+        "default_weight": { "type": "number", "exclusiveMinimum": 0 },
+        "weight_basis": { "description": "Where the weight came from. seeded_from_confidence_gain = the legacy per-question number carried as the weight (a business decision still open); unauthored = the legacy file had none, so the class carries no weight and counts toward nothing.", "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+
+    "step": {
+      "type": "object",
+      "required": ["question_id", "depends_on"],
+      "properties": {
+        "question_id": { "$ref": "#/$defs/id_q" },
+        "depends_on": { "$ref": "#/$defs/depends_on" },
+        "runtime_compat": { "type": "object", "properties": { "legacy_chain_entry": { "const": "branch_target_only" } }, "additionalProperties": false },
+        "_note": {}, "_quantity_justification": {}
+      },
+      "additionalProperties": false
+    },
+
+    "confidence_policy": {
+      "type": "object", "required": ["exact_at", "range_at", "diagnostic_below", "scale", "policy_sources"],
+      "properties": {
+        "exact_at": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "range_at": { "type": "number", "minimum": 0, "maximum": 1 },
+        "diagnostic_below": { "type": "number", "minimum": 0, "maximum": 1 },
+        "scale": { "const": "0-1" },
+        "policy_sources": { "type": "object", "required": ["exact_at", "range_at", "diagnostic_below"], "additionalProperties": { "enum": ["service_override", "archetype_default", "fallback"] } }
+      },
+      "additionalProperties": false
+    },
+    "uncertainty_profile": { "type": "array", "items": { "type": "object", "required": ["class_id", "weight"], "properties": { "class_id": { "$ref": "#/$defs/id_u" }, "weight": { "type": "number", "exclusiveMinimum": 0 } }, "additionalProperties": false } },
+    "confidence_gate": {
+      "oneOf": [
+        { "type": "object", "required": ["mode", "basis"], "properties": { "mode": { "const": "weighted_uncertainty" }, "basis": { "type": "string" } }, "additionalProperties": false },
+        { "type": "object", "required": ["mode", "reason"], "properties": { "mode": { "const": "none" }, "reason": { "type": "string", "minLength": 1 } }, "additionalProperties": false } ]
+    },
+    "recovery_affordances": {
+      "type": "object", "required": ["source", "deep_dive_question_ids", "when_no_path"],
+      "properties": {
+        "source": { "const": "current_open_uncertainty" },
+        "deep_dive_question_ids": { "type": "array", "items": { "$ref": "#/$defs/id_q" } },
+        "deep_dive_declared": { "const": false },
+        "when_no_path": { "type": "object", "required": ["route", "checkout_state_id"], "properties": { "route": { "type": "string" }, "checkout_state_id": { "$ref": "#/$defs/id_chk" } }, "additionalProperties": false }
+      },
+      "additionalProperties": false
+    },
+
+    "service": {
+      "type": "object",
+      "required": ["id", "entity_id", "action_id", "modifier_ids", "presentation", "pricing", "intake", "confidence_policy", "runtime_compat", "recovery_affordances", "uncertainty_profile", "confidence_gate"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id_svc" },
+        "entity_id": { "$ref": "#/$defs/id_ent" },
+        "action_id": { "$ref": "#/$defs/id_act" },
+        "modifier_ids": { "type": "array", "items": { "$ref": "#/$defs/id_mod" } },
+        "presentation": { "type": "object", "required": ["ui_taxonomy", "verb_natural"], "properties": { "ui_taxonomy": { "type": "object", "required": ["category_id", "group_id"], "properties": { "category_id": { "$ref": "#/$defs/id_cat" }, "group_id": { "$ref": "#/$defs/id_grp" } } }, "aliases": {}, "verb_natural": { "type": "string" }, "detail_prompt": {}, "details": {} }, "additionalProperties": false },
+        "pricing": { "type": "object", "required": ["financial_engine", "operational_metrics", "default_estimates"],
+          "properties": { "engine": { "type": "string" }, "formula_id": { "$ref": "#/$defs/id_fml" }, "financial_engine": { "type": "object" }, "operational_metrics": { "type": "object" }, "default_estimates": { "type": "object" }, "per_unit_answers_vary": {}, "override_root": {}, "required_material_ids": { "type": "array", "items": { "$ref": "#/$defs/id_mat" } }, "optional_material_ids": { "type": "array", "items": { "$ref": "#/$defs/id_mat" } }, "materials_included": {}, "requires_furniture_selection": {} },
+          "additionalProperties": false },
+        "intake": { "type": "object", "required": ["steps"], "properties": { "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } }, "module_refs": {}, "behavior": {} }, "additionalProperties": false },
+        "tags": { "type": "object", "properties": { "default_tag_ids": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } }, "suggested_tag_ids": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } } }, "additionalProperties": false },
+        "related_service_ids": { "type": "array", "items": { "$ref": "#/$defs/id_svc" } },
+        "confidence_policy": { "$ref": "#/$defs/confidence_policy" },
+        "runtime_compat": { "description": "Legacy-only operational fields with no home in the domain model (e.g. the legacy confidence_strategy remainder). Orthogonal operational metadata, not domain identity.", "type": "object" },
+        "recovery_affordances": { "$ref": "#/$defs/recovery_affordances" },
+        "uncertainty_profile": { "$ref": "#/$defs/uncertainty_profile" },
+        "confidence_gate": { "$ref": "#/$defs/confidence_gate" },
+        "decomposition": { "description": "Declared open gap: this service shares its (entity, action, modifiers) point with another curated service, so the composer cannot choose between them.", "type": "object", "required": ["status", "note"], "properties": { "status": { "const": "open" }, "note": { "type": "string", "minLength": 1 } }, "additionalProperties": false },
+        "notes": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+
+    "composition": {
+      "description": "A default composition: the dynamic service of a category/group + action, authored as an entity + action (+ modifiers) with its pricing and intake shape. The same point a curated service would occupy, before it has been curated.",
+      "type": "object",
+      "required": ["id", "entity_id", "action_id", "modifier_ids", "category_id", "group_id", "pricing", "intake", "confidence_policy", "runtime_compat", "recovery_affordances", "uncertainty_profile", "confidence_gate"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id_cmp" },
+        "entity_id": { "$ref": "#/$defs/id_ent" },
+        "action_id": { "$ref": "#/$defs/id_act" },
+        "modifier_ids": { "type": "array", "items": { "$ref": "#/$defs/id_mod" } },
+        "category_id": { "$ref": "#/$defs/id_cat" },
+        "group_id": { "oneOf": [ { "$ref": "#/$defs/id_grp" }, { "type": "null" } ] },
+        "pricing": { "type": "object", "required": ["financial_engine", "operational_metrics", "default_estimate"], "properties": { "financial_engine": { "type": "object" }, "operational_metrics": { "type": "object" }, "default_estimate": { "type": "object" } }, "additionalProperties": false },
+        "intake": { "type": "object", "required": ["steps"], "properties": { "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } } }, "additionalProperties": false },
+        "suggested_tag_ids": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } },
+        "smart_tag_ids": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } },
+        "confidence_policy": { "$ref": "#/$defs/confidence_policy" },
+        "runtime_compat": { "type": "object" },
+        "recovery_affordances": { "$ref": "#/$defs/recovery_affordances" },
+        "uncertainty_profile": { "$ref": "#/$defs/uncertainty_profile" },
+        "confidence_gate": { "$ref": "#/$defs/confidence_gate" },
+        "notes": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+
+    "group": {
+      "type": "object", "required": ["id", "category_id", "display_name", "picker"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id_grp" }, "category_id": { "$ref": "#/$defs/id_cat" }, "display_name": { "type": "string" }, "icon": {}, "parent_group": { "$ref": "#/$defs/id_grp" },
+        "explicit_services": { "type": "array", "items": { "$ref": "#/$defs/id_svc" } }, "dynamic_service_types": { "type": "array", "items": { "$ref": "#/$defs/id_act" } },
+        "typical_location": {}, "default_qty": {},
+        "picker": { "$ref": "#/$defs/picker" }
+      },
+      "patternProperties": { "^_": {} },
+      "additionalProperties": false
+    },
+    "picker": {
+      "description": "The curated part of the legacy routing_archetypes entry: everything the compiler cannot reproduce. Symptom ids and symptom->service links of a group that declares symptom_question_id are COMPILED from that question's options and are not stored.",
+      "type": "object", "required": ["entry_mode", "component_entity_ids", "component_links", "real_gaps", "action_ids"],
+      "properties": {
+        "entry_mode": { "enum": ["component_first", "symptom_first", "parent", "undetermined"] },
+        "component_entity_ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id_ent" } },
+        "component_links": { "description": "Which services the picker lists under which listed component (curated presentation; a service still has exactly one owning entity).", "type": "array", "items": { "type": "object", "required": ["entity_id", "service_ids"], "properties": { "entity_id": { "$ref": "#/$defs/id_ent" }, "service_ids": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/id_svc" } } }, "additionalProperties": false } },
+        "symptom_question_id": { "$ref": "#/$defs/id_q" },
+        "symptoms": { "description": "Symptoms of a group with no symptom question (nothing to compile them from).", "type": "array", "items": { "type": "object", "required": ["id", "service_ids"], "properties": { "id": { "type": "string" }, "service_ids": { "type": "array", "items": { "$ref": "#/$defs/id_svc" } } }, "additionalProperties": false } },
+        "ask_action_first": { "type": "boolean" }, "symptom_prompt": { "type": "string" },
+        "symptom_tiles": { "type": "array", "items": { "type": "object", "required": ["id", "label"], "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "tag_ids": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } } } } },
+        "known_need_prompt": { "type": "string" },
+        "known_need_tiles": { "type": "array", "items": { "type": "object", "required": ["service_id"], "properties": { "service_id": { "$ref": "#/$defs/id_svc" } } } },
+        "real_gaps": { "type": "array", "items": { "type": "string" } },
+        "action_ids": { "type": "array", "items": { "$ref": "#/$defs/id_act" } }
+      },
+      "additionalProperties": false
+    },
+
+    "action": { "type": "object", "required": ["id", "label"], "properties": { "id": { "$ref": "#/$defs/id_act" }, "label": { "type": "string" }, "required_intake_modules": { "type": "array", "items": { "$ref": "#/$defs/q_or_unresolved" } } } },
+    "modifier": { "type": "object", "required": ["id", "affects"], "properties": { "id": { "$ref": "#/$defs/id_mod" }, "affects": { "type": "array", "uniqueItems": true, "items": { "enum": ["price", "minutes"] } } } },
+    "tag": { "type": "object", "required": ["id"], "properties": { "id": { "$ref": "#/$defs/id_tag" }, "answers": { "type": "array", "items": { "$ref": "#/$defs/term" } }, "requires": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } }, "derived_from": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } }, "mutually_exclusive": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } } } },
+    "registry_item_cat": { "type": "object", "required": ["id"], "properties": { "id": { "$ref": "#/$defs/id_cat" }, "group_ids": { "type": "array", "items": { "$ref": "#/$defs/id_grp" } } } },
+    "registry_item_mat": { "type": "object", "required": ["id", "sku"], "properties": { "id": { "$ref": "#/$defs/id_mat" } } },
+    "registry_item_fur": { "type": "object", "required": ["id", "sku"], "properties": { "id": { "$ref": "#/$defs/id_fur" } } },
+    "registry_item_chk": { "type": "object", "required": ["id"], "properties": { "id": { "$ref": "#/$defs/id_chk" } } },
+    "registry_item_fml": { "type": "object", "required": ["id"], "properties": { "id": { "$ref": "#/$defs/id_fml" }, "issue_type_fees": { "type": "array", "items": { "type": "object", "required": ["question_id", "option_id"], "properties": { "question_id": { "$ref": "#/$defs/id_q" }, "option_id": { "$ref": "#/$defs/option_id" } } } } } },
+    "registry_item_cls": { "type": "object", "required": ["id", "default_confidence_policy"], "properties": { "id": { "$ref": "#/$defs/id_cls" }, "default_confidence_policy": { "type": "object", "required": ["exact_at"], "properties": { "exact_at": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 } } } } }
+  }
+}

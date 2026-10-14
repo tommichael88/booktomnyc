@@ -1,0 +1,466 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * validate_source.js -- the independent validator of ssot/btnyc_source.json (T175).
+ *
+ *   node test_harness/tools/entity_first/validate_source.js [--json] [--residuals] [path]
+ *
+ * It reads ONLY the source. It shares nothing with the migration, the legacy projection or the graph derivation except the id grammar (lib.js ID_TYPES / ID_RE): the one reference syntax.
+ * Validation is callable without deriving anything, and derive_graph.js refuses a source that fails here (R-INVARIANT-DERIVATION: what is valid is decided apart from what is derived).
+ *
+ * Every finding carries a rule code. The codes are the class detectors the counterfactual tests mutate (verify_entity_first_validator.js): a mutant of each class must be rejected with its code.
+ *   V-SCHEMA          the shape the versioned schema fixes (checked by schema_check.py; this file checks the fields the semantic rules read)
+ *   V-ID-MISSING      a referenceable node with no id            V-ID-PREFIX    an id whose prefix is not its node type      V-ID-DUPLICATE   two nodes of one type with one id
+ *   V-REF-DANGLING    an id-shaped value or key that names nothing   V-REF-TYPE  a reference site that holds an id of the wrong type   V-REF-LABEL   a reference that is a label, not an id pair
+ *   V-SCOPE-MISSING / V-SCOPE-ASKER / V-SCOPE-CLAIM / V-SCOPE-OWNER   a question's entity_scope, in both directions
+ *   V-DEP-DANGLING / V-DEP-OPTION / V-DEP-NOTINCHAIN / V-DEP-SELF / V-DEP-CYCLE / V-DEP-SHAPE   depends_on
+ *   V-UNC-*           uncertainty classes, profiles and retirement       V-CONF-*   confidence policy and gate       V-OPT-*   option effects     V-COMP-*   unsafe-to-compose services
+ * Declared gaps are not errors and not hidden: they are returned as `residuals` and counted in the coverage report.
+ */
+const fs = require('fs');
+const lib = require('./lib.js');
+const { ID_TYPES, ID_RE, idType } = lib;
+
+const AFFECTS = ['price', 'minutes', 'branch', 'prep', 'checkout_state', 'complexity', 'quantity', 'materials', 'tags'];
+const ENTITY_KINDS = ['component', 'generic_group', 'generic_category'];
+const ENTRY_MODES = ['component_first', 'symptom_first', 'parent', 'undetermined'];
+const GATE_MODES = ['weighted_uncertainty', 'none'];
+
+function eachAt(node, segs, fn, p = '') {
+  if (node === undefined || node === null) return;
+  if (segs.length === 0) { fn(node, p); return; }
+  const [s, ...rest] = segs;
+  if (s === '[]') { if (Array.isArray(node)) node.forEach((x, i) => eachAt(x, rest, fn, `${p}[${i}]`)); }
+  else if (s === '*') { if (lib.isObj(node)) for (const k of Object.keys(node)) eachAt(node[k], rest, fn, `${p}.${k}`); }
+  else if (lib.isObj(node) && s in node) eachAt(node[s], rest, fn, `${p}.${s}`);
+}
+
+function validate(src, opts = {}) {
+  const errors = [], residuals = [];
+  const err = (code, path, msg) => errors.push({ code, path, msg });
+  const res = (kind, id, note) => residuals.push({ kind, id, note });
+  const stats = { idsAssigned: 0, idsMissing: 0, refsChecked: 0, entities: 0, questions: 0, options: 0, optionsWithoutId: 0, services: 0, compositions: 0, classes: 0, gatedServices: 0, gatedCompositions: 0, refTypes: {} };
+
+  // ---- top level -----------------------------------------------------------------------------------------------------------------------------------------------------------
+  for (const k of ['source_schema_version', 'meta', 'registries', 'entities', 'shared_questions', 'shared_uncertainty_classes', 'policy', 'vocabulary']) if (!(k in src)) err('V-SCHEMA', '$.' + k, 'required top-level section is missing');
+  if (errors.length) return { errors, residuals, stats, ok: false };
+  const R = src.registries;
+  for (const k of ['categories', 'groups', 'actions', 'modifiers', 'tags', 'materials', 'furniture', 'checkout_states', 'pricing_formulas', 'pricing_archetypes', 'behavioral_classes', 'contexts', 'service_order']) if (!Array.isArray(R[k])) err('V-SCHEMA', '$.registries.' + k, 'registry is missing or not an array');
+  if (errors.length) return { errors, residuals, stats, ok: false };
+
+  // ---- ids -----------------------------------------------------------------------------------------------------------------------------------------------------------------
+  const decl = {}; for (const t of Object.keys(ID_TYPES)) decl[t] = new Map();
+  const declare = (type, node, path) => {
+    if (!node || typeof node.id !== 'string' || node.id === '') { stats.idsMissing++; err('V-ID-MISSING', path, `a ${ID_TYPES[type]} has no id`); return null; }
+    if (idType(node.id) !== type) { err('V-ID-PREFIX', path, `${ID_TYPES[type]} id ${JSON.stringify(node.id)} does not carry the ${type}. prefix`); return null; }
+    if (decl[type].has(node.id)) { err('V-ID-DUPLICATE', path, `${ID_TYPES[type]} id ${node.id} is declared twice (first at ${decl[type].get(node.id).path})`); return null; }
+    decl[type].set(node.id, { node, path }); stats.idsAssigned++; return node.id;
+  };
+  const registryTypes = { categories: 'cat', groups: 'grp', actions: 'act', modifiers: 'mod', tags: 'tag', materials: 'mat', furniture: 'fur', checkout_states: 'chk', pricing_formulas: 'fml', pricing_archetypes: 'par', behavioral_classes: 'cls', contexts: 'ctx' };
+  for (const [reg, type] of Object.entries(registryTypes)) R[reg].forEach((n, i) => declare(type, n, `$.registries.${reg}[${i}]`));
+
+  const entities = new Map(), questions = new Map(), classes = new Map(), services = new Map(), compositions = new Map();
+  const qOwner = new Map(), svcEntity = new Map(), classOwner = new Map(), cmpOwner = new Map(); // validation never writes to the source it reads
+  src.entities.forEach((e, i) => {
+    const ep = `$.entities[${i}]`;
+    if (declare('ent', e, ep)) { entities.set(e.id, e); stats.entities++; }
+    if (!ENTITY_KINDS.includes(e.kind)) err('V-SCHEMA', ep + '.kind', `kind ${JSON.stringify(e.kind)} is not one of ${ENTITY_KINDS.join(', ')}`);
+    for (const k of ['questions', 'uncertainty_classes', 'services', 'default_compositions']) if (!Array.isArray(e[k])) err('V-SCHEMA', `${ep}.${k}`, 'entity section is missing or not an array');
+    (e.questions || []).forEach((q, j) => { if (declare('q', q, `${ep}.questions[${j}]`)) { questions.set(q.id, q); qOwner.set(q.id, e.id); } });
+    (e.uncertainty_classes || []).forEach((c, j) => { if (declare('u', c, `${ep}.uncertainty_classes[${j}]`)) { classes.set(c.id, c); classOwner.set(c.id, e.id); } });
+    (e.services || []).forEach((s, j) => { if (declare('svc', s, `${ep}.services[${j}]`)) { services.set(s.id, s); svcEntity.set(s.id, e.id); } });
+    (e.default_compositions || []).forEach((c, j) => { if (declare('cmp', c, `${ep}.default_compositions[${j}]`)) { compositions.set(c.id, c); cmpOwner.set(c.id, e.id); } });
+  });
+  src.shared_questions.forEach((q, j) => { if (declare('q', q, `$.shared_questions[${j}]`)) { questions.set(q.id, q); qOwner.set(q.id, null); } });
+  src.shared_uncertainty_classes.forEach((c, j) => { if (declare('u', c, `$.shared_uncertainty_classes[${j}]`)) { classes.set(c.id, c); classOwner.set(c.id, null); } });
+  stats.questions = questions.size; stats.services = services.size; stats.compositions = compositions.size; stats.classes = classes.size;
+  if (errors.some(e => e.code === 'V-SCHEMA')) return { errors, residuals, stats, ok: false };
+
+  const exists = id => { const t = idType(id); return !!t && decl[t].has(id); };
+  const need = (path, id, type) => {
+    stats.refsChecked++; stats.refTypes[type] = (stats.refTypes[type] || 0) + 1;
+    if (typeof id !== 'string') { err('V-REF-LABEL', path, `a ${ID_TYPES[type]} reference must be an id string, found ${JSON.stringify(id)}`); return false; }
+    const t = idType(id);
+    if (!t) { err('V-REF-LABEL', path, `${JSON.stringify(id)} is not an id (labels and aliases are never references)`); return false; }
+    if (t !== type) { err('V-REF-TYPE', path, `expected a ${ID_TYPES[type]} id, found ${id} (a ${ID_TYPES[t]})`); return false; }
+    if (!decl[type].has(id)) { err('V-REF-DANGLING', path, `${id} names no ${ID_TYPES[type]}`); return false; }
+    return true;
+  };
+
+  // ---- options: ids unique per question; the effective options of an instance question are its base's unless it carries its own -------------------------------------------------
+  const optionsOf = q => (q.options ? q.options : (q.instance_of && questions.get(q.instance_of) ? questions.get(q.instance_of).options : undefined));
+  const optionById = (qid, oid) => { const q = questions.get(qid); const os = q && optionsOf(q); return os ? os.find(o => o.id === oid) : undefined; };
+  const modById = new Map(R.modifiers.filter(m => m && m.id).map(m => [m.id, m]));
+  const opensBranch = new Set(); // `${qid}#${oid}` named as a parent by some dependency
+
+  // ---- dependencies ------------------------------------------------------------------------------------------------------------------------------------------------------------
+  const termsOf = (dep, path) => {
+    const out = [];
+    if (!Array.isArray(dep)) { err('V-DEP-SHAPE', path, 'depends_on must be an array (empty when the question is ungated)'); return out; }
+    dep.forEach((t, i) => {
+      const tp = `${path}[${i}]`;
+      if (lib.isObj(t) && Array.isArray(t.any_of)) { if (!t.any_of.length) err('V-DEP-SHAPE', tp, 'any_of must not be empty'); t.any_of.forEach((u, j) => { if (lib.isObj(u) && typeof u.question_id === 'string' && typeof u.option_id === 'string') out.push({ term: u, path: `${tp}.any_of[${j}]` }); else err('V-REF-LABEL', `${tp}.any_of[${j}]`, 'a dependency term is {question_id, option_id}'); }); }
+      else if (lib.isObj(t) && typeof t.question_id === 'string' && typeof t.option_id === 'string') out.push({ term: t, path: tp });
+      else err('V-REF-LABEL', tp, 'a dependency term is {question_id, option_id} or {any_of: [...]}; a label-keyed dependency is not a reference');
+    });
+    return out;
+  };
+  const checkTerm = ({ term, path }) => {
+    if (!need(path + '.question_id', term.question_id, 'q')) return false;
+    if (!optionById(term.question_id, term.option_id)) { err('V-DEP-OPTION', path + '.option_id', `${term.option_id} is not an option of ${term.question_id}`); return false; }
+    opensBranch.add(`${term.question_id}#${term.option_id}`); return true;
+  };
+
+  // ---- questions ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+  const questionDeps = new Map(); // qid -> Set(parent qids)
+  const allQuestions = [...questions.values()];
+  for (const q of allQuestions) {
+    const path = decl.q.get(q.id).path;
+    if (q.instance_of === undefined) { if (typeof q.prompt !== 'string' || !q.prompt) err('V-SCHEMA', path + '.prompt', 'a question has a prompt'); if (typeof q.type !== 'string') err('V-SCHEMA', path + '.type', 'a question has a type'); }
+    else { need(path + '.instance_of', q.instance_of, 'q'); if (typeof q.item_noun !== 'string' || !q.item_noun) err('V-SCHEMA', path + '.item_noun', 'an instance question names its item'); }
+    // scope
+    const sc = q.entity_scope;
+    if (sc === undefined || sc === null) err('V-SCOPE-MISSING', path + '.entity_scope', 'every question declares entity_scope');
+    else if (Array.isArray(sc)) { if (!sc.length) err('V-SCOPE-MISSING', path + '.entity_scope', 'entity_scope is empty'); sc.forEach((id, i) => need(`${path}.entity_scope[${i}]`, id, 'ent')); if (new Set(sc).size !== sc.length) err('V-SCOPE-CLAIM', path + '.entity_scope', 'an entity is listed twice'); }
+    else if (lib.isObj(sc) && typeof sc.context === 'string') need(path + '.entity_scope.context', sc.context, 'ctx');
+    else err('V-SCOPE-MISSING', path + '.entity_scope', 'entity_scope is an array of entity ids or {context: ctx.id}');
+    // owner
+    const owner = qOwner.get(q.id);
+    if (owner && Array.isArray(sc) && !sc.includes(owner)) err('V-SCOPE-OWNER', path, `${q.id} lives under ${owner} but its entity_scope does not include that entity`);
+    if (owner === null && Array.isArray(sc) && sc.length < 2) err('V-SCOPE-OWNER', path, `${q.id} is a shared question but is scoped to fewer than two entities (it belongs under its entity)`);
+    if (owner && !Array.isArray(sc)) err('V-SCOPE-OWNER', path, `${q.id} lives under ${owner} but is context-scoped (a context-scoped question is shared)`);
+    // options
+    const opts = q.options;
+    if (opts !== undefined) {
+      if (!Array.isArray(opts) || !opts.length) err('V-SCHEMA', path + '.options', 'options is a non-empty array when present');
+      else {
+        const ids = new Set(), labels = new Set();
+        opts.forEach((o, i) => {
+          const op = `${path}.options[${i}]`; stats.options++;
+          if (typeof o.id !== 'string' || !o.id) { stats.optionsWithoutId++; err('V-ID-MISSING', op, 'an option has no id'); } else { stats.idsAssigned++; if (ids.has(o.id)) err('V-ID-DUPLICATE', op, `option id ${o.id} is used twice in ${q.id}`); ids.add(o.id); }
+          if (typeof o.label !== 'string' || !o.label) err('V-SCHEMA', op + '.label', 'an option has a label'); else { if (labels.has(o.label)) err('V-OPT-LABEL-DUP', op, `two options of ${q.id} share the label ${JSON.stringify(o.label)} (an answer is stored by label)`); labels.add(o.label); }
+        });
+      }
+    }
+    // question-level dependencies
+    const parents = new Set();
+    for (const t of termsOf(q.depends_on, path + '.depends_on')) { if (checkTerm(t)) { if (t.term.question_id === q.id) err('V-DEP-SELF', t.path, `${q.id} depends on itself`); parents.add(t.term.question_id); } }
+    questionDeps.set(q.id, parents);
+  }
+  // instance questions that carry no options of their own must have a base that does
+  for (const q of allQuestions) if (q.instance_of && questions.has(q.instance_of) && !optionsOf(q)) err('V-SCHEMA', decl.q.get(q.id).path, `${q.id} is an instance of ${q.instance_of}, which has no options, and has none of its own`);
+  stats.options = allQuestions.reduce((n, q) => n + (q.options ? q.options.length : 0), 0);
+
+  // dependency cycles across questions (question-level)
+  { const state = new Map(); const visit = (id, trail) => { if (state.get(id) === 2) return; if (state.get(id) === 1) { err('V-DEP-CYCLE', decl.q.get(id).path, `question dependencies form a cycle: ${[...trail, id].join(' -> ')}`); return; } state.set(id, 1); for (const p of questionDeps.get(id) || []) if (questions.has(p)) visit(p, [...trail, id]); state.set(id, 2); };
+    for (const id of questions.keys()) visit(id, []); }
+
+  // ---- options: references and effects -----------------------------------------------------------------------------------------------------------------------------------------------
+  // (done after steps so that `branch` can be derived from dependencies)
+  const stepsOf = x => (x.intake && Array.isArray(x.intake.steps) ? x.intake.steps : null);
+  const owners = [...[...services.values()].map(s => ({ kind: 'service', node: s, path: decl.svc.get(s.id).path, entity: svcEntity.get(s.id) })), ...[...compositions.values()].map(c => ({ kind: 'composition', node: c, path: decl.cmp.get(c.id).path, entity: cmpOwner.get(c.id) }))];
+  const askers = new Map(); // qid -> Set(entity)
+  const baseOfQ = qid => { const q = questions.get(qid); return q && q.instance_of ? q.instance_of : qid; };
+  for (const o of owners) {
+    const { node: n, path, entity } = o; const steps = stepsOf(n);
+    if (!steps) { err('V-SCHEMA', path + '.intake.steps', `${o.kind} has no intake.steps array`); continue; }
+    const inChain = new Set(); const seen = new Set();
+    steps.forEach((st, i) => { if (typeof st.question_id === 'string') { if (seen.has(st.question_id)) err('V-DEP-SHAPE', `${path}.intake.steps[${i}]`, `${st.question_id} is a step twice in one chain`); seen.add(st.question_id); inChain.add(st.question_id); } });
+    const parents = new Map();
+    steps.forEach((st, i) => {
+      const sp = `${path}.intake.steps[${i}]`;
+      if (!need(sp + '.question_id', st.question_id, 'q')) return;
+      if (!askers.has(st.question_id)) askers.set(st.question_id, new Set()); askers.get(st.question_id).add(entity);
+      const ps = new Set();
+      for (const t of termsOf(st.depends_on, sp + '.depends_on')) {
+        if (!checkTerm(t)) continue;
+        const pq = t.term.question_id;
+        if (pq === st.question_id) { err('V-DEP-SELF', t.path, `${st.question_id} depends on itself in ${n.id}`); continue; }
+        if (!inChain.has(pq)) { err('V-DEP-NOTINCHAIN', t.path, `${n.id}: ${st.question_id} depends on ${pq}, which is not a step of this chain, so the gate can never open`); continue; }
+        ps.add(pq);
+      }
+      parents.set(st.question_id, ps);
+    });
+    { const state = new Map(); const visit = (id, trail) => { if (state.get(id) === 2) return; if (state.get(id) === 1) { err('V-DEP-CYCLE', path + '.intake.steps', `${n.id}: step dependencies form a cycle: ${[...trail, id].join(' -> ')}`); return; } state.set(id, 1); for (const p of parents.get(id) || []) visit(p, [...trail, id]); state.set(id, 2); };
+      for (const id of parents.keys()) visit(id, []); }
+    o.inChain = inChain;
+  }
+
+  // A deep-dive question (recovery_affordances.deep_dive_question_ids: the Fork's "answer a few more questions" path) is asked of the unit's customer: it is a use of the question, so the unit's
+  // entity belongs in the question's entity_scope exactly as if a chain asked it. A scope that counts chains only would call a question used by 33 entities a question of one.
+  for (const o of owners) { const rec = o.node.recovery_affordances; if (rec && Array.isArray(rec.deep_dive_question_ids)) for (const q of rec.deep_dive_question_ids) if (typeof q === 'string' && questions.has(q)) { if (!askers.has(q)) askers.set(q, new Set()); askers.get(q).add(o.entity); } }
+  // scope, both directions
+  for (const q of allQuestions) {
+    const sc = q.entity_scope; const as = askers.get(q.id) || new Set(); const path = decl.q.get(q.id).path + '.entity_scope';
+    // an instance question's chain-level asker also asks its base
+    if (Array.isArray(sc)) {
+      for (const a of as) if (!sc.includes(a)) err('V-SCOPE-ASKER', path, `${a} asks ${q.id} (in a chain or as a deep-dive question) but is not in its entity_scope`);
+      for (const e of sc) if (!as.has(e) && !(owners.some(o => o.entity === e && o.node.intake && (o.node.intake.steps || []).some(st => baseOfQ(st.question_id) === q.id)))) err('V-SCOPE-CLAIM', path, `${e} is in the entity_scope of ${q.id} but asks nothing that uses it (no chain step and no deep-dive question)`);
+    }
+  }
+  // a base question asked only through instances: scope of the base covers the instance askers
+  for (const q of allQuestions) if (q.instance_of) { const b = questions.get(q.instance_of); const as = askers.get(q.id) || new Set(); if (b && Array.isArray(b.entity_scope)) for (const a of as) if (!b.entity_scope.includes(a)) err('V-SCOPE-ASKER', decl.q.get(b.id).path + '.entity_scope', `${a} asks an instance of ${b.id} but is not in its entity_scope`); }
+
+  // ---- option fields and effects ----------------------------------------------------------------------------------------------------------------------------------------------------
+  for (const q of allQuestions) {
+    (q.options || []).forEach((o, i) => {
+      const op = `${decl.q.get(q.id).path}.options[${i}]`;
+      const has = k => o[k] !== undefined;
+      if (!Array.isArray(o.affects)) { err('V-OPT-EFFECT', op + '.affects', 'every option declares affects (an empty array for a no-op)'); return; }
+      for (const a of o.affects) if (!AFFECTS.includes(a)) err('V-OPT-EFFECT', op + '.affects', `${JSON.stringify(a)} is not an effect (${AFFECTS.join(', ')})`);
+      if (new Set(o.affects).size !== o.affects.length) err('V-OPT-EFFECT', op + '.affects', 'an effect is listed twice');
+      const aff = new Set(o.affects);
+      (o.tag_ids || []).forEach((t, j) => need(`${op}.tag_ids[${j}]`, t, 'tag'));
+      if (has('modifier_id')) need(op + '.modifier_id', o.modifier_id, 'mod');
+      if (has('checkout_state_id')) need(op + '.checkout_state_id', o.checkout_state_id, 'chk');
+      if (has('formula_id')) need(op + '.formula_id', o.formula_id, 'fml');
+      if (has('route_to')) {
+        const r = o.route_to; need(op + '.route_to.service_id', r.service_id, 'svc');
+        if (!Array.isArray(r.answers)) err('V-REF-LABEL', op + '.route_to.answers', 'route_to.answers is an array of {question_id, option_id}');
+        else r.answers.forEach((a, j) => { if (!lib.isObj(a) || typeof a.question_id !== 'string' || typeof a.option_id !== 'string') { err('V-REF-LABEL', `${op}.route_to.answers[${j}]`, 'an answer is {question_id, option_id}, never {module: label}'); return; } if (need(`${op}.route_to.answers[${j}].question_id`, a.question_id, 'q') && !optionById(a.question_id, a.option_id)) err('V-DEP-OPTION', `${op}.route_to.answers[${j}].option_id`, `${a.option_id} is not an option of ${a.question_id}`); });
+      }
+      // effects must match the fields that cause them, both ways
+      const mod = has('modifier_id') ? modById.get(o.modifier_id) : undefined;
+      const modPrice = mod && Number(mod.fee) !== 0 && mod.fee !== undefined, modMin = mod && Number(mod.minutes) !== 0 && mod.minutes !== undefined;
+      const rule = (effect, backed, why) => { if (aff.has(effect) && !backed) err('V-OPT-EFFECT', op, `${q.id}/${o.id} declares effect "${effect}" but nothing in the option causes it (${why})`); if (!aff.has(effect) && backed) err('V-OPT-EFFECT', op, `${q.id}/${o.id} has ${why} but does not declare effect "${effect}"`); };
+      rule('tags', Array.isArray(o.tag_ids) && o.tag_ids.length > 0, 'tag_ids');
+      rule('complexity', has('complexity_override'), 'complexity_override');
+      rule('checkout_state', has('checkout_state_id'), 'checkout_state_id');
+      rule('quantity', has('qty_value'), 'qty_value');
+      rule('materials', has('mat_min') || has('mat_max'), 'mat_min/mat_max');
+      rule('prep', has('location_hints'), 'location_hints');
+      rule('branch', has('route_to') || opensBranch.has(`${q.id}#${o.id}`), 'route_to or a dependent question');
+      if (aff.has('price') && !(has('formula_id') || modPrice)) err('V-OPT-EFFECT', op, `${q.id}/${o.id} declares effect "price" but has no priced modifier and no formula`);
+      if (!aff.has('price') && (has('formula_id') || modPrice)) err('V-OPT-EFFECT', op, `${q.id}/${o.id} has a formula or a priced modifier but does not declare effect "price"`);
+      if (aff.has('minutes') && !modMin) err('V-OPT-EFFECT', op, `${q.id}/${o.id} declares effect "minutes" but has no modifier with minutes`);
+      if (!aff.has('minutes') && modMin) err('V-OPT-EFFECT', op, `${q.id}/${o.id} has a modifier with minutes but does not declare effect "minutes"`);
+      if (o.evidence !== undefined && o.evidence !== 'unknown') err('V-OPT-EFFECT', op + '.evidence', `evidence is "unknown" or absent, found ${JSON.stringify(o.evidence)}`);
+      // An unknown answer may still carry a fee or minutes (a contingency for not knowing); that is authored business behavior, so it is reported as a residual for the Operator, not rejected.
+      if (o.evidence === 'unknown' && (aff.has('price') || aff.has('minutes'))) res('unknown_option_with_cost_effect', `${q.id}/${o.id}`, `${JSON.stringify(o.label)} is classified as an unknown answer and also changes ${['price', 'minutes'].filter(a => aff.has(a)).join(' and ')}: a contingency for not knowing, or a mis-classified answer`);
+    });
+  }
+
+  // ---- uncertainty classes ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+  const reachableRetire = new Map(); // class id -> bool: some qualifying (non-unknown) option exists on an existing question
+  for (const c of classes.values()) {
+    const path = decl.u.get(c.id).path;
+    if (typeof c.label !== 'string' || !c.label) err('V-SCHEMA', path + '.label', 'a class has a label');
+    if (typeof c.weight_basis !== 'string' || !c.weight_basis) err('V-UNC-WEIGHT', path + '.weight_basis', 'the basis of a weight is declared, not implied');
+    if (c.default_weight === undefined) { if (c.weight_basis !== 'unauthored') err('V-UNC-WEIGHT', path + '.default_weight', `${c.id} has no weight and does not declare weight_basis "unauthored"`); else res('uncertainty_weight_unauthored', c.id, `${c.id} has no authored weight: it cannot count toward any service's confidence until the Operator sets one`); }
+    else if (!(typeof c.default_weight === 'number' && Number.isFinite(c.default_weight) && c.default_weight > 0)) err('V-UNC-WEIGHT', path + '.default_weight', 'a class weight is a positive number');
+    else if (c.weight_basis === 'unauthored') err('V-UNC-WEIGHT', path + '.weight_basis', 'a class with a weight cannot be "unauthored"');
+    if (!Array.isArray(c.retired_by) || !c.retired_by.length) { err('V-UNC-RETIRE', path + '.retired_by', 'a class names the question and answers that retire it'); reachableRetire.set(c.id, false); continue; }
+    let reach = false;
+    c.retired_by.forEach((r, i) => {
+      const rp = `${path}.retired_by[${i}]`;
+      if (lib.isObj(r) && r.any_value === true && r.option_ids === undefined) { // a numeric question has no options: any value given retires it
+        if (!need(rp + '.question_id', r.question_id, 'q')) return;
+        const qq = questions.get(r.question_id); if (qq && optionsOf(qq)) err('V-UNC-RETIRE', rp, `${r.question_id} has options; retirement names the qualifying options, not any_value`); else reach = true;
+        return;
+      }
+      if (!lib.isObj(r) || !Array.isArray(r.option_ids) || !r.option_ids.length) { err('V-UNC-RETIRE', rp, 'a retirement is {question_id, option_ids: [..]} with at least one qualifying answer, or {question_id, any_value: true} on a numeric question'); return; }
+      if (!need(rp + '.question_id', r.question_id, 'q')) return;
+      r.option_ids.forEach((oid, j) => {
+        const o = optionById(r.question_id, oid);
+        if (!o) { err('V-DEP-OPTION', `${rp}.option_ids[${j}]`, `${oid} is not an option of ${r.question_id}`); return; }
+        if (o.evidence === 'unknown') err('V-UNC-RETIRE-UNKNOWN', `${rp}.option_ids[${j}]`, `${r.question_id}/${oid} is an unknown answer and cannot retire ${c.id} ("not sure" never retires anything)`);
+        else reach = true;
+      });
+    });
+    reachableRetire.set(c.id, reach);
+    if (!reach) err('V-UNC-UNREACHABLE', path, `${c.id} can never be retired: no qualifying answer exists`);
+    const cOwner = classOwner.get(c.id);
+    if (cOwner) { // an entity-owned class is reusable by that entity: the question that retires it must be one of that entity's
+      for (const r of c.retired_by) { const q = questions.get(r.question_id); if (q && Array.isArray(q.entity_scope) && !q.entity_scope.includes(cOwner)) err('V-UNC-SCOPE', path, `${c.id} is owned by ${cOwner} but is retired by ${r.question_id}, which is not scoped to that entity`); }
+    }
+  }
+
+  // ---- services and compositions ---------------------------------------------------------------------------------------------------------------------------------------------------------
+  const tuples = new Map();
+  const actionById = new Map(R.actions.filter(a => a && a.id).map(a => [a.id, a]));
+  for (const o of owners) {
+    const { node: n, path, entity } = o; const isSvc = o.kind === 'service';
+    need(path + '.entity_id', n.entity_id, 'ent');
+    if (n.entity_id !== entity) err('V-COMP-OWNER', path + '.entity_id', `${n.id} is listed under ${entity} but names ${n.entity_id} as its entity (one canonical entity key)`);
+    need(path + '.action_id', n.action_id, 'act');
+    if (!Array.isArray(n.modifier_ids)) err('V-SCHEMA', path + '.modifier_ids', 'modifier_ids is an array (empty when none)'); else n.modifier_ids.forEach((m, i) => need(`${path}.modifier_ids[${i}]`, m, 'mod'));
+    if (!isSvc) { need(path + '.category_id', n.category_id, 'cat'); if (n.group_id !== null && n.group_id !== undefined) need(path + '.group_id', n.group_id, 'grp'); }
+    else { const ui = n.presentation && n.presentation.ui_taxonomy; if (!ui) err('V-SCHEMA', path + '.presentation.ui_taxonomy', 'a service has a ui_taxonomy'); else { need(path + '.presentation.ui_taxonomy.category_id', ui.category_id, 'cat'); need(path + '.presentation.ui_taxonomy.group_id', ui.group_id, 'grp'); } }
+    // pricing: one path
+    const pr = n.pricing; if (!pr || !pr.financial_engine) err('V-COMP-PRICING', path + '.pricing', `${n.id} has no pricing.financial_engine`);
+    else {
+      const fe = pr.financial_engine;
+      if (isSvc) { const hasE = pr.engine !== undefined, hasF = pr.formula_id !== undefined; if (hasE === hasF) err('V-COMP-PRICING', path + '.pricing', `${n.id} names exactly one of pricing.engine and pricing.formula_id`); if (hasF) need(path + '.pricing.formula_id', pr.formula_id, 'fml'); }
+      if (fe.formula_ref !== undefined) need(path + '.pricing.financial_engine.formula_ref', fe.formula_ref, 'fml');
+      if (fe.pricing_archetype !== undefined) need(path + '.pricing.financial_engine.pricing_archetype', fe.pricing_archetype, 'par');
+      if (fe.checkout_state !== undefined) need(path + '.pricing.financial_engine.checkout_state', fe.checkout_state, 'chk');
+      if (fe._inherits_checkout_state_from_archetype !== undefined) need(path + '.pricing.financial_engine._inherits_checkout_state_from_archetype', fe._inherits_checkout_state_from_archetype, 'cls');
+      if (fe.checkout_state === undefined && fe._inherits_checkout_state_from_archetype === undefined) err('V-COMP-CHECKOUT', path + '.pricing.financial_engine', `${n.id} declares neither a checkout state nor the class it inherits one from`);
+    }
+    // action-required questions are asked
+    // composition identity
+    if (isSvc) { const k = [n.entity_id, n.action_id, [...(n.modifier_ids || [])].sort().join(',')].join('|'); if (!tuples.has(k)) tuples.set(k, []); tuples.get(k).push(n); }
+    // confidence
+    const pol = n.confidence_policy;
+    if (!lib.isObj(pol)) err('V-CONF-POLICY', path + '.confidence_policy', `${n.id} has no confidence_policy (a missing declaration is a failure, never 100%)`);
+    else {
+      const ok = k => typeof pol[k] === 'number' && Number.isFinite(pol[k]);
+      for (const k of ['exact_at', 'range_at', 'diagnostic_below']) if (!ok(k)) err('V-CONF-POLICY', `${path}.confidence_policy.${k}`, `${k} is a number`);
+      if (pol.scale !== '0-1') err('V-CONF-THRESHOLD', path + '.confidence_policy.scale', 'thresholds are on a 0-1 scale');
+      if (ok('exact_at') && ok('range_at') && ok('diagnostic_below')) {
+        if (pol.exact_at > 1 || pol.exact_at <= 0) err('V-CONF-THRESHOLD', path + '.confidence_policy.exact_at', `exact_at ${pol.exact_at} is outside (0, 1]`);
+        if (pol.diagnostic_below < 0 || pol.range_at < pol.diagnostic_below || pol.exact_at < pol.range_at) err('V-CONF-THRESHOLD', path + '.confidence_policy', `thresholds must satisfy 0 <= diagnostic_below (${pol.diagnostic_below}) <= range_at (${pol.range_at}) <= exact_at (${pol.exact_at})`);
+      }
+      if (!lib.isObj(pol.policy_sources)) err('V-CONF-POLICY', path + '.confidence_policy.policy_sources', 'where each threshold came from is recorded');
+    }
+    const gate = n.confidence_gate;
+    if (!lib.isObj(gate) || !GATE_MODES.includes(gate.mode)) err('V-CONF-GATE-MISSING', path + '.confidence_gate', `${n.id} declares no confidence_gate (weighted_uncertainty | none); an absent gate is never read as certainty`);
+    const prof = n.uncertainty_profile;
+    if (gate && gate.mode === 'weighted_uncertainty') {
+      if (isSvc) stats.gatedServices++; else stats.gatedCompositions++;
+      if (!Array.isArray(prof) || !prof.length) err('V-CONF-GATE-MISSING', path + '.uncertainty_profile', `${n.id} is confidence-gated but its uncertainty_profile is empty`);
+      else {
+        const seenC = new Set(); let total = 0, reach = 0;
+        prof.forEach((p, i) => {
+          const pp = `${path}.uncertainty_profile[${i}]`;
+          if (!lib.isObj(p) || !need(pp + '.class_id', p.class_id, 'u')) return;
+          if (seenC.has(p.class_id)) err('V-UNC-PROFILE-DUP', pp, `${p.class_id} is in the profile twice`); seenC.add(p.class_id);
+          if (!(typeof p.weight === 'number' && p.weight > 0 && Number.isFinite(p.weight))) { err('V-UNC-WEIGHT', pp + '.weight', 'a profile weight is a positive number'); return; }
+          total += p.weight;
+          const c = classes.get(p.class_id); const asksIt = c && c.retired_by.some(r => o.inChain && o.inChain.has(r.question_id));
+          if (!asksIt) err('V-UNC-PROFILE-UNASKED', pp, `${n.id} counts ${p.class_id} but never asks a question that retires it, so its confidence can never reach 1`);
+          if (asksIt && reachableRetire.get(p.class_id)) reach += p.weight;
+        });
+        if (total > 0 && pol && typeof pol.exact_at === 'number' && reach / total + 1e-9 < pol.exact_at) err('V-CONF-IMPOSSIBLE', path + '.confidence_policy.exact_at', `${n.id}: exact_at ${pol.exact_at} can never be met: the classes that can be retired carry ${(reach / total).toFixed(3)} of the weight`);
+      }
+    } else if (gate && gate.mode === 'none') {
+      if (Array.isArray(prof) && prof.length) err('V-CONF-GATE-MISSING', path + '.confidence_gate', `${n.id} declares gate "none" but has an uncertainty_profile`);
+      if (typeof gate.reason !== 'string' || !gate.reason) err('V-CONF-GATE-MISSING', path + '.confidence_gate.reason', 'gate "none" states why');
+      res('confidence_gate_none', n.id, `${o.kind} ${n.id} asks no question with an authored uncertainty weight, so it is not confidence-gated`);
+    }
+    // recovery
+    const rec = n.recovery_affordances;
+    if (!lib.isObj(rec)) err('V-COMP-RECOVERY', path + '.recovery_affordances', `${n.id} declares no recovery_affordances`);
+    else {
+      if (rec.source !== 'current_open_uncertainty') err('V-COMP-RECOVERY', path + '.recovery_affordances.source', 'recovery is composed from the current open uncertainty');
+      if (!Array.isArray(rec.deep_dive_question_ids)) err('V-COMP-RECOVERY', path + '.recovery_affordances.deep_dive_question_ids', 'deep_dive_question_ids is an array'); else rec.deep_dive_question_ids.forEach((q, i) => need(`${path}.recovery_affordances.deep_dive_question_ids[${i}]`, q, 'q'));
+      if (!lib.isObj(rec.when_no_path) || !need(path + '.recovery_affordances.when_no_path.checkout_state_id', rec.when_no_path.checkout_state_id, 'chk')) err('V-COMP-RECOVERY', path + '.recovery_affordances.when_no_path', 'when no path can retire the open uncertainty, the route is declared');
+      if (Array.isArray(rec.deep_dive_question_ids) && rec.deep_dive_question_ids.length === 0 && gate && gate.mode === 'none') res('recovery_no_authored_path', n.id, `${o.kind} ${n.id} has no uncertainty class and no deep-dive question, so recovery can only take the declared when_no_path route`);
+    }
+    // tags
+    for (const k of ['default_tag_ids', 'suggested_tag_ids']) { const v = isSvc ? (n.tags || {})[k] : n[k]; if (v !== undefined) v.forEach((t, i) => need(`${path}.${k}[${i}]`, t, 'tag')); }
+    if (!isSvc && n.smart_tag_ids !== undefined) n.smart_tag_ids.forEach((t, i) => need(`${path}.smart_tag_ids[${i}]`, t, 'tag'));
+    if (isSvc) { (n.pricing.required_material_ids || []).forEach((m, i) => need(`${path}.pricing.required_material_ids[${i}]`, m, 'mat')); (n.pricing.optional_material_ids || []).forEach((m, i) => need(`${path}.pricing.optional_material_ids[${i}]`, m, 'mat')); (n.related_service_ids || []).forEach((s, i) => need(`${path}.related_service_ids[${i}]`, s, 'svc')); }
+  }
+  // two curated services at one (entity, action, modifiers) point: the composer cannot choose between them unless the gap is declared
+  for (const [k, list] of tuples) if (list.length > 1) for (const s of list) {
+    const d = s.decomposition;
+    if (!lib.isObj(d) || d.status !== 'open' || typeof d.note !== 'string' || !d.note) err('V-COMP-AMBIGUOUS', decl.svc.get(s.id).path, `${s.id} shares (entity, action, modifiers) = ${k} with ${list.filter(x => x !== s).map(x => x.id).join(', ')} and declares no open decomposition: composing from this point is unsafe`);
+    else res('composition_ambiguous', s.id, `${s.id} shares (entity, action, modifiers) = ${k} with ${list.filter(x => x !== s).map(x => x.id).join(', ')}; which modifier or entity separates them is an open business decision`);
+  }
+  for (const s of services.values()) if (s.decomposition !== undefined && !(lib.isObj(s.decomposition) && s.decomposition.status === 'open')) err('V-COMP-AMBIGUOUS', decl.svc.get(s.id).path + '.decomposition', 'decomposition is {status: "open", note} or absent');
+
+  // service_order is a permutation of the services
+  { const so = R.service_order; if (new Set(so).size !== so.length) err('V-ID-DUPLICATE', '$.registries.service_order', 'a service is listed twice');
+    so.forEach((id, i) => need(`$.registries.service_order[${i}]`, id, 'svc')); for (const id of services.keys()) if (!so.includes(id)) err('V-REF-DANGLING', '$.registries.service_order', `${id} is a service but is missing from service_order`); }
+
+  // ---- registries and the carried sections ----------------------------------------------------------------------------------------------------------------------------------------------------
+  // A question reference may be {unresolved_name}: a name the legacy file used that names no intake module. It is kept visibly (a residual), never dropped and never given an invented target.
+  const dangling = (path, v) => { if (lib.isObj(v) && typeof v.unresolved_name === 'string' && v.unresolved_name && Object.keys(v).length === 1) { res('dangling_legacy_reference', path, `"${v.unresolved_name}" names no intake module in the legacy file; it is kept as an unresolved name, not a reference`); return true; } return false; };
+  const typed = (root, rp, segs, type) => eachAt(root, segs, (v, p) => { const one = (x, pp) => { if (type === 'q' && dangling(pp, x)) return; need(pp, x, type); }; if (Array.isArray(v)) v.forEach((x, i) => one(x, `${rp}${p}[${i}]`)); else one(v, rp + p); });
+  typed(src.entities, '$.entities', ['[]', 'parent_id'], 'ent');
+  typed(R.categories, '$.registries.categories', ['[]', 'group_ids', '[]'], 'grp');
+  typed(R.groups, '$.registries.groups', ['[]', 'category_id'], 'cat');
+  typed(R.groups, '$.registries.groups', ['[]', 'parent_group'], 'grp');
+  typed(R.groups, '$.registries.groups', ['[]', 'explicit_services', '[]'], 'svc');
+  typed(R.groups, '$.registries.groups', ['[]', 'dynamic_service_types', '[]'], 'act');
+  typed(R.groups, '$.registries.groups', ['[]', 'picker', 'component_entity_ids', '[]'], 'ent');
+  typed(R.groups, '$.registries.groups', ['[]', 'picker', 'component_links', '[]', 'entity_id'], 'ent');
+  typed(R.groups, '$.registries.groups', ['[]', 'picker', 'component_links', '[]', 'service_ids', '[]'], 'svc');
+  typed(R.groups, '$.registries.groups', ['[]', 'picker', 'symptom_question_id'], 'q');
+  typed(R.groups, '$.registries.groups', ['[]', 'picker', 'symptoms', '[]', 'service_ids', '[]'], 'svc');
+  typed(R.groups, '$.registries.groups', ['[]', 'picker', 'known_need_tiles', '[]', 'service_id'], 'svc');
+  typed(R.groups, '$.registries.groups', ['[]', 'picker', 'symptom_tiles', '[]', 'tag_ids', '[]'], 'tag');
+  typed(R.groups, '$.registries.groups', ['[]', 'picker', 'action_ids', '[]'], 'act');
+  typed(R.tags, '$.registries.tags', ['[]', 'requires', '[]'], 'tag');
+  typed(R.tags, '$.registries.tags', ['[]', 'derived_from', '[]'], 'tag');
+  typed(R.tags, '$.registries.tags', ['[]', 'mutually_exclusive', '[]'], 'tag');
+  typed(R.tags, '$.registries.tags', ['[]', 'applicable_group_ids', '[]'], 'grp');
+  typed(R.tags, '$.registries.tags', ['[]', 'excluded_service_ids', '[]'], 'svc');
+  eachAt(R.tags, ['[]', 'applicable_categories', '[]'], (v, p) => { if (v !== 'all') need('$.registries.tags' + p, v, 'cat'); });
+  eachAt(R.tags, ['[]', 'answers', '[]'], (a, p) => { const ap = '$.registries.tags' + p; if (!lib.isObj(a) || typeof a.question_id !== 'string' || typeof a.option_id !== 'string') { err('V-REF-LABEL', ap, 'a tag answer is {question_id, option_id}'); return; } if (need(ap + '.question_id', a.question_id, 'q') && !optionById(a.question_id, a.option_id)) err('V-DEP-OPTION', ap + '.option_id', `${a.option_id} is not an option of ${a.question_id}`); });
+  for (const t of R.tags) if (t && !Array.isArray(t.answers) && t.answers !== undefined) err('V-REF-LABEL', '$.registries.tags', `${t.id}: answers must be an array of {question_id, option_id}, found ${typeof t.answers}`);
+  typed(R.actions, '$.registries.actions', ['[]', 'required_intake_modules', '[]'], 'q');
+  typed(R.behavioral_classes, '$.registries.behavioral_classes', ['[]', 'member_group_ids', '[]'], 'grp');
+  typed(R.behavioral_classes, '$.registries.behavioral_classes', ['[]', 'typical_actions', '[]'], 'act');
+  typed(R.behavioral_classes, '$.registries.behavioral_classes', ['[]', 'default_checkout_state'], 'chk');
+  for (const k of ['patch_modifier_ref', 'texture_modifier_ref', 'grout_modifier_ref', 'water_damage_modifier_ref', 'high_ceiling_modifier_ref', 'disposal_modifier_ref', 'membrane_modifier_ref']) typed(R.pricing_formulas, '$.registries.pricing_formulas', ['[]', k], 'mod');
+  eachAt(R.pricing_formulas, ['[]', 'issue_type_fees', '[]'], (r, p) => { const rp = '$.registries.pricing_formulas' + p; if (!lib.isObj(r) || typeof r.question_id !== 'string' || typeof r.option_id !== 'string') { err('V-REF-LABEL', rp, 'an issue-type fee is keyed by {question_id, option_id}, never by an option label'); return; } if (need(rp + '.question_id', r.question_id, 'q') && !optionById(r.question_id, r.option_id)) err('V-DEP-OPTION', rp + '.option_id', `${r.option_id} is not an option of ${r.question_id}`); if (r.modifier_id !== undefined) need(rp + '.modifier_id', r.modifier_id, 'mod'); });
+  for (const f of R.pricing_formulas) if (f && f.issue_type_fees !== undefined && !Array.isArray(f.issue_type_fees)) err('V-REF-LABEL', '$.registries.pricing_formulas', `${f.id}: issue_type_fees must be an array of {question_id, option_id, ...}`);
+  eachAt(R.pricing_formulas, ['[]', 'anchor_and_overflow_ref_by_service', '[]'], (r, p) => { const rp = '$.registries.pricing_formulas' + p; if (!lib.isObj(r)) { err('V-REF-LABEL', rp, 'an anchor is {service_id, ...}'); return; } need(rp + '.service_id', r.service_id, 'svc'); if (r.overflow_modifier_id !== undefined) need(rp + '.overflow_modifier_id', r.overflow_modifier_id, 'mod'); });
+  { const gr = src.policy.global_rules || {};
+    for (const [sect, type] of [['group_defaults', 'grp'], ['category_defaults', 'cat']]) { const m = (gr.intake_defaults || {})[sect] || {}; for (const [k, list] of Object.entries(m)) { need(`$.policy.global_rules.intake_defaults.${sect}.${k}`, k, type); if (Array.isArray(list)) list.forEach((q, i) => { if (!dangling(`$.policy.global_rules.intake_defaults.${sect}.${k}[${i}]`, q)) need(`$.policy.global_rules.intake_defaults.${sect}.${k}[${i}]`, q, 'q'); }); else err('V-SCHEMA', `$.policy.global_rules.intake_defaults.${sect}.${k}`, 'a default list is an array of question ids'); } }
+    const fm = gr.force_modules_by_variability_DEPRECATED || {}; for (const [k, list] of Object.entries(fm)) if (Array.isArray(list)) list.forEach((q, i) => { if (!dangling(`$.policy.global_rules.force_modules_by_variability_DEPRECATED.${k}[${i}]`, q)) need(`$.policy.global_rules.force_modules_by_variability_DEPRECATED.${k}[${i}]`, q, 'q'); }); }
+  typed(src.policy.ui_config, '$.policy.ui_config', ['step2_types', '[]'], 'act');
+  typed(src.vocabulary.nlp_objects, '$.vocabulary.nlp_objects', ['[]', 'default_dynamic_category'], 'cat');
+  typed(src.vocabulary.nlp_objects, '$.vocabulary.nlp_objects', ['[]', 'default_service_type'], 'act');
+  typed(src.vocabulary.nlp_objects, '$.vocabulary.nlp_objects', ['[]', 'default_service_sku'], 'svc');
+  typed(src.vocabulary.nlp_objects, '$.vocabulary.nlp_objects', ['[]', 'contextual_overrides', '[]', 'override_sku'], 'svc');
+  typed(src.vocabulary.nlp_objects, '$.vocabulary.nlp_objects', ['[]', 'contextual_overrides', '[]', 'smart_tag'], 'tag');
+  typed(src.vocabulary.nlp_objects, '$.vocabulary.nlp_objects', ['[]', 'dynamic_rule'], 'fml');
+  typed(src.vocabulary.nlp_default_fallback, '$.vocabulary.nlp_default_fallback', ['category'], 'cat');
+  typed(src.vocabulary.nlp_default_fallback, '$.vocabulary.nlp_default_fallback', ['service_type'], 'act');
+  R.groups.forEach((g, i) => { const p = g.picker; if (!lib.isObj(p)) { err('V-SCHEMA', `$.registries.groups[${i}].picker`, 'a group has a picker'); return; } if (!ENTRY_MODES.includes(p.entry_mode)) err('V-SCHEMA', `$.registries.groups[${i}].picker.entry_mode`, `entry_mode is one of ${ENTRY_MODES.join(', ')}`);
+    for (const l of p.component_links || []) if (!(p.component_entity_ids || []).includes(l.entity_id)) err('V-REF-DANGLING', `$.registries.groups[${i}].picker.component_links`, `${l.entity_id} is linked but is not one of the group's listed components`); });
+  // a category lists exactly the groups that name it
+  for (const c of R.categories) for (const gid of c.group_ids || []) { const g = decl.grp.get(gid); if (g && g.node.category_id !== c.id) err('V-REF-DANGLING', '$.registries.categories', `${c.id} lists ${gid}, whose category_id is ${g.node.category_id}`); }
+
+  // ---- generic scan: nothing id-shaped anywhere names something that does not exist ------------------------------------------------------------------------------------------------------------
+  const scanSkip = new Set(['id']);
+  const walk = (v, p, key) => {
+    if (typeof v === 'string') { if (!scanSkip.has(key) && ID_RE.test(v) && idType(v) && !exists(v)) err('V-REF-DANGLING', p, `${v} is id-shaped and names no ${ID_TYPES[idType(v)]}`); }
+    else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${p}[${i}]`, key));
+    else if (lib.isObj(v)) for (const [k, x] of Object.entries(v)) { if (ID_RE.test(k) && idType(k) && !exists(k)) err('V-REF-DANGLING', `${p}.${k}`, `key ${k} is id-shaped and names no ${ID_TYPES[idType(k)]}`); walk(x, `${p}.${k}`, k); }
+  };
+  for (const k of ['registries', 'entities', 'shared_questions', 'shared_uncertainty_classes', 'policy', 'vocabulary']) walk(src[k], '$.' + k, k);
+
+  // ---- coverage facts the report reads --------------------------------------------------------------------------------------------------------------------------------------------------------------
+  for (const q of allQuestions) { if (Array.isArray(q.entity_scope) === false && q.entity_scope && q.entity_scope.context === 'ctx.unreferenced') res('question_asked_by_nothing', q.id, `${q.id} is authored but no chain, deep-dive question, default list or action asks it; its entity scope is an Operator decision`); }
+  for (const q of allQuestions) for (const o of q.options || []) if (o.evidence === 'unknown') res('unknown_option', `${q.id}/${o.id}`, `${JSON.stringify(o.label)} is classified as an unknown answer by label pattern (never retires uncertainty)`);
+  stats.idsByType = Object.fromEntries(Object.keys(ID_TYPES).map(t => [t, decl[t].size]).filter(([, n]) => n > 0));
+  stats.errors = errors.length; stats.residuals = residuals.length;
+  return { ok: errors.length === 0, errors, residuals, stats };
+}
+
+// validate() is the semantic rules, in process. validateFull() adds the structural JSON Schema check (python jsonschema, one spawn) and is what the CLI and the derivation call. A schema check that
+// cannot RUN is a finding, never a pass.
+function validateFull(src) {
+  const cp = require('child_process'), os = require('os'), path = require('path');
+  const r = validate(src);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ef-schema-'));
+  try {
+    const f = path.join(dir, 'source.json'); fs.writeFileSync(f, JSON.stringify(src));
+    const p = cp.spawnSync('python3', ['-I', path.join(__dirname, 'schema_check.py'), lib.PATHS.schema, f], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    if (p.status === 2 || p.status === null) r.errors.unshift({ code: 'V-SCHEMA', path: '$', msg: 'the schema check could not run: ' + ((p.stdout || '') + (p.stderr || '')).slice(0, 300) });
+    else if (p.status === 1) {
+      const lines = (p.stdout || '').split('\n').filter(Boolean);
+      // exit 1 means "invalid, with findings on stdout". Exit 1 with no finding is a crash that looks like a verdict, and a verdict of "no findings" is a pass: it is a finding instead.
+      if (!lines.length) r.errors.unshift({ code: 'V-SCHEMA', path: '$', msg: 'the schema check reported the source invalid but gave no finding (treated as a failure to run): ' + (p.stderr || '').slice(-300) });
+      for (const line of lines) { try { const j = JSON.parse(line); r.errors.push({ code: 'V-SCHEMA', path: j.path, msg: j.msg }); } catch (e) { r.errors.push({ code: 'V-SCHEMA', path: '$', msg: line.slice(0, 200) }); } }
+    } else if (p.status !== 0) r.errors.unshift({ code: 'V-SCHEMA', path: '$', msg: 'the schema check exited ' + p.status + ' (neither valid nor invalid): treated as a failure to run' });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  r.ok = r.errors.length === 0; r.stats.errors = r.errors.length;
+  return r;
+}
+
+if (require.main === module) {
+  const args = process.argv.slice(2); const file = args.find(a => !a.startsWith('--')) || lib.PATHS.source;
+  const r = args.includes('--semantic-only') ? validate(lib.readJson(file)) : validateFull(lib.readJson(file));
+  if (args.includes('--json')) { console.log(JSON.stringify(r, null, 2)); process.exit(r.ok ? 0 : 1); }
+  const byCode = {}; for (const e of r.errors) byCode[e.code] = (byCode[e.code] || 0) + 1;
+  if (r.ok) console.log(`source valid: ${r.stats.entities} entities, ${r.stats.questions} questions, ${r.stats.options} options, ${r.stats.services} services, ${r.stats.compositions} compositions, ${r.stats.classes} uncertainty classes; ${r.stats.idsAssigned} ids, ${r.stats.refsChecked} references checked; ${r.residuals.length} declared residual(s)`);
+  else { console.log(`source INVALID: ${r.errors.length} finding(s)`); for (const [c, n] of Object.entries(byCode)) console.log(`  ${c}: ${n}`); r.errors.slice(0, 40).forEach(e => console.log(`  [${e.code}] ${e.path}: ${e.msg}`)); }
+  if (args.includes('--residuals')) { const g = {}; for (const x of r.residuals) g[x.kind] = (g[x.kind] || 0) + 1; console.log('residuals:', JSON.stringify(g)); }
+  process.exit(r.ok ? 0 : 1);
+}
+module.exports = { validate, validateFull, AFFECTS };
