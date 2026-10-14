@@ -106,6 +106,7 @@ Data fields that carry the old wording:
 
 - `entity.group_ids` was dropped. A group lists its components in `group.picker.component_entity_ids`, which is the authority the compiler's `real_component_ids` needs.
 - `entity.offers[]` was dropped for `group.picker.component_links[]`. Ownership (one `service.entity_id`) does not imply which services the picker lists under which component (symptom-routed services are owned by the component but not listed under it), so the curated map is carried verbatim by the group. A service still has exactly one entity.
+- Scope counts a deep-dive question as a use. Design note 7.1 said scope is the entities whose chains ask the question; `recovery_affordances.deep_dive_question_ids` is the Fork's second path and is asked of the customer too, so counting chains only scoped a question used by many entities to one (`q.attempted_fix`) and filed another as asked by nothing (`q.computer_attempted_fix`). The validator enforces it (`V-SCOPE-ASKER`, `V-SCOPE-CLAIM`).
 - `entity.family` was not added. Behavioral classes are keyed by group (`member_group_ids`), never by entity, in the legacy data; keeping them as the registry they were is the lossless choice, and the Playbook says classes are metadata.
 - `registries.service_order` and `picker.action_ids` were added (service order and the curated action union are content).
 - `registries.pricing_archetypes` was added as a closed id list: `par.*` is referenced by every service's financial_engine and its definitions are constants in the compiler.

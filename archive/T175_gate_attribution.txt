@@ -1,0 +1,47 @@
+T175 regression-gate attribution (2026-10-14)
+
+Question: the full-suite gate (archive/suite_T175_gate.txt) reports 5 pass->fail and 1 red->worse against
+archive/suite_T174_closeout.tsv. Is any of it caused by the entity-first SSOT work?
+
+Method: a scratch git worktree of the T175 commit 61a6165 (clean, npm ci, modules extracted, Chromium from
+/opt/pw-browsers). The six tests were run twice in it: once as committed (the superseding PROJECT_CHARTER.html and
+COMPONENT_LAYER_MAP.md installed by 6a0ad6f), once with exactly those two files replaced by their afc972d editions
+(git show afc972d:<file>), then the two files restored with git checkout. Nothing else differed between the runs.
+
+test                                      new editions (as committed)     afc972d editions swapped back
+verify_architectural_conformance.js       78 passed, 8 failed (of 86)     86 passed, 0 failed (of 86)
+verify_charter_line_shape.js              5 passed, 7 failed (of 12)      12 passed, 0 failed (of 12)
+verify_fallbacks_live_in_ssot.js          37 passed, 1 failed (of 38)     41 passed, 0 failed (of 41)
+verify_module_deployment_shape.js         28 passed, 1 failed (of 29)     29 passed, 0 failed (of 29)
+verify_r-invariant-comply_ship_gate.js    9 passed, 1 failed (of 10)      13 passed, 0 failed (of 13)
+verify_charter_rule_index_v10.js          24 failing lines (suite: 25)    21 failing lines (suite baseline: 22)
+
+Result: all five pass->fail tests pass again, and the rule-index test loses exactly the three failures below, when
+the two editions are the old ones. The four verify_entity_first_* tests pass in both runs. The cause is the editions
+the task required to be installed (and not edited), not the SSOT data, the tools or the tests T175 added.
+
+The three additional rule-index failures with the new editions:
+  - R-GOVERN-INDEX domain list: the Charter now uses domains TEAM, CONTENT, TEST and DOC (G-TEAM-ROLE-SEPARATION,
+    G-CONTENT-STRUCTURE, R-TEST-CANFAIL, R-DOC-SINGLEPURPOSE, R-DOC-NOSTALE, ...) that the index does not list.
+  - R-INVARIANT-DISEASE: 12 of the 25 named defect classes the Charter declares have no harness catalogue entry
+    (DEFECT-TWO-PURPOSES, -STALE-SANDBOX, -SILENT-SKIP, -TEST-CANTFAIL, -FROZEN-INTERFACE, -DERIVED-AUTHORITY,
+    -STALE-DOCUMENT, -UNVERIFIED-CLAIM, -NAMES-AS-KEYS, -CROSS-CONCERN-DRIFT, -CONCERN-ABSORPTION, -GOD-FUNCTION).
+  - R-GOVERN-INDEX tags: four tags carried by existing tests name rules the new Charter does not declare
+    (R-SYSTEM-SCRIPT, P-WHITEFLAG-FORKB, R-INVARIANT-RERUN, R-DOMAIN-NAME). None is a tag of a T175 test.
+
+Per-test cause, from the failing assertions:
+  verify_charter_line_shape.js          the new Charter has a 123,148-character line (limit 6,000; line 86), <script>/<style>
+                                        share lines with prose, table rows share lines; tools/charter_reflow.js would insert
+                                        2,735 breaks, which means editing the Charter (not done).
+  verify_architectural_conformance.js   the new Charter does not declare R-SYSTEM-SCRIPT: the probes "header: correct tags conform" and
+                                        "ledger: a complete block conforms" fail on it, and so do the header-tag and ledger-entry audits of the
+                                        roster entry for verify_module_deployment_shape.js. It also runs two sub-suites, which fail as below:
+                                        verify_fallbacks_live_in_ssot.js (reports 38 checks, floor 41) and verify_module_deployment_shape.js
+                                        (28 of 29, floor 29).
+  verify_fallbacks_live_in_ssot.js      "COMPONENT_LAYER_MAP.md has no row for btnyc.json" (test_harness/_layers.js:59).
+  verify_module_deployment_shape.js     the new Layer Map does not state each module's source as "inline" or "external: `modules/X.js`".
+  verify_r-invariant-comply_ship_gate.js "COMPONENT_LAYER_MAP.md present" fails because test_harness/_layers.js loadLayerMap() throws on the
+                                        new Layer Map (the same reader as above), and the gate stops there: 10 of its 13 checks run.
+
+One test improved: verify_r-system-layers_full_matrix.js 3 -> 1 failing assertions (new Layer Map).
+Not touched: the 36 red tests that report no assertion count are held to pass->fail only, as before.
