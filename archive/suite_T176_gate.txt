@@ -1,0 +1,24 @@
+[suite_snapshot] 215 tests: 144 pass, 71 fail, 2 with an environment gap (browser half skipped): verify_builder_preseeded_context.js, verify_quote_template_complete_fields.js
+  vs suite_T174_closeout.tsv: pass->fail: none
+                             red->worse (more failing assertions): none
+                             red->no count (crash/timeout hides assertions): none
+                             fail->pass: none
+                             red->fewer failing assertions: verify_charter_rule_index_v10.js 22->21
+                             new tests: verify_entity_first_id_freeze.js, verify_entity_first_migration.js, verify_entity_first_references.js, verify_entity_first_transition.js, verify_entity_first_validator.js; no longer present: verify_charter_line_shape.js
+                             red on both with no failing-assertion count, held to pass->fail only: 36
+gate exit 0
+
+--- the same snapshot against the T175 record (archive/suite_T175.tsv), informational: the T175 record was taken with the harness reading the replaced editions
+better (fail->pass): verify_architectural_conformance.js, verify_fallbacks_live_in_ssot.js, verify_module_deployment_shape.js, verify_r-invariant-comply_ship_gate.js
+shallower: verify_charter_rule_index_v10.js 25->21
+deeper: verify_r-system-layers_full_matrix.js 1->3 failing assertions (the T175 record ran 35 checks under the old reader; the T174 closeout ran 48 and had these same 3 failing; now 66 run: 63 pass, 3 fail, the added ones being the reader's own self-test and the shell and accounting checks)
+new since T175: verify_entity_first_id_freeze.js; no longer present: verify_charter_line_shape.js (retired, test_harness/retired/README.md)
+
+--- what the gate's exit code does not say
+Passing, known-baseline-failing and skipped are three different things in this record.
+  144 pass: 142 pass in full; 2 exit 0 with an environment gap (the browser half was skipped, so they are not passes of that half): verify_builder_preseeded_context.js, verify_quote_template_complete_fields.js. 5 of the 144 are new (verify_entity_first_validator.js, _migration.js, _references.js, _transition.js, _id_freeze.js).
+  71 fail: the same 71 test names as the T174 closeout (set equality checked by name), none repaired, none newly red. For each, the failing-assertion count and the cross-line count are identical to the T174 closeout's, except verify_charter_rule_index_v10.js (22->21). 36 of the 71 report no failing-assertion count of their own, so the gate holds them to pass->fail only; their cross-line counts are identical to the baseline's, which is the only evidence that they did not deepen.
+  The gate exits 0 because it tolerates those 71. That is a statement about no regression, not about the 71.
+  The architecture tests against the corrected Layer Map: verify_fallbacks_live_in_ssot.js 41/41, verify_r-invariant-comply_ship_gate.js 13/13, verify_architectural_conformance.js 86/86, verify_module_deployment_shape.js 44/44 (29 at the T174 closeout), verify_r-system-layers_full_matrix.js 63 pass / 3 fail of 66 (45 / 3 of 48 at the T174 closeout; the 3 are real architectural defects: AppController Glue calls engine functions and reads financial_engine, store.js Logic reads global State).
+
+Run: a scratch worktree at ed76673 (the corrected Layer Map) with this ticket's files copied over, test_harness/node_modules present, CHROME_PATH=/opt/pw-browsers/chromium, node test_harness/tools/suite_snapshot.js --out archive/suite_T176.tsv --compare archive/suite_T174_closeout.tsv --jobs 6 (the runner regenerates the root modules). About 480 seconds.
