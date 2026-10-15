@@ -11725,7 +11725,7 @@ None. Differences between the artifact and the legacy page are named and pinned,
 - The UI click-through suites (`verify_component_symptom_picker.js` 101 with the resolver available, 100 without; `verify_group_symptoms_one_derivation.js` 26) pass in both states.
 - **Golden master:** 2,988 price points, **0 differ** (`archive/golden_master_T179.json`).
 - **Entity-first tests:** 658 checks, 0 failed; `publish.js --check`, `derive_graph.js --check`, `report.js --check`, `id_register.js --check`, `project_legacy.js --check`, ledger linter 14/14, file integrity.
-- **Regression gate**, clean worktree at `e0b4e62`, against `archive/suite_T178.tsv`: GATE_RESULT.
+- **Regression gate**, clean worktree at `e0b4e62`, against `archive/suite_T178.tsv` (`archive/suite_T179.tsv`, `archive/suite_T179_gate.txt`): **221 tests: 150 pass, 71 fail (the same known baseline: none repaired, none newly red); 0 pass→fail, 0 red→worse, 0 red→no count, 0 missing tests; 2 new tests (the resolver's), both green.** The first run of the gate, on `e0b4e62`, found two pass→fail that my targeted runs had not covered, both in tests and neither in the page: `verify_entity_first_publish.js` still read the compatibility check at its old path, and `verify_ssot_boot_validation.js` stubs a healthy boot that served no artifact, so the page (correctly) warned. Both fixed in `0819eae` (the first now also pins that the build tools' path is a pure re-export of the runtime file), and the whole gate was re-run on that tree.
 
 ### 7. Next milestone
 
