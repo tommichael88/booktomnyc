@@ -1,10 +1,18 @@
 {
   "$comment": "The consumer side of the published-artifact contract (T177). A consuming module reads only the derived artifact (ssot/derived/btnyc_graph.json today), and runs artifact_compat.check() against this file before it reads an index. interface_version moves only when a consumer would break: a major bump for a removed or reshaped index or a changed key meaning, a minor bump for an added index. source_schema_versions and derivation_versions list what the consumers accept; they differ from interface_version on purpose (P-SYSTEM-VERSIONS).",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "interface_version": "1.0.0",
   "accepts": {
     "source_schema_versions": ["1.1.0"],
     "derivation_versions": ["1.1.0"]
+  },
+  "matching": {
+    "applies_to": "every customer word the artifact carries to be looked for in free text: the keys of alias_index and the synonyms of a smart tag",
+    "rule": "A term matches a text when it occurs there as a whole word or a whole phrase. It never matches inside another word.",
+    "inflections": "The canonical matcher also accepts 's, s, es, ed and ing after the term, and, for a term ending in e, ed and ing after the e is dropped (replace -> replacing). It does not produce doubled-consonant forms (drip -> dripping, clog -> clogged); those are covered by listing the word.",
+    "canonical_matcher": { "file": "modules/nlp_engine.js", "function": "wordBoundaryMatch" },
+    "why_it_is_stated": "The vocabulary keeps terms that are fragments of other words (cement in replacement, desk in desktop, screen in flatscreen, range in strange); the matching rule, not the vocabulary, keeps them from firing. A consumer that matches by substring reproduces DEFECT-WITHIN-WORD-MATCH (T166).",
+    "evidence": ["test_harness/verify_entity_first_vocabulary.js (section 8)", "test_harness/verify_tag_detection_precision.js"]
   },
   "required_indexes": ["entities", "questions", "option_bridge", "chains", "confidence", "retirement_index", "recovery", "composition_index", "picker", "alias_index", "action_vocabulary", "formula_inputs", "price_influence", "used_by", "manifest"]
 }

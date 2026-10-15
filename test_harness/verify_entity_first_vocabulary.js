@@ -49,15 +49,20 @@ const OBJ = A.intent_mappings.objects;
 const SRC_OBJ = SRC.vocabulary.nlp_objects; const byKeyword = new Map(SRC_OBJ.map(o => [o.keyword, o]));
 const ENT = new Map(SRC.entities.map(e => [e.id, e]));
 const m = migrate(lib.clone(LEGACY)); // the migration, run fresh: its report names what it skipped and could not resolve
+// Which entity a customer word reaches: the entity its object resolves to, except that a word which IS the name of a service (slug words or display name) reaches the entity that owns the service (T166, "Internal
+// Hardware Replacement"). Written here from the services themselves, not taken from the code under test.
+const SVC_NAME_OWNER = new Map();
+for (const e of SRC.entities) for (const sv of e.services || []) for (const n of [sv.id.slice(4).replace(/_/g, ' '), ((sv.presentation || {}).ui_taxonomy || {}).display_name]) { if (!n) continue; const k = norm(n); if (!SVC_NAME_OWNER.has(k)) SVC_NAME_OWNER.set(k, new Set()); SVC_NAME_OWNER.get(k).add(e.id); }
+const feeds = (o, term) => { const own = SVC_NAME_OWNER.get(norm(term)); const r = byKeyword.get(o.keyword).resolves_to; return own && own.size === 1 && !own.has(r.entity_id) ? [...own][0] : r.entity_id; };
 
 // ---- 1. provenance: no alias is invented ------------------------------------------------------------------------------------------------------------------------------------
 console.log('Every alias comes from a legacy NLP object that resolves to that entity');
 { const termsOf = new Map(); // entity id -> Set(norm term) offered by the legacy objects that resolve to it
-  for (const o of OBJ) { const r = byKeyword.get(o.keyword).resolves_to; if (!r.entity_id) continue; if (!termsOf.has(r.entity_id)) termsOf.set(r.entity_id, new Set()); for (const t of [o.keyword, ...(o.synonyms || [])]) termsOf.get(r.entity_id).add(norm(t)); }
+  for (const o of OBJ) { const r = byKeyword.get(o.keyword).resolves_to; if (!r.entity_id) continue; for (const t of [o.keyword, ...(o.synonyms || [])]) { const to = feeds(o, t); if (!termsOf.has(to)) termsOf.set(to, new Set()); termsOf.get(to).add(norm(t)); } }
   const invented = []; let n = 0;
   for (const e of SRC.entities) for (const a of e.aliases || []) { n++; if (!(termsOf.get(e.id) || new Set()).has(a)) invented.push(`${e.id}:${a}`); }
   check(`the source carries aliases (${n} on ${SRC.entities.filter(e => (e.aliases || []).length).length} entities)`, n > 200, String(n));
-  check('every alias is a keyword or synonym of a legacy object that resolves to that entity (none invented)', invented.length === 0, invented.slice(0, 5).join(', '));
+  check('every alias is a keyword or synonym of a legacy object that resolves to that entity, or names a service that entity owns (none invented)', invented.length === 0, invented.slice(0, 5).join(', '));
   const bad = SRC.entities.flatMap(e => (e.aliases || []).filter(a => a !== norm(a) || a === '').map(a => `${e.id}:${a}`));
   check('every alias is stored lower-case, single-spaced and non-empty', bad.length === 0, bad.slice(0, 5).join(', '));
 }
@@ -67,8 +72,8 @@ console.log('\nEvery term of a resolved object is an alias, the entity\'s own na
 { const skipped = new Map(m.report.aliasSkipped.map(x => [x.entity_id + '|' + x.term, x]));
   const idWords = id => id.slice(4).replace(/_/g, ' ');
   const lost = []; let terms = 0, asAlias = 0, own = 0, skip = 0;
-  for (const o of OBJ) { const r = byKeyword.get(o.keyword).resolves_to; if (!r.entity_id) continue; const e = ENT.get(r.entity_id);
-    for (const t of new Set([o.keyword, ...(o.synonyms || [])].map(norm))) { terms++;
+  for (const o of OBJ) { const r = byKeyword.get(o.keyword).resolves_to; if (!r.entity_id) continue;
+    for (const t of new Set([o.keyword, ...(o.synonyms || [])].map(norm))) { terms++; const e = ENT.get(feeds(o, t));
       if ((e.aliases || []).includes(t)) asAlias++; else if (t === norm(e.label) || t === idWords(e.id)) own++; else if (skipped.has(e.id + '|' + t)) skip++; else lost.push(`${o.keyword}:${t}`); } }
   check(`no legacy term is lost (${terms} terms: ${asAlias} aliases, ${own} the entity's own name, ${skip} reported skips)`, lost.length === 0, lost.slice(0, 5).join(', '));
   check('every skip carries a reason that names the other entity', m.report.aliasSkipped.every(x => ['names_another_entity', 'claimed_by_another_entity'].includes(x.reason) && x.other.length >= 1));
@@ -154,6 +159,93 @@ console.log('\nA wrong vocabulary is caught or reported, never repaired');
     const r = migrate(L2); const o = r.source.vocabulary.nlp_objects.find(x => x.keyword === 'zzz thing');
     check('a new object with no entity word and no default service is left unresolved and given no entity', !!o && o.resolves_to.basis === 'unresolved' && o.resolves_to.entity_id === null && r.report.nlpObjectsUnresolved.includes('zzz thing'));
     check('the unresolved object contributes no alias to any entity', r.source.entities.every(e => !(e.aliases || []).includes('zzz'))); }
+}
+
+// ---- 8. the T166 findings, carried into the model ------------------------------------------------------------------------------------------------------------------------------------------
+// T166 (TIMELINE.md, archive/T166_within_word_hazards.txt, archive/T166_golden_compare.txt) found: smart-tag text matched inside other words (26 hazards); a customer word that names a service reaching
+// a different one ("Internal Hardware Replacement": $80 -> $135 once it reached the service it names); tag sets chosen by position; tag exclusivity and the context vocabulary living in code. The model adds
+// a NEW matching surface (entity aliases), so what it must keep is each finding's meaning, not the legacy projection. This section asserts that, and plants each defect to show the check can fail.
+console.log('\nT166 findings carried into the model: how terms are matched, what a service name reaches, tag order, tag rules');
+const D = require(path.join(EF, 'derive_graph.js'));
+const ART = lib.readJson(lib.PATHS.graph);
+const CONTRACT = lib.readJson(path.join(ROOT, 'schema', 'btnyc-interface-contract.json'));
+// the runtime's own matcher, cut out of modules/nlp_engine.js by its text (R-INVARIANT-CANONICAL: one matcher for "does this phrase occur in this text")
+const ENGINE_SRC = fs.readFileSync(path.join(ROOT, 'modules', 'nlp_engine.js'), 'utf8');
+const cut = (() => { const a = ENGINE_SRC.indexOf('const wordBoundaryMatch = (text, term) => {'), b = ENGINE_SRC.indexOf('const wordBoundaryIncludes = ', a); return a >= 0 && b > a ? ENGINE_SRC.slice(a, ENGINE_SRC.indexOf('\n', b)) : null; })();
+const runtimeIncludes = cut ? new Function(cut + '\nreturn wordBoundaryIncludes;')() : null;
+const substringIncludes = (text, term) => text.toLowerCase().includes(term.toLowerCase()); // the defect, planted
+check('the matcher the contract names is in modules/nlp_engine.js (wordBoundaryMatch, wordBoundaryIncludes)', !!runtimeIncludes && CONTRACT.matching && CONTRACT.matching.canonical_matcher.file === 'modules/nlp_engine.js' && CONTRACT.matching.canonical_matcher.function === 'wordBoundaryMatch');
+check('the contract states the matching rule: whole word or phrase, never inside another word', !!CONTRACT.matching && /whole word or a whole phrase/.test(CONTRACT.matching.rule) && /never matches inside another word/.test(CONTRACT.matching.rule));
+check('the artifact manifest tells a reader of alias_index the same, and points at the contract', ART.manifest.indexes.alias_index.consumers.some(c => /whole words or phrases, never inside another word/.test(c.reads) && /btnyc-interface-contract\.json/.test(c.reads)));
+if (runtimeIncludes) {
+  const PROBE = [['cement', 'brick wall repair', false], ['cement', 'cement wall', true], ['cement', 'garbage disposal replacement', false], ['desk', 'desktop pc setup', false], ['desk', 'assemble two desks', true], ['screen', 'mount a flatscreen tv', false],
+    ['range', 'stove is strange', false], ['range', 'the range hood', true], ['replace', 'replacing a bulb', true], ['wash', 'washing machine', true], ['lock', 'my door blocks the hallway', false], ['frame', 'framed picture', true], ['ram', 'install a program', false], ['drip', 'a dripping tap', false]];
+  const wrong = PROBE.filter(([t, x, want]) => runtimeIncludes(x, t) !== want);
+  check(`the runtime matcher behaves as the contract says on ${PROBE.length} hand-written probes (the doubled-consonant gap drip -> dripping is the documented exception)`, wrong.length === 0, wrong.map(w => w.slice(0, 2).join(' / ')).join('; '));
+  // the catalog's own text, as the T166 detectors read it
+  const texts = []; const add = t => { if (typeof t === 'string' && t.trim()) texts.push(t.toLowerCase()); };
+  for (const e of SRC.entities) { add(e.label); for (const q of e.questions || []) { add(q.prompt); for (const o of q.options || []) add(o.label); } for (const sv of e.services || []) { const u = (sv.presentation || {}).ui_taxonomy || {}; add(u.display_name); add(u.description); (sv.aliases || (sv.presentation || {}).aliases || []).forEach(add); } }
+  for (const q of SRC.shared_questions || []) { add(q.prompt); for (const o of q.options || []) add(o.label); }
+  for (const g of SRC.registries.groups) add(g.display_name);
+  for (const o of SRC_OBJ) { add(o.keyword); (o.synonyms || []).forEach(add); }
+  const PHRASES = [...new Set(texts)];
+  const TERMS = Object.keys(ART.alias_index);
+  // an independent reading of "whole word": tokens, in sequence, the last one allowed a suffix
+  const tokens = x => x.match(/[a-z0-9]+/g) || [];
+  const tokenIncludes = (x, term) => { const T = tokens(x), W = tokens(term); if (!W.length) return false; const last = W[W.length - 1]; const forms = new Set([last, last + 's', last + 'es', last + 'ed', last + 'ing']); if (last.endsWith('e')) { forms.add(last.slice(0, -1) + 'ed'); forms.add(last.slice(0, -1) + 'ing'); }
+    for (let i = 0; i + W.length <= T.length; i++) { let ok = true; for (let j = 0; j < W.length - 1; j++) if (T[i + j] !== W[j]) { ok = false; break; } if (ok && forms.has(T[i + W.length - 1])) return true; } return false; };
+  let pairs = 0, runtimeHits = 0, unexplained = [], substringOnly = new Map(), plantedUnexplained = 0;
+  for (const term of TERMS) for (const x of PHRASES) { pairs++; const rt = runtimeIncludes(x, term), tk = tokenIncludes(x, term);
+    if (rt) { runtimeHits++; if (!tk && unexplained.length < 5) unexplained.push(`${term} in "${x.slice(0, 50)}"`); }
+    if (!rt && substringIncludes(x, term) && !tk) { const k = term; substringOnly.set(k, (substringOnly.get(k) || 0) + 1); }
+    if (substringIncludes(x, term) && !tk) plantedUnexplained++; }
+  check(`over the catalog's own text (${TERMS.length} alias terms x ${PHRASES.length} phrases = ${pairs} pairs) every alias hit of the runtime matcher is a whole-word occurrence (${runtimeHits} hits)`, unexplained.length === 0, unexplained.join('; '));
+  const inside = (term, word) => [...substringOnly.keys()].includes(term) && PHRASES.some(x => x.includes(word) && x.includes(term) && !runtimeIncludes(x, term));
+  check(`the vocabulary does hold within-word hazards (${[...substringOnly.values()].reduce((a, b) => a + b, 0)} alias occurrences inside another word, over ${substringOnly.size} terms), so the check above is not vacuous`, [...substringOnly.values()].reduce((a, b) => a + b, 0) >= 100, JSON.stringify([...substringOnly]));
+  check('the named hazards are among them and the runtime matcher refuses each: "cement" in "replacement", "desk" in "desktop", "screen" in "flatscreen", "range" in "strange"', inside('cement', 'replacement') && inside('desk', 'desktop') && inside('screen', 'flatscreen') && inside('range', 'strange'));
+  check('counterfactual: a substring matcher produces the defect the rule exists to prevent (the same check fails on it)', plantedUnexplained >= 100 && TERMS.some(t => PHRASES.some(x => substringIncludes(x, t) && !tokenIncludes(x, t))));
+  const unreachable = TERMS.filter(t => !runtimeIncludes(`i need ${t} done`, t));
+  check(`every alias term is found by its own words in an ordinary sentence (the other half of the class: no alias that cannot be reached; ${TERMS.length} terms)`, unreachable.length === 0, unreachable.slice(0, 5).join(', '));
+}
+
+console.log('\nA customer word that names a service reaches the entity that owns it (T166: "Internal Hardware Replacement")');
+{ const owner = SVC_NAME_OWNER;
+  const stray = []; for (const e of SRC.entities) for (const a of e.aliases || []) { const o = owner.get(a); if (o && o.size === 1 && !o.has(e.id)) stray.push(`${e.id}:${a} (service of ${[...o][0]})`); }
+  check('no alias is the name of a service that another entity owns', stray.length === 0, stray.join('; '));
+  const phrase = 'internal hardware replacement';
+  check(`"${phrase}" is an alias of ent.computer, the owner of svc.internal_hardware_replacement, and of no other entity`, SRC.entities.filter(e => (e.aliases || []).includes(phrase)).map(e => e.id).join() === 'ent.computer' && ENT.get('ent.computer').services.some(sv => sv.id === 'svc.internal_hardware_replacement'));
+  check('the published alias_index sends the phrase to ent.computer', JSON.stringify(ART.alias_index[phrase]) === JSON.stringify(['ent.computer']));
+  check('the legacy intent object that carries the phrase is unchanged in the projection (it still defaults to svc.internal_hardware_replacement)', (() => { const o = project(SRC).intent_mappings.objects.find(x => (x.synonyms || []).includes(phrase)); return !!o && o.default_service_sku === 'internal_hardware_replacement' && JSON.stringify(o) === JSON.stringify(OBJ.find(x => (x.synonyms || []).includes(phrase))); })());
+  { const s = lib.clone(SRC); s.entities.find(e => e.id === 'ent.computer').aliases = s.entities.find(e => e.id === 'ent.computer').aliases.filter(a => a !== phrase); s.entities.find(e => e.id === 'ent.hard_drive').aliases.push(phrase);
+    check('counterfactual: the phrase back on ent.hard_drive (whose only service is a data backup) is refused (V-VOC-ALIAS-SERVICE-OWNER)', new Set(V.validateFull(s).errors.map(e => e.code)).has('V-VOC-ALIAS-SERVICE-OWNER')); }
+  { const run = mut => { const ents = lib.clone(SRC.entities).map(e => Object.assign(e, { aliases: [] })); const services = ents.flatMap(e => e.services); if (mut) mut(ents, services); const st = vocab.seedAliases(ents, lib.clone(SRC_OBJ), services); return { ents, st }; };
+    const a = run(); check('the seeder moves exactly this one term off its object\'s entity (and says so)', a.st.namesService.length === 1 && a.st.namesService[0].term === phrase && a.st.namesService[0].object === 'hard drive' && a.st.namesService[0].from === 'ent.hard_drive' && a.st.namesService[0].to === 'ent.computer', JSON.stringify(a.st.namesService));
+    const b = run((ents, services) => { services.find(sv => sv.id === 'svc.internal_hardware_replacement').entity_id = 'ent.hard_drive'; });
+    check('counterfactual: the rule follows ownership, not the term: if ent.hard_drive owned the service the phrase would stay there', b.st.namesService.length === 0 && b.ents.find(e => e.id === 'ent.hard_drive').aliases.includes(phrase)); }
+  // the part that is NOT decided: the other words of the "hard drive" object (PENDING_DECISIONS #220) stay where the object puts them until an Operator rules
+  const rest = ['internal hardware', 'internal parts', 'computer internals', 'memory upgrade', 'power supply', 'psu'];
+  check('DECISION PENDING (#220): the six other words of the "hard drive" object that describe the computer, not the drive, are still aliases of ent.hard_drive', rest.every(a => ENT.get('ent.hard_drive').aliases.includes(a)));
+}
+
+console.log('\nTag sets are chosen by what they say, not by where they sit (T166 / #169: the golden master chose its "B" tag set by position)');
+{ const r = lib.clone(SRC); r.registries.tags.reverse(); const sh = lib.clone(SRC); const t = sh.registries.tags; for (let i = t.length - 1; i > 0; i--) { const j = (i * 7919 + 13) % (i + 1); [t[i], t[j]] = [t[j], t[i]]; }
+  const base = JSON.stringify(D.derive(lib.clone(SRC)));
+  check(`the source is valid and the published artifact is byte-identical with the ${SRC.registries.tags.length} tags in reverse order`, V.validate(r).ok && JSON.stringify(D.derive(r)) === base);
+  check('...and with the tags in a fixed shuffle', V.validate(sh).ok && JSON.stringify(D.derive(sh)) === base);
+  check('...and the artifact on disk is the artifact of the source on disk', JSON.stringify(ART) === base || JSON.stringify(ART.entities) === JSON.stringify(JSON.parse(base).entities));
+}
+
+console.log('\nTag rules T166 moved into the data are carried and checked');
+{ const LT = A.smart_tags; const bare = x => String(x).replace(/^#/, '').replace(/^tag\./, ''); const ST = new Map(SRC.registries.tags.map(t => [bare(t.id), t]));
+  const exOf = o => Object.keys(o).filter(k => (o[k] || {}).mutually_exclusive && o[k].mutually_exclusive.length).sort();
+  const legacyEx = exOf(LT).map(bare), sourceEx = [...ST.values()].filter(t => (t.mutually_exclusive || []).length).map(t => bare(t.id)).sort();
+  check(`mutual exclusivity is carried: the same ${legacyEx.length} tags, each excluding the same tags`, legacyEx.join() === sourceEx.join() && legacyEx.every(k => JSON.stringify(LT['#' + k].mutually_exclusive.map(bare).sort()) === JSON.stringify(ST.get(k).mutually_exclusive.map(bare).sort())));
+  check('the three wall materials exclude each other (drywall, brick wall, plaster wall) and drywall is the group default', ['drywall', 'brick_wall', 'plaster_wall'].every(a => ['drywall', 'brick_wall', 'plaster_wall'].filter(b => b !== a).every(b => ST.get(a).mutually_exclusive.map(bare).includes(b))) && ST.get('drywall').is_default_for_group === true && [...ST.values()].filter(t => t.is_default_for_group).length === Object.keys(LT).filter(k => LT[k].is_default_for_group).length);
+  const ctx = Object.keys(LT).filter(k => LT[k].context_hints);
+  check(`the context vocabulary (context_hints) moved from code to the data is carried unchanged: ${ctx.join(', ')}`, ctx.length === 2 && ctx.every(k => JSON.stringify(LT[k].context_hints) === JSON.stringify(ST.get(bare(k)).context_hints)));
+  const tagIds = new Set(SRC.registries.tags.map(t => t.id)); const kinds = [['a service default tag', s => { const sv = s.entities.flatMap(e => e.services).find(x => ((x.tags || {}).default_tag_ids || []).length); sv.tags.default_tag_ids[0] = 'tag.no_such_tag'; }], ['a composition suggested tag', s => { const c = s.entities.flatMap(e => e.default_compositions).find(x => (x.suggested_tag_ids || []).length); c.suggested_tag_ids[0] = 'tag.no_such_tag'; }], ['an option\'s tag', s => { const o = s.entities.flatMap(e => e.questions).flatMap(q => q.options).find(x => (x.tag_ids || []).length); o.tag_ids[0] = 'tag.no_such_tag'; }], ['an exclusion', s => { s.registries.tags.find(t => (t.mutually_exclusive || []).length).mutually_exclusive.push('tag.no_such_tag'); }]];
+  for (const [name, f] of kinds) { const s = lib.clone(SRC); f(s); check(`a dangling pointer from ${name} is refused (the "#id" pointer class T166 found)`, !V.validate(s).ok && new Set(V.validate(s).errors.map(e => e.code)).has('V-REF-DANGLING')); }
+  check('(sanity) the tag registry is what those pointers resolve against', tagIds.size === SRC.registries.tags.length && tagIds.size >= 50);
 }
 
 console.log(`\n[Entity-first vocabulary: provenance, coverage, round trip] ${passed} passed, ${failed} failed (of ${passed + failed} checks)`);

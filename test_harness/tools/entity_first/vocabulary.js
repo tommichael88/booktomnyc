@@ -9,6 +9,10 @@
  *
  * The migration calls the first two directions; project_legacy.js calls the inverse so btnyc.json still receives the shape the NLP engine reads. Nothing here decides a routing question: a
  * word that could name two entities is left out of both and surfaced by the validator as a residual (V-VOC residuals), never resolved by a guess.
+ *
+ * One rule moves a word off the entity its object names: a customer word that IS the name of a service (its slug words or its display name) belongs to the entity that owns the service. T166 added the intent
+ * alias "internal hardware replacement" so that the phrase reaches the service it names; the object it sits in is keyed "hard drive", and without this rule the phrase would be an alias of ent.hard_drive, whose
+ * only service is a data backup. The rule is about names, not about meaning: the other words of that object are not moved (PENDING_DECISIONS #220).
  */
 const lib = require('./lib.js');
 
@@ -29,14 +33,20 @@ function seedAliases(entities, nlpObjects, services) {
   const entityOfService = new Map(services.map(s => [s.id, s.entity_id]));
   const nameOf = new Map(); // normalised label / id words -> Set(entity id): the words that ALREADY name an entity
   for (const e of entities) for (const n of [norm(e.label), norm(idWords(e.id))]) { if (!nameOf.has(n)) nameOf.set(n, new Set()); nameOf.get(n).add(e.id); }
+  const serviceNameOwner = new Map(); // normalised service name (slug words, display name) -> Set(owning entity id)
+  for (const sv of services) for (const n of [norm(idWords(sv.id)), sv.presentation && sv.presentation.ui_taxonomy && sv.presentation.ui_taxonomy.display_name ? norm(sv.presentation.ui_taxonomy.display_name) : null]) { if (!n) continue; if (!serviceNameOwner.has(n)) serviceNameOwner.set(n, new Set()); serviceNameOwner.get(n).add(sv.entity_id); }
   const candidates = new Map(); // entity id -> [term] in object order
-  const stats = { objects: nlpObjects.length, keywordIsEntity: 0, defaultServiceEntity: 0, unresolved: [], skipped: [] };
+  const stats = { objects: nlpObjects.length, keywordIsEntity: 0, defaultServiceEntity: 0, unresolved: [], skipped: [], namesService: [] };
   for (const o of nlpObjects) {
     const r = resolveObject(o, entityIds, entityOfService); o.resolves_to = r;
     if (r.basis === 'keyword_is_entity') stats.keywordIsEntity++; else if (r.basis === 'default_service_entity') stats.defaultServiceEntity++; else { stats.unresolved.push(o.keyword); continue; }
-    if (!candidates.has(r.entity_id)) candidates.set(r.entity_id, []);
-    const list = candidates.get(r.entity_id);
-    for (const t of [o.keyword, ...(o.synonyms || [])]) { const n = norm(t); if (n && !list.includes(n)) list.push(n); }
+    for (const t of [o.keyword, ...(o.synonyms || [])]) {
+      const n = norm(t); if (!n) continue;
+      const owners = serviceNameOwner.get(n); const target = owners && owners.size === 1 && !owners.has(r.entity_id) ? [...owners][0] : r.entity_id;
+      if (target !== r.entity_id) stats.namesService.push({ term: n, object: o.keyword, from: r.entity_id, to: target });
+      if (!candidates.has(target)) candidates.set(target, []);
+      const list = candidates.get(target); if (!list.includes(n)) list.push(n);
+    }
   }
   const claimedBy = new Map(); for (const [eid, list] of candidates) for (const t of list) { if (!claimedBy.has(t)) claimedBy.set(t, new Set()); claimedBy.get(t).add(eid); }
   for (const e of entities) {

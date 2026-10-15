@@ -559,6 +559,8 @@ function validate(src, opts = {}) {
     const slugS = x => String(x).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
     const nameOf = new Map(); // the words that already name an entity: its label and its id
     for (const e of entities.values()) for (const n of [normS(e.label), normS(idWords(e.id))]) { if (!nameOf.has(n)) nameOf.set(n, new Set()); nameOf.get(n).add(e.id); }
+    const svcNameOwner = new Map(); // the names of services (slug words, display name) -> Set(owning entity id): a customer word that names a service belongs to its owner
+    for (const e of src.entities) for (const sv of (e.services || [])) for (const n of [normS(idWords(sv.id)), sv.presentation && sv.presentation.ui_taxonomy && sv.presentation.ui_taxonomy.display_name ? normS(sv.presentation.ui_taxonomy.display_name) : null]) { if (!n) continue; if (!svcNameOwner.has(n)) svcNameOwner.set(n, new Set()); svcNameOwner.get(n).add(e.id); }
     const claimedBy = new Map(); stats.aliases = 0;
     src.entities.forEach((e, i) => {
       const ap = `$.entities[${i}].aliases`; const seen = new Set(); if (!Array.isArray(e.aliases)) return;
@@ -569,6 +571,7 @@ function validate(src, opts = {}) {
         if ([normS(e.label), normS(idWords(e.id))].includes(a)) err('V-VOC-ALIAS-SHAPE', pj, `the alias ${JSON.stringify(a)} repeats the name of ${e.id} itself`);
         const others = [...(nameOf.get(a) || [])].filter(x => x !== e.id);
         if (others.length) err('V-VOC-ALIAS-AMBIGUOUS', pj, `the alias ${JSON.stringify(a)} of ${e.id} is the name of ${others.join(', ')}: a word that names one entity cannot be another's alias`);
+        const svcOwners = svcNameOwner.get(a); if (svcOwners && svcOwners.size === 1 && !svcOwners.has(e.id)) err('V-VOC-ALIAS-SERVICE-OWNER', pj, `the alias ${JSON.stringify(a)} of ${e.id} is the name of a service owned by ${[...svcOwners][0]}: a word that names a service reaches the entity that owns it`);
         if (!claimedBy.has(a)) claimedBy.set(a, []); claimedBy.get(a).push(e.id);
       });
     });
@@ -581,10 +584,12 @@ function validate(src, opts = {}) {
       const wantEnt = wantBasis === 'keyword_is_entity' ? direct : (wantBasis === 'default_service_entity' ? svcEntity.get(o.default_service_sku) : null);
       if (r.basis !== wantBasis || (r.entity_id === undefined ? null : r.entity_id) !== wantEnt) { err('V-VOC-OBJECT-RESOLVE', op + '.resolves_to', `${o.keyword}: feeds ${wantEnt || 'no entity'} by ${wantBasis} (its keyword names an entity, else its default service's entity), but records ${JSON.stringify(r)}`); return; }
       if (wantBasis === 'unresolved') { res('nlp_object_unresolved', o.keyword, `the NLP object "${o.keyword}" names no entity and has no default service, so none of its words reaches an entity (a category-level word)`); return; }
-      const e = entities.get(wantEnt); const have = new Set([...(e.aliases || []), normS(e.label), normS(idWords(e.id))]); const seenT = new Set();
-      for (const t of [o.keyword, ...(Array.isArray(o.synonyms) ? o.synonyms : [])]) { const n = normS(t); if (seenT.has(n) || have.has(n)) continue; seenT.add(n);
-        const other = [...(nameOf.get(n) || [])].filter(x => x !== wantEnt);
-        res('object_term_not_aliased', `${o.keyword}:${n}`, other.length ? `"${n}" is a synonym of the NLP object "${o.keyword}" (feeding ${wantEnt}) but is also the name of ${other.join(', ')}; it is not an alias of either until an Operator rules which the customer means` : `"${n}" is a synonym of the NLP object "${o.keyword}" (feeding ${wantEnt}) but is not among its aliases`); }
+      const seenT = new Set();
+      for (const t of [o.keyword, ...(Array.isArray(o.synonyms) ? o.synonyms : [])]) { const n = normS(t); if (seenT.has(n)) continue; seenT.add(n);
+        const svcOwn = svcNameOwner.get(n); const target = svcOwn && svcOwn.size === 1 && !svcOwn.has(wantEnt) ? [...svcOwn][0] : wantEnt; // a word that names a service goes to the service's owner
+        const e = entities.get(target); const have = new Set([...(e.aliases || []), normS(e.label), normS(idWords(e.id))]); if (have.has(n)) continue;
+        const other = [...(nameOf.get(n) || [])].filter(x => x !== target);
+        res('object_term_not_aliased', `${o.keyword}:${n}`, other.length ? `"${n}" is a synonym of the NLP object "${o.keyword}" (feeding ${target}) but is also the name of ${other.join(', ')}; it is not an alias of either until an Operator rules which the customer means` : `"${n}" is a synonym of the NLP object "${o.keyword}" (feeding ${target}) but is not among its aliases`); }
     });
     // action vocabulary: id-keyed
     const av = src.vocabulary.action_vocabulary; const seenA = new Set(), formOwner = new Map();

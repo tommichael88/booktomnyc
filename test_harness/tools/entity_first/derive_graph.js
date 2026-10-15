@@ -39,7 +39,7 @@ const INDEX_CONSUMERS = {
   composition_index: [{ module: 'resolver.js', reads: '(entity, action, modifiers) -> curated service or default composition' }],
   picker: [{ module: 'resolver.js', reads: 'group entry mode, components and symptoms' }],
   used_by: [{ module: 'CMS (authoring)', reads: 'impact of editing a question, tag or modifier', status: 'not yet built; the Layer Map names the CMS as the single authoring surface' }],
-  alias_index: [{ module: 'nlp_engine.js', reads: 'customer words that name an entity' }],
+  alias_index: [{ module: 'nlp_engine.js', reads: 'customer words that name an entity (matched as whole words or phrases, never inside another word: schema/btnyc-interface-contract.json, matching)' }],
   action_vocabulary: [{ module: 'nlp_engine.js', reads: 'customer verb forms per action' }],
   formula_inputs: [{ module: 'pricing_engine.js', reads: 'which answers each pricing formula reads, and which formulas scale quantity themselves' }],
   price_influence: [{ module: 'UIRenderer.js', reads: 'whether a question changes the price (the badge), supplied through a Logic selector' }],
@@ -130,7 +130,8 @@ function derive(src, sourceText, opts = {}) {
   // ---- customer vocabulary (T177) ----
   const normW = x => String(x).toLowerCase().replace(/\s+/g, ' ').trim();
   const aliasIndex = {};
-  for (const e of src.entities) for (const w of [normW(e.label), ...e.aliases]) { (aliasIndex[w] = aliasIndex[w] || []); if (!aliasIndex[w].includes(e.id)) aliasIndex[w].push(e.id); }
+  // The label of a placeholder entity the migration made for a component-less group ("Fans (unspecified item)") is a display label, not a word a customer types, and the matching rule can never find it: it is not indexed.
+  for (const e of src.entities) for (const w of [...(/^generic_/.test(e.kind) ? [] : [normW(e.label)]), ...e.aliases]) { (aliasIndex[w] = aliasIndex[w] || []); if (!aliasIndex[w].includes(e.id)) aliasIndex[w].push(e.id); }
   for (const k of Object.keys(aliasIndex)) aliasIndex[k].sort();
   const av = src.vocabulary.action_vocabulary;
   const actionVocabulary = Object.fromEntries(av.actions.map(a => [a.action_id, { infinitive: a.infinitive_for_adlib, forms: [...new Set([...a.all_forms, ...(a.synonym_clusters || []).flatMap(c => c.forms)])].sort(), clusters: (a.synonym_clusters || []).map(c => ({ infinitive: c.infinitive, forms: c.forms.slice() })) }]));
