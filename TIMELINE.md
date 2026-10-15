@@ -11618,7 +11618,7 @@ Governing message: yours, 2026-10-15 09:14 NY. The Charter and the Layer Map dec
 - **Rationale.** Fifteen entity-first decisions (#206 to #220) each carried a question and a default, and the build had been going on the defaults. Leaving them OPEN made the register read as a queue; the work was also sitting on a branch that nothing deployed.
 - **Endpoint.** Each is decided once, in the "Autonomy decisions (T178)" table of `PENDING_DECISIONS.md` (decision, basis C/E/D, what reverses it), and the entity-first branch is `main`. Four are not simply the default: #217 (the PAX builder reads the formula; runtime work, after the resolver), #218 (interface 1.0.0 confirmed, the key set stays closed), #219 (section 4: nothing changes) and #220 (decided, not applied).
 - **Expected cost.** None on the runtime. The rollback points are `91c8958` (before PR #21) and `afc972d` (PR #21 only).
-- **Retirement.** The branches in section 1b, each recorded with its last SHA so any can be restored with one push.
+- **Retirement.** None this round: the six superseded branches in section 1b are verified safe to delete and recorded with their SHAs, but the deletion was refused by the environment and is left to you or to a session that is allowed to do it.
 
 ### 1. Branches and PR #21, inspected before anything was merged
 
@@ -11626,7 +11626,18 @@ The first clone was shallow and looked wrong (an empty merge base); a full fetch
 
 ### 1b. Branches retired
 
-BRANCHES_RETIRED_PLACEHOLDER
+None deleted. Deleting a remote branch was refused by the session's permission layer (class "Git Destructive"); I did not route around it. Nothing depends on the deletion: each branch below was re-checked against `main` through the compare API immediately before the attempt (**no commit that `main` lacks**, no open pull request) and its last SHA is recorded, so deleting them later loses nothing and any can be restored with `git push origin <sha>:refs/heads/<name>`.
+
+| Branch | Last SHA | Against `main` |
+|---|---|---|
+| `t174-landing` (PR #21, merged) | `afc972da7c5bd1cc92617bd9da3293ea957516c1` | behind, 0 ahead |
+| `t173-followup` (PR #20) | `5f1ffbaecf23cd400c1f48e0ba20c2b10df9a008` | behind, 0 ahead |
+| `t167-question-pass` (PR #19) | `86a2cb92d5efb6e0a154bacf141c55dc1b942af5` | behind, 0 ahead |
+| `t166-ssot-audit` | `3c919c4d0a0f6dbab846bf3a1612cdd8d72c1623` | behind, 0 ahead |
+| `t158-adopt-operator-qr` | `c2abdc2a46c8a6625a4dbad28908a464490a0754` | behind, 0 ahead |
+| `ssot-entity-first` (this work's line) | `7e9229c79fac650263fbb8c5bd76058c3fca52fe` | identical to `main` until the T178 (2/n) commit lands |
+
+Left on purpose: `master` (unrelated v8 history, no common ancestor) and the 17 `alert-autofix-*` branches (merged, 0 unique commits; not part of this work). To retire the six: `git push origin --delete t174-landing t173-followup t167-question-pass t166-ssot-audit t158-adopt-operator-qr ssot-entity-first`.
 
 ### 2. Deployment, verified before each merge that could publish
 
@@ -11642,7 +11653,7 @@ A scratch script written from scratch (it calls none of the existing tests for i
 
 ### 4. #219: what I got wrong, and what is true
 
-Checking the 76 services against their declared pricing archetype, T177 reported four disagreements and wrote "no number is wrong". In this session I replaced that with a claim that it was false, on the strength of an experiment: I flipped the four labels on a scratch copy of the catalog, re-captured the price golden master and compared, and 32 of 2,988 points moved (three services higher on tagged jobs, PAX lower). I read that as three under-quotes and one over-quote and decided to relabel them as a separate price correction. **That was wrong.** A flipped label shows what the label chooses, not that the current choice is a defect, and I had relied on the catalog's v9.5.14 note, which two later and more specific notes supersede. Before changing anything I read the service-level notes and `verify_pricing_archetype_restoration.js`: the three hourly services are priced by named formulas under `par.formula` on the Operator's direction (T118, T135+/#65), and PAX is `hourly_timed` on purpose, to keep a correct price from being replaced by the simplified `computeArchetypeQuote` branch's lower one. The T177 check had read only `formula_ref`, not the `pricing_engine` the runtime resolves a formula from, so three of the four were my false positive. **Nothing was edited in `btnyc.json`, no label changed, no price changed, and the site was never affected.** The check now reads both places and reports PAX alone, quoting its own note (`verify_entity_first_pricing_rules.js`, 88 checks, with a counterfactual per direction and a check that the dispatch guard the exception rests on is still in `qr.html`). The register entry that said "relabel" went to `main` in `7e9229c` and is corrected in the commit that follows it.
+Checking the 76 services against their declared pricing archetype, T177 reported four disagreements and wrote "no number is wrong". In this session I replaced that with a claim that it was false, on the strength of an experiment: I flipped the four labels on a scratch copy of the catalog, re-captured the price golden master and compared, and 32 of 2,988 points moved (three services higher on tagged jobs, PAX lower). I read that as three under-quotes and one over-quote and decided to relabel them as a separate price correction. **That was wrong.** A flipped label shows what the label chooses, not that the current choice is a defect, and I had relied on the catalog's v9.5.14 note, which two later and more specific notes supersede. Before changing anything I read the service-level notes and `verify_pricing_archetype_restoration.js`: the three hourly services are priced by named formulas under `par.formula` on purpose (T118 and #65 on the Operator's direction; PRICING_GUIDE B11/B12/B14 for `furniture_repair_hourly`, per its own `_note`), and PAX is `hourly_timed` on purpose, to keep a correct price from being replaced by the simplified `computeArchetypeQuote` branch's lower one. The T177 check had read only `formula_ref`, not the `pricing_engine` the runtime resolves a formula from, so three of the four were my false positive. **Nothing was edited in `btnyc.json`, no label changed, no price changed, and the site was never affected.** The check now reads both places and reports PAX alone, quoting its own note (`verify_entity_first_pricing_rules.js`, 88 checks, with a counterfactual per direction and a check that the dispatch guard the exception rests on is still in `qr.html`). The register entry that said "relabel" went to `main` in `7e9229c` and is corrected in the commit that follows it.
 
 The experiment was re-run from scratch for this commit (same 32 points, 8 per service, all on tagged-job keys) and is kept in full as `archive/T178_archetype_label_experiment.txt`. It stands as evidence of one observed fact, for the Operator to weigh and not blocking: on the tagged points that move, the hourly engine quotes more labor and more minutes than the formula path for the same job, on all three hourly services (for example `loose_tile_replacement` 92 against 353 at the extreme point). Whether those formulas should quote tagged jobs as the hourly engine would is a pricing statement their authors made differently on purpose; I did not infer an answer from a label. The default is unchanged.
 
@@ -11652,4 +11663,10 @@ The experiment was re-run from scratch for this commit (same 32 points, 8 per se
 
 ### 6. Verified
 
-VERIFIED_PLACEHOLDER
+- **The nine `verify_entity_first_*` tests: 658 checks, 0 failed.** validator 159 (128 mutants over 50 rule codes), migration 65, references 45, transition 45, id-freeze 45, pricing-rules 88 (79 before this commit), vocabulary 85, publish 60, independent 66.
+- **Tool checks, all exit 0:** `validate_source.js` (valid; 169 declared residuals, 172 before the #219 correction; 156 distinct units, 159 before), `derive_graph.js --check`, `report.js --check`, `id_register.js --check`, `project_legacy.js --check` (0 undeclared differences), `publish.js --check` (eight gates). `transition_status.js` prints NOT COMPLETE, as it should (target end 2027-06-30).
+- **Cross-file coherence script:** 18 of 18 (section 3).
+- **Golden master:** 2,988 price points captured on this tree against `archive/golden_master_T174_201_after.json`: **0 differ**. `btnyc.json`, `qr.html`, `modules/` and the compiler are byte-identical to `afc972d`; `git diff afc972d HEAD` over `qr.html modules btnyc.json sw.js manifest.json index.html js _config.yml _layouts .github` is empty.
+- **Ledger linter** 14 of 14; **file integrity** 93 of 93 (6 operator-local files not in this checkout, not counted).
+- **Regression gate**, clean worktree at `ab66d33` (harness dependencies installed, Chrome path set), against `archive/suite_T177.tsv`: **219 tests: 148 pass (146 in full, 2 with their browser half skipped for want of a puppeteer-cache Chrome), 71 fail (the same known baseline: none repaired, none newly red); 0 pass→fail, 0 red→worse, 0 red→no count, 0 new or missing tests** (`archive/suite_T178.tsv`, `archive/suite_T178_gate.txt`; the gate's exit 0 tolerates the 71, so the populations are kept apart here). The changes since the T177 gate are the validator check, one test and records, so no new test was added.
+- **Not run:** Jekyll itself (RubyGems unreachable here), the `tsc` baseline, any request for a price on the live site.
