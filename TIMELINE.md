@@ -11596,7 +11596,12 @@ Observed and not changed, because no T166 finding or runtime behavior establishe
 
 `project_legacy.js --check`: 0 undeclared differences; `compiler_roundtrip.js`: 8 of 8 compiler-owned keys reproduced from the source alone; `audit_refs.js` clean; `validate_source.js`: valid, 172 declared residuals (159 distinct); `report.js --check` and `publish.js --check` pass; `transition_status.js`: NOT COMPLETE (as it must be). `PROJECT_CHARTER.html` (sha256 `edf25285…`), `COMPONENT_LAYER_MAP.md` (`dcf1a415…`), `btnyc.json`, `qr.html`, `modules/` and the compiler are byte-identical to the T176 commit, so the golden master cannot move. Entity-first tests: validator 158, migration 65, references 45, transition 45, id-freeze 45, and the four new ones above, all passing.
 
-GATE_RESULT_PLACEHOLDER
+**Gate** (`node test_harness/tools/suite_snapshot.js --out archive/suite_T177.tsv --compare archive/suite_T176.tsv --jobs 3`, a clean worktree at `53c1957`, the commit that carries all the code; this docs-only follow-up changes the records, the two archived outputs and the file manifest). Populations kept apart:
+- **Passing in full: 146.** **Passing with an environment gap: 2** (`verify_builder_preseeded_context.js`, `verify_quote_template_complete_fields.js`: their browser half is skipped, not passed; the same two rows as at T176). Together 148 pass.
+- **Failing, the known baseline: 71**, the same 71 as at T176 (36 of them report no failing-assertion count and are held to pass->fail only). Skipped otherwise: none.
+- Against `archive/suite_T176.tsv` (215 tests: 144 pass, 71 fail): pass->fail none, red->worse none, red->no count none, fail->pass none, red->fewer none; four new tests, all passing (`verify_entity_first_independent.js`, `_pricing_rules.js`, `_publish.js`, `_vocabulary.js`); none removed. Output: `archive/suite_T177_gate.txt`.
+- `verify_ui_surfaces.js` stays red at 2 passed, 3 failed of 5 scenarios, exactly its T176 reading. Two earlier runs of this gate were wrong about the container, not the code: one could not find puppeteer, one had no jsdom. A run on the first commit (`eb47e46`) printed "red->no count" for this test because puppeteer could not find Chrome; with the browser path set the test gives its baseline reading, and the final run shows no such line. The first commit's run was otherwise 0 pass->fail, 0 red->worse.
+- Not run in this gate: the price golden master (see section 5a), the `tsc` baseline.
 
 ### 7. Not done, on purpose
 
