@@ -31,6 +31,8 @@ const QR = process.env.QR_HTML || path.join(REPO_ROOT, 'qr.html');
 const HTML = require('./_page.js').readPage(QR);
 const BASE = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc_schema.json'), 'utf8'));
+const ARTIFACT = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'ssot', 'derived', 'btnyc_graph.json'), 'utf8'));
+const CONTRACT = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schema', 'btnyc-interface-contract.json'), 'utf8'));
 const clone = o => JSON.parse(JSON.stringify(o));
 
 let pass = 0, fail = 0;
@@ -131,6 +133,9 @@ const mine = (d, s) => HAS_CHECKER ? sandbox.orch_validate_ssot(d, s || SCHEMA) 
         w.fetch = async u => {
           const url = String(u);
           if (url.includes('btnyc_schema.json')) return schema === 'serve' ? { ok: true, status: 200, json: async () => SCHEMA } : { ok: false, status: 404 };
+          // T179: the published artifact and its consumer contract, served as production serves them, so a healthy boot has nothing to warn about (an unusable artifact is warned about, loudly: verify_resolver_wiring.js)
+          if (url.includes('btnyc_graph.json')) return { ok: true, status: 200, json: async () => ARTIFACT };
+          if (url.includes('btnyc-interface-contract.json')) return { ok: true, status: 200, json: async () => CONTRACT };
           return url.includes('btnyc.json') ? { ok: true, status: 200, json: async () => DB } : { ok: false, status: 404 };
         };
         w.HTMLElement.prototype.scrollIntoView = function () {};

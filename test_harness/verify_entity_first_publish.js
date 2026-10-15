@@ -104,8 +104,12 @@ console.log('\nA consumer refuses a mismatched artifact, one version meaning at 
   { const a = lib.clone(art); delete a.$source.sha256; check('a $source with a missing field is refused (provenance)', kinds(a, CONTRACT).includes('provenance')); }
   check('the three versions are three different things: the contract names all three, and the artifact carries all three', !!CONTRACT.interface_version && !!CONTRACT.accepts.source_schema_versions && !!CONTRACT.accepts.derivation_versions && !!art.interface_version && !!art.$source.source_schema_version && !!art.$source.derivation_version);
   check('the versions the code writes are the versions the contract accepts', CONTRACT.accepts.source_schema_versions.includes(lib.SOURCE_SCHEMA_VERSION) && CONTRACT.accepts.derivation_versions.includes(lib.DERIVATION_VERSION) && CONTRACT.interface_version === lib.INTERFACE_VERSION);
-  const text = fs.readFileSync(path.join(EF, 'artifact_compat.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-  check('artifact_compat.js requires nothing (a runtime module can load it before it reads any index)', !/\brequire\s*\(/.test(text) && !/\bimport\b/.test(text));
+  // T179 (#223): the check is a RUNTIME file (modules/artifact_compat.js: the consumer runs the check the publisher ran); the build tools' path is a one-line re-export of it
+  const strip = f => fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const text = strip(path.join(__dirname, '..', 'modules', 'artifact_compat.js')), shim = strip(path.join(EF, 'artifact_compat.js'));
+  check('modules/artifact_compat.js requires nothing (a runtime module can load it before it reads any index)', !/\brequire\s*\(/.test(text) && !/\bimport\b/.test(text));
+  check('the build tools\' artifact_compat.js is only a re-export of the runtime file: one require, of that file, and no check of its own (one implementation, publisher and consumer)', (shim.match(/\brequire\s*\(/g) || []).length === 1 && /module\.exports\s*=\s*require\(\s*'\.\.\/\.\.\/\.\.\/modules\/artifact_compat\.js'\s*\)/.test(shim) && !/function\s+check\b/.test(shim));
+  check('... and both paths give the same functions (what publish.js runs is what the page runs)', (() => { const a = require(path.join(EF, 'artifact_compat.js')), b = require(path.join(__dirname, '..', 'modules', 'artifact_compat.js')); return a === b || (a.check === b.check && a.refusal === b.refusal && a.parse === b.parse); })());
   check('a refusal is one readable line that names the kind', /^artifact refused: \[source_schema_version\]/.test(C.refusal(C.check(art, (() => { const c = lib.clone(CONTRACT); c.accepts.source_schema_versions = ['1.0.0']; return c; })()))) && C.refusal(C.check(art, CONTRACT)) === null);
 }
 
