@@ -88,43 +88,84 @@ for (const [layer, label, code, expected] of FX) {
 }
 
 {
-    // The layer-map READER (T176, PENDING_DECISIONS #214). The merged edition of COMPONENT_LAYER_MAP.md has `| Module / responsibility | Layer |` for its table, no `btnyc.json` row,
-    // no `inline` row, and layers in its own words. A reader that quietly finds nothing would hand every module the default layer and every check below would still run: so it is held on
-    // fixtures (what it reads, what it defaults, what it refuses) and on the real map (every module row the map lists is read; none is dropped).
+    // The layer-map READER (T176, PENDING_DECISIONS #214). The map keeps three things apart -- what a row IS (its Layer cell), where it PHYSICALLY lives (its "Current source / status"
+    // cell) and what it is for at deployment -- and a reader that collapses them hands the deployment container the business code it hosts. So it is held on fixtures (what it reads,
+    // what it refuses), on the real map (every row is read; none is dropped), and on the rows that are not page code (each is named below with the detector that holds it).
     const os = require('os');
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'layermap-'));
     let n = 0;
-    const load = text => { const f = path.join(dir, `m${n++}.md`); fs.writeFileSync(f, text); try { return { map: L.loadLayerMap(f) }; } catch (e) { return { err: e.message }; } };
-    const T = rows => ['# fixture', '', '| Module / responsibility | Layer | Owns | Must not absorb |', '|---|---|---|---|', ...rows, ''].join('\n');
-    const row = (mod, layer) => `| \`${mod}\` | ${layer} | x | y |`;
-    const SSOT = '| Authored SSOT / schema | Knowledge | facts | code |';
-    const good = load(T([row('a.js', 'Logic / Engine'), row('b.js', 'Logic coordination / Glue role'), row('c.js', 'State boundary'), row('d.js', 'State transition / Logic'), row('e.js', 'UI / Renderer'),
-        row('f.js', 'Controller / Glue'), row('g.js', 'Observation / diagnostics'), '| `h.js` *(target responsibility; proposed file)* | Logic / Engine | x | y |', SSOT]));
-    const want = { 'a.js': 'logic', 'b.js': 'logic', 'c.js': 'logic', 'd.js': 'logic', 'e.js': 'rendering', 'f.js': 'glue', 'g.js': 'observation', 'h.js': 'logic', 'btnyc.json': 'knowledge', inline: 'glue' };
+    const load = text => { const f = path.join(dir, `m${n++}.md`); fs.writeFileSync(f, text); try { return { map: L.loadLayerMap(f), model: L.loadLayerModel(f) }; } catch (e) { return { err: e.message }; } };
+    const T = rows => ['# fixture', '', '| Module / responsibility | Layer | Current source / status | Owns | Must not absorb |', '|---|---|---|---|---|', ...rows, ''].join('\n');
+    const row = (mod, layer, status = 'x') => `| \`${mod}\` | ${layer} | ${status} | x | y |`;
+    const SSOT = '| `btnyc.json` — authored SSOT | Knowledge / source | **Current file at repo root.** legacy | facts | code |';
+    const SHELL = '| `qr.html` — shell | Deployment / UI shell | **Current app/deployment file.** It has five inline JavaScript blocks: `a_engine`, `e_ui`; four are loaded from `modules/`. | host | logic |';
+    const good = load(T([row('a.js', 'Logic / Engine', 'Inline block in `qr.html` per the handoff'), row('b.js', 'Logic coordination / Glue role'), row('c.js', 'State boundary', 'External module: `modules/c`'), row('d.js', 'State transition / Logic'),
+        row('e.js', 'UI / Renderer'), row('f.js', 'Controller / Glue'), row('g.js', 'Observation / diagnostics'), '| `h.js` *(target responsibility; proposed file)* | Logic / Engine | **Target module; not yet a standalone file.** | x | y |',
+        '| Compiler / derivation | Build / publish | `x/compiler.py` plus `x/splice.py` are the recorded legacy path | derive | decide |',
+        '| Schema and independent validator | Knowledge / validation | `x/schema.json` are the recorded legacy locations | validate | mutate |',
+        '| Derived runtime artifact | Published knowledge artifact | **Must be a separate generated output.** Exact filename/location is to be established by the migration design | project | hybrid |',
+        SSOT, SHELL]));
+    const want = { 'a.js': 'logic', 'b.js': 'logic', 'c.js': 'logic', 'd.js': 'logic', 'e.js': 'rendering', 'f.js': 'glue', 'g.js': 'observation', 'h.js': 'logic', 'btnyc.json': 'knowledge', inline: 'shell' };
     check('layer map reader: every layer the merged map words differently is read (Logic / Engine, Logic coordination / Glue role, State boundary, State transition / Logic, UI / Renderer, Controller / Glue, Observation, a proposed file)',
         !good.err && Object.keys(want).every(k => good.map[k] === want[k]) && Object.keys(good.map).length === Object.keys(want).length, { got: good.err || good.map });
-    check('layer map reader: with no `inline` row, inline blocks are Glue and the default is reported (map.__defaults), not hidden', !good.err && JSON.stringify(good.map.__defaults) === '["inline"]');
-    const explicit = load(T([row('a.js', 'Logic / Engine'), row('inline', 'Logic / Engine'), SSOT]));
-    check('layer map reader: a row for `inline` in the map itself wins over the default', !explicit.err && explicit.map.inline === 'logic' && explicit.map.__defaults.length === 0, { got: explicit.err || explicit.map });
-    const unknown = load(T([row('a.js', 'Logic / Engine'), row('z.js', 'Wizardry'), SSOT]));
+    const by = k => good.model && good.model.byKey.get(k);
+    check('layer map reader: Build / publish, Knowledge / validation and Published knowledge artifact are read as their own responsibilities and are NOT page code (not in the page map, but in the model)',
+        !good.err && by('compiler-derivation').responsibility === 'build-publish' && by('compiler-derivation').role === 'build' && by('schema-and-independent-validator').responsibility === 'knowledge-validation'
+        && by('derived-runtime-artifact').responsibility === 'published-artifact' && !('compiler-derivation' in good.map) && !('derived-runtime-artifact' in good.map), { got: good.err || good.model.rows.map(r => r.key + ':' + r.responsibility) });
+    check('layer map reader: Deployment / UI shell is its own responsibility (not Glue), and headerless <script> blocks fall under the shell contract because the map names the shell as their host',
+        !good.err && by('qr.html').responsibility === 'deployment-shell' && by('qr.html').role === 'shell' && good.map.inline === 'shell', { got: good.err || by('qr.html') });
+    check('layer map reader: physical location is read apart from responsibility (inline in qr.html, external module, target not yet written, legacy files, a path the design must still name)',
+        !good.err && by('a.js').location.kind === 'inline' && by('c.js').location.kind === 'external' && by('c.js').location.file === 'modules/c.js' && by('h.js').location.kind === 'target-unwritten'
+        && by('compiler-derivation').location.kind === 'legacy-files' && by('compiler-derivation').location.files.length === 2 && by('derived-runtime-artifact').location.kind === 'unestablished'
+        && JSON.stringify(by('qr.html').location.hostsInline) === '["a_engine","e_ui"]', { got: good.err || good.model.rows.map(r => r.key + ':' + JSON.stringify(r.location)) });
+    check('layer map reader: a responsibility whose file does not exist yet stays identifiable (h.js is a Logic row with location target-unwritten, not an error and not dropped)', !good.err && good.map['h.js'] === 'logic' && by('h.js').location.kind === 'target-unwritten');
+    const explicit = load(T([row('a.js', 'Logic / Engine'), row('inline', 'Glue'), SSOT, SHELL]));
+    check('layer map reader: a row for `inline` in the map itself wins over the shell contract', !explicit.err && explicit.map.inline === 'glue', { got: explicit.err || explicit.map });
+    const unknown = load(T([row('a.js', 'Logic / Engine'), row('z.js', 'Wizardry'), SSOT, SHELL]));
     check('layer map reader: a layer it does not know is an error that names the module (a module must not silently drop out of the analysis)', !!unknown.err && /z\.js/.test(unknown.err) && /Wizardry/.test(unknown.err), { got: unknown.err || unknown.map });
-    check('layer map reader: no Knowledge row for the authored SSOT is an error', /Knowledge row/.test(load(T([row('a.js', 'Logic / Engine')])).err || ''));
-    check('layer map reader: a module assigned twice is an error', /twice/.test(load(T([row('a.js', 'Logic / Engine'), row('a.js', 'Controller / Glue'), SSOT])).err || ''));
+    check('layer map reader: no Knowledge row for the authored SSOT is an error', /Knowledge row/.test(load(T([row('a.js', 'Logic / Engine'), SHELL])).err || ''));
+    check('layer map reader: no Deployment / UI shell row is an error (headerless blocks would have no declared host)', /Deployment \/ UI shell row/.test(load(T([row('a.js', 'Logic / Engine'), SSOT])).err || ''));
+    check('layer map reader: a module assigned twice is an error', /twice/.test(load(T([row('a.js', 'Logic / Engine'), row('a.js', 'Controller / Glue'), SSOT, SHELL])).err || ''));
     check('layer map reader: no module table is an error (not an empty map)', /no module table/.test(load('# nothing here\n\n| Concern | Note |\n|---|---|\n| x | y |\n').err || ''));
-    check('layer map reader: a table with no module row is an error', /no `module\.js` row/.test(load(T([SSOT])).err || ''));
+    check('layer map reader: a table with no module row is an error', /no `module\.js` row/.test(load(T([SSOT, SHELL])).err || ''));
+    // the shell contract: same decidable subset as Glue (no pricing-SSOT read, no direct engine call), plus no reading of the authoring source as a fallback; reported as shell, never as glue
+    const shellKinds = src => L.analyzeLayer(src, 'shell').violations.map(v => v.layer + ':' + v.kind);
+    check('shell contract: a headerless block that reads the pricing SSOT or calls an engine directly is a violation, reported as shell (not glue)',
+        shellKinds('function f(DB){ return DB.financial_engine; }').join() === 'shell:shell-pricing-ssot' && shellKinds('function g(){ return computeUnifiedQuote(); }').join() === 'shell:shell-engine-call', { got: [shellKinds('function f(DB){ return DB.financial_engine; }'), shellKinds('function g(){ return computeUnifiedQuote(); }')] });
+    check('shell contract: a headerless block that fetches the authoring source is a violation (the shell must not read it as a runtime fallback); a fetch of the published file is not',
+        shellKinds("async function f(){ return fetch('./ssot/btnyc_source.json'); }").join() === 'shell:shell-source-fallback' && shellKinds("async function f(){ return fetch('./btnyc.json'); }").length === 0, { got: shellKinds("async function f(){ return fetch('./ssot/btnyc_source.json'); }") });
+    check('shell contract: bootstrap code that touches the DOM and storage is allowed in the shell (it is not the Logic contract)', shellKinds("function boot(){ document.getElementById('x').style.display='none'; sessionStorage.setItem('k','v'); }").length === 0);
     fs.rmSync(dir, { recursive: true, force: true });
+
+    // the real map
     const realText = fs.readFileSync(path.join(Q.REPO_ROOT, 'COMPONENT_LAYER_MAP.md'), 'utf8');
     const listed = [...new Set([...realText.matchAll(/^\|\s*`([A-Za-z0-9_]+\.js)`/gm)].map(m => m[1]))];
-    let realMap = null; try { realMap = L.loadLayerMap(); } catch (e) { /* reported by PART 2 */ }
+    let realMap = null, realModel = null; try { realMap = L.loadLayerMap(); realModel = realMap.__model; } catch (e) { /* reported by PART 2 */ }
     check(`layer map reader: every module the real map lists in its first column is read (${listed.length} listed; at least 10, so a reader that found nothing cannot pass)`,
         listed.length >= 10 && !!realMap && listed.every(m => realMap[m]), { got: listed.filter(m => !realMap || !realMap[m]) });
+    // ACCOUNTED: every row of the real map that is NOT page code is held by a named detector that is in the suite. Leaving a row out of the page analysis must not leave it out of the
+    // architecture: a Build / publish, schema or artifact row with no detector is a finding, and so is a new such row nobody accounted for.
+    const ACCOUNTED = {
+        'btnyc.json': ['verify_entity_first_migration.js', 'verify_entity_first_transition.js'],                    // the authored shape the source must reproduce; the end of its authoring role
+        'schema-and-independent-validator': ['verify_entity_first_validator.js'],                                   // the source validator, separate from derivation (86 mutants)
+        'compiler-derivation': ['verify_entity_first_migration.js', 'verify_entity_first_references.js'],           // the unchanged compiler reproduces the compiler-owned keys; derivation refuses an invalid source and cannot go stale
+        'derived-runtime-artifact': ['verify_entity_first_references.js', 'verify_entity_first_transition.js'],     // the derived graph is what the source derives; the publication boundary's completion
+        'qr.html': ['verify_module_deployment_shape.js', 'verify_r-system-layers_full_matrix.js'],                  // one home per module; the shell contract on the code it hosts
+    };
+    const suite = JSON.parse(fs.readFileSync(path.join(Q.REPO_ROOT, 'test_harness', 'MASTER_TEST_SUITE.json'), 'utf8'));
+    const inSuite = new Set((suite.test_files || []).map(t => (typeof t === 'string' ? t : t.file || t.name)));
+    const nonPage = realModel ? realModel.rows.filter(r => !(r.role === 'page-code' && /\.js$/.test(r.key))) : [];
+    check(`layer map: every row that is not page code is accounted for by a detector in the suite (${nonPage.length} such rows: ${nonPage.map(r => r.key).join(', ')})`,
+        !!realModel && nonPage.length >= 5 && nonPage.every(r => (ACCOUNTED[r.key] || []).length && ACCOUNTED[r.key].every(t => inSuite.has(t) && fs.existsSync(path.join(Q.REPO_ROOT, 'test_harness', t)))),
+        { got: nonPage.filter(r => !(ACCOUNTED[r.key] || []).length || !ACCOUNTED[r.key].every(t => inSuite.has(t))).map(r => r.key) });
+    check('layer map: the accountability table names no row the map does not have (a retired row cannot leave a stale claim of coverage)', !!realModel && Object.keys(ACCOUNTED).every(k => realModel.byKey.has(k)), { got: Object.keys(ACCOUNTED).filter(k => !realModel || !realModel.byKey.has(k)) });
 }
 
 // ═══ PART 2: the real code ═══════════════════════════════════════════════
 console.log('\n=== R-SYSTEM-LAYERS / R-INVARIANT-BOUNDARY: every function complies with its layer ===');
 let map;
-try { map = L.loadLayerMap(); check('COMPONENT_LAYER_MAP.md exists and assigns btnyc.json and inline blocks', true); }
-catch (e) { check('COMPONENT_LAYER_MAP.md exists and assigns btnyc.json and inline blocks', false, { got: e.message }); finish('R-SYSTEM-LAYERS: full matrix'); }
+try { map = L.loadLayerMap(); check('COMPONENT_LAYER_MAP.md exists, assigns btnyc.json, and names the shell that hosts headerless blocks', true); }
+catch (e) { check('COMPONENT_LAYER_MAP.md exists, assigns btnyc.json, and names the shell that hosts headerless blocks', false, { got: e.message }); finish('R-SYSTEM-LAYERS: full matrix'); }
 
 const { blocks } = Q.loadQr();
 const all = [];
@@ -134,7 +175,7 @@ for (const b of blocks) {
     const mod = L.moduleOf(blocks, b);
     const layer = map[mod] || map.inline;
     if (layer === 'observation') continue; // observation tooling is not assembled into the page
-    const label = mod === 'inline' ? `inline <script> @L${b.startLine}` : mod;
+    const label = mod === 'inline' ? `shell-hosted <script> @L${b.startLine} (no module header)` : mod;
     if (!map[mod] && mod !== 'inline') check(`${mod} has a row in COMPONENT_LAYER_MAP.md`, false, { got: 'unassigned module' });
     const p = Q.tryParseJs(b.src, b.startLine);
     if (p.error) { check(`${label} compiles (the layer analysis cannot judge code that does not parse)`, false, { got: `${p.error.message} @L${p.error.absLine}` }); continue; }

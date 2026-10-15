@@ -42,6 +42,7 @@ const fs = require('fs');
 const path = require('path');
 const Q = require('./_qr_blocks.js');
 const Page = require('./_page.js');
+const L = require('./_layers.js');
 
 let pass = 0, fail = 0;
 const check = (label, ok, detail) => {
@@ -108,6 +109,46 @@ function recordedLocations(text) {
     const inline = names(ia < ib ? cell.slice(ia + A.length, ib) : cell.slice(ia + A.length)), external = names(ib < ia ? cell.slice(ib + B.length, ia) : cell.slice(ib + B.length));
     if (!inline.size && !external.size) return { problem: 'the "Recorded module locations" row names no module in either list' };
     return { inline, external };
+}
+
+
+/**
+ * locationDisagreements(layerMapText) -> [string]. The merged map states where a module lives TWICE: per module, in the "Current source / status" cell of its row (section 2), and as the
+ * labelled snapshot row (section 7). They must say the same, and the shell's own row must list as hosted exactly the modules that are inline. (T176, #214: the section-7 row alone was
+ * checked against the page; a second statement that could drift from the first without a red is the shape this class exists to forbid.)
+ */
+function locationDisagreements(text) {
+    let model; try { model = L.layerModelOf(text); } catch (e) { return [`the Layer Map cannot be read as a model: ${e.message}`]; }
+    const rec = recordedLocations(text); if (rec.problem) return [rec.problem];
+    const keysOf = kind => new Set(model.rows.filter(r => r.location.kind === kind).map(r => r.key));
+    const inl = keysOf('inline'), ext = keysOf('external'), out = [];
+    const diff = (a, b, la, lb) => { for (const n of a) if (!b.has(n)) out.push(`${n}: ${la}, and ${lb} does not say so`); };
+    diff(inl, rec.inline, 'the module row says inline', 'the "Recorded module locations" row'); diff(rec.inline, inl, 'the "Recorded module locations" row says inline', 'the module row');
+    diff(ext, rec.external, 'the module row says external', 'the "Recorded module locations" row'); diff(rec.external, ext, 'the "Recorded module locations" row says external', 'the module row');
+    for (const r of model.rows) if (r.location.kind === 'external' && r.location.file !== 'modules/' + r.key) out.push(`${r.key}: the module row names ${r.location.file}`);
+    const shell = model.rows.find(r => r.responsibility === 'deployment-shell');
+    if (shell) {
+        const hosted = new Set((shell.location.hostsInline || []).map(n => n + '.js'));
+        diff(inl, hosted, 'the module row says inline', `the ${shell.key} row's list of hosted inline blocks`); diff(hosted, inl, `the ${shell.key} row lists it as a hosted inline block`, 'the module row');
+    }
+    return out;
+}
+
+/**
+ * The code the shell hosts that no row of the map owns: <script> blocks with no module header. They exist (the global state and utilities block, the boot function, the service-worker
+ * registration), the map does not assign them to a module, and the shell is told it must not become a catch-all owner. So they are listed by name; a block that matches no entry is NEW
+ * unowned code (give it a module and a row, or add it here with the reason); an entry that matches no block is stale (a ratchet: this list can only shrink or be argued into).
+ */
+const UNOWNED = [
+    { id: 'global-state-utilities', re: /GLOBAL STATE & CACHE/, finding: 'legacy globals (SERVICE_DATA, DB, State), the Breadcrumbs navigation object, rate limiters, input sanitizers, and the PAX coefficient table (business data written into code); the map assigns state to store.js, navigation to the Controller and pricing data to the SSOT: migration debt, not shell ownership' },
+    { id: 'boot-init', re: /\(async function init\(\)/, finding: 'the boot function: loads and validates the SSOT, starts the modules, seeds the store; the shell\'s declared script-loading/bootstrap boundary, and where the runtime meets the published artifact' },
+    { id: 'service-worker', re: /serviceWorker/, finding: 'service-worker registration: a deployment concern of the shell' },
+];
+function unownedProblems(html) {
+    const blocks = L.unownedBlocks(html), out = [];
+    for (const b of blocks) { const hit = UNOWNED.filter(u => u.re.test(b.src)); if (hit.length !== 1) out.push(`a <script> block at L${b.line} (${b.chars} chars, "${b.head.slice(0, 50)}") has no module header and ${hit.length ? 'matches several entries' : 'matches no entry of the list of unowned shell code: new code in the shell with no owner'}`); }
+    for (const u of UNOWNED) if (!blocks.some(b => u.re.test(b.src))) out.push(`the list of unowned shell code names "${u.id}", and no headerless block matches it any more (stale entry: remove it)`);
+    return out;
 }
 
 /**
@@ -239,6 +280,30 @@ section('4. non-vacuity: each leg is shown able to fail, and a correct page is s
     check('leg 3 flags "load bar.js before this file" when the page loads bar.js after', fails(A(orderPage(fooLoadsBar, srcTag('bar.js')), goodFiles, ign, names), 'order'));
     check('leg 3 accepts it when the page loads bar.js first', !fails(A(orderPage(srcTag('bar.js'), fooLoadsBar), goodFiles, ign, names), 'order'));
     check('leg 3 flags a load-before claim naming a module the page does not have', fails(A(inlineBlock('foo.js', DEP_INLINE + ' *\n * load nothere.js before this file\n') + srcTag('bar.js'), goodFiles, ign, names), 'order'));
+});
+
+section('3c. the map states each location twice (its module rows and its snapshot row) and they agree; the shell lists what it hosts', () => {
+    const bad = locationDisagreements(layerMap);
+    check('the module rows\' "Current source / status" cells, the "Recorded module locations" row and the shell row\'s hosted list say the same thing', bad.length === 0, bad.join(' | '));
+    const flips = [
+        ['a module row that says inline while the snapshot row says external', t => t.replace('| `nlp_engine.js` | Logic / Engine | External module: `modules/nlp_engine`', '| `nlp_engine.js` | Logic / Engine | Inline block in `qr.html`')],
+        ['a module row that says external while the snapshot row says inline', t => t.replace('| `pricing_engine.js` | Logic / Engine | Inline block in `qr.html`', '| `pricing_engine.js` | Logic / Engine | External module: `modules/pricing_engine`')],
+        ['a module the shell row does not list as hosted', t => t.replace('`pricing_engine`, `orchestrator_engine`,', '`orchestrator_engine`,')],
+        ['a module row that names a different modules/ file', t => t.replace('External module: `modules/store`', 'External module: `modules/store2`')],
+        ['a snapshot row that drops a module', t => t.replace('`trace`, ', '')],
+    ];
+    for (const [what, f] of flips) { const t = f(layerMap); check(`non-vacuity: ${what} is found`, t !== layerMap && locationDisagreements(t).length > 0, t === layerMap ? 'the fixture edit did not apply to the map' : ''); }
+});
+
+section('5. the shell hosts no unowned code beyond the named blocks (the shell must not become a catch-all)', () => {
+    const bad = unownedProblems(raw);
+    check('every <script> block of the page without a module header is one of the named unowned blocks, and every named one is still there', bad.length === 0, bad.join(' | '));
+    for (const u of UNOWNED) console.log(`  (unowned shell code: ${u.id}: ${u.finding})`);
+    const one = '<script>\n// GLOBAL STATE & CACHE\nlet x = 1;\n</script>\n<script>\n(async function init() {})();\n</script>\n<script>\nif ("serviceWorker" in navigator) {}\n</script>\n';
+    check('non-vacuity: a page with exactly the named blocks is clean', unownedProblems(one).length === 0, unownedProblems(one).join(' | '));
+    check('non-vacuity: a new headerless block is found', unownedProblems(one + '<script>\nfunction newThing() { return 1; }\n</script>\n').length === 1);
+    check('non-vacuity: a named block that has gone is reported stale', unownedProblems(one.replace(/<script>\nif \("serviceWorker"[^]*?<\/script>\n/, '')).length === 1);
+    check('non-vacuity: an empty headerless block is not unowned code', unownedProblems(one + '<script>\n</script>\n').length === 0);
 });
 
 console.log(`\n[module deployment shape] ${pass} passed, ${fail} failed (of ${pass + fail} checks)`);

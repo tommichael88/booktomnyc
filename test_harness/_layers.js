@@ -42,53 +42,104 @@ const { isFn, parseJs, tryParseJs, declaredNames, keyName, isValueRef } = Q;
 
 // ─── layer map ──────────────────────────────────────────────────────────
 /**
- * Reads the layer of each module from COMPONENT_LAYER_MAP.md (the operator's own document; nothing in this file defines a layer).
+ * Reads COMPONENT_LAYER_MAP.md (the operator's own document; nothing in this file defines a layer) into a MODEL that keeps three things apart, because the map keeps them apart
+ * and a single "layer" label for all three is how a deployment container ends up owning business code (T176, PENDING_DECISIONS #214):
  *
- * T176 (PENDING_DECISIONS #214): the merged edition of the map replaced the module table. It is now `| Module / responsibility | Layer | Owns | Must not absorb |`
- * (it had been `| Module | Layer | Source in the page | ... |`), it has no `btnyc.json` row and no `inline` row, and it names the layers in its own words (Logic / Engine,
- * Logic coordination / Glue role, State boundary, State transition / Logic, UI / Renderer, Controller / Glue, Observation / diagnostics, Knowledge). What is read, and what the
- * reader decides because the map does not say (each is a default, recorded in #214 for the operator to confirm):
- *   - a row's key is its leading `module.js` (a row such as "`recovery_engine.js` *(target responsibility; proposed file)*" is read; a module that has no file yet is simply never looked up);
- *   - the layer is read from the map's words. A cell naming Logic is Logic even when it also says "Glue role" (the orchestrator is "Logic coordination / Glue role": it is held to the
- *     stricter Logic contract -- no DOM, no UI state -- and the Glue clause "does not absorb a calculation" is not decidable from source); a cell naming State (store.js "State boundary",
- *     appReducer.js "State transition / Logic") is Logic, because section 6 of the map counts the store's legacy bridge as Logic-layer debt, and relabelling it would improve a metric;
- *   - a cell whose layer this reader does not know is an ERROR naming the module, never a silent skip (a module that quietly drops out of the analysis is DEFECT-SILENT-SKIP);
- *   - `btnyc.json` (the authored SSOT until the dual-source cutover, ssot/TRANSITION_DUALSOURCE.md) is bound to the map's Knowledge row for the authored SSOT, and the map must have one;
- *   - `inline` (a <script> block with no module header) has no row now, so it is Glue -- what the replaced edition's `inline` row said and what section 3 of the map says of bootstrap and
- *     lifecycle code. The map's own `inline` row, if it ever has one, wins. The names that were defaulted are on `map.__defaults` (not enumerable), so a report can say so.
+ *   responsibility  what the row's Layer cell says the thing IS, in the map's own words: knowledge-source, knowledge-validation, build-publish, published-artifact,
+ *                   deployment-shell, logic, rendering, glue, observation. (A cell naming Logic is Logic even when it also says "Glue role": the orchestrator is held to the stricter
+ *                   Logic contract. A cell naming State -- store.js "State boundary", appReducer.js "State transition / Logic" -- is Logic, because section 7 of the map counts the
+ *                   store's legacy bridge as Logic-layer debt and relabelling it would improve a metric.)
+ *   location        where it physically lives, read from the "Current source / status" cell: inline (a block in qr.html), external (modules/<name>.js), target-unwritten (a module whose
+ *                   responsibility is recorded before its file exists), file, legacy-files, or unestablished (the map says the migration design must name it). Physical co-location is
+ *                   not ownership: the five inline blocks are owned by their own rows, not by the page that hosts them.
+ *   role            what it is for at deployment: page-code (assembled into or loaded by the page), shell (the container and its own bootstrap), build (tooling that runs before
+ *                   publication), schema (the validator), data (authored source, published artifact).
+ *
+ * `loadLayerMap()` is the compact view the analyses use: module -> the CONTRACT its page code is held to (logic | rendering | glue | observation), `btnyc.json` -> knowledge, and
+ * `inline` -> shell: a <script> block with no module header is code the page hosts and the map does not assign to a module. It is held to the shell contract (no business rules, no
+ * pricing or resolution, no reading the authoring source as a fallback: the map's "Must not absorb" cell for the shell), it is reported as unowned, and it is not called Glue.
+ * Rows that are not page code (schema/validator, compiler/derivation, published artifact) are in the model and are accounted for by name in verify_r-system-layers_full_matrix.js:
+ * leaving them out of the page analysis does not leave them out of the architecture.
+ *
+ * What is refused, loudly, never skipped (a row that quietly drops out of the analysis is DEFECT-SILENT-SKIP): a Layer cell this reader does not know (the error names the row), a key
+ * assigned twice, no module table, no `module.js` row, no Knowledge/source row, and no Deployment / UI shell row (headerless blocks would have no declared host).
  */
-function loadLayerMap(mdPath) {
+const LAYER_WORDS = [   // order matters: the first pattern that matches the Layer cell wins
+    [/deployment/i, 'deployment-shell', 'shell', 'shell'],
+    [/knowledge\s*\/\s*validation/i, 'knowledge-validation', null, 'schema'],
+    [/build\s*\/\s*publish/i, 'build-publish', null, 'build'],
+    [/published\s+knowledge\s+artifact/i, 'published-artifact', null, 'data'],
+    [/knowledge|ssot/i, 'knowledge-source', 'knowledge', 'data'],
+    [/logic|engine|state/i, 'logic', 'logic', 'page-code'],
+    [/render/i, 'rendering', 'rendering', 'page-code'],
+    [/glue|controller/i, 'glue', 'glue', 'page-code'],
+    [/observ|diagnos/i, 'observation', 'observation', 'page-code'],
+];
+function parseLocation(status, key) {
+    const t = status || '';
+    const ticks = [...t.matchAll(/`([^`]+)`/g)].map(m => m[1]);
+    let m;
+    if (/target module/i.test(t)) return { kind: 'target-unwritten' };
+    if (/inline block in\s*`qr\.html`/i.test(t)) return { kind: 'inline', host: 'qr.html' };
+    if ((m = /external module:\s*`modules\/([A-Za-z0-9_]+)(?:\.js)?`/i.exec(t))) return { kind: 'external', file: `modules/${m[1]}.js` };
+    if (/exact filename\/location is to be established|must be a separate generated output/i.test(t)) return { kind: 'unestablished' };
+    if (/recorded legacy (?:path|locations)/i.test(t) && ticks.length) return { kind: 'legacy-files', files: ticks.filter(x => /[\/.]/.test(x)) };
+    if (/current (?:app\/deployment )?file/i.test(t)) {
+        const hosts = /(?:five|\d+)\s+inline\s+JavaScript\s+blocks:\s*([^.]*)/i.exec(t);
+        return { kind: 'file', files: [key], hostsInline: hosts ? [...hosts[1].matchAll(/`([A-Za-z0-9_]+)`/g)].map(x => x[1]) : [] };
+    }
+    return { kind: 'unspecified' };
+}
+function loadLayerModel(mdPath) {
     const p = mdPath || path.join(Q.REPO_ROOT, 'COMPONENT_LAYER_MAP.md');
     if (!fs.existsSync(p)) throw new Error(`COMPONENT_LAYER_MAP.md is missing (${p}); the charter says module assignments are tracked there`);
-    const layerOf = cell => /knowledge|ssot/i.test(cell) ? 'knowledge' : /logic|engine|state/i.test(cell) ? 'logic' : /render/i.test(cell) ? 'rendering' : /glue|controller/i.test(cell) ? 'glue' : /observ|diagnos/i.test(cell) ? 'observation' : null;
-    const map = {}, rows = [], unknown = []; let inTable = false;
-    for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
-        if (!inTable) { if (/^\|\s*Module(?:\s*\/\s*responsibility)?\s*\|\s*Layer\s*\|/i.test(line)) inTable = true; continue; }
+    return layerModelOf(fs.readFileSync(p, 'utf8'), p);
+}
+/** The model of a map given as text (a pure function of the document, so a test can feed it a changed copy). Throws on every condition listed above. */
+function layerModelOf(text, p) {
+    const rows = [], unknown = []; let cols = null;
+    for (const line of String(text).split('\n')) {
+        if (!cols) {
+            if (/^\|\s*Module(?:\s*\/\s*responsibility)?\s*\|\s*Layer\s*\|/i.test(line)) cols = line.split('|').slice(1, -1).map(c => c.trim().toLowerCase());
+            continue;
+        }
         if (!/^\|/.test(line)) break; // the table ended
         if (/^\|\s*-{3,}/.test(line)) continue; // the separator row
         const cells = line.split('|').slice(1, -1).map(c => c.trim());
         if (cells.length < 2) continue;
+        const col = name => { const i = cols.findIndex(c => c.startsWith(name)); return i < 0 ? '' : (cells[i] || ''); };
         const tok = /^`([A-Za-z0-9_.]+)`/.exec(cells[0]);
-        const mod = tok && (/\.js$/.test(tok[1]) || tok[1] === 'inline' || tok[1] === 'btnyc.json') ? tok : null;
-        const layer = layerOf(cells[1]);
-        if (!layer) { unknown.push(`${mod ? mod[1] : cells[0]} ("${cells[1]}")`); continue; }
-        rows.push({ key: mod ? mod[1] : cells[0], isModule: !!mod, layer });
+        const key = tok ? tok[1] : cells[0].replace(/[`*]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const word = LAYER_WORDS.find(w => w[0].test(cells[1]));
+        if (!word) { unknown.push(`${tok ? tok[1] : cells[0]} ("${cells[1]}")`); continue; }
+        rows.push({ key, label: cells[0], layerCell: cells[1], responsibility: word[1], analysis: word[2], role: word[3],
+            location: parseLocation(col('current source'), key), owns: col('owns'), mustNotAbsorb: col('must not') });
     }
     if (unknown.length) throw new Error(`COMPONENT_LAYER_MAP.md names a layer this reader does not know for: ${unknown.join('; ')}`);
-    for (const r of rows) if (r.isModule) {
-        if (map[r.key]) throw new Error(`COMPONENT_LAYER_MAP.md assigns ${r.key} twice`);
-        map[r.key] = r.layer;
-    }
-    if (!rows.length) throw new Error('COMPONENT_LAYER_MAP.md has no module table (a header row `| Module / responsibility | Layer | ...`)');
+    if (!cols) throw new Error('COMPONENT_LAYER_MAP.md has no module table (a header row `| Module / responsibility | Layer | ...`)');
+    const seen = new Set();
+    for (const r of rows) { if (seen.has(r.key)) throw new Error(`COMPONENT_LAYER_MAP.md assigns ${r.key} twice`); seen.add(r.key); }
     if (!rows.some(r => /\.js$/.test(r.key))) throw new Error('COMPONENT_LAYER_MAP.md module table has no `module.js` row');
-    if (!rows.some(r => r.layer === 'knowledge' && (r.key === 'btnyc.json' || /authored|ssot/i.test(r.key)))) throw new Error('COMPONENT_LAYER_MAP.md has no Knowledge row for the authored SSOT');
+    if (!rows.some(r => r.responsibility === 'knowledge-source')) throw new Error('COMPONENT_LAYER_MAP.md has no Knowledge row for the authored SSOT');
+    if (!rows.some(r => r.responsibility === 'deployment-shell') && !seen.has('inline')) throw new Error('COMPONENT_LAYER_MAP.md has no Deployment / UI shell row: a <script> block with no module header would have no declared host');
+    return { path: p, rows, byKey: new Map(rows.map(r => [r.key, r])) };
+}
+function loadLayerMap(mdPath) {
+    const model = loadLayerModel(mdPath), map = {};
+    for (const r of model.rows) if (r.analysis && r.role === 'page-code' && /\.js$/.test(r.key)) map[r.key] = r.analysis;
     map['btnyc.json'] = 'knowledge';
-    const defaulted = [];
-    if (!map.inline) { map.inline = 'glue'; defaulted.push('inline'); }
-    Object.defineProperty(map, '__defaults', { value: defaulted, enumerable: false });
+    // headerless <script> blocks: a row the map gives to `inline` wins; otherwise they are the shell's, under the shell contract
+    const explicit = model.byKey.get('inline');
+    map.inline = explicit && explicit.analysis ? explicit.analysis : 'shell';
+    Object.defineProperty(map, '__model', { value: model, enumerable: false });
     return map;
 }
 const moduleOf = (blocks, b) => Q.moduleNameOfBlock(blocks, b.index) || 'inline';
+/** The non-empty <script> blocks of the page that carry no module header: code the shell hosts and no row of the map owns. Each is { line, chars, head } -- `head` is its first 80 characters, so a report can name it. */
+function unownedBlocks(html) {
+    const blocks = Q.splitScriptBlocks(html);
+    return blocks.filter(b => b.src.trim() && moduleOf(blocks, b) === 'inline').map(b => ({ line: b.startLine, chars: b.src.length, head: b.src.trim().replace(/\s+/g, ' ').slice(0, 80), src: b.src }));
+}
 
 // ─── units: the module's top-level functions (and its module-level statements) ───
 /** UMD wrappers keep the real module body inside the factory argument: unwrap to it. */
@@ -144,6 +195,11 @@ const GLOBAL_OBJECTS = B.GLOBAL_OBJECTS;
 const UI_WINDOW_NAME = /^(?:S|State|BLD|DOM|__store|_sq\w*|_current\w*|_last\w*)$/;
 
 function analyzeLayerFunctions(src, layer, startLine) {
+    // The SHELL contract (T176): code the page hosts and the map assigns to no module. It is held to the map's "Must not absorb" cell for the shell -- not to become a catch-all
+    // business-logic owner (the decidable subset is the Glue detectors: no pricing-SSOT reads, no direct calls to the pricing/resolution engines) and not to read the authoring
+    // source as a runtime fallback (a string that names btnyc_source). Same detectors as Glue, reported as shell so that nothing calls this code Glue.
+    const shell = layer === 'shell';
+    if (shell) layer = 'glue';
     const { units } = collectUnits(src, startLine);
     const violations = [];
     const shadowed = (name, fns) => fns.some(f => declaredNames(f).has(name));
@@ -176,6 +232,7 @@ function analyzeLayerFunctions(src, layer, startLine) {
                     (node.type === 'TemplateElement' && INLINE_HANDLER_RE.test(node.value.cooked || node.value.raw || ''))) add('logic-inline-handler', 'inline on*= attribute in markup');
                 if (node.type === 'AssignmentExpression' && node.left.type === 'MemberExpression' && /^on[a-z]+$/.test(keyName(node.left) || '')) add('logic-inline-handler', `.${keyName(node.left)} =`);
             }
+            if (shell && ((node.type === 'Literal' && typeof node.value === 'string' && /btnyc_source/.test(node.value)) || (node.type === 'TemplateElement' && /btnyc_source/.test(node.value.raw || '')))) add('glue-source-fallback', 'names the authoring source (btnyc_source)');
             if (layer === 'glue') {
                 if (node.type === 'MemberExpression') {
                     const k = keyName(node);
@@ -197,10 +254,11 @@ function analyzeLayerFunctions(src, layer, startLine) {
         };
         walk(unit.node, null, null, []);
     }
+    if (shell) violations.forEach(v => { v.layer = 'shell'; v.kind = v.kind.replace(/^glue-/, 'shell-'); });
     return { units, violations };
 }
 
-/** layer: 'rendering' | 'logic' | 'glue'. Returns { units, violations[] } with a uniform record shape. */
+/** layer: 'rendering' | 'logic' | 'glue' | 'shell'. Returns { units, violations[] } with a uniform record shape. */
 function analyzeLayer(src, layer, opts = {}) {
     const startLine = opts.startLine || 1;
     if (layer === 'rendering') {
@@ -208,7 +266,7 @@ function analyzeLayer(src, layer, opts = {}) {
         const { units } = collectUnits(src, startLine);
         return { units, violations: r.violations.filter(B.gating).map(v => Object.assign({}, v, { layer: 'rendering', kind: 'rendering-' + v.kind })) };
     }
-    if (layer === 'logic' || layer === 'glue') return analyzeLayerFunctions(src, layer, startLine);
+    if (layer === 'logic' || layer === 'glue' || layer === 'shell') return analyzeLayerFunctions(src, layer, startLine);
     throw new Error('analyzeLayer: unsupported layer ' + layer);
 }
 
@@ -266,4 +324,4 @@ function shipGate(baseHtml, headHtml, map) {
     return { headFunctions: head.units.length, touched, violating: touched.filter(t => t.unit.violations.length), baseErrors: base.errors, headErrors: head.errors };
 }
 
-module.exports = { loadLayerMap, moduleOf, collectUnits, analyzeLayer, analyzeKnowledge, unitsOfHtml, shipGate, LOGIC_DOM_PROPS, GLOBAL_STATE_IDS };
+module.exports = { loadLayerMap, loadLayerModel, layerModelOf, unownedBlocks, moduleOf, collectUnits, analyzeLayer, analyzeKnowledge, unitsOfHtml, shipGate, LOGIC_DOM_PROPS, GLOBAL_STATE_IDS };
