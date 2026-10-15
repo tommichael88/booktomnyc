@@ -222,9 +222,9 @@ console.log('\nA customer word that names a service reaches the entity that owns
     const a = run(); check('the seeder moves exactly this one term off its object\'s entity (and says so)', a.st.namesService.length === 1 && a.st.namesService[0].term === phrase && a.st.namesService[0].object === 'hard drive' && a.st.namesService[0].from === 'ent.hard_drive' && a.st.namesService[0].to === 'ent.computer', JSON.stringify(a.st.namesService));
     const b = run((ents, services) => { services.find(sv => sv.id === 'svc.internal_hardware_replacement').entity_id = 'ent.hard_drive'; });
     check('counterfactual: the rule follows ownership, not the term: if ent.hard_drive owned the service the phrase would stay there', b.st.namesService.length === 0 && b.ents.find(e => e.id === 'ent.hard_drive').aliases.includes(phrase)); }
-  // the part that is NOT decided: the other words of the "hard drive" object (PENDING_DECISIONS #220) stay where the object puts them until an Operator rules
+  // decided in T178 (PENDING_DECISIONS #220) and not yet applied: the source has no field that records a placement by meaning, and nothing reads aliases before the resolver exists, so the words stay where the object puts them and this pin changes on purpose when the placement lands
   const rest = ['internal hardware', 'internal parts', 'computer internals', 'memory upgrade', 'power supply', 'psu'];
-  check('DECISION PENDING (#220): the six other words of the "hard drive" object that describe the computer, not the drive, are still aliases of ent.hard_drive', rest.every(a => ENT.get('ent.hard_drive').aliases.includes(a)));
+  check('DECIDED, NOT YET APPLIED (#220, T178): the six other words of the "hard drive" object name the computer, and belong to ent.computer once the source can record a placement (with the resolver milestone); until then they are still aliases of ent.hard_drive', rest.every(a => ENT.get('ent.hard_drive').aliases.includes(a)));
 }
 
 console.log('\nTag sets are chosen by what they say, not by where they sit (T166 / #169: the golden master chose its "B" tag set by position)');
