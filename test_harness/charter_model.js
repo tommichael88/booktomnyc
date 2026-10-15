@@ -36,7 +36,9 @@ const { JSDOM } = require(path.join(__dirname, 'node_modules', 'jsdom'));
 
 const CODE_RE = /^([RGP])-([A-Z]+)-([A-Z0-9-]+)$/;
 // The domains the Charter's codes use. Adding a domain is a deliberate Charter change, so the meta-test lists them.
-const DOMAINS = ['GOVERN', 'CLIENT', 'DOMAIN', 'CONF', 'FRICTION', 'INTAKE', 'WHITEFLAG', 'PRICE', 'SYSTEM', 'INVARIANT', 'COMPLEX', 'RESOLUTION'];
+// T176 (PENDING_DECISIONS #214): the merged Charter edition added TEAM (G-TEAM-ROLE-SEPARATION), CONTENT (G-CONTENT-STRUCTURE), TEST (R-TEST-CANFAIL) and DOC (R-DOC-SINGLEPURPOSE, R-DOC-NOSTALE).
+// The check below is that every code the Charter DEFINES uses a listed domain, so a fifth new domain fails it until it is listed here on purpose (non-vacuity: selfTest below carries a broken copy with an unlisted domain).
+const DOMAINS = ['GOVERN', 'CLIENT', 'DOMAIN', 'CONF', 'FRICTION', 'INTAKE', 'WHITEFLAG', 'PRICE', 'SYSTEM', 'INVARIANT', 'COMPLEX', 'RESOLUTION', 'TEAM', 'CONTENT', 'TEST', 'DOC'];
 const CATEGORY_BY_PREFIX = { R: 'rule', G: 'governance', P: 'principle' };
 const STATUSES = ['rule', 'governance', 'principle'];
 
@@ -244,6 +246,7 @@ function selfTest(model, enf, charterPath) {
   const mutants = {
     'a wrong prefix (R- on a Principle)': [m => { const d = m.definitions.find(x => x.siblingStatus === 'principle'); d.code = 'R-' + d.code.slice(2); return m; }, /Prefix does not match category/],
     'a duplicated definition': [m => { m.definitions.push({ ...m.definitions[0] }); return m; }, /defined more than once/],
+    'a code in a domain the Charter does not list (T176: the domain list grew by four, so the check is shown to still fail on a fifth)': [m => { const d = m.definitions[0]; d.code = d.code.replace(/^([RGP])-[A-Z]+-/, '$1-NOSUCHDOMAIN-'); return m; }, /uses a domain the Charter does not list \(NOSUCHDOMAIN/],
     'a reference dressed as a definition': [m => { m.referenceSpans.push({ code: m.definitions[0].code, context: 'mutant' }); return m; }, /has no id and no status beside it \("mutant/],
     'an unreadable document (nothing found)': [m => { m.definitions = []; m.index = new Map(); m.ids = new Set(); m.anchors = new Set(); return m; }, /NON-VACUITY/],
     'a dangling anchor': [m => { m.anchors.add('no-such-id-anywhere'); return m; }, /no-such-id-anywhere/],

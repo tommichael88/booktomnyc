@@ -10616,7 +10616,7 @@ Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval,
 - **Endpoint.** Every module has one home. `modules/cart_logic.js` is deleted, each inline block's header carries one `Deployment:` statement that says it runs inline from `qr.html`, and `modules/` holds only files the page loads. A detector holds all of it.
 - **Defect class.** None declared (`R-INVARIANT-SINGLEDEF` and `R-SYSTEM-SCRIPT` name the rules; `DEFECT-DUPLICATE-REGISTRY` covers lists and constants, not a module defined in two places).
 - **Detector.** `verify_module_deployment_shape.js`.
-- **Rules.** `R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT`.
+- **Rules.** `R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT-SCOPE-IS-REAL`.
 
 ### 1. What this claims, and what it does not
 
@@ -10682,7 +10682,7 @@ Governing message: yours (2026-10-10 03:33 New York, items A–H), its approval,
 - **Endpoint.** `door_size` and `space_ready` are deleted from the catalog, the page and the compiler. The four appliance services have `intake_chain: []`, a bar equal to their base (`minimum_quote_confidence` 40) and no follow-up questions. The Charter's delta check is a behavioral detector over every module in every service that asks it (named and dynamic), and the other 24 non-retiring modules are filed on a list that can only shrink.
 - **Defect class.** `DEFECT-NON-RETIRING-ANSWER`.
 - **Detector.** `verify_non_retiring_answers.js`.
-- **Rules.** `R-INTAKE-NONRETIRING`, `R-INTAKE-WIREREMOVE`, `P-CONF-NOQUESTIONMATH`, `R-INVARIANT-DELETION`, `R-INVARIANT-RERUN`.
+- **Rules.** `R-INTAKE-NONRETIRING`, `R-INTAKE-WIREREMOVE`, `P-CONF-NOQUESTIONMATH`, `R-INVARIANT-DELETION`, `R-INVARIANT-DERIVATION`.
 
 ### 1. What this claims, and what it does not
 
@@ -10790,7 +10790,7 @@ The six detectors fail on `3f27e83` for the class reason, not for a missing API:
 | C | T160 | `R-SYSTEM-NODATA`, `R-INVARIANT-SINGLEDEF` | nine last-resort numbers in code the catalog could not state or review | `global_rules.fallbacks`; `FALLBACKS` a guarded read-only view | none declared | `verify_fallbacks_live_in_ssot.js` (mixed) |
 | D | T161 | `R-INVARIANT-DELETION`, `R-CONF-ONEFORMULA`, `R-INVARIANT-CANONICAL` | a held, drifted second copy of the escalation; builder and orchestrator stored different bars | the escalation exists once, `applyLiveConfidenceEscalation`; the copy and its note deleted | none declared | `verify_single_escalation_path.js` (mixed) |
 | E | T162 | `R-INVARIANT-SINGLEDEF`, `R-INVARIANT-DUPLICATION-TICKET` | three private tier tables, two with no `routine` key, every read written `(RANK[x] \|\| 0)` | one frozen `TIER_RANK` | `DEFECT-DUPLICATE-REGISTRY` | `verify_no_duplicate_registries.js` (source-shape) |
-| F | T163 | `R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT` | `cart_logic` in two places (one never loaded); headers claiming a load shape the page does not have | one home per module; a `Deployment:` statement in every inline header | none declared | `verify_module_deployment_shape.js` (source-shape) |
+| F | T163 | `R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT-SCOPE-IS-REAL` | `cart_logic` in two places (one never loaded); headers claiming a load shape the page does not have | one home per module; a `Deployment:` statement in every inline header | none declared | `verify_module_deployment_shape.js` (source-shape) |
 | G | T164 | `R-INTAKE-NONRETIRING`, `R-INTAKE-WIREREMOVE` | a "not sure" fallback that priced nothing, and a bar five questions could not reach | `door_size` / `space_ready` deleted; four services with no questions; the delta check a detector | `DEFECT-NON-RETIRING-ANSWER` | `verify_non_retiring_answers.js` (behavioral) |
 | H | T165 | `R-INVARIANT-DISEASE`, `R-GOVERN-TRANSITION` | detectors that could decay unseen; a ledger no test could read | this file | none declared | `verify_architectural_conformance.js` (meta) |
 

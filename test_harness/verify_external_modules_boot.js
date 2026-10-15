@@ -2,7 +2,7 @@
 /**
  * verify_external_modules_boot.js -- the page in its PRODUCTION SHAPE: qr.html served from the deployed origin, its components fetched from that origin (T158).
  *
- * @enforces R-SYSTEM-SCRIPT, R-SYSTEM-CSP
+ * @enforces R-SYSTEM-SCRIPT-SCOPE-IS-REAL, R-SYSTEM-CSP
  *
  * WHY THIS TEST EXISTS. The operator moved four components out of qr.html into their own files (modules/trace.js, nlp_engine.js, appReducer.js, store.js), loaded by absolute URL:
  *     <script src="https://tommichael88.github.io/booktomnyc/modules/nlp_engine.js"></script>

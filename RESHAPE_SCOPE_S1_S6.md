@@ -111,7 +111,7 @@ The Charter (`PROJECT_CHARTER.html`) carries three `<script>` blocks: the status
 
 It has the same shape as **S5** (`compiled` moved out of the file humans edit): if the single-file property is to be kept, a build step emits the single-file Charter from the sources, and the file people read is generated. The two should be decided together, because they choose the same build step: whichever of S5 or #200 lands first fixes how "edit the sources, publish one file" is done in this repository.
 
-Options, detector and reversal are in `PENDING_DECISIONS.md` #200 (B1: the status band only; B2: all three with a build; B3: leave as it is, the default). The detectors that already exist for it: `verify_charter_line_shape.js`, `tools/charter_reflow_proof.js`, `tools/charter_dom_proof.js`.
+Options, detector and reversal are in `PENDING_DECISIONS.md` #200 (B1: the status band only; B2: all three with a build; B3: leave as it is, the default). The detectors that already exist for it: `tools/charter_reflow_proof.js`, `tools/charter_dom_proof.js` (`verify_charter_line_shape.js` was retired at T176, `test_harness/retired/README.md`: the merged Charter edition keeps no revision log and is synced byte-for-byte).
 
 ---
 

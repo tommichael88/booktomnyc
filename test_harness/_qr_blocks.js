@@ -3,7 +3,7 @@
  * block inside qr.html and map a position in that block back to an absolute
  * qr.html line number.
  *
- * WHY THIS EXISTS (R-INVARIANT-SINGLEDEF / R-SYSTEM-SCRIPT): the structural
+ * WHY THIS EXISTS (R-INVARIANT-SINGLEDEF / R-SYSTEM-SCRIPT-SCOPE-IS-REAL): the structural
  * tests for R-INVARIANT-BOUNDARY and R-INVARIANT-DELETION both need to parse
  * exactly the same block that extract_modules.js materialises as
  * UIRenderer.js, AppController.js, etc. extract_modules.js is a script with

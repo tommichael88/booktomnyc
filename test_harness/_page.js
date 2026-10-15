@@ -1,7 +1,7 @@
 /**
  * _page.js -- the one place that knows how the page's EXTERNAL scripts map to files in this repo, and how to read "the page" the way a browser runs it.
  *
- * WHY THIS EXISTS (T158; R-INVARIANT-SINGLEDEF, R-SYSTEM-SCRIPT):
+ * WHY THIS EXISTS (T158; R-INVARIANT-SINGLEDEF, R-SYSTEM-SCRIPT-SCOPE-IS-REAL):
  * qr.html used to carry every module inline, so a test that wanted a function read qr.html and found it. The operator has since moved four components
  * (trace, nlp_engine, appReducer, store) to their own files, loaded by absolute URL:
  *

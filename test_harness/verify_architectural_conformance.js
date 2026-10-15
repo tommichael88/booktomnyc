@@ -70,8 +70,8 @@ const ROSTER = [
       rules: ['R-CONF-ONEFORMULA', 'R-INVARIANT-CANONICAL', 'R-INVARIANT-DELETION', 'R-INVARIANT-DUPLICATION-TICKET'], defect: null },
     { item: 'E', ticket: 'T162', claim: 'no duplicate registry', kind: 'source-shape', file: 'verify_no_duplicate_registries.js', floor: 25,
       rules: ['R-INVARIANT-SINGLEDEF', 'R-INVARIANT-DUPLICATION-TICKET'], defect: 'DEFECT-DUPLICATE-REGISTRY' },
-    { item: 'F', ticket: 'T163', claim: 'no duplicate module source; truthful headers', kind: 'source-shape', file: 'verify_module_deployment_shape.js', floor: 29,
-      rules: ['R-INVARIANT-SINGLEDEF', 'R-SYSTEM-SCRIPT'], defect: null },
+    { item: 'F', ticket: 'T163', claim: 'no duplicate module source; truthful headers', kind: 'source-shape', file: 'verify_module_deployment_shape.js', floor: 33,
+      rules: ['R-INVARIANT-SINGLEDEF', 'R-SYSTEM-SCRIPT-SCOPE-IS-REAL'], defect: null },
     { item: 'G', ticket: 'T164', claim: 'no non-retiring answer (the delta check)', kind: 'behavioral', file: 'verify_non_retiring_answers.js', floor: 26,
       rules: ['R-INTAKE-NONRETIRING', 'R-INTAKE-WIREREMOVE'], defect: 'DEFECT-NON-RETIRING-ANSWER' },
 ];
@@ -220,18 +220,18 @@ function probes(declared) {
     const AT = '@';   // the synthetic headers are built, not written out, so this file's own source carries no tag but its real ones
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'conformance-probe-'));
     const write = (name, header) => fs.writeFileSync(path.join(dir, name), `/**\n${header.map(h => ' * ' + h).join('\n')}\n */\n`);
-    const row = { item: 'X', ticket: 'T999', file: 'verify_probe_good.js', floor: 5, kind: 'behavioral', rules: ['R-INVARIANT-SINGLEDEF', 'R-SYSTEM-SCRIPT'], defect: 'DEFECT-DUPLICATE-REGISTRY' };
-    write('verify_probe_good.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT', AT + 'detects DEFECT-DUPLICATE-REGISTRY']);
+    const row = { item: 'X', ticket: 'T999', file: 'verify_probe_good.js', floor: 5, kind: 'behavioral', rules: ['R-INVARIANT-SINGLEDEF', 'R-SYSTEM-SCRIPT-SCOPE-IS-REAL'], defect: 'DEFECT-DUPLICATE-REGISTRY' };
+    write('verify_probe_good.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT-SCOPE-IS-REAL', AT + 'detects DEFECT-DUPLICATE-REGISTRY']);
     write('verify_probe_lacks_rule.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'detects DEFECT-DUPLICATE-REGISTRY']);
-    write('verify_probe_orphan_rule.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT', AT + 'enforces R-GOVERN-NO-SUCH-RULE', AT + 'detects DEFECT-DUPLICATE-REGISTRY']);
-    write('verify_probe_lacks_class.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT']);
-    write('verify_probe_orphan_class.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT', AT + 'detects DEFECT-DUPLICATE-REGISTRY', AT + 'detects DEFECT-NO-SUCH-CLASS']);
-    write('verify_probe_principle.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT', AT + 'enforces P-GOVERN-GOODHART', AT + 'detects DEFECT-DUPLICATE-REGISTRY']);
+    write('verify_probe_orphan_rule.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT-SCOPE-IS-REAL', AT + 'enforces R-GOVERN-NO-SUCH-RULE', AT + 'detects DEFECT-DUPLICATE-REGISTRY']);
+    write('verify_probe_lacks_class.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT-SCOPE-IS-REAL']);
+    write('verify_probe_orphan_class.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT-SCOPE-IS-REAL', AT + 'detects DEFECT-DUPLICATE-REGISTRY', AT + 'detects DEFECT-NO-SUCH-CLASS']);
+    write('verify_probe_principle.js', [AT + 'enforces R-INVARIANT-SINGLEDEF', AT + 'enforces R-SYSTEM-SCRIPT-SCOPE-IS-REAL', AT + 'enforces P-GOVERN-GOODHART', AT + 'detects DEFECT-DUPLICATE-REGISTRY']);
     const enf = charterModel.readEnforcements(dir);
     fs.rmSync(dir, { recursive: true, force: true });
     const header = f => checkHeader(f, row, enf, declared);
     probe('header: correct tags conform', header('verify_probe_good.js'), 'clean');
-    probe('header: a missing @enforces is found', header('verify_probe_lacks_rule.js'), /does not [@]enforces R-SYSTEM-SCRIPT/);
+    probe('header: a missing @enforces is found', header('verify_probe_lacks_rule.js'), /does not [@]enforces R-SYSTEM-SCRIPT-SCOPE-IS-REAL/);
     probe('header: an @enforces of an undeclared rule is found', header('verify_probe_orphan_rule.js'), /R-GOVERN-NO-SUCH-RULE.*not a Rule the Charter declares/);
     probe('header: a missing @detects is found', header('verify_probe_lacks_class.js'), /does not [@]detects DEFECT-DUPLICATE-REGISTRY/);
     probe('header: a @detects of an undeclared class is found', header('verify_probe_orphan_class.js'), /DEFECT-NO-SUCH-CLASS.*not a defect class/);
@@ -262,7 +262,7 @@ function probes(declared) {
         const f = Object.assign({
             Rationale: 'Two private tables ranked the `tiers` and a third `TIER_ORDER` repeated them, so every read had to survive its own table having a gap.',
             Endpoint: 'One frozen `TIER_RANK` in the pricing engine, read everywhere the tiers are compared.',
-            'Defect class': '`DEFECT-DUPLICATE-REGISTRY`.', Detector: '`verify_probe_good.js`.', Rules: '`R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT`.',
+            'Defect class': '`DEFECT-DUPLICATE-REGISTRY`.', Detector: '`verify_probe_good.js`.', Rules: '`R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT-SCOPE-IS-REAL`.',
         }, over);
         return '## T999 — Item X of the 2026-10-10 mandate: x\n\n**Ledger (R-GOVERN-TRANSITION: ...).**\n\n' + LABELS.filter(l => f[l] !== null).map(l => `- **${l}.** ${f[l]}`).join('\n') + '\n';
     };
@@ -279,8 +279,8 @@ function probes(declared) {
     probe('ledger: "None" where the roster holds a class is found', checkLedger(block({ 'Defect class': 'None declared.' }), row, declared), /should lead with/);
     probe('ledger: a class where the roster holds none is found', checkLedger(block({ 'Defect class': '`DEFECT-DUPLICATE-REGISTRY`.' }), Object.assign({}, row, { defect: null }), declared), /must begin "None"/);
     probe('ledger: "None" where the roster holds none conforms', checkLedger(block({ 'Defect class': 'None declared (the Charter has no class for this).' }), Object.assign({}, row, { defect: null }), declared), 'clean');
-    probe('ledger: a rule the Charter does not declare is found', checkLedger(block({ Rules: '`R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT`, `R-GOVERN-NO-SUCH-RULE`.' }), row, declared), /R-GOVERN-NO-SUCH-RULE, which the Charter does not declare/);
-    probe("ledger: a rule the detector enforces but the entry omits is found", checkLedger(block({ Rules: '`R-INVARIANT-SINGLEDEF`.' }), row, declared), /omits R-SYSTEM-SCRIPT/);
+    probe('ledger: a rule the Charter does not declare is found', checkLedger(block({ Rules: '`R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT-SCOPE-IS-REAL`, `R-GOVERN-NO-SUCH-RULE`.' }), row, declared), /R-GOVERN-NO-SUCH-RULE, which the Charter does not declare/);
+    probe("ledger: a rule the detector enforces but the entry omits is found", checkLedger(block({ Rules: '`R-INVARIANT-SINGLEDEF`.' }), row, declared), /omits R-SYSTEM-SCRIPT-SCOPE-IS-REAL/);
 
     const tl = '## T1 — x\n\n## T159 — Item B of the 2026-10-10 mandate: b\n\nbody b\n\n## T160 — Item C of the 2026-10-10 mandate: c\n\nbody c\n\n## T20 — y\n';
     const ents = mandateEntries(tl);

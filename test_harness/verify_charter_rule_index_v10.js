@@ -1240,7 +1240,7 @@ logHeader('SUITE 2 — LEGACY-REGEX (original verify_charter_rule_index.js)');
   const hits = refExecPatterns.filter(p => p.test(qrHtmlContent));
   assertStructural('R-SYSTEM-NOREF', hits.length === 0, 'No $ref string is dynamically executed');
 
-  assertStructural('R-SYSTEM-SCRIPT',
+  assertStructural('R-SYSTEM-SCRIPT-SCOPE-IS-REAL',
     qrHtmlContent.includes('<script>') && qrHtmlContent.includes('</script>'),
     'Script tags are properly formed');
 
@@ -1504,9 +1504,9 @@ logHeader('SUITE 2 — LEGACY-REGEX (original verify_charter_rule_index.js)');
   assertStructural('P-WHITEFLAG-DIAG',
     typeof dr.diagnostic_fee === 'number' && dr.diagnostic_fee > 0,
     'divergence_resolution carries a real diagnostic_fee');
-  assertStructural('P-WHITEFLAG-FORKB',
+  assertStructural('P-WHITEFLAG-DIAG',
     typeof dr.credit_policy === 'string' && dr.credit_policy.length > 0,
-    'divergence_resolution carries a real credit_policy string');
+    'divergence_resolution carries a real credit_policy string');  // T176 (#214): was P-WHITEFLAG-FORKB, which the merged Charter no longer carries; the diagnostic fee's credit is part of the diagnostic method P-WHITEFLAG-DIAG states
 }
 
 {
@@ -1563,9 +1563,9 @@ logHeader('SUITE 2 — LEGACY-REGEX (original verify_charter_rule_index.js)');
 {
   const meta = btnycData.meta || {};
   const compiler = btnycData._compiler_metadata || {};
-  assertStructural('R-INVARIANT-RERUN',
+  assertStructural('R-INVARIANT-DERIVATION',  // T176 (#214): was R-INVARIANT-RERUN, retired by the merged Charter; "an SSOT change triggers derivation" is kept by R-INVARIANT-DERIVATION
     !!meta.version && !!compiler.source_compiler,
-    'Compiler metadata is present alongside SSOT meta.version (rerun trail is auditable)');
+    'Compiler metadata is present alongside SSOT meta.version (the derivation trail is auditable)');
 }
 
 {
@@ -1839,7 +1839,7 @@ if (charterHtmlContent) {
       try { kind = vm.runInContext(`typeof ${probe}`, ctx, { timeout: 1000 }); }
       catch (_) { threw = true; }
       const isolated = !threw && kind === 'undefined';
-      assertStructural('R-SYSTEM-SCRIPT', isolated,
+      assertStructural('R-SYSTEM-SCRIPT-SCOPE-IS-REAL', isolated,
         `Block-scope probe (${probe}) reports 'undefined' in bare sibling VM context`,
         isolated ? '' : `typeof ${probe} === ${kind}`);
     }
@@ -1871,6 +1871,11 @@ if (charterHtmlContent) {
     // T171: named on the operator's direction of 2026-10-11 11:52 NY, enacted on his authorization of 14:35 NY (PENDING_DECISIONS #187); the class detector is verify_state_ignorance.js. The three shapes
     // (DEFECT-REASKED-QUESTION, DEFECT-REDUNDANT-TRAVERSAL, DEFECT-UNPRUNED-FLOW) are named inside the one class's row, not declared as classes of their own.
     'DEFECT-STATE-IGNORANCE',
+    // T176 (PENDING_DECISIONS #214): the merged Charter edition declares twelve more classes (25 in all): DEFECT-TWO-PURPOSES, -STALE-SANDBOX, -SILENT-SKIP, -TEST-CANTFAIL, -FROZEN-INTERFACE,
+    // -DERIVED-AUTHORITY, -STALE-DOCUMENT, -UNVERIFIED-CLAIM, -NAMES-AS-KEYS, -CROSS-CONCERN-DRIFT, -CONCERN-ABSORPTION, -GOD-FUNCTION. Their detectors are `@detects`-tagged tests where one exists
+    // (the T175 entity-first tests carry -DERIVED-AUTHORITY, -TEST-CANTFAIL, -NAMES-AS-KEYS, -SILENT-SKIP); a class with none is reported below as an open item, not asserted.
+    'DEFECT-TWO-PURPOSES','DEFECT-STALE-SANDBOX','DEFECT-SILENT-SKIP','DEFECT-TEST-CANTFAIL','DEFECT-FROZEN-INTERFACE','DEFECT-DERIVED-AUTHORITY',
+    'DEFECT-STALE-DOCUMENT','DEFECT-UNVERIFIED-CLAIM','DEFECT-NAMES-AS-KEYS','DEFECT-CROSS-CONCERN-DRIFT','DEFECT-CONCERN-ABSORPTION','DEFECT-GOD-FUNCTION',
   ]);
   if (charterHtmlContent) {
     const charterClasses = new Set();
@@ -2267,21 +2272,9 @@ if (charterHtmlContent) {
   }
 }
 
-{
-  const ACTIONS = new Set(['install','installed','installation','mount','mounted','mounting','repair','repairing','repaired','replace','replacement','replaced','assemble','assembly','assembled','disassembly','adjustment','adjust','adjusted','diagnostic','clean','cleaning','cleaned','setup','set','removal','remove','restore','restored','reset','upgrade','service','configured','configure','leak','seal','sealing','swap']);
-  const suspicious = [];
-  for (const svc of btnycData.services) {
-    const name = svc.ui_taxonomy?.display_name || '';
-    if (!name) continue;
-    const last = name.toLowerCase().split(/\s+/).pop().replace(/[^\w]/g, '');
-    const last2 = name.toLowerCase().split(/\s+/).slice(-2).join(' ').replace(/[^\w\s]/g, '');
-    if (!ACTIONS.has(last) && !ACTIONS.has(last2)) suspicious.push(`${svc.id}="${name}"`);
-  }
-  const ratio = 1 - (suspicious.length / Math.max(1, btnycData.services.length));
-  assertHeuristic('R-DOMAIN-NAME', ratio >= 0.85,
-    `At least 85% of service display_names end in a recognized action token`,
-    `ratio=${(ratio * 100).toFixed(1)}% suspicious=${suspicious.slice(0, 5).join(' | ')}`);
-}
+// T176 (PENDING_DECISIONS #214): RETIRED, with its Rule. This was the only assertion of R-DOMAIN-NAME ("at least 85% of service display_names end in a recognized action token"; it measured 77.6%
+// and was red at the T174 baseline). The merged Charter edition has no R-DOMAIN-NAME and no successor that names display-name endings, so the check certified nothing the Charter asks for
+// (COMPONENT_LAYER_MAP.md section 7: a test that preserves a deprecated convention without detecting a real defect is rewritten or retired). If the convention is wanted, it comes back as a Rule first.
 
 {
   const bundle = bundleFunctions([
@@ -2604,10 +2597,10 @@ if (charterHtmlContent) {
     'divergence_resolution.enabled explicitly set');
   assertStructural('P-WHITEFLAG-DIAG', typeof dr.diagnostic_fee === 'number' && dr.diagnostic_fee > 0,
     'divergence_resolution carries a real diagnostic_fee');
-  assertStructural('P-WHITEFLAG-FORKB', typeof dr.credit_policy === 'string' && dr.credit_policy.length > 0,
-    'divergence_resolution carries a real credit_policy string');
+  assertStructural('P-WHITEFLAG-DIAG', typeof dr.credit_policy === 'string' && dr.credit_policy.length > 0,
+    'divergence_resolution carries a real credit_policy string');  // T176 (#214): was P-WHITEFLAG-FORKB (not in the merged Charter)
   const ast = extractFunctionAST(qrHtmlContent, 'onsiteDiagnosticTerms');
-  assertStructural('P-WHITEFLAG-FORKB',
+  assertStructural('P-WHITEFLAG-DIAG',  // T176 (#214): was P-WHITEFLAG-FORKB (not in the merged Charter)
     !!(ast && findAstNodes(ast, astIsIdentifier('divergenceFee')).length > 0 &&
        findAstNodes(ast, astIsIdentifier('creditNote')).length > 0),
     'onsiteDiagnosticTerms resolves fee + credit into a single terms object (AST)');
@@ -3117,7 +3110,7 @@ assertStructural('R-SYSTEM-NODATA', !qrHtmlContent.includes('"services": [{"id":
 
 {
   const meta = btnycData.meta || {}; const comp = btnycData._compiler_metadata || {};
-  assertStructural('R-INVARIANT-RERUN', !!meta.version && !!comp.source_compiler,
+  assertStructural('R-INVARIANT-DERIVATION', !!meta.version && !!comp.source_compiler,  // T176 (#214): was R-INVARIANT-RERUN (retired by the merged Charter)
     'Compiler metadata present alongside SSOT meta.version');
 }
 
@@ -3807,7 +3800,10 @@ if (charterHtmlContent) {
     'Every Rule that has assertions is certified by evidence at least as strong as the Rule (a behavioral Rule has a behavioral mechanism; unit-only coverage is recorded as such)',
     weakEnforced.slice(0, 8).join(' | ') + (weakEnforced.length > 8 ? ` (+${weakEnforced.length - 8} more)` : ''));
 
-  const declared = new Set(charterIndex.rules.keys());
+  // T176 (#214): a code the Charter DEFINES is a code it declares, whether or not it has a directory row. The merged edition defines 130 codes and lists 99 in its directory, so reading "declared"
+  // from the directory alone made this check fail for R-INVARIANT-DERIVATION and R-SYSTEM-SCRIPT-SCOPE-IS-REAL, which are defined and absent from the directory. That disagreement is the
+  // separate check "The directory and the definitions agree" (red, a Charter defect filed under #206); one defect, one failing check.
+  const declared = new Set([...charterIndex.rules.keys(), ...charterIndex.inlineCodes]);
   const orphans = [...asserted].filter(c => c && !declared.has(c));
   assertMeta('R-GOVERN-INDEX', orphans.length === 0,
     'No assertion is tagged with a rule code the Charter does not declare',

@@ -1698,7 +1698,7 @@ assertRule(
 }
 
 assertRule(
-  'R-SYSTEM-SCRIPT',
+  'R-SYSTEM-SCRIPT-SCOPE-IS-REAL',  // T176 (#214): was R-SYSTEM-SCRIPT, renamed by the merged Charter; same check and wording as verify_charter_rule_index_v10.js
   qrHtmlContent.includes('<script>') && qrHtmlContent.includes('</script>'),
   'Script tags are properly formed'
 );
@@ -2141,7 +2141,7 @@ assertRule(
     'divergence_resolution carries a real diagnostic_fee'
   );
   assertRule(
-    'P-WHITEFLAG-FORKB',
+    'P-WHITEFLAG-DIAG',  // T176 (#214): was P-WHITEFLAG-FORKB (not in the merged Charter); the credit_policy sits beside the diagnostic fee, as in v10
     typeof dr.credit_policy === 'string' && dr.credit_policy.length > 0,
     'divergence_resolution carries a real credit_policy string'
   );
@@ -2204,7 +2204,7 @@ assertRule(
   const meta = btnycData.meta || {};
   const compiler = btnycData._compiler_metadata || {};
   assertRule(
-    'R-INVARIANT-RERUN',
+    'R-INVARIANT-DERIVATION',  // T176 (#214): was R-INVARIANT-RERUN (retired by the merged Charter); the compiler trail is what makes a derivation auditable
     !!meta.version && !!compiler.source_compiler,
     'Compiler metadata is present alongside SSOT meta.version (rerun trail is auditable)'
   );

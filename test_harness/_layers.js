@@ -1,11 +1,10 @@
 /**
  * _layers.js -- the ONE implementation of the four-layer structural analysis.
  *
- * Serves three charter rules, which are one mechanism viewed three ways (R-INVARIANT-SINGLEDEF):
+ * Serves the layer rules, which are one mechanism viewed several ways (R-INVARIANT-SINGLEDEF):
  *   R-SYSTEM-LAYERS     (Enforced) "Full-matrix structural source analysis" -- verify_r-system-layers_full_matrix.js
  *   R-INVARIANT-BOUNDARY(Enforced) the same analysis, as the mechanical check                -- same test + the Rendering test
- *   R-INVARIANT-COMPLY  (Enforced) "Compliance gate at ship time": a function that is new or changed must comply
- *   R-INVARIANT-NOLEGACY(Enforced) non-compliant code receives compliance or removal         -- verify_r-invariant-comply_ship_gate.js
+ *   the ship gate      a function that is new or changed must comply with its layer (the replaced edition's R-INVARIANT-COMPLY / R-INVARIANT-NOLEGACY; now R-SYSTEM-LAYERS applied to touched code, #214) -- verify_r-invariant-comply_ship_gate.js
  *
  * WHAT IS CHECKED (charter, "Layered Architecture": Owns / Must Not Own)
  *   Rendering  must not read session state (S.*), the pricing SSOT (DB.financial_engine / pricing_formulas /
@@ -42,21 +41,51 @@ const B = require('./_ui_boundary.js');
 const { isFn, parseJs, tryParseJs, declaredNames, keyName, isValueRef } = Q;
 
 // ─── layer map ──────────────────────────────────────────────────────────
+/**
+ * Reads the layer of each module from COMPONENT_LAYER_MAP.md (the operator's own document; nothing in this file defines a layer).
+ *
+ * T176 (PENDING_DECISIONS #214): the merged edition of the map replaced the module table. It is now `| Module / responsibility | Layer | Owns | Must not absorb |`
+ * (it had been `| Module | Layer | Source in the page | ... |`), it has no `btnyc.json` row and no `inline` row, and it names the layers in its own words (Logic / Engine,
+ * Logic coordination / Glue role, State boundary, State transition / Logic, UI / Renderer, Controller / Glue, Observation / diagnostics, Knowledge). What is read, and what the
+ * reader decides because the map does not say (each is a default, recorded in #214 for the operator to confirm):
+ *   - a row's key is its leading `module.js` (a row such as "`recovery_engine.js` *(target responsibility; proposed file)*" is read; a module that has no file yet is simply never looked up);
+ *   - the layer is read from the map's words. A cell naming Logic is Logic even when it also says "Glue role" (the orchestrator is "Logic coordination / Glue role": it is held to the
+ *     stricter Logic contract -- no DOM, no UI state -- and the Glue clause "does not absorb a calculation" is not decidable from source); a cell naming State (store.js "State boundary",
+ *     appReducer.js "State transition / Logic") is Logic, because section 6 of the map counts the store's legacy bridge as Logic-layer debt, and relabelling it would improve a metric;
+ *   - a cell whose layer this reader does not know is an ERROR naming the module, never a silent skip (a module that quietly drops out of the analysis is DEFECT-SILENT-SKIP);
+ *   - `btnyc.json` (the authored SSOT until the dual-source cutover, ssot/TRANSITION_DUALSOURCE.md) is bound to the map's Knowledge row for the authored SSOT, and the map must have one;
+ *   - `inline` (a <script> block with no module header) has no row now, so it is Glue -- what the replaced edition's `inline` row said and what section 3 of the map says of bootstrap and
+ *     lifecycle code. The map's own `inline` row, if it ever has one, wins. The names that were defaulted are on `map.__defaults` (not enumerable), so a report can say so.
+ */
 function loadLayerMap(mdPath) {
     const p = mdPath || path.join(Q.REPO_ROOT, 'COMPONENT_LAYER_MAP.md');
     if (!fs.existsSync(p)) throw new Error(`COMPONENT_LAYER_MAP.md is missing (${p}); the charter says module assignments are tracked there`);
-    // The map is the operator's own document: only its MODULE table is read (the header row `| Module | Layer | ...`), and its own vocabulary is
-    // accepted -- Logic/Engine, UI/Renderer, Controller/Glue, Knowledge (SSOT). Nothing in this file defines a layer; it only reads them.
-    const layerOf = cell => /knowledge|ssot/i.test(cell) ? 'knowledge' : /logic|engine/i.test(cell) ? 'logic' : /render/i.test(cell) ? 'rendering' : /glue|controller/i.test(cell) ? 'glue' : null;
-    const map = {}; let inTable = false;
+    const layerOf = cell => /knowledge|ssot/i.test(cell) ? 'knowledge' : /logic|engine|state/i.test(cell) ? 'logic' : /render/i.test(cell) ? 'rendering' : /glue|controller/i.test(cell) ? 'glue' : /observ|diagnos/i.test(cell) ? 'observation' : null;
+    const map = {}, rows = [], unknown = []; let inTable = false;
     for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
-        if (!inTable) { if (/^\|\s*Module\s*\|\s*Layer\s*\|/i.test(line)) inTable = true; continue; }
+        if (!inTable) { if (/^\|\s*Module(?:\s*\/\s*responsibility)?\s*\|\s*Layer\s*\|/i.test(line)) inTable = true; continue; }
         if (!/^\|/.test(line)) break; // the table ended
-        const m = line.match(/^\|\s*`?([A-Za-z0-9_.]+)`?\s*\|\s*([^|]+?)\s*\|/);
-        const layer = m && layerOf(m[2]);
-        if (layer) map[m[1]] = layer;
+        if (/^\|\s*-{3,}/.test(line)) continue; // the separator row
+        const cells = line.split('|').slice(1, -1).map(c => c.trim());
+        if (cells.length < 2) continue;
+        const tok = /^`([A-Za-z0-9_.]+)`/.exec(cells[0]);
+        const mod = tok && (/\.js$/.test(tok[1]) || tok[1] === 'inline' || tok[1] === 'btnyc.json') ? tok : null;
+        const layer = layerOf(cells[1]);
+        if (!layer) { unknown.push(`${mod ? mod[1] : cells[0]} ("${cells[1]}")`); continue; }
+        rows.push({ key: mod ? mod[1] : cells[0], isModule: !!mod, layer });
     }
-    for (const need of ['btnyc.json', 'inline']) if (!map[need]) throw new Error(`COMPONENT_LAYER_MAP.md has no row for "${need}"`);
+    if (unknown.length) throw new Error(`COMPONENT_LAYER_MAP.md names a layer this reader does not know for: ${unknown.join('; ')}`);
+    for (const r of rows) if (r.isModule) {
+        if (map[r.key]) throw new Error(`COMPONENT_LAYER_MAP.md assigns ${r.key} twice`);
+        map[r.key] = r.layer;
+    }
+    if (!rows.length) throw new Error('COMPONENT_LAYER_MAP.md has no module table (a header row `| Module / responsibility | Layer | ...`)');
+    if (!rows.some(r => /\.js$/.test(r.key))) throw new Error('COMPONENT_LAYER_MAP.md module table has no `module.js` row');
+    if (!rows.some(r => r.layer === 'knowledge' && (r.key === 'btnyc.json' || /authored|ssot/i.test(r.key)))) throw new Error('COMPONENT_LAYER_MAP.md has no Knowledge row for the authored SSOT');
+    map['btnyc.json'] = 'knowledge';
+    const defaulted = [];
+    if (!map.inline) { map.inline = 'glue'; defaulted.push('inline'); }
+    Object.defineProperty(map, '__defaults', { value: defaulted, enumerable: false });
     return map;
 }
 const moduleOf = (blocks, b) => Q.moduleNameOfBlock(blocks, b.index) || 'inline';
@@ -199,7 +228,7 @@ function analyzeKnowledge(obj) {
     return out;
 }
 
-// ─── ship-time compliance gate (R-INVARIANT-COMPLY / R-INVARIANT-NOLEGACY) ───
+// ─── ship-time compliance gate (a touched function complies with its layer) ───
 function unitsOfHtml(html, map) {
     const blocks = Q.splitScriptBlocks(html);
     const out = [], errors = [];
@@ -207,6 +236,7 @@ function unitsOfHtml(html, map) {
         if (!b.src.trim()) continue;
         const mod = moduleOf(blocks, b);
         const layer = map[mod] || map.inline;
+        if (layer === 'observation') continue; // observation tooling (trace.js) is not assembled into the page and is held to its own contract
         const p = tryParseJs(b.src, b.startLine);
         if (p.error) { errors.push({ module: mod, line: b.startLine, error: p.error }); continue; }
         const an = analyzeLayer(b.src, layer, { startLine: b.startLine });

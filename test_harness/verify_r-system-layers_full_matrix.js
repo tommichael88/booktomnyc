@@ -87,6 +87,39 @@ for (const [layer, label, code, expected] of FX) {
     check('UMD factory body is analysed (a violation inside it is found)', kinds('logic', umd).includes('logic-dom'), { got: kinds('logic', umd) });
 }
 
+{
+    // The layer-map READER (T176, PENDING_DECISIONS #214). The merged edition of COMPONENT_LAYER_MAP.md has `| Module / responsibility | Layer |` for its table, no `btnyc.json` row,
+    // no `inline` row, and layers in its own words. A reader that quietly finds nothing would hand every module the default layer and every check below would still run: so it is held on
+    // fixtures (what it reads, what it defaults, what it refuses) and on the real map (every module row the map lists is read; none is dropped).
+    const os = require('os');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'layermap-'));
+    let n = 0;
+    const load = text => { const f = path.join(dir, `m${n++}.md`); fs.writeFileSync(f, text); try { return { map: L.loadLayerMap(f) }; } catch (e) { return { err: e.message }; } };
+    const T = rows => ['# fixture', '', '| Module / responsibility | Layer | Owns | Must not absorb |', '|---|---|---|---|', ...rows, ''].join('\n');
+    const row = (mod, layer) => `| \`${mod}\` | ${layer} | x | y |`;
+    const SSOT = '| Authored SSOT / schema | Knowledge | facts | code |';
+    const good = load(T([row('a.js', 'Logic / Engine'), row('b.js', 'Logic coordination / Glue role'), row('c.js', 'State boundary'), row('d.js', 'State transition / Logic'), row('e.js', 'UI / Renderer'),
+        row('f.js', 'Controller / Glue'), row('g.js', 'Observation / diagnostics'), '| `h.js` *(target responsibility; proposed file)* | Logic / Engine | x | y |', SSOT]));
+    const want = { 'a.js': 'logic', 'b.js': 'logic', 'c.js': 'logic', 'd.js': 'logic', 'e.js': 'rendering', 'f.js': 'glue', 'g.js': 'observation', 'h.js': 'logic', 'btnyc.json': 'knowledge', inline: 'glue' };
+    check('layer map reader: every layer the merged map words differently is read (Logic / Engine, Logic coordination / Glue role, State boundary, State transition / Logic, UI / Renderer, Controller / Glue, Observation, a proposed file)',
+        !good.err && Object.keys(want).every(k => good.map[k] === want[k]) && Object.keys(good.map).length === Object.keys(want).length, { got: good.err || good.map });
+    check('layer map reader: with no `inline` row, inline blocks are Glue and the default is reported (map.__defaults), not hidden', !good.err && JSON.stringify(good.map.__defaults) === '["inline"]');
+    const explicit = load(T([row('a.js', 'Logic / Engine'), row('inline', 'Logic / Engine'), SSOT]));
+    check('layer map reader: a row for `inline` in the map itself wins over the default', !explicit.err && explicit.map.inline === 'logic' && explicit.map.__defaults.length === 0, { got: explicit.err || explicit.map });
+    const unknown = load(T([row('a.js', 'Logic / Engine'), row('z.js', 'Wizardry'), SSOT]));
+    check('layer map reader: a layer it does not know is an error that names the module (a module must not silently drop out of the analysis)', !!unknown.err && /z\.js/.test(unknown.err) && /Wizardry/.test(unknown.err), { got: unknown.err || unknown.map });
+    check('layer map reader: no Knowledge row for the authored SSOT is an error', /Knowledge row/.test(load(T([row('a.js', 'Logic / Engine')])).err || ''));
+    check('layer map reader: a module assigned twice is an error', /twice/.test(load(T([row('a.js', 'Logic / Engine'), row('a.js', 'Controller / Glue'), SSOT])).err || ''));
+    check('layer map reader: no module table is an error (not an empty map)', /no module table/.test(load('# nothing here\n\n| Concern | Note |\n|---|---|\n| x | y |\n').err || ''));
+    check('layer map reader: a table with no module row is an error', /no `module\.js` row/.test(load(T([SSOT])).err || ''));
+    fs.rmSync(dir, { recursive: true, force: true });
+    const realText = fs.readFileSync(path.join(Q.REPO_ROOT, 'COMPONENT_LAYER_MAP.md'), 'utf8');
+    const listed = [...new Set([...realText.matchAll(/^\|\s*`([A-Za-z0-9_]+\.js)`/gm)].map(m => m[1]))];
+    let realMap = null; try { realMap = L.loadLayerMap(); } catch (e) { /* reported by PART 2 */ }
+    check(`layer map reader: every module the real map lists in its first column is read (${listed.length} listed; at least 10, so a reader that found nothing cannot pass)`,
+        listed.length >= 10 && !!realMap && listed.every(m => realMap[m]), { got: listed.filter(m => !realMap || !realMap[m]) });
+}
+
 // ═══ PART 2: the real code ═══════════════════════════════════════════════
 console.log('\n=== R-SYSTEM-LAYERS / R-INVARIANT-BOUNDARY: every function complies with its layer ===');
 let map;
@@ -100,6 +133,7 @@ for (const b of blocks) {
     if (!b.src.trim()) continue;
     const mod = L.moduleOf(blocks, b);
     const layer = map[mod] || map.inline;
+    if (layer === 'observation') continue; // observation tooling is not assembled into the page
     const label = mod === 'inline' ? `inline <script> @L${b.startLine}` : mod;
     if (!map[mod] && mod !== 'inline') check(`${mod} has a row in COMPONENT_LAYER_MAP.md`, false, { got: 'unassigned module' });
     const p = Q.tryParseJs(b.src, b.startLine);

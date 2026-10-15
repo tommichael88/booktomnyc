@@ -3,9 +3,9 @@
  * verify_module_deployment_shape.js -- the class detector for "a module has one home, and its header says where that is".
  *
  * @enforces R-INVARIANT-SINGLEDEF
- * @enforces R-SYSTEM-SCRIPT
+ * @enforces R-SYSTEM-SCRIPT-SCOPE-IS-REAL
  *
- * THE CLASS (R-INVARIANT-SINGLEDEF; R-SYSTEM-SCRIPT: "script-tag scope is real"): a module lives in one place, and what a file says about how it reaches the browser is what the page does.
+ * THE CLASS (R-INVARIANT-SINGLEDEF; R-SYSTEM-SCRIPT-SCOPE-IS-REAL, named R-SYSTEM-SCRIPT before the merged Charter edition: "script-tag scope is real"): a module lives in one place, and what a file says about how it reaches the browser is what the page does.
  * Two things went wrong with the cart module and the headers around it, and neither was red:
  *   - cart_logic existed twice, as the inline block qr.html runs and as modules/cart_logic.js, which nothing loaded. Every edit had to be made twice, and the only guard was a test that
  *     fails when the two copies differ -- a test that holds a duplicate in place instead of forbidding it (PENDING_DECISIONS #129).
@@ -22,8 +22,11 @@
  *                           "must be loaded", "standalone", "single-file", "ships as"); an external header makes no claim that it is not loaded ("NOT modified to load", "single-file deployment",
  *                           "runs inline").
  *   3. LOAD ORDER IS TRUE   "load X.js before this file" in a header names a module that comes earlier in the page.
- *   3b. THE LAYER MAP SAYS IT   COMPONENT_LAYER_MAP.md's module table states each module's source ("inline", or "external: `modules/X.js`") as the page has it. (Its line numbers are not checked:
- *                           they move with every edit above a block, and a test that fails on an unrelated edit gets disabled; the column says "as of T163" and is not a claim of this file.)
+ *   3b. THE LAYER MAP SAYS IT   COMPONENT_LAYER_MAP.md's "Recorded module locations" row (section 6; "Inline in `qr.html`: `a`, `b`. External in `modules/`: `c`.") agrees with the page: every module the page has is
+ *                           recorded in exactly one of the two lists, as the shape the page has it, and no module is recorded that the page does not have. (T176, PENDING_DECISIONS #214: the merged edition of
+ *                           the map replaced the module table's "Source in the page" column with this row, and labels it a snapshot. The label is the map's own protection against being read as current; this
+ *                           leg is what tells a maintainer that the snapshot has drifted, which the map's change protocol (section 8, step 7) says is the moment to update it. A row it cannot read is a failure,
+ *                           not a pass: a missing row, a missing list label, or a list with no module names.)
  *   4. NON-VACUITY          Each leg is shown able to fail on synthetic pages (a twin in modules/, an orphan, a false header, a missing statement, a wrong shape, a wrong order, a missing
  *                           .gitignore line), and shown not to flag a correct page.
  *
@@ -91,6 +94,23 @@ function claimedShape(statement) {
 }
 
 /**
+ * recordedLocations(layerMapText) -> { inline: Set('x.js'), external: Set('x.js') } or { problem: string }.
+ * Reads the "Recorded module locations" row: names are written without the extension, in backticks, after "Inline in `qr.html`:" and "External in `modules/`:".
+ */
+function recordedLocations(text) {
+    const line = String(text || '').split('\n').find(l => /^\|\s*Recorded module locations\s*\|/.test(l));
+    if (!line) return { problem: 'the Layer Map has no "Recorded module locations" row (COMPONENT_LAYER_MAP.md section 6)' };
+    const cell = line.split('|')[2] || '';
+    const A = 'Inline in `qr.html`:', B = 'External in `modules/`:';
+    const ia = cell.indexOf(A), ib = cell.indexOf(B);
+    if (ia < 0 || ib < 0) return { problem: `the "Recorded module locations" row does not carry both lists ("${A}" and "${B}")` };
+    const names = seg => new Set([...seg.matchAll(/`(\w+)`/g)].map(m => m[1] + '.js'));
+    const inline = names(ia < ib ? cell.slice(ia + A.length, ib) : cell.slice(ia + A.length)), external = names(ib < ia ? cell.slice(ib + B.length, ia) : cell.slice(ib + B.length));
+    if (!inline.size && !external.size) return { problem: 'the "Recorded module locations" row names no module in either list' };
+    return { inline, external };
+}
+
+/**
  * analyse(raw, modFiles, gitignore, names, layerMap) -> [{ id, label, offenders: [string] }]. Pure: the real run and the probes feed it the same way.
  *   raw        qr.html as written
  *   modFiles   { 'name.js': text } for every .js file under modules/
@@ -118,11 +138,13 @@ function analyse(raw, modFiles, gitignore, names, layerMap) {
     row('no-orphan', 'every file in modules/ is loaded by a <script src> of the page (an unloaded copy is a second definition waiting for an edit)', Object.keys(modFiles).filter(f => !externalOf(f).length).map(f => `modules/${f} is loaded by nothing`));
     row('ignored', 'every module name is git-ignored at the repo root, where the generated reference copies are written (extract_modules.js)', names.filter(n => !new RegExp('^/' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'm').test(gitignore)).map(n => `/${n} is not in .gitignore`));
 
-    const lmCell = {};
-    for (const line of String(layerMap || '').split('\n')) { const m = /^\|\s*`([\w.]+\.js)`\s*\|[^|]*\|\s*([^|]*?)\s*\|/.exec(line); if (m) lmCell[m[1]] = m[2]; }
-    const lmShape = cell => /^inline$/.test(cell) ? 'inline' : (m => m ? 'external:' + m[1] : 'unreadable')(/^external:\s*`(modules\/[\w.]+)`$/.exec(cell));
-    row('layer-map', 'COMPONENT_LAYER_MAP.md states each module\'s source as the page has it ("inline", or "external: `modules/X.js`")', allNames.filter(n => shape(n)).flatMap(n =>
-        lmCell[n] === undefined ? [`${n}: no row in the Layer Map's module table`] : lmShape(lmCell[n]) === shape(n) ? [] : [`${n}: the page has it ${shape(n)}, the Layer Map says "${lmCell[n]}"`]));
+    const rec = recordedLocations(layerMap);
+    row('layer-map', 'COMPONENT_LAYER_MAP.md records each module\'s location (section 6, "Recorded module locations") as the page has it: inline in qr.html, or external in modules/', rec.problem ? [rec.problem] :
+        [...allNames.filter(n => shape(n)).flatMap(n => {
+            const inRec = rec.inline.has(n), exRec = rec.external.has(n);
+            return inRec && exRec ? [`${n}: recorded as both inline and external`] : !inRec && !exRec ? [`${n}: the page has it ${shape(n)}, the Layer Map records no location for it`]
+                : (inRec ? 'inline' : 'external:modules/' + n) === shape(n) ? [] : [`${n}: the page has it ${shape(n)}, the Layer Map records it ${inRec ? 'inline' : 'external'}`];
+        }), ...[...rec.inline, ...rec.external].filter(n => !allNames.includes(n) || !shape(n)).map(n => `${n}: recorded in the Layer Map, and the page does not contain it`)]);
     const stmtBad = [], inlineClaimBad = [], extClaimBad = [], orderBad = [];
     let orderChecked = 0;
     for (const n of allNames) {
@@ -185,7 +207,8 @@ section('4. non-vacuity: each leg is shown able to fail, and a correct page is s
     const inlineBlock = (name, extra) => `<script>\n/**\n * ${name}\n *\n * Some description.\n *\n${extra === undefined ? DEP_INLINE : extra}*/\nfunction f_${name.replace(/\W/g, '_')}() {}\n</script>\n`;
     const srcTag = name => `<script src="${Page.DEPLOY_BASE}modules/${name}"></script>\n`;
     const names = ['foo.js', 'bar.js'], ign = '/foo.js\n/bar.js\n';
-    const LM = '| Module | Layer | Source in the page | start |\n|---|---|---|---|\n| `foo.js` | Logic/Engine | inline | line 1 |\n| `bar.js` | Logic/Engine | external: `modules/bar.js` | line 9 |\n';
+    const lm = (inl, ext) => `| Concern | Recorded implementation shape | Migration implication |\n|---|---|---|\n| Recorded module locations | Inline in \`qr.html\`: ${inl.map(n => '`' + n + '`').join(', ') || 'none'}. External in \`modules/\`: ${ext.map(n => '`' + n + '`').join(', ') || 'none'}. | This is a snapshot, not a claim about the current checkout. |\n`;
+    const LM = lm(['foo'], ['bar']);
     const A = (rawPage, files, ig, nm, lm) => analyse(rawPage, files, ig, nm, lm === undefined ? LM : lm);
     const good = inlineBlock('foo.js') + srcTag('bar.js');
     const goodFiles = { 'bar.js': '/**\n * bar.js\n *\n * Some description.\n */\nfunction b() {}\n' };
@@ -204,9 +227,13 @@ section('4. non-vacuity: each leg is shown able to fail, and a correct page is s
     check('leg 2 flags an external header that says qr.html was NOT modified to load it', fails(A(good, { 'bar.js': '/**\n * bar.js\n *\n * qr.html itself was NOT modified to load\n * this file.\n */\n' }, ign, names), 'external-claims'));
     check('leg 2 flags an external header whose Deployment statement claims the wrong file', fails(A(good, { 'bar.js': '/**\n * bar.js\n *\n * Deployment: loaded from modules/other.js by qr.html.\n */\n' }, ign, names), 'statement'));
     check('leg 2 accepts an external header whose Deployment statement names its own file', !fails(A(good, { 'bar.js': '/**\n * bar.js\n *\n * Deployment: loaded from modules/bar.js by qr.html.\n */\n' }, ign, names), 'statement'));
-    check('leg 3b flags a Layer Map row that says "inline" for a module the page loads by <script src>', fails(A(good, goodFiles, ign, names, LM.replace('external: `modules/bar.js`', 'inline')), 'layer-map'));
-    check('leg 3b flags a Layer Map row that hedges ("inline (a copy of modules/foo.js, not yet loaded from it)")', fails(A(good, goodFiles, ign, names, LM.replace('| inline |', '| inline (a copy of `modules/foo.js`, not yet loaded from it) |')), 'layer-map'));
-    check('leg 3b flags a module with no row in the Layer Map', fails(A(good, goodFiles, ign, names, LM.split('\n').filter(l => !l.includes('`bar.js`')).join('\n')), 'layer-map'));
+    check('leg 3b flags a module recorded as inline that the page loads by <script src> (and the reverse)', fails(A(good, goodFiles, ign, names, lm(['bar'], ['foo'])), 'layer-map'));
+    check('leg 3b flags a module recorded in both lists', fails(A(good, goodFiles, ign, names, lm(['foo', 'bar'], ['bar'])), 'layer-map'));
+    check('leg 3b flags a module the page has that the Layer Map does not record', fails(A(good, goodFiles, ign, names, lm(['foo'], [])), 'layer-map'));
+    check('leg 3b flags a module recorded in the Layer Map that the page does not contain', fails(A(good, goodFiles, ign, names, lm(['foo', 'ghost'], ['bar'])), 'layer-map'));
+    check('leg 3b flags a Layer Map with no "Recorded module locations" row (an unreadable record is a failure, not a pass)', fails(A(good, goodFiles, ign, names, '| Concern | x | y |\n|---|---|---|\n| Cart | a | b |\n'), 'layer-map'));
+    check('leg 3b flags a row that lost one of its two list labels', fails(A(good, goodFiles, ign, names, LM.replace('External in `modules/`:', 'Elsewhere:')), 'layer-map'));
+    check('leg 3b reads names written without the extension and accepts a row that agrees with the page', !fails(A(good, goodFiles, ign, names, lm(['foo'], ['bar'])), 'layer-map'));
     const orderPage = (first, second) => first + second;
     const fooLoadsBar = inlineBlock('foo.js', DEP_INLINE + ' *\n * Load bar.js before this file.\n');
     check('leg 3 flags "load bar.js before this file" when the page loads bar.js after', fails(A(orderPage(fooLoadsBar, srcTag('bar.js')), goodFiles, ign, names), 'order'));

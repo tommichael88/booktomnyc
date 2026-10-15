@@ -2,15 +2,15 @@
 /**
  * verify_r-invariant-comply_ship_gate.js
  *
- * @enforces R-INVARIANT-COMPLY
- * @enforces R-INVARIANT-NOLEGACY
+ * @enforces R-SYSTEM-LAYERS
  *
- * THE RULES (PROJECT_CHARTER.html, added 2026-10-02 by operator override, Enforced):
- *   R-INVARIANT-COMPLY: "Every change to the codebase -- bug fix, new feature, refactor, or configuration -- must
- *     respect layer responsibilities. If the code being changed is not in compliance, the change brings it into
- *     compliance before the change ships. Nothing goes live in a non-compliant state. Compliance is binary ...
- *     There is no third path." Index mechanism: "Compliance gate at ship time."
- *   R-INVARIANT-NOLEGACY: "Non-compliant code receives compliance or removal."
+ * THE RULE (re-baselined at T176, PENDING_DECISIONS #214). This gate was written for two Rules the Charter no longer carries: R-INVARIANT-COMPLY ("Compliance gate at ship time": every
+ * change must respect layer responsibilities, and code it touches that is not compliant is brought into compliance before it ships; "compliance is binary ... there is no third path")
+ * and R-INVARIANT-NOLEGACY ("Non-compliant code receives compliance or removal"; the Charter now keeps it as the Principle P-INVARIANT-NOLEGACY, "No Silent Legacy Expansion").
+ * What the Charter's merged edition still says, and what this gate holds, is R-SYSTEM-LAYERS: "a function has one responsibility ... every exception is eliminated or represented by a
+ * separately justified architecture change rather than a silent bypass", and COMPONENT_LAYER_MAP.md (section 7): "a metric must not be improved by relabeling the code that violates the
+ * boundary". A function that a change adds or edits is where a silent bypass would enter, so it is the one place the gate looks. (That the retired pair maps to R-SYSTEM-LAYERS is the
+ * harness's reading, not the Charter's statement: #214 asks the operator to confirm it.)
  *
  * HOW IT WORKS: it compares the code being shipped (HEAD: qr.html, or BTNYC_QR_FILE) against a BASE and finds every
  * function that is TOUCHED -- new, text changed, or moved to another layer. Each touched function is then analysed
@@ -79,10 +79,10 @@ const gate = (b, h) => L.shipGate(b, h, MAP);
 }
 
 // ═══ PART 2: the real change ═════════════════════════════════════════════
-console.log('\n=== R-INVARIANT-COMPLY: every function touched by this change complies with its layer ===');
+console.log('\n=== every function touched by this change complies with its layer (R-SYSTEM-LAYERS) ===');
 let map;
 try { map = L.loadLayerMap(); check('COMPONENT_LAYER_MAP.md present', true); }
-catch (e) { check('COMPONENT_LAYER_MAP.md present', false, { got: e.message }); finish('R-INVARIANT-COMPLY: ship gate'); }
+catch (e) { check('COMPONENT_LAYER_MAP.md present', false, { got: e.message }); finish('Ship gate: a touched function complies with its layer'); }
 
 function readBase() {
     if (process.env.BTNYC_BASE_QR) return { html: fs.readFileSync(path.resolve(process.env.BTNYC_BASE_QR), 'utf8'), from: `file ${process.env.BTNYC_BASE_QR}` };
@@ -95,7 +95,7 @@ function readBase() {
 const base = readBase();
 check('a BASE to compare against is available (BTNYC_BASE_QR, or a git ref in BTNYC_BASE_REF / HEAD)', !!base,
     { expected: 'the previous qr.html', got: 'none -- a ship gate with no base cannot gate; set BTNYC_BASE_QR=<file> or BTNYC_BASE_REF=<ref>' });
-if (!base) finish('R-INVARIANT-COMPLY: ship gate');
+if (!base) finish('Ship gate: a touched function complies with its layer');
 
 const head = fs.readFileSync(Q.QR_PATH, 'utf8');
 const r = L.shipGate(base.html, head, map);
@@ -123,4 +123,4 @@ try {
         { touched: r.touched.length, violating: r.violating.length }, r.touched.map(t => ({ owner: t.unit.owner, layer: t.unit.layer, module: t.unit.module, why: t.why, violations: t.unit.violations }))), null, 2));
 } catch (e) { /* non-fatal */ }
 
-finish('R-INVARIANT-COMPLY: ship gate');
+finish('Ship gate: a touched function complies with its layer');
