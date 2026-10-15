@@ -1,7 +1,7 @@
 # Entity-first SSOT: design note (T175)
 
 Status: written before any data was migrated, from inspection of the tree at `afc972d` (`t174-landing`; PR #21 not merged).
-Authority: the Playbook (`PROJECT_CHARTER.html`) and `COMPONENT_LAYER_MAP.md`, installed byte-for-byte at `6a0ad6f` and not edited by this work.
+Authority: the Playbook (`PROJECT_CHARTER.html`, not edited by this work) and `COMPONENT_LAYER_MAP.md`. **Amended T176:** the Layer Map in force is the Operator's corrected 29,388-byte edition (sha256 `dcf1a415…`, installed alone at `ed76673`); the 22,515-byte and 7,417-byte editions are superseded. The reconciliation of what the Charter, the map and the ledger say about the source and the artifact is §3.1; the amendments to earlier sections are marked "Amended T176".
 If the migration has to depart from this note, the departure is recorded in `ssot/MIGRATION_REPORT.md` as a deviation; the note is not silently rewritten.
 
 ## 1. What exists now (counted from `btnyc.json`, not from the audit)
@@ -49,7 +49,66 @@ The Playbook asks for both an entity-first authored shape (entities own their qu
 | `test_harness/tools/entity_first/project_legacy.js` | Projects the source back to the legacy authored sections; `--check` diffs against `btnyc.json` | transition |
 | `btnyc.json` | Runtime file, **unchanged by this task**. Its authored sections are, from now on, a *projection* of the source. | transition |
 
-`btnyc.json` is not edited by hand or by this task. The runtime, and therefore the price golden master, cannot move. The dual-source period this creates is explicit (R-SYSTEM-DUALSOURCE): `ssot/TRANSITION_DUALSOURCE.md` records what is duplicated, which side is authoritative (the source), how drift is detected (the parity check in the suite), and the closure condition (the runtime consumes the derived graph and `btnyc.json` stops being a file anyone edits). Until then a legacy `ssot_patch.js` edit to `btnyc.json` fails the parity check until the equivalent source edit is made.
+`btnyc.json` is not edited by hand or by this task. The runtime, and therefore the price golden master, cannot move. The dual-source period this creates is explicit (R-SYSTEM-DUALSOURCE): `ssot/TRANSITION_DUALSOURCE.md` records what is duplicated, which side is authoritative (the source), how drift is detected (the parity check in the suite), and the closure condition. **Amended T176:** the closure condition was written in T175 as "`btnyc.json` is removed from the repository root"; that conflicts with the Charter's own statement of the end state and is corrected in §3.1 (the file name `btnyc.json` survives as the derived artifact; the legacy hybrid content does not). Until the cutover a legacy `ssot_patch.js` edit to `btnyc.json` fails the parity check until the equivalent source edit is made (§3.1.5).
+
+
+### 3.1 Authority, lifecycle and the publishing boundary (amended T176; PENDING_DECISIONS #212)
+
+The task was to reconcile three documents' descriptions of the source and the artifact before fixing the migration's final file arrangement. The passages below are quoted exactly. Each is classified as a **binding rule** (the Charter, in force whatever the file layout), the **final state** (what the Charter says the system is when the migration is complete), the **legacy migration state** (true of today's files, to be superseded) or **deferred** (the document leaves the choice to this design).
+
+**3.1.1 What each document says.**
+
+| # | Passage (exact) | Source | Class |
+|---|---|---|---|
+| 1 | "The authored source is for authoring and governance; the derived artifact is the runtime contract. The engine fetches or loads only the purely derived artifact, never the authored source as a fallback and never a hybrid file containing both curated source content and generated indexes." | Charter, `R-SYSTEM-DEPLOY-CONTRACT` | binding rule |
+| 2 | "The publish flow validates the source, derives the artifact, verifies freshness and reproducibility, and refuses publication if the artifact is missing, invalid, stale, incompatible, or not reproducible from the source." | same | binding rule |
+| 3 | "...business knowledge is read through the artifact by following the provenance reference the artifact carries — source identity, source version and hash, and derivation version" | same | binding rule |
+| 4 | "Authored business knowledge lives in btnyc_source.json and is edited through the CMS. btnyc.json is the derived runtime artifact the engine consumes; it carries a provenance reference to the source. Field contracts live in btnyc_schema.json; module ownership lives in COMPONENT_LAYER_MAP.md." | Charter, "Where everything else lives" (and the Document Relationship Map: `btnyc_source.json` + `btnyc_schema.json` + the map → "Derivation / CMS" → "btnyc.json derived runtime artifact (carries $source reference)") | **final state**, with the names |
+| 5 | "This section defines the target contract; it does not claim the current btnyc.json has already been migrated." / "It is a target architecture, not a claim that the migration has already happened." | Charter, entity-first and flat-graph sections | says 4 is the target, not today |
+| 6 | "Direct hand-editing of source or published JSON is not a supported steady-state workflow... During migration, any temporary direct-edit path is a bounded dual-source transition under R-SYSTEM-DUALSOURCE." | Charter, `R-SYSTEM-CMS` | binding rule; permits today's direct edit of the source as a bounded period |
+| 7 | "'Both are authoritative' is not a steady state... completion disconnects or deletes the retired source." | Charter, `R-SYSTEM-DUALSOURCE` | binding rule |
+| 8 | `btnyc.json`: "**Current file at repo root.** Legacy service-first shape... Do not hand-edit; use the prescribed patch/splice workflow for the legacy shape. The migration must establish one authoritative entity-first authored representation." | Layer Map, row `btnyc.json` (Knowledge / source) | **legacy migration state**, plus the obligation in its last sentence |
+| 9 | Derived runtime artifact: "**Must be a separate generated output in the target architecture.** Exact filename/location is to be established by the migration design; do not invent a path or assume today's hybrid `btnyc.json` already satisfies the boundary." | Layer Map, row "Derived runtime artifact" (Published knowledge artifact) | **deferred to this design**; consistent with 1 and 4 |
+| 10 | "`btnyc.json` is then removed from the repository root (archived under `archive/`, not left live)" (the completion condition) | `ssot/TRANSITION_DUALSOURCE.md`, T175 | legacy migration state; **conflicts with 4** on the file name; corrected below |
+| 11 | "`btnyc.json` | Runtime file, unchanged by this task. Its authored sections are, from now on, a *projection* of the source." | this note, §3 (T175) | legacy migration state; accurate for today |
+
+**3.1.2 Is the Charter ambiguous? No, and why.** Rows 1 to 7 agree: the source is authored; the artifact is purely derived, named `btnyc.json`, and carries a provenance reference; the runtime reads only the artifact; two live sources are bounded. The Charter does not name a different artifact path anywhere. Row 9 does not contradict row 4: it declines to assume that *today's* `btnyc.json` is already that artifact, and leaves the path to this design; the Charter fixes the name. The only conflict is row 10 against row 4, and row 10 is a ledger entry this work wrote, a subordinate document. It read R-SYSTEM-DUALSOURCE's "retired source" as the file; the rule means the retired *role* (an authored source that is also read at run time). The path `btnyc.json` ends the transition as a different kind of file. Row 10 is therefore corrected; no Charter passage is read beyond its words.
+
+**3.1.3 The lifecycle.** One authoritative authored source, one derived runtime artifact, one publishing boundary, in three phases:
+
+| Phase | `ssot/btnyc_source.json` | `btnyc.json` | What the runtime reads | How an edit is made |
+|---|---|---|---|---|
+| P0, before T175 | did not exist | the hybrid: authored sections plus the eight compiler-owned keys; the only source | `btnyc.json` | `ssot_patch.js` then `splice_compiled.py` (legacy shape) |
+| **P1, now (T175 to cutover)** | **authoritative** | a hand-carried **mirror** of the source's authored sections plus the compiler's keys; held to the source by `project_legacy.js --check`; not an authority and not to be hand-edited | `btnyc.json` (unchanged; the price golden master cannot move) | the source is edited directly as JSON and judged by `validate_source.js` (no tool or CMS edits it yet, R-SYSTEM-CMS row 6); what the legacy shape can express is then carried to the mirror with the legacy tools in the same commit (§3.1.5) |
+| P2, completion | authoritative; edited through the CMS | **the derived artifact**: written only by the publish step, carrying a `$source` provenance reference; hybrid content gone | `btnyc.json` | the CMS; the publish step validates, derives, verifies and writes |
+
+The derived graph (`ssot/derived/btnyc_graph.json`) is the **pre-publication candidate**: it is what the publish step will derive. It has no runtime consumer yet. R-SYSTEM-INDEXPROXY requires every generated structure to name a real consumer; today it is consumed by the freshness, reference and report tests, and by the runtime adapter that has not been written. This is a bounded exception recorded in #212, not a steady state: if the adapter is not scheduled by the transition end date, the candidate is part of what the transition ledger must close, reauthorize or roll back.
+
+**3.1.4 The publishing boundary** is the one place a derived file may be written and the one place the Charter's checks are applied in order. It is **not built as a command yet**; its parts exist as checks in the suite:
+
+| Step (Charter, row 2 and 3) | Mechanism today | State |
+|---|---|---|
+| validate the source | `validate_source.js` (`validateFull`: schema, then semantic; 34 rule codes, 86 mutants) | exists, in the suite |
+| derive | `derive_graph.js`; refuses an invalid source and writes nothing | exists, in the suite |
+| freshness and reproducibility | `derive_graph.js --check`: the committed candidate is what the committed source derives, byte for byte; the candidate carries `derivation.source_sha256` | exists, in the suite |
+| output is valid | `verify_entity_first_references.js` section 4: every edge, retirement, composition point and picker entry names something that exists in the graph | exists, in the suite |
+| identities preserved | `id_register.js --check` (§4): no published id lost, renamed or reused | exists (T176), in the suite |
+| provenance | the candidate's `derivation` block carries source path, `source_schema_version`, `source_sha256` and the derivation version. It has no key named `$source` and no runtime/interface version | **partial**: both are cutover work |
+| compatible with the runtime | `R-SYSTEM-DEPLOYORDER`: the runtime refuses a known incompatible combination before customer work | **not built**: the runtime does not read the candidate |
+| publish | one command that runs the steps above in order and writes exactly one file, `btnyc.json` | **not built**; today nothing writes `btnyc.json` from the source |
+
+In the Layer Map the publishing boundary is the "Compiler / derivation" row (Build / publish): not page code, but accounted for in the source/artifact checks (`verify_r-system-layers_full_matrix.js`, `verify_module_deployment_shape.js`) and not a place for business decisions. The legacy compiler (`btnyc_v10_compiler.py`) and `splice_compiled.py` are the P1 path for the mirror; `derive_graph.js` is the P2 path.
+
+**3.1.5 Source versus runtime contract, and patch compatibility.** Two contracts exist and they are not two authorities.
+
+- *The source contract* is `schema/btnyc-source.schema.json` (`source_schema_version` 1.0.0), applied by the validator. This is the Charter's "one versioned schema validates source shape" and is the only schema that says what may be authored.
+- *The runtime contract* of today's page is `schema/btnyc_schema.json` (`meta.schema_version` 2.0): the page validates the `btnyc.json` it fetches at boot against the schema its `$schema` names (this one). It describes the legacy-shaped mirror and goes away with the mirror. After the cutover the runtime contract is the derivation's output shape, versioned by the derivation version and checked by the publish step's output checks (the table above); it is not a second hand-authored schema. Whether the published `btnyc.json` is the flat graph under a new interface version (the Charter's flat graph says yes) or something else is a separate R-INVARIANT-FROZEN decision, filed in #212.
+- *Why they cannot drift apart:* the publish step is the only thing that turns one into the other, and it refuses to write unless the source validates, the output validates, the result reproduces, and the ids are preserved. Until the cutover the mirror is held to the source by the parity check, and the candidate by `--check`.
+- The other schema files in `schema/` (`btnyc-v10.schema.json`, `btnyc_v3_schema.json`) and the root `btnyc_schema.json` are stale copies that name no authority. Their retirement is S6's job and is not done here.
+
+*Patch compatibility.* S1 to S5 in `RESHAPE_SCOPE_S1_S6.md` were written as patches to `btnyc.json` through `ssot_patch.js` and `splice_compiled.py`. Their data halves are already realized in the source (an id on every option; one reference spelling; ids not labels; no compiler-owned keys). **They cannot be applied as patches to the legacy `btnyc.json`.** The parity check compares the mirror with the projection of the source, so a patch that moves the mirror toward the new shape fails it by design. The correct workflow before the cutover is the one in `ssot/TRANSITION_DUALSOURCE.md`: edit the source; carry what the legacy shape can express to the mirror with the legacy tools, which stay intact for the legacy shape and do not edit the new source. After the cutover the mirror is replaced by the derived artifact, `ssot_patch.js` and `splice_compiled.py` have nothing to edit and are retired with it. The **cutover point** is the single commit that adds the publish command, the runtime adapter and the regenerated `btnyc.json` together and retires the legacy authoring tools; it is not before the Operator schedules it (#212).
+
+**3.1.6 Ownership.** The source owns business knowledge: what a thing is, what is asked, what each answer changes, what is certain enough, how recovery proceeds. The runtime owns the mechanisms that interpret it. The renderer owns presentation. This note, the coverage report, the ledger and every other document explain the contract and are not read by the engine; a fact that only a document states is not a business rule. Nothing in this reconciliation moves a business decision into page code: the three headerless inline blocks in `qr.html` (global state and the PAX constants, boot, service worker) are recorded as unowned, shell-hosted code and held to the shell contract in the matrix test; the PAX table is business data in code and is migration debt, listed in #214, not endorsed.
 
 ## 4. Identity and reference grammar
 
@@ -59,7 +118,7 @@ Every referenceable node has a stable id of the form `<type>.<slug>`:
 
 An **option** id is unique within its question; an option is only ever referenced as the pair `{question_id, option_id}` (never as a bare string, never by label). Symptom options keep the curated `sym.<slug>` ids that `routing_archetypes` already carries, so no curated id changes.
 
-IDs are generated **once**, by the migration, from the legacy key or label (`slug`: lowercase, non-alphanumerics to `_`, collapsed, trimmed, 60 characters, collision-suffixed in document order), then frozen in the source. A label change never changes an id. Labels and aliases are never keys.
+IDs are generated **once**, by the migration, from the legacy key or label (`slug`: lowercase, non-alphanumerics to `_`, collapsed, trimmed, 60 characters, collision-suffixed in document order), then frozen in the source. A label change never changes an id. Labels and aliases are never keys. **Amended T176 ("frozen" is now a detector):** the validator checks that an id exists, is unique and has a legal shape, but it cannot see a *consistent* rename (the id changed in its definition and in every reference), which leaves the source valid. The id register (`ssot/migration/id_register.json`, `test_harness/tools/entity_first/id_register.js`, detector `verify_entity_first_id_freeze.js`) closes that. **Frozen means:** every typed id the validator declares (17 kinds), every option as the pair `question_id#option_id`, and every group-picker symptom and symptom tile as `group_id#id`: 1,088 typed ids, 593 option pairs, 25 symptoms and 7 tiles at the T176 baseline (the validator's 1,681 ids are the typed ids plus the option ids). **Not frozen:** labels, display names, aliases, descriptions, order, numbers, and the content of any node. **An intentional change** is a written retirement in `retired[]` (id, type, reason, `replaced_by` or null, ledger ticket, the change that made it); a rename is a retirement plus an addition. The register is append-only through `--write`, which refuses while any registered id is lost or reused, and the detector proves it can fail with counterfactuals (a consistent rename that the validator passes; deletion; reuse; each malformed retirement; the loss rule switched off). It is a guard and not an authority: the source owns what an id means. It cannot see an id that was never registered; the baseline is the set the T175 migration produced.
 
 Legacy spellings normalised at the migration boundary: `{"$ref":"#tag"}` and `"#tag"` -> `tag.x`; `comp.x` -> `ent.x`; bare service ids -> `svc.x`; module keys -> `q.x`; `module::noun` -> an instance question id; label-keyed `then`/`depends_on`/`answers` -> `{question_id, option_id}` pairs; modifier slug keys -> `mod.x`; SKUs -> `mat.x`. Nothing reads a label as a key after this boundary.
 
@@ -95,7 +154,7 @@ Entity set = every curated `comp.*` (74) + entities that the 16 component-less s
 
 **7.2 Parameterised steps** (`item_count_template` with `params`) become **instance questions** owned by the asking entity: `q.<module>.<service>`, with `instance_of` naming the template question. Their options and per-instance modifiers are the `params.client_response` values.
 
-**7.3 Option ids and `affects`.** Option id = `<question slug>.<label slug>` (symptom options `sym.<slug>`). `affects` is computed, per option, from fields the option actually carries:
+**7.3 Option ids and `affects`.** Option id = the label slug, unique within its question and never prefixed with the question (symptom options keep the curated `sym.<slug>` ids; 51 of 593 options). `affects` is computed, per option, from fields the option actually carries:
 
 | Option carries | `affects` gains |
 |---|---|
@@ -154,7 +213,8 @@ The Playbook's glossary, routing section and appendix still describe the chain E
 - Playbook: 96 dynamic services. Repo: **82**. All 82 are decomposed.
 - The task text says `price_golden_master.js capture --out <path>`; the tool takes the path positionally (`capture <path>`), and `--out X` would write a file named `--out`. Used positionally.
 - The task text says `t174-landing` is 7 commits ahead of `main`; it is 8.
-- The superseding Layer Map is 7,417 bytes; the one it replaces was 26,751.
+- The superseding Layer Map was first read as 7,417 bytes (replacing 26,751), then as 22,515; **amended T176:** the Operator's corrected edition is 29,388 bytes and is the one in force (it restores the `btnyc.json` row that the shorter editions lacked).
+- **S4 (#165): group membership is written on both sides and the sides disagree.** 5 services are listed by no group's `explicit_services` (`svc.dryer_repair`, `svc.stove_repair`, `svc.generic_mounting_service`, `svc.pax_wardrobe_assembly`, `svc.toilet_seat_replacement`) and 1 by two (`svc.furniture_repair_hourly`). The migration carried both sides as authored and resolved nothing. The validator now reports each as a `group_membership_disagreement` residual (counted in the coverage report; a ratchet in `verify_entity_first_validator.js` lets the set shrink and not grow). Which side is right is an Operator ruling per service (`RESHAPE_SCOPE_S1_S6.md` S4 step 2); until then the field stays as authored.
 
 ## 12. Verification design
 

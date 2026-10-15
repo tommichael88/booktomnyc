@@ -55,7 +55,15 @@ function facts() {
   return { unreferenced, defaultIntake, actionRequired, created, cnt, legacy, src, srcText, m, val, graph, par, rt, E, Q, S, C, classes, legacyOpts, legacyOptsWithId, instOpts, thenLabels, stepTerms, qTerms, routeAnswers, tagAnswers, feeRows, placement, policyBasis, resid, gate, optEff, optNoop, effCount, scopeCtx, scopeEnt, sources };
 }
 
-const DECISION_NO = { playbook: 206, taxonomy: 207, confidence: 208, composition: 209, unknown: 210, scope: 211, cutover: 212, dangling: 213 };
+// Two residual kinds restate a subset of another kind's records (the same unit, reported again with the extra fact that makes it worse). The total says both numbers, and says "restates" only when the ids prove it.
+const RESIDUAL_SUBSETS = { recovery_no_authored_path: 'confidence_gate_none', unknown_option_with_cost_effect: 'unknown_option' };
+function residualTotals(residuals) {
+  const ids = k => new Set(residuals.filter(r => r.kind === k).map(r => r.id));
+  let restated = 0; const notes = [];
+  for (const [sub, parent] of Object.entries(RESIDUAL_SUBSETS)) { const s = ids(sub), p = ids(parent); const n = residuals.filter(r => r.kind === sub).length; if (n && [...s].every(x => p.has(x))) { restated += n; notes.push(`${n} \`${sub}\` restate records of \`${parent}\``); } }
+  return `${residuals.length} residual records; ${residuals.length - restated} distinct units${notes.length ? ` (${notes.join('; ')})` : ''}.`;
+}
+const DECISION_NO = { playbook: 206, taxonomy: 207, confidence: 208, composition: 209, unknown: 210, scope: 211, cutover: 212, dangling: 213, reshape: 165 };
 
 function coverage(f) {
   const { src, val, m, graph, E, Q, S, C, classes, resid } = f; const R = src.registries;
@@ -91,6 +99,7 @@ function coverage(f) {
     ['question_asked_by_nothing', resid.question_asked_by_nothing || 0, `authored questions no chain, default or action asks; kept, scope is an Operator decision (#${DECISION_NO.scope}).`],
     ['unknown_option', resid.unknown_option || 0, `options classified "not sure" by label pattern; they can never retire an uncertainty (#${DECISION_NO.unknown}).`],
     ['unknown_option_with_cost_effect', resid.unknown_option_with_cost_effect || 0, `of those, ones that also change price or minutes: a contingency for not knowing, or a mis-classified answer (#${DECISION_NO.unknown}).`],
+    ['group_membership_disagreement', resid.group_membership_disagreement || 0, `services whose own group_id and the groups' explicit_services lists disagree (S4): ${val.residuals.filter(r => r.kind === 'group_membership_disagreement' && / no group lists it /.test(r.note)).length} listed by no group, ${val.residuals.filter(r => r.kind === 'group_membership_disagreement' && /groups list it/.test(r.note)).length} listed by two, ${val.residuals.filter(r => r.kind === 'group_membership_disagreement' && /is listed in/.test(r.note)).length} listed only by a group other than their own. Surfaced, not resolved: which side is right is an Operator ruling per service (#${DECISION_NO.reshape}, RESHAPE_SCOPE_S1_S6.md S4).`],
     ['dangling_legacy_reference', resid.dangling_legacy_reference || 0, `legacy names that name no intake module (item_quantity, damage_areas, access x4); kept as {unresolved_name}, not given a target (#${DECISION_NO.dangling}).`],
   ];
   const legacyBars = f.m.report.counts.legacyBarsUnreachable;
@@ -112,7 +121,7 @@ ${table(['Check', 'Result'], [
 
 ## Declared gaps (residuals): counted, not hidden
 
-These are validation-visible declarations in the source, not defaults. Total ${val.residuals.length}.
+These are validation-visible declarations in the source, not defaults. ${residualTotals(val.residuals)}
 
 ${table(['Residual', 'Count', 'Meaning'], residualRows)}
 

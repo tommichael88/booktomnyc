@@ -364,6 +364,14 @@ function validate(src, opts = {}) {
   { const so = R.service_order; if (new Set(so).size !== so.length) err('V-ID-DUPLICATE', '$.registries.service_order', 'a service is listed twice');
     so.forEach((id, i) => need(`$.registries.service_order[${i}]`, id, 'svc')); for (const id of services.keys()) if (!so.includes(id)) err('V-REF-DANGLING', '$.registries.service_order', `${id} is a service but is missing from service_order`); }
 
+  // S4 (#165): a group lists its services and a service also names its group. The two are written twice and disagree. Reported, never resolved:
+  // which side is right is an Operator ruling per service (RESHAPE_SCOPE_S1_S6.md S4), so each service whose group membership is not exactly one list that matches its own group_id is a declared residual.
+  { const listedIn = new Map(); for (const g of Array.isArray(R.groups) ? R.groups : []) if (g && Array.isArray(g.explicit_services)) for (const sid of g.explicit_services) { if (!listedIn.has(sid)) listedIn.set(sid, []); if (!listedIn.get(sid).includes(g.id)) listedIn.get(sid).push(g.id); }
+    for (const s of services.values()) { const own = lib.isObj(s.presentation) && lib.isObj(s.presentation.ui_taxonomy) ? s.presentation.ui_taxonomy.group_id : undefined; const lists = listedIn.get(s.id) || [];
+      if (lists.length === 0) res('group_membership_disagreement', s.id, `${s.id} names ${own || 'no group'} (ui_taxonomy.group_id) but no group lists it in explicit_services; either the list omits it or its group_id is wrong: an Operator ruling per service, not resolved here`);
+      else if (lists.length > 1) res('group_membership_disagreement', s.id, `${s.id} names ${own || 'no group'} (ui_taxonomy.group_id) but ${lists.length} groups list it in explicit_services (${lists.join(', ')}); which listing is right is an Operator ruling per service, not resolved here`);
+      else if (own !== lists[0]) res('group_membership_disagreement', s.id, `${s.id} names ${own || 'no group'} (ui_taxonomy.group_id) but is listed in ${lists[0]}; an Operator ruling per service, not resolved here`); } }
+
   // ---- registries and the carried sections ----------------------------------------------------------------------------------------------------------------------------------------------------
   // A question reference may be {unresolved_name}: a name the legacy file used that names no intake module. It is kept visibly (a residual), never dropped and never given an invented target.
   const dangling = (path, v) => { if (lib.isObj(v) && typeof v.unresolved_name === 'string' && v.unresolved_name && Object.keys(v).length === 1) { res('dangling_legacy_reference', path, `"${v.unresolved_name}" names no intake module in the legacy file; it is kept as an unresolved name, not a reference`); return true; } return false; };
@@ -429,7 +437,9 @@ function validate(src, opts = {}) {
   for (const q of allQuestions) for (const o of q.options || []) if (o.evidence === 'unknown') res('unknown_option', `${q.id}/${o.id}`, `${JSON.stringify(o.label)} is classified as an unknown answer by label pattern (never retires uncertainty)`);
   stats.idsByType = Object.fromEntries(Object.keys(ID_TYPES).map(t => [t, decl[t].size]).filter(([, n]) => n > 0));
   stats.errors = errors.length; stats.residuals = residuals.length;
-  return { ok: errors.length === 0, errors, residuals, stats };
+  // the declared ids by type, for the id register (id_register.js); read-only, the same declarations every reference above was checked against
+  const declared = Object.fromEntries(Object.keys(ID_TYPES).map(t => [t, [...decl[t].keys()]]));
+  return { ok: errors.length === 0, errors, residuals, stats, declared };
 }
 
 // validate() is the semantic rules, in process. validateFull() adds the structural JSON Schema check (python jsonschema, one spawn) and is what the CLI and the derivation call. A schema check that

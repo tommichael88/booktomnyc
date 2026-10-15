@@ -234,8 +234,29 @@ const baseSem = V.validate(lib.clone(SRC)); const resKinds = r => r.residuals.re
   check('an unknown answer that also changes the price is a residual for the Operator, not an error', r.ok && (resKinds(r).unknown_option_with_cost_effect || 0) === (resKinds(baseSem).unknown_option_with_cost_effect || 0) + 1, JSON.stringify(r.errors.slice(0, 2))); }
 { const s = lib.clone(SRC); const o = gated(s)[0]; o.confidence_gate = { mode: 'none', reason: 'authored without a weighted class' }; o.uncertainty_profile = []; const r = V.validate(s);
   check('a service with no confidence gate, and says why, is a residual (never read as 100%)', r.ok && (resKinds(r).confidence_gate_none || 0) === (resKinds(baseSem).confidence_gate_none || 0) + 1, JSON.stringify(r.errors.slice(0, 2))); }
-{ const KNOWN = new Set(['composition_ambiguous', 'uncertainty_weight_unauthored', 'confidence_gate_none', 'recovery_no_authored_path', 'question_asked_by_nothing', 'unknown_option', 'unknown_option_with_cost_effect', 'dangling_legacy_reference']);
+{ const KNOWN = new Set(['composition_ambiguous', 'uncertainty_weight_unauthored', 'confidence_gate_none', 'recovery_no_authored_path', 'question_asked_by_nothing', 'unknown_option', 'unknown_option_with_cost_effect', 'dangling_legacy_reference', 'group_membership_disagreement']);
   check('every residual the validator reports is of a declared kind and names what it is about (no anonymous gap)', baseSem.residuals.every(r => KNOWN.has(r.kind) && typeof r.id === 'string' && r.id && typeof r.note === 'string' && r.note), [...new Set(baseSem.residuals.filter(r => !KNOWN.has(r.kind)).map(r => r.kind))].join(',')); }
+
+// S4 (#165, RESHAPE_SCOPE_S1_S6.md S4): a group lists its services and a service names its group; they disagree. The validator reports the disagreement and resolves nothing.
+// The six below are the measured set (5 services listed by no group, 1 listed by two). Which side is right is an Operator ruling per service (#212 is not that ruling; #165 records the gap).
+// RATCHET: the set may shrink (a ruling resolves one) and may never grow (a new disagreement fails here); the pin is the audit evidence, not a decision about the data.
+{ const S4_PINNED = new Set(['svc.dryer_repair', 'svc.stove_repair', 'svc.generic_mounting_service', 'svc.pax_wardrobe_assembly', 'svc.toilet_seat_replacement', 'svc.furniture_repair_hourly']);
+  const of = r => r.residuals.filter(x => x.kind === 'group_membership_disagreement');
+  const base = of(baseSem);
+  check('S4: the validator surfaces the group-membership disagreement (it is not silent)', base.length > 0, String(base.length));
+  check('S4 ratchet: every disagreeing service is one of the six measured; a new one fails (the set only shrinks)', base.every(x => S4_PINNED.has(x.id)), base.filter(x => !S4_PINNED.has(x.id)).map(x => x.id).join(','));
+  check('S4: the disagreement is a declared residual, never an error (the validator resolves nothing)', V.validate(lib.clone(SRC)).ok && base.every(x => /Operator ruling/.test(x.note)));
+  const groupsOf = (s, sid) => s.registries.groups.filter(g => g.explicit_services.includes(sid));
+  { const s = lib.clone(SRC); const sv = servicesOf(s).find(x => !S4_PINNED.has(x.id) && groupsOf(s, x.id).length === 1); need(sv, 'a service listed once'); groupsOf(s, sv.id)[0].explicit_services = groupsOf(s, sv.id)[0].explicit_services.filter(id => id !== sv.id);
+    const r = V.validate(s); check('S4 counterfactual: dropping a service from its group list is reported (+1 residual, still valid)', r.ok && of(r).length === base.length + 1 && of(r).some(x => x.id === sv.id), String(of(r).length)); }
+  { const s = lib.clone(SRC); const sv = servicesOf(s).find(x => !S4_PINNED.has(x.id) && groupsOf(s, x.id).length === 1); const other = s.registries.groups.find(g => !g.explicit_services.includes(sv.id)); other.explicit_services.push(sv.id);
+    const r = V.validate(s); check('S4 counterfactual: listing a service in a second group is reported (+1 residual, still valid)', r.ok && of(r).length === base.length + 1 && of(r).some(x => x.id === sv.id && /groups list it/.test(x.note)), String(of(r).length)); }
+  { const s = lib.clone(SRC); const sv = servicesOf(s).find(x => !S4_PINNED.has(x.id) && groupsOf(s, x.id).length === 1); const own = groupsOf(s, sv.id)[0]; const other = s.registries.groups.find(g => g.id !== own.id && !g.explicit_services.includes(sv.id)); own.explicit_services = own.explicit_services.filter(id => id !== sv.id); other.explicit_services.push(sv.id);
+    const r = V.validate(s); check('S4 counterfactual: a service listed only in a group other than its own group_id is reported', r.ok && of(r).some(x => x.id === sv.id && /is listed in/.test(x.note)), String(of(r).length)); }
+  { const s = lib.clone(SRC); const sv = servicesOf(s).find(x => x.id === 'svc.furniture_repair_hourly'); need(sv, 'the doubly listed service'); const keep = sv.presentation.ui_taxonomy.group_id; for (const g of groupsOf(s, sv.id)) if (g.id !== keep) g.explicit_services = g.explicit_services.filter(id => id !== sv.id);
+    const r = V.validate(s); check('S4 counterfactual: a ruling that resolves one disagreement shrinks the set (the ratchet allows it)', r.ok && of(r).length === base.length - 1 && !of(r).some(x => x.id === sv.id), String(of(r).length)); }
+  { const s = lib.clone(SRC); const g = s.registries.groups.find(x => x.explicit_services.length); s.registries.groups.forEach(x => { x.explicit_services = x.explicit_services.slice(); });
+    const before = JSON.stringify(s.registries.groups.map(x => x.explicit_services)); V.validate(s); check('S4: the validator does not rewrite the lists it reports on', before === JSON.stringify(s.registries.groups.map(x => x.explicit_services)) && !!g); } }
 
 // ---- 5. labels are never keys; order is not meaning --------------------------------------------------------------------------------------------------------------------------
 console.log('\nLabels are not keys; order is not meaning');
