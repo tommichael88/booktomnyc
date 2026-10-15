@@ -616,12 +616,17 @@ function validate(src, opts = {}) {
   }
 
   // ---- pricing archetypes (T177): the shape a service declares must be the shape its engine has -------------------------------------------------------------------------------------------------------------
-  // The legacy file declares an archetype on most services but nothing checks it. Only DECLARED archetypes are checked, and a disagreement is reported (the right side is a pricing decision), never rewritten.
+  // The legacy file declares an archetype on most services but nothing checks it. Only DECLARED archetypes are checked, and a disagreement is reported, never rewritten.
+  // A service names its formula in one of two places and the runtime reads both: financial_engine.formula_ref (a service typed "formula") or the entity's own pricing_engine, which the source holds as pricing.formula_id
+  // (the hourly services bound to a formula by T118 and T135+). T177 read only the first and so reported three correctly labelled services as having no formula (T178 corrected it, PENDING_DECISIONS #219).
+  // The reverse direction (a named formula under another archetype) stays on formula_ref alone: formula_id is also set on services that are meant to be priced by their hourly engine.
   { stats.archetypeChecked = 0;
     for (const o of owners) { const fe = o.node.pricing && o.node.pricing.financial_engine; if (!lib.isObj(fe) || fe.pricing_archetype === undefined) continue; stats.archetypeChecked++;
       const par = fe.pricing_archetype;
-      if (par === 'par.formula' && !fe.formula_ref) res('pricing_archetype_mismatch', o.node.id, `${o.node.id} declares par.formula but names no formula_ref, so there is no formula to look up and run`);
-      else if (par !== 'par.formula' && fe.formula_ref) res('pricing_archetype_mismatch', o.node.id, `${o.node.id} names the formula ${fe.formula_ref} but declares ${par}, not par.formula`);
+      const named = fe.formula_ref || o.node.pricing.formula_id;
+      if (par === 'par.formula' && !named) res('pricing_archetype_mismatch', o.node.id, `${o.node.id} declares par.formula but names no formula (neither financial_engine.formula_ref nor pricing.formula_id), so there is no formula to look up and run`);
+      else if (par !== 'par.formula' && fe.formula_ref) { const why = typeof fe._archetype_note === 'string' ? fe._archetype_note.trim().replace(/\s+/g, ' ') : '';
+        res('pricing_archetype_mismatch', o.node.id, `${o.node.id} names the formula ${fe.formula_ref} but declares ${par}, not par.formula${why ? ` (its own _archetype_note records why: "${why.length > 220 ? why.slice(0, 220) + '...' : why}")` : ''}`); }
       else if (par === 'par.flat_simple' && fe.type !== 'flat_rate') res('pricing_archetype_mismatch', o.node.id, `${o.node.id} declares par.flat_simple (one fixed base price) but its financial type is ${JSON.stringify(fe.type)}`);
     }
   }

@@ -232,6 +232,27 @@ console.log('\nPricing archetype definitions are authored in the source and equa
   check('every archetype has a non-empty authored definition', SRC.registries.pricing_archetypes.every(a => typeof a.definition === 'string' && a.definition.length > 20));
 }
 
+// ---- 7b. the archetype a service declares is checked against the formula it names (T178, PENDING_DECISIONS #219) ----------------------------------------------------------------------------------
+console.log('\nA declared pricing archetype is checked against the formula the service names (T178: the T177 check had read only one of the two places a formula is named)');
+{ const svcs = new Map(SRC.entities.flatMap(e => e.services).map(s => [s.id, s]));
+  const mism = r => (r.residuals || []).filter(x => x.kind === 'pricing_archetype_mismatch');
+  const m0 = mism(V.validateFull(lib.clone(SRC)));
+  const hourly = ['svc.blinds_shades_curtains_buy_the_hour', 'svc.furniture_repair_hourly', 'svc.loose_tile_replacement'];
+  check('the three hourly services declare par.formula and name a registered formula in pricing.formula_id', hourly.every(id => { const s = svcs.get(id); return s.pricing.financial_engine.pricing_archetype === 'par.formula' && !s.pricing.financial_engine.formula_ref && !!formulaOf(SRC, s.pricing.formula_id); }));
+  check('the legacy file names the same formulas through pricing_engine, the field the runtime resolves a formula from (so the source says what the runtime reads)', hourly.every(id => { const l = LEGACY.services.find(x => x.id === id.slice(4)); return 'fml.' + l.pricing_engine === svcs.get(id).pricing.formula_id; }));
+  check('the validator reports exactly one disagreement: svc.pax_wardrobe_assembly', m0.length === 1 && m0[0].id === 'svc.pax_wardrobe_assembly', JSON.stringify(m0.map(x => x.id)));
+  check('and quotes the service\'s own _archetype_note as the reason its label stands', /_archetype_note records why: "CORRECTED from a first-pass classification/.test(m0[0].note), m0[0] && m0[0].note.slice(0, 160));
+  check('the legacy PAX note says what the label protects: it is hourly_timed "to prevent the existing computeUnifiedQuote guard from overriding a correct, already-live price"', /prevent the existing computeUnifiedQuote guard from overriding a correct, already-live price/.test(LEGACY.services.find(s => s.id === 'pax_wardrobe_assembly').financial_engine._archetype_note));
+  check('the exception stands on a fact checked here: computeUnifiedQuote still replaces a price only for the tiered_per_unit and formula archetypes (if that guard changes, the PAX label has to be re-decided)', /_pricingArchetype === 'tiered_per_unit' \|\| _pricingArchetype === 'formula'/.test(QR));
+  // counterfactuals: the detector still sees both directions
+  { const s = lib.clone(SRC); delete s.entities.flatMap(e => e.services).find(x => x.id === 'svc.blinds_shades_curtains_buy_the_hour').pricing.formula_id;
+    const m = mism(V.validateFull(s)); check('counterfactual: par.formula with no formula named anywhere is reported (the forward direction still fires)', m.some(x => x.id === 'svc.blinds_shades_curtains_buy_the_hour') && /neither financial_engine.formula_ref nor pricing.formula_id/.test(m.find(x => x.id === 'svc.blinds_shades_curtains_buy_the_hour').note), JSON.stringify(m.map(x => x.id))); }
+  { const s = lib.clone(SRC); s.entities.flatMap(e => e.services).find(x => x.id === 'svc.pax_wardrobe_assembly').pricing.financial_engine.pricing_archetype = 'par.formula';
+    check('counterfactual: with PAX declared par.formula the disagreement is gone (the report follows the data, not a fixed list)', mism(V.validateFull(s)).length === 0); }
+  { const s = lib.clone(SRC); s.entities.flatMap(e => e.services).find(x => x.id === 'svc.cabinet_knob_or_pull_install').pricing.financial_engine.pricing_archetype = 'par.hourly_timed';
+    const m = mism(V.validateFull(s)); check('counterfactual: a formula_ref under another archetype is reported (the reverse direction still fires)', m.some(x => x.id === 'svc.cabinet_knob_or_pull_install') && m.length === 2, JSON.stringify(m.map(x => x.id))); }
+}
+
 // ---- 8. does a question change the quote? ----------------------------------------------------------------------------------------------------------------------------------------------
 console.log('\nThe question-level price claim is checked against the options');
 { const base = V.validate(lib.clone(SRC)); const pc = base.stats.priceClaim; const kinds = r => r.residuals.reduce((a, x) => (a[x.kind] = (a[x.kind] || 0) + 1, a), {});
