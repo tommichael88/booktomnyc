@@ -152,14 +152,26 @@ function unownedProblems(html) {
 }
 
 /**
+ * Modules the page has that the Layer Map's snapshot row cannot yet record (T179, PENDING_DECISIONS #221). The map is the Operator's; it is not edited here, and it labels its row a snapshot.
+ * resolver.js is on the map as a TARGET module ("not yet a standalone file") and is now a file the page loads; artifact_compat.js is the consumer-side compatibility check the resolver runs before it
+ * reads an index, and the map has no row for it. Leg 3b would call both "no location recorded", which is true and is the map's move to make. So each is listed here WITH the shape the page must have,
+ * and the entry is a ratchet like UNOWNED: it fails when the page no longer has the module in that shape, and it fails when the map starts recording the module (the entry is then stale: remove it).
+ */
+const ADOPTED_AFTER_SNAPSHOT = {
+    'resolver.js': 'external:modules/resolver.js',
+    'artifact_compat.js': 'external:modules/artifact_compat.js',
+};
+
+/**
  * analyse(raw, modFiles, gitignore, names, layerMap) -> [{ id, label, offenders: [string] }]. Pure: the real run and the probes feed it the same way.
  *   raw        qr.html as written
  *   modFiles   { 'name.js': text } for every .js file under modules/
  *   gitignore  the text of .gitignore
  *   names      the module names the tooling knows (Q.MODULE_NAMES)
  *   layerMap   the text of COMPONENT_LAYER_MAP.md
+ *   adopted    { 'x.js': shape } the modules adopted after the map's snapshot (ADOPTED_AFTER_SNAPSHOT for the real page; {} for a synthetic one)
  */
-function analyse(raw, modFiles, gitignore, names, layerMap) {
+function analyse(raw, modFiles, gitignore, names, layerMap, adopted = {}) {
     const blocks = Q.splitScriptBlocks(raw);
     const scripts = Page.externalScripts(raw).filter(s => s.repoPath);
     const inlineOf = n => blocks.filter(b => b.src.trim() && Q.headerRegex(n).test(b.src));
@@ -183,9 +195,11 @@ function analyse(raw, modFiles, gitignore, names, layerMap) {
     row('layer-map', 'COMPONENT_LAYER_MAP.md records each module\'s location (section 6, "Recorded module locations") as the page has it: inline in qr.html, or external in modules/', rec.problem ? [rec.problem] :
         [...allNames.filter(n => shape(n)).flatMap(n => {
             const inRec = rec.inline.has(n), exRec = rec.external.has(n);
+            if (adopted[n]) return inRec || exRec ? [`${n}: the Layer Map now records it, and the list of modules adopted after the snapshot still names it (stale entry: remove it)`] : shape(n) === adopted[n] ? [] : [`${n}: adopted after the snapshot as ${adopted[n]}, and the page has it ${shape(n)}`];
             return inRec && exRec ? [`${n}: recorded as both inline and external`] : !inRec && !exRec ? [`${n}: the page has it ${shape(n)}, the Layer Map records no location for it`]
                 : (inRec ? 'inline' : 'external:modules/' + n) === shape(n) ? [] : [`${n}: the page has it ${shape(n)}, the Layer Map records it ${inRec ? 'inline' : 'external'}`];
-        }), ...[...rec.inline, ...rec.external].filter(n => !allNames.includes(n) || !shape(n)).map(n => `${n}: recorded in the Layer Map, and the page does not contain it`)]);
+        }), ...Object.keys(adopted).filter(n => !shape(n)).map(n => `${n}: on the list of modules adopted after the snapshot, and the page does not contain it (stale entry: remove it)`),
+        ...[...rec.inline, ...rec.external].filter(n => !allNames.includes(n) || !shape(n)).map(n => `${n}: recorded in the Layer Map, and the page does not contain it`)]);
     const stmtBad = [], inlineClaimBad = [], extClaimBad = [], orderBad = [];
     let orderChecked = 0;
     for (const n of allNames) {
@@ -232,7 +246,7 @@ const layerMapPath = path.join(ROOT, 'COMPONENT_LAYER_MAP.md');
 const layerMap = fs.existsSync(layerMapPath) ? fs.readFileSync(layerMapPath, 'utf8') : '';
 
 section('1-3. the page as written: one home per module, a header that says it, a load order that is true', () => {
-    const rows = analyse(raw, modFiles, gitignore, Q.MODULE_NAMES, layerMap);
+    const rows = analyse(raw, modFiles, gitignore, Q.MODULE_NAMES, layerMap, ADOPTED_AFTER_SNAPSHOT);
     const inl = Q.MODULE_NAMES.filter(n => Q.splitScriptBlocks(raw).some(b => b.src.trim() && Q.headerRegex(n).test(b.src)));
     const ext = Page.externalScripts(raw).filter(s => s.repoPath).map(s => s.repoPath);
     console.log(`  (inline: ${inl.join(', ')}; loaded by <script src>: ${ext.join(', ')}; files in modules/: ${Object.keys(modFiles).join(', ')})`);
@@ -250,7 +264,8 @@ section('4. non-vacuity: each leg is shown able to fail, and a correct page is s
     const names = ['foo.js', 'bar.js'], ign = '/foo.js\n/bar.js\n';
     const lm = (inl, ext) => `| Concern | Recorded implementation shape | Migration implication |\n|---|---|---|\n| Recorded module locations | Inline in \`qr.html\`: ${inl.map(n => '`' + n + '`').join(', ') || 'none'}. External in \`modules/\`: ${ext.map(n => '`' + n + '`').join(', ') || 'none'}. | This is a snapshot, not a claim about the current checkout. |\n`;
     const LM = lm(['foo'], ['bar']);
-    const A = (rawPage, files, ig, nm, lm) => analyse(rawPage, files, ig, nm, lm === undefined ? LM : lm);
+    const A = (rawPage, files, ig, nm, lm, adopted) => analyse(rawPage, files, ig, nm, lm === undefined ? LM : lm, adopted);
+    const ADOPT = { 'resolver.js': 'external:modules/resolver.js', 'artifact_compat.js': 'external:modules/artifact_compat.js' };
     const good = inlineBlock('foo.js') + srcTag('bar.js');
     const goodFiles = { 'bar.js': '/**\n * bar.js\n *\n * Some description.\n */\nfunction b() {}\n' };
 
@@ -272,6 +287,11 @@ section('4. non-vacuity: each leg is shown able to fail, and a correct page is s
     check('leg 3b flags a module recorded in both lists', fails(A(good, goodFiles, ign, names, lm(['foo', 'bar'], ['bar'])), 'layer-map'));
     check('leg 3b flags a module the page has that the Layer Map does not record', fails(A(good, goodFiles, ign, names, lm(['foo'], [])), 'layer-map'));
     check('leg 3b flags a module recorded in the Layer Map that the page does not contain', fails(A(good, goodFiles, ign, names, lm(['foo', 'ghost'], ['bar'])), 'layer-map'));
+    check('leg 3b accepts resolver.js and artifact_compat.js as adopted after the snapshot, in their declared shape, while the map does not record them', !fails(A(good + srcTag('resolver.js') + srcTag('artifact_compat.js'), { ...goodFiles, 'resolver.js': goodFiles['bar.js'], 'artifact_compat.js': goodFiles['bar.js'] }, ign, names, undefined, ADOPT), 'layer-map'));
+    check('leg 3b flags an adopted module once the map records it (the list entry is stale)', fails(A(good + srcTag('resolver.js'), { ...goodFiles, 'resolver.js': goodFiles['bar.js'] }, ign, names, lm(['foo'], ['bar', 'resolver']), ADOPT), 'layer-map'));
+    check('leg 3b flags an adopted module the page no longer has (the list entry is stale)', fails(A(good, goodFiles, ign, names, undefined, ADOPT), 'layer-map'));
+    check('leg 3b flags an adopted module that the page now runs inline', fails(A(good + inlineBlock('resolver.js'), goodFiles, ign, [...names, 'resolver.js'], undefined, ADOPT), 'layer-map'));
+    check('leg 3b still flags a module that is NOT on the adopted list and is not recorded', fails(A(good + srcTag('other.js'), { ...goodFiles, 'other.js': goodFiles['bar.js'] }, ign, names), 'layer-map'));
     check('leg 3b flags a Layer Map with no "Recorded module locations" row (an unreadable record is a failure, not a pass)', fails(A(good, goodFiles, ign, names, '| Concern | x | y |\n|---|---|---|\n| Cart | a | b |\n'), 'layer-map'));
     check('leg 3b flags a row that lost one of its two list labels', fails(A(good, goodFiles, ign, names, LM.replace('External in `modules/`:', 'Elsewhere:')), 'layer-map'));
     check('leg 3b reads names written without the extension and accepts a row that agrees with the page', !fails(A(good, goodFiles, ign, names, lm(['foo'], ['bar'])), 'layer-map'));

@@ -27,7 +27,7 @@ const sortKeys = o => Object.fromEntries(Object.keys(o).sort().map(k => [k, o[k]
 // Which module reads each index. The module names are the Layer Map's (COMPONENT_LAYER_MAP.md, Module / responsibility column); verify_entity_first_publish.js checks every name against that file, so a consumer
 // cannot be invented. Every consumer below is a TARGET module that is not yet a standalone file (or is the CMS, not yet built): that is the honest state today, and it is recorded as such rather than
 // implied. The time bound is the dual-source transition's end date (ssot/TRANSITION_DUALSOURCE.md).
-const CONSUMER_STATUS = 'target; not yet extracted from the runtime, by the Layer Map';
+const CONSUMER_STATUS = 'picker: read by modules/resolver.js (T179), through the compatibility check. Every other consumer named here is a target, not yet extracted from the runtime, by the Layer Map';
 const INDEX_CONSUMERS = {
   entities: [{ module: 'resolver.js', reads: 'entity kind, ancestors and ownership while resolving a BookingContext' }],
   questions: [{ module: 'composer.js', reads: 'question scope and dependencies when composing a chain' }],
@@ -115,11 +115,17 @@ function derive(src, sourceText, opts = {}) {
 
   // ---- picker graph ------------------------------------------------------------------------------------------------------------------------------------------------------------------
   const picker = {};
+  const serviceNodes = new Map(owners.filter(o => o.kind === 'service').map(o => [o.n.id, o.n]));
+  const actionLabels = new Map(R.actions.map(a => [a.id, a.label]));
   for (const g of R.groups) {
     const p = g.picker; const symptoms = {};
     if (p.symptom_question_id) { const q = questions.get(p.symptom_question_id); const asking = owners.filter(o => o.kind === 'service' && o.n.presentation.ui_taxonomy.group_id === g.id && o.n.intake.steps.some(s => s.question_id === q.id)).map(o => o.n.id).sort(); for (const o of optionsOf(q)) symptoms[o.id] = { label: o.label, service_ids: asking }; }
     else for (const s of p.symptoms || []) symptoms[s.id] = { label: null, service_ids: s.service_ids.slice().sort() };
-    picker[g.id] = { entry_mode: p.entry_mode, category_id: g.category_id, component_entity_ids: p.component_entity_ids.slice(), component_services: Object.fromEntries(p.component_links.map(l => [l.entity_id, l.service_ids.slice().sort()])), symptoms, symptom_source: p.symptom_question_id ? { question_id: p.symptom_question_id } : { authored: true } };
+    const component_services = Object.fromEntries(p.component_links.map(l => [l.entity_id, l.service_ids.slice().sort()]));
+    // interface 1.1.0 (T179): what each service the picker can reach IS (its action, id and label), so a resolver can tell "the repair" from "the install" without the runtime's own service table.
+    const reach = [...new Set([...Object.values(component_services).flat(), ...Object.values(symptoms).flatMap(s => s.service_ids)])].sort();
+    const services = Object.fromEntries(reach.map(id => { const n = serviceNodes.get(id); return [id, { action_id: n.action_id, action_label: actionLabels.get(n.action_id) }]; }));
+    picker[g.id] = { entry_mode: p.entry_mode, category_id: g.category_id, component_entity_ids: p.component_entity_ids.slice(), component_services, symptoms, symptom_source: p.symptom_question_id ? { question_id: p.symptom_question_id } : { authored: true }, services };
   }
 
   // ---- reverse index of the things a validator or an editor asks "who uses this?" -------------------------------------------------------------------------------------------------------------------------

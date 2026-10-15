@@ -15,7 +15,8 @@
  *   1. MAPPING. Every <script src> under the deployed base names a file the repo has (so a deploy of the repo can serve it), once each.
  *   2. THE BOOT. Served as production serves it: every deployed module is requested and answered; no Content-Security-Policy violation; no page error; the catalog loads (DB.services);
  *      the build constant the page stamps on its quotes is defined (QR_BUILD_VERSION); the category grid is live (a tap opens the group grid); and the SmartQuote text input (#sqDescIn)
- *      is on screen under the grid -- the thing a customer reported absent when a boot failed silently.
+ *      is on screen under the grid -- the thing a customer reported absent when a boot failed silently. (T179) The published artifact is fetched from the deployed path, accepted by the
+ *      resolver, and a component tap in the browser is decided by it.
  *   3. A MISSING COMPONENT IS SEEN. With any ONE required module answered 404, the page shows its boot-failure panel (#bootFailure) instead of a dead grid with no input. The tracer
  *      is the exception by design (observation-only, optional): without it the page must still boot normally.
  *
@@ -84,6 +85,8 @@ async function boot(puppeteer, chrome, missing, html) {
         const sleep = ms => new Promise(r => setTimeout(r, ms));
         // wait for either a booted page or the failure panel
         await page.waitForFunction(() => (window.DB && window.DB.services) || document.getElementById('bootFailure'), { timeout: 15000 }).catch(() => { /* judged below */ });
+        // T179: the published artifact is fetched in the background; give it the time a visitor's page has before judging what became of it
+        await page.waitForFunction(() => !window.__resolverStatus || window.__resolverStatus.status !== 'loading', { timeout: 8000 }).catch(() => { /* judged below */ });
         await sleep(900);
         Object.assign(out, await page.evaluate(() => {
             const vis = el => { if (!el) return false; const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
@@ -92,6 +95,8 @@ async function boot(puppeteer, chrome, missing, html) {
                 booted: !!(window.DB && window.DB.services && window.DB.services.length), serviceCount: window.DB && window.DB.services ? window.DB.services.length : 0,
                 buildVersion: (typeof QR_BUILD_VERSION !== 'undefined') ? QR_BUILD_VERSION : null,
                 bootFailureVisible: vis(bf), bootFailureText: bf ? (bf.innerText || '').slice(0, 120) : '',
+                resolverStatus: window.__resolverStatus || null,
+                tapDecidedBy: (() => { try { const g = window.DB.group.find(x => x.id === 'tech_trouble_computer_repair'), ids = window.DB.routing_archetypes[g.id].component_id_to_service_ids['comp.hard_drive']; const v = decideComponentSymptomTap(ids, g, 'Repair', { kind: 'component', id: 'comp.hard_drive' }); return v.decidedBy + ':' + v.serviceIds.join(','); } catch (e) { return 'error: ' + e.message; } })(),
                 inputVisible: vis(inp), categoryTiles: document.querySelectorAll('#category-card .category-card').length, cspEvents: window.__csp || [],
             };
         }));
@@ -133,6 +138,8 @@ async function boot(puppeteer, chrome, missing, html) {
     check(good.booted, `the catalog loaded (${good.serviceCount} services)`, 'the page did not finish booting', good.bootFailureText || 'no #bootFailure panel either');
     check(typeof good.buildVersion === 'string' && /^T\d+/.test(good.buildVersion), `QR_BUILD_VERSION is defined by the loaded modules (${good.buildVersion})`, 'QR_BUILD_VERSION is not defined after boot', String(good.buildVersion));
     check(good.categoryTiles > 0 && good.groupTilesAfterTap > 0, `the category grid is live: ${good.categoryTiles} categories, a tap opens ${good.groupTilesAfterTap} group tiles`, 'the category grid did not respond to a tap', `categories ${good.categoryTiles}, group tiles after tap ${good.groupTilesAfterTap}`);
+    check(good.resolverStatus && good.resolverStatus.status === 'available', `the published artifact was fetched from the deployed path and accepted by the resolver (${good.resolverStatus ? good.resolverStatus.status + (good.resolverStatus.reason ? ' / ' + good.resolverStatus.reason : '') : 'no __resolverStatus'})`, 'the resolver did not become available on the page as production serves it', JSON.stringify(good.resolverStatus));
+    check(good.tapDecidedBy === 'resolver:internal_hardware_replacement', `a component tap is decided by the resolver in the browser: comp.hard_drive + Repair -> ${good.tapDecidedBy}`, 'the tap was not decided by the resolver', String(good.tapDecidedBy));
     check(good.inputVisible, 'the SmartQuote text input (#sqDescIn) is on screen under the grid', 'the SmartQuote text input is absent or hidden');
     check(!good.bootFailureVisible, 'no boot-failure panel on a healthy boot', 'the boot-failure panel is showing on a healthy boot');
 

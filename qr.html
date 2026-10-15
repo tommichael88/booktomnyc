@@ -3616,6 +3616,39 @@ body.modal-active{overflow:hidden}
             };
         }
 
+        // decideComponentSymptomTap -- LOGIC. What a tap in the component / symptom picker MEANS: one service, a short list to choose from, or no service (T179). The decision is modules/resolver.js's: it reads
+        // the published artifact's picker, and answers with `decision`, `services` (the ids this page holds) and `source`. This function takes that answer as it is. It does not default it, merge it with
+        // the tile's own list, or recompute it (R-INVARIANT-DEFECT-ARBITRATION). Two cases get no answer from the resolver, and in both the page does exactly what it did before the resolver existed:
+        //   - the resolver has none to give: no artifact was loaded, or it was refused (missing, stale, incompatible, malformed), or it does not know this tile (a declared-symptom tile carries no evidence);
+        //   - the resolver says the artifact is STALE for this tap: it was told the services THIS page lists for the tile (`serviceIds`, from btnyc.json), and they are not the artifact's.
+        // The second is how an artifact that has fallen behind the data the page serves is caught at the point of use, whatever version it declares. The page's own decision (legacyComponentSymptomDecision, the
+        // body this function replaced) stays as the fail-safe until the legacy data shape retires (PENDING_DECISIONS #212); verify_resolver_module.js proves the two agree at every tile of every group.
+        function decideComponentSymptomTap(serviceIds, group, chosenAction, evidence) {
+            const answer = Resolver.current().resolveTap({ group_id: group && group.id, action: chosenAction || null, evidence, expect_services: serviceIds });
+            if (answer.status === 'resolved') return { decision: answer.decision, serviceIds: answer.services.map(s => s.runtime_id), source: answer.source, decidedBy: 'resolver' };
+            if (answer.status === 'stale') console.warn('⚠️ The published artifact no longer describes the services this page lists for ' + JSON.stringify(answer.expected) + ' (it lists ' + JSON.stringify(answer.found) + '): the page decides this tap itself.');
+            return Object.assign({ decidedBy: 'page' }, legacyComponentSymptomDecision(serviceIds, chosenAction));
+        }
+
+        // legacyComponentSymptomDecision -- LOGIC. The fail-safe: the decision resolveComponentSymptomTap made before T179, over the catalog this page holds (DB.services). Returns {decision, serviceIds, source}.
+        //   - several services map to the tile and the chosen action picks exactly ONE by service_type: that one (v9.6; comp.hard_drive: Repair -> internal_hardware_replacement, Setup -> data_backup_or_transfer);
+        //   - exactly one service maps: that one;
+        //   - several map and the action does not pick one (8 cases catalog-wide, e.g. comp.tv -> flatscreen_mounting_standard and _with_hidden_cables): the customer chooses among them;
+        //   - none maps: a real, honest gap -> no service.
+        function legacyComponentSymptomDecision(serviceIds, chosenAction) {
+            const find = id => (DB.services || []).find(s => s.id === id);
+            if (serviceIds.length > 1 && chosenAction) {
+                const typedMatches = serviceIds.map(find).filter(s => s && s.service_type === chosenAction);
+                if (typedMatches.length === 1) return { decision: 'service', serviceIds: [typedMatches[0].id], source: 'archetype_default' };
+            }
+            if (serviceIds.length === 1 && find(serviceIds[0])) return { decision: 'service', serviceIds: [serviceIds[0]], source: 'archetype_default' };
+            if (serviceIds.length > 1) {
+                const matched = serviceIds.map(find).filter(Boolean);
+                if (matched.length) return { decision: 'choose', serviceIds: matched.map(s => s.id), source: 'archetype_default' };
+            }
+            return { decision: 'unresolved', serviceIds: [], source: 'fallback' };
+        }
+
         // resolveTappedAnswers -- LOGIC. What a tapped symptom ALREADY ANSWERS on the service it lands on (#199, T174; the DEFECT-STATE-IGNORANCE instance #192 for these groups). A tile is an option of the question the
         // service asks, so the tap is the customer's answer to it and the card must not ask it again. Only answers the service really asks (its chain names the module, the module has an option of that exact label) are
         // carried; anything else answers nothing. Pure: returns {moduleKey: label}.
@@ -3773,6 +3806,12 @@ body.modal-active{overflow:hidden}
 
     <!-- nlp_engine.js -->
     <script src="https://tommichael88.github.io/booktomnyc/modules/nlp_engine.js"></script>
+
+    <!-- artifact_compat.js -->
+    <script src="https://tommichael88.github.io/booktomnyc/modules/artifact_compat.js"></script>
+
+    <!-- resolver.js -->
+    <script src="https://tommichael88.github.io/booktomnyc/modules/resolver.js"></script>
 
     <!-- orchestrator_engine.js -->
     <script>
@@ -7980,8 +8019,11 @@ body.modal-active{overflow:hidden}
             return humanized.charAt(0).toUpperCase() + humanized.slice(1);
         }
 
-        /** @param {any} serviceIds @param {any} group @param {any} category_id @param {any} chosenAction @param {any} [tapped] */
-        function resolveComponentSymptomTap(serviceIds, group, category_id, chosenAction, tapped) {
+        /** @param {any} serviceIds @param {any} group @param {any} category_id @param {any} chosenAction @param {any} [tapped] @param {any} [evidence] */
+        function resolveComponentSymptomTap(serviceIds, group, category_id, chosenAction, tapped, evidence) {
+            // T179: WHAT the tap means is decided by decideComponentSymptomTap (modules/resolver.js, from the published artifact; the page's own decision as the fail-safe). This function DRAWS it:
+            // a service opens its card, a choice lists its services, no service opens the guided builder. `evidence` is the tile that was tapped ({kind:'component'|'symptom', id} or {kind:'none'});
+            // a tile that carries none (a declared-symptom tile, or a caller that has only a service list) is decided by the page, as before. The v9.6 notes below describe the decision as it was made.
             // v9.6 FIX: now tries a real, exact service_type match against
             // chosenAction FIRST, when more than one real service maps to this
             // component/symptom -- confirmed via direct data check this genuinely
@@ -8005,43 +8047,20 @@ body.modal-active{overflow:hidden}
             // has exactly one member; otherwise fall through to the same
             // multi-match sub-picker used below, since chosenAction didn't
             // actually disambiguate anything here.
-            if (serviceIds.length > 1 && chosenAction) {
-                const typedMatches = serviceIds
-                    .map(id => (DB.services || []).find(s => s.id === id))
-                    .filter(s => s && s.service_type === chosenAction);
-                if (typedMatches.length === 1) {
-                    prefillSmartQuoteFromService(typedMatches[0], category_id, tapped);
-                    return;
-                }
+            const verdict = decideComponentSymptomTap(serviceIds, group, chosenAction, evidence);
+            const picked = verdict.serviceIds.map(id => (DB.services || []).find(s => s.id === id)).filter(Boolean);
+            if (verdict.decision === 'service' && picked.length === 1) {
+                prefillSmartQuoteFromService(picked[0], category_id, tapped);
+                return;
             }
-            // Exactly one real service maps to this component/symptom -- the common
-            // case (e.g. Doors: every one of its 4 real components maps to exactly
-            // one service). Resolve directly through the same, real, proven path a
-            // catalog tile tap already uses.
-            if (serviceIds.length === 1) {
-                const svc = (DB.services || []).find(s => s.id === serviceIds[0]);
-                if (svc) {
-                    prefillSmartQuoteFromService(svc, category_id, tapped);
-                    return;
-                }
+            if (verdict.decision === 'choose' && picked.length) {
+                // A real, confirmed case (8 instances catalog-wide, e.g. comp.tv -> both flatscreen_mounting_standard and _with_hidden_cables): more than one distinct service for this one component/
+                // symptom, and the action did not pick one. Show just these services via the existing, proven tile renderer rather than guessing which one is meant.
+                renderServices(DOM.serviceContainer, picked, category_id, group.id);
+                return;
             }
-            if (serviceIds.length > 1) {
-                // A real, confirmed case (8 instances catalog-wide, e.g. comp.tv ->
-                // both flatscreen_mounting_standard and _with_hidden_cables) --
-                // genuinely more than one distinct service for this one component/
-                // symptom, and no exact action match was found above. Show just
-                // these matched services via the existing, proven tile renderer
-                // rather than guessing which one is meant.
-                const matched = serviceIds.map(id => (DB.services || []).find(s => s.id === id)).filter(Boolean);
-                if (matched.length) {
-                    renderServices(DOM.serviceContainer, matched, category_id, group.id);
-                    return;
-                }
-            }
-            // Zero real services map to this component/symptom -- a real, honest
-            // gap. Falls through to the existing, proven, pre-seeded builder flow
-            // (T76) rather than a dead end -- the group is already known, so the
-            // builder correctly skips re-asking it.
+            // No service maps to this component/symptom -- a real, honest gap. Falls through to the existing, proven, pre-seeded builder flow (T76) rather than a dead end -- the group is already
+            // known, so the builder correctly skips re-asking it. (A service the decision names that this page does not hold lands here too: nothing to open.)
             sqOpenBuilderPreseeded({
                 action: chosenAction ? stDefaultAction(chosenAction) : null,
                 groupId: group.id,
@@ -8193,7 +8212,7 @@ body.modal-active{overflow:hidden}
                 // Note: mapping?.[...] -- mapping itself can be undefined even when
                 // real_*_ids is populated, if the archetype data only authored one
                 // side of the pair. Same defensive shape the tile loop below uses.
-                resolveComponentSymptomTap(mapping?.[ids[0]] || [], group, category_id, chosenAction);
+                resolveComponentSymptomTap(mapping?.[ids[0]] || [], group, category_id, chosenAction, undefined, { kind: isComponentFirst ? 'component' : 'symptom', id: ids[0] });
                 return;
             }
 
@@ -8223,7 +8242,9 @@ body.modal-active{overflow:hidden}
                 tile.tabIndex = 0;
                 tile.role = 'button';
                 tile.innerHTML = `<span class="tile-name">${escapeHtml(label)}</span>`;
-                const handler = () => resolveComponentSymptomTap(entry.serviceIds, group, category_id, chosenAction, { tagIds: entry.tagIds, answers: entry.answers });
+                // T179: the tile that was tapped, for the resolver. A declared-symptom tile is drawn from the module's option LABEL, not from an id the picker knows: it carries no evidence and the page decides it.
+                const evidence = declaredSymptoms ? undefined : { kind: isComponentFirst ? 'component' : 'symptom', id: entry.id };
+                const handler = () => resolveComponentSymptomTap(entry.serviceIds, group, category_id, chosenAction, { tagIds: entry.tagIds, answers: entry.answers }, evidence);
                 tile.addEventListener('click', handler);
                 tile.addEventListener('keydown', e => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -8341,7 +8362,7 @@ body.modal-active{overflow:hidden}
             fallbackTile.tabIndex = 0;
             fallbackTile.role = 'button';
             fallbackTile.innerHTML = `<span class="tile-name">Something else</span>`;
-            const fallbackHandler = () => resolveComponentSymptomTap([], group, category_id, chosenAction);
+            const fallbackHandler = () => resolveComponentSymptomTap([], group, category_id, chosenAction, undefined, { kind: 'none' });
             fallbackTile.addEventListener('click', fallbackHandler);
             fallbackTile.addEventListener('keydown', e => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -12622,6 +12643,28 @@ function addToCart(entry) {
 
                 DB = SERVICE_DATA;
                 window.DB = DB;
+
+                // ─── 1c. THE PUBLISHED ARTIFACT (T179; PENDING_DECISIONS #218) ──────────────────────────
+                // modules/resolver.js reads the published artifact, never the authored source and never btnyc.json, and only after ArtifactCompat.check has accepted it against the consumer contract.
+                // It is loaded in the BACKGROUND: the page does not wait for 760 KB it can do without, and until the resolver is installed (or if it is refused) every decision it would make is made
+                // by the page as before. Nothing here can stop the boot. `window.__resolverStatus` records what happened, for tests and for anyone asking, the way __ssotValidation does.
+                // A page whose resolver.js or artifact_compat.js did not load is a deployment fault, seen like any other missing component (the throw below reaches the boot-failure panel). A page whose
+                // ARTIFACT is unusable is not a fault: that is the fail-safe above.
+                if (typeof ArtifactCompat.check !== 'function') throw new Error('modules/artifact_compat.js did not load');
+                Resolver.install(null);
+                window.__resolverStatus = { status: 'loading', reason: null, detail: null };
+                (async () => {
+                    try {
+                        const [_ar, _cr] = await Promise.all([fetch('./ssot/derived/btnyc_graph.json'), fetch('./schema/btnyc-interface-contract.json')]);
+                        if (!_ar.ok || !_cr.ok) throw new Error('HTTP ' + (_ar.ok ? _cr.status : _ar.status));
+                        const _inst = Resolver.install(Resolver.create(await _ar.json(), await _cr.json()));
+                        window.__resolverStatus = _inst.available ? { status: 'available', reason: null, detail: null, provenance: _inst.provenance } : { status: 'unavailable', reason: _inst.reason, detail: _inst.detail };
+                        if (!_inst.available) console.warn('⚠️ The published artifact was not used (' + _inst.reason + '): ' + _inst.detail + ' The page decides what the resolver would have decided.');
+                    } catch (_e) {
+                        window.__resolverStatus = { status: 'unavailable', reason: 'missing', detail: String(_e && _e.message) };
+                        console.warn('⚠️ The published artifact could not be read (' + (_e && _e.message) + '). The page decides what the resolver would have decided.');
+                    }
+                })();
 
                 // ─── 2. INITIALISE MODULES ──────────────────────────────────────
                 initNlpSets();

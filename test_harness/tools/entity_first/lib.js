@@ -23,9 +23,9 @@ const PATHS = {
 const COMPILER_KEYS = ['compiled', 'routing_archetypes', 'pricing_archetypes', '_compiler_metadata', '_validation', '_additive_diff', '_schema_validation', '_archetype_mismatch_report'];
 
 const SOURCE_SCHEMA_VERSION = '1.1.0';
-const DERIVATION_VERSION = '1.1.0'; // 1.1.0: $source, interface_version, manifest, alias_index, action_vocabulary, formula_inputs, price_influence (T177)
+const DERIVATION_VERSION = '1.2.0'; // 1.1.0: $source, interface_version, manifest, alias_index, action_vocabulary, formula_inputs, price_influence (T177). 1.2.0: picker[group].services -- the action of every service a picker reaches (T179)
 // The interface version is the contract a CONSUMING module checks before it reads the artifact (P-SYSTEM-VERSIONS). It moves only when a consumer would break: a removed or reshaped index, a changed key meaning.
-const INTERFACE_VERSION = '1.0.0';
+const INTERFACE_VERSION = '1.1.0'; // 1.1.0 (T179): picker[group].services added -- an addition, so a 1.0 consumer is unaffected
 
 // ---- ids -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // The id types and their prefixes. A reference is a bare id string; the prefix names the target type. There is no second spelling.
