@@ -18,28 +18,31 @@ The target domain model is **Entity + Action + Modifiers → Service**:
 
 Operational concepts such as strategy, capability, or routing mode may exist where they have an independently defined execution purpose. They must not become mandatory stages of authored domain identity merely because legacy code uses them.
 
-The authored SSOT is declarative knowledge. Runtime modules consume the same authored relationships through the published derived artifact; they do not invent separate source shapes or infer missing business relationships independently.
+The authored SSOT is `btnyc.json` in the current migration contract. The existing file is legacy service-first data and, per the supplied handoff, includes compiler-owned `compiled.*` sections; it must not be mistaken for an already-clean source/artifact separation. The migration must preserve its curated business knowledge while establishing one authoritative entity-first authored representation and a separate reproducible derived runtime artifact. Runtime modules must consume the published derived artifact—not independently read authored source, fall back to it, or treat the legacy hybrid as the final target. If implementation evidence requires the entity-first source to live in a separate file during migration, the design must name that file and define the transition explicitly; it must not create two competing authorities.
 
 ## 2. Target modules and concern ownership
 
-| Module / responsibility | Layer | Owns | Must not absorb |
-|---|---|---|---|
-| `nlp_engine.js` | Logic / Engine | Parse customer language into candidate entities, actions, modifiers, quantities, locations, negations, and evidence with provenance | Final domain resolution, pricing, confidence arithmetic, UI rendering |
-| `resolver.js` | Logic / Engine | Resolve `BookingContext` plus evidence against the domain graph into the canonical interpretation; own resolution decisions, branch/state consequences, and provenance | Confidence arithmetic, question-chain composition, route policy, pricing policy, UI behavior |
-| `confidence_engine.js` | Logic / Engine | Calculate `Cᵢ` / `Cₓ`, account for open and retired uncertainty against the applicable authored profile, and apply the declared confidence policy | Choosing the next question, resolving facts, composing recovery, price calculation |
-| `composer.js` | Logic / Engine | Compose valid question chains from entity scope, first-class dependencies, current evidence, and eligible questions | Confidence measurement, selecting the final quote route, price calculation, DOM rendering |
-| `recovery_engine.js` *(target responsibility; proposed file)* | Logic / Engine | Select the next useful evidence path from current open uncertainty and declared recovery affordances | Confidence measurement, question-chain mechanics, fact resolution, UI decisions |
-| `route_builder.js` | Logic / Engine | Build an honest supported route—exact, range, conditional, or diagnostic—from canonical resolved state and confidence output | Re-resolving facts, duplicating confidence arithmetic, calculating price, rendering |
-| `pricing_engine.js` | Logic / Engine | Calculate price from resolved work and explicit pricing rules, including modifiers and per-unit/per-visit semantics | Confidence calculation, recovery composition, route arbitration, caller-side pricing fallbacks |
-| `cart_logic.js` | Logic / Engine | Own cart-line identity, merge/transition rules, quantities, and cart totals under a declared contract | Re-resolving domain facts, recalculating confidence, redefining quote/pricing policy, rendering totals |
-| `orchestrator_engine.js` | Logic coordination / Glue role | Sequence canonical operations, manage workflow transitions, assemble the returned route/trace, and pass authoritative outputs between owners | Absorbing any engine’s calculations or introducing competing business rules |
-| `store.js` | State boundary | Provide the canonical state access API and subscriptions under its declared contract | Shadow state, domain interpretation, business decisions, presentation |
-| `appReducer.js` | State transition / Logic | Apply deterministic transitions for declared actions | I/O, DOM rendering, pricing, confidence, hidden orchestration |
-| `UIRenderer.js` | UI / Renderer | Purely render supplied resolved/view state into DOM; clear/re-render containers predictably; present supplied price, confidence, route, questions, chips, and messages | Business decisions, inference, SSOT interpretation, pricing/confidence/recovery calls, state mutation, parsing |
-| `AppController.js` | Controller / Glue | Bind DOM events to application commands; dispatch actions; manage interaction lifecycle and bootstrap | Domain calculations, policy, duplicated resolution, business logic in handlers |
-| `trace.js` | Observation / diagnostics | Capture and format workflow events, spans, provenance, and diagnostic payloads | Business decisions, pricing, confidence arithmetic, resolution authority |
-| Authored SSOT / schema | Knowledge | Canonical declarative domain facts, stable identities, relationships, questions, dependencies, effects, uncertainty profiles, policies, and pricing declarations; schema validates allowed shape | JavaScript execution, runtime decisions, generated indexes as authored authority |
-| Derived runtime artifact | Published knowledge artifact | Reproducible machine-oriented projection of validated authored source, with version/provenance | Hand-authored competing business facts, silent source fallback, hybrid authored/generated authority |
+| Module / responsibility | Layer | Current source / status | Owns | Must not absorb |
+|---|---|---|---|---|
+| `btnyc.json` — authored SSOT | Knowledge / source | **Current file at repo root.** Legacy service-first shape; the supplied handoff describes authored catalog data mixed with compiler-owned `compiled.*` sections. Do not hand-edit; use the prescribed patch/splice workflow for the legacy shape. The migration must establish one authoritative entity-first authored representation. | Canonical authored business knowledge: entities, shared actions/modifiers, services, stable IDs, questions, scopes, dependencies, option effects, uncertainty/retirement relations, confidence and recovery policies, pricing declarations, curated vocabulary and aliases. | Runtime execution, hidden business logic, generated indexes acting as a second source of truth, label-keyed relationships. |
+| Schema and independent validator | Knowledge / validation | `schema/btnyc_schema.json` and `test_harness/btnyc_v10_compiler.py` are the recorded legacy locations; inspect before changing. The entity-first schema/validator are deliverables of the SSOT migration. | Validate authored shape, IDs, references, scopes, dependencies, effects, uncertainty paths, policy thresholds, and composition constraints without deriving output. | Mutating authored data, generating expected values for behavioral tests, silently accepting missing knowledge. |
+| Compiler / derivation | Build / publish | `test_harness/btnyc_v10_compiler.py` plus `test_harness/tools/splice_compiled.py` are the recorded legacy path for the current shape. The final entity-first derivation contract must be explicitly versioned and independently tested. | Deterministically derive the runtime graph/artifact from valid authored source; preserve curated knowledge; report reproducibility/freshness. | Human-authored business decisions, independent validation responsibilities, hidden runtime fallbacks. |
+| Derived runtime artifact | Published knowledge artifact | **Must be a separate generated output in the target architecture.** Exact filename/location is to be established by the migration design; do not invent a path or assume today's hybrid `btnyc.json` already satisfies the boundary. | Reproducible machine-oriented projection of validated authored source, with schema/derivation/runtime compatibility and provenance. | Hand-authored competing business facts, source fallback, hybrid authored/generated authority. |
+| `qr.html` — deployment shell / current inline-module host | Deployment / UI shell | **Current app/deployment file.** Per Prompt 2 and the supplied handoff, it contains five inline JavaScript blocks: `pricing_engine`, `orchestrator_engine`, `UIRenderer`, `cart_logic`, and `AppController`; four other modules are loaded from `modules/`. Verify the actual checkout and script order before edits. | Host the deployed interface, markup/templates, and script loading/bootstrap boundaries required by the current packaging model. Its inline placement is a packaging fact, not ownership of the business concerns implemented inside those blocks. | Becoming a catch-all business-logic owner; maintaining duplicated inline and external implementations; reading authoring source as a runtime fallback. |
+| `nlp_engine.js` | Logic / Engine | External module: `modules/nlp_engine` in the supplied current-state handoff; verify the checkout and exact filename. | Parse customer language into candidate entities, actions, modifiers, quantities, locations, negations, and evidence with provenance. | Final domain resolution, pricing, confidence arithmetic, UI rendering. |
+| `resolver.js` | Logic / Engine | **Target module; not yet a standalone file per Prompt 2.** Its current responsibility is embedded in existing runtime code, including inline blocks in `qr.html`; inspect `HANDOFF_CURRENT_STATE.md` §3 and actual call sites. | Resolve `BookingContext` plus evidence against the domain graph into the canonical interpretation; own resolution decisions, branch/state consequences, and provenance. | Confidence arithmetic, question-chain composition, route policy, pricing policy, UI behavior. |
+| `confidence_engine.js` | Logic / Engine | **Target module; not yet a standalone file per Prompt 2.** Current confidence logic is recorded as partly inside `pricing_engine` and gateway paths; verify before moving it. | Calculate `Cᵢ` / `Cₓ`, account for open and retired uncertainty against the applicable authored profile, and apply the declared confidence policy. | Choosing the next question, resolving facts, composing recovery, price calculation. |
+| `composer.js` | Logic / Engine | **Target module; not yet a standalone file per Prompt 2.** Locate current question-chain logic in the actual checkout before extraction. | Compose valid question chains from entity scope, first-class dependencies, current evidence, and eligible questions. | Confidence measurement, selecting the final quote route, price calculation, DOM rendering. |
+| `recovery_engine.js` *(target responsibility; proposed file)* | Logic / Engine | **Target module; not yet a standalone file.** Recovery selection must be separated from the adjacent current responsibilities during later runtime work. | Select the next useful evidence path from current open uncertainty and declared recovery affordances. | Confidence measurement, question-chain mechanics, fact resolution, UI decisions. |
+| `route_builder.js` | Logic / Engine | **Target module; not yet a standalone file per Prompt 2.** Route construction/validation currently exists in the runtime flow; verify the exact owner and callers. | Build an honest supported route—exact, range, conditional, or diagnostic—from canonical resolved state and confidence output. | Re-resolving facts, duplicating confidence arithmetic, calculating price, rendering. |
+| `pricing_engine.js` | Logic / Engine | Inline block in `qr.html` per the supplied current-state handoff; verify against the checkout before editing. | Calculate price from resolved work and explicit pricing rules, including modifiers and per-unit/per-visit semantics. | Confidence calculation, recovery composition, route arbitration, caller-side pricing fallbacks. |
+| `cart_logic.js` | Logic / Engine | Inline block in `qr.html` per the supplied current-state handoff; verify against the checkout before editing. | Own cart-line identity, merge/transition rules, quantities, and cart totals under a declared contract. | Re-resolving domain facts, recalculating confidence, redefining quote/pricing policy, rendering totals. |
+| `orchestrator_engine.js` | Logic coordination / Glue role | Inline block in `qr.html` per the supplied current-state handoff; verify against the checkout before editing. | Sequence canonical operations, manage workflow transitions, assemble the returned route/trace, and pass authoritative outputs between owners. | Absorbing any engine’s calculations or introducing competing business rules. |
+| `store.js` | State boundary | External module: `modules/store` in the supplied current-state handoff; verify the checkout and exact filename. | Provide the canonical state access API and subscriptions under its declared contract. | Shadow state, domain interpretation, business decisions, presentation. |
+| `appReducer.js` | State transition / Logic | External module: `modules/appReducer` in the supplied current-state handoff; verify the checkout and exact filename. | Apply deterministic transitions for declared actions. | I/O, DOM rendering, pricing, confidence, hidden orchestration. |
+| `UIRenderer.js` | UI / Renderer | Inline block in `qr.html` per the supplied current-state handoff; verify against the checkout before editing. | Purely render supplied view/resolved state into DOM; clear/re-render containers predictably; present supplied price, confidence, route, questions, chips, and messages. | Business decisions, inference, SSOT interpretation, pricing/confidence/recovery calls, state mutation, parsing. |
+| `AppController.js` | Controller / Glue | Inline block in `qr.html` per the supplied current-state handoff; verify against the checkout before editing. | Bind DOM events to application commands; dispatch actions; manage interaction lifecycle and bootstrap. | Domain calculations, policy, duplicated resolution, business logic in handlers. |
+| `trace.js` | Observation / diagnostics | External module: `modules/trace` in the supplied current-state handoff; verify the checkout and exact filename. | Capture and format workflow events, spans, provenance, and diagnostic payloads. | Business decisions, pricing, confidence arithmetic, resolution authority. |
 
 **One owner means one owner of meaning and canonical computation.** Other modules may call that owner and consume its result. A concern is still misplaced if another module computes it, even when there is only one implementation and no duplicate formula.
 
@@ -139,7 +142,19 @@ Authored SSOT → schema validation → derivation/publish gate → derived runt
 
 This is a responsibility guide, not a mandatory literal call graph. The orchestrator sequences the calls; the precise ordering and repetition depend on the workflow state. The important invariant is ownership and authority: a result is produced by its owner, consumed by callers, and never independently re-derived by a downstream layer.
 
-## 5. Entity-first SSOT contract consumed by the modules
+## 5. Authored SSOT, compiler, and runtime artifact boundary
+
+These are separate responsibilities, even if the legacy implementation currently combines some of them:
+
+1. **Authoring source — `btnyc.json` under the migration contract:** the authoritative business knowledge, transformed to the entity-first model. It is not hand-edited. For the current legacy shape, use `test_harness/tools/ssot_patch.js` and then `test_harness/tools/splice_compiled.py` according to their inspected invocation conventions. Do not assume those legacy tools already support the new shape.
+2. **Schema and validation:** reject invalid source independently of derivation. Validation must be callable without generating output.
+3. **Compiler/derivation:** derive runtime structures deterministically from valid authored knowledge; test this implementation directly for correctness, preservation, determinism, and idempotence.
+4. **Published runtime artifact:** a separate generated output with explicit version/provenance. Runtime code consumes this compatible artifact only. The exact output path/name must be established from repository evidence and the migration design, not guessed in this map.
+5. **Runtime consumers:** all Logic modules use the same published knowledge contract. No module may invent a local copy of the catalog, read the authoring source as an alternative authority, or silently fall back to legacy/hybrid data.
+
+The current `btnyc.json` is therefore both **the file being migrated** and **the legacy shape that must be disentangled**; it is not permission to preserve generated `compiled.*` data as part of the steady-state human-authored source. Preserve curated values before removing or regenerating any hybrid section.
+
+## 6. Entity-first SSOT contract consumed by the modules
 
 The modules consume projections of one canonical graph; they do not each define their own data model.
 
@@ -154,7 +169,7 @@ The modules consume projections of one canonical graph; they do not each define 
 
 Complexity is not a universal scalar. Skill tier, risk tier, and batch-risk compounding are independent concepts. Complexity may affect the uncertainty landscape and policy threshold; it must not be used as a substitute for explicitly modeled uncertainty.
 
-## 6. Current implementation facts needed for migration
+## 7. Current implementation facts needed for migration
 
 These notes are retained from the supplied legacy map only where they help locate responsibilities or protect the transition. They are not the target architecture and must be re-verified against the actual repository before a change. The supplied map describes a `T163` snapshot; its line numbers, counts, and tracked violations are historical, not current guarantees.
 
@@ -172,7 +187,7 @@ These notes are retained from the supplied legacy map only where they help locat
 
 Do not carry forward the old map's line numbers, historical task labels, closed violation narratives, prototype status, mutation counts, or temporary pending-decision numbers as durable architecture. Those belong in the engineering history/ledger if still relevant and current.
 
-## 7. Ownership and migration tests
+## 8. Ownership and migration tests
 
 A test is useful when it can fail for the defect it claims to detect. Test the actual boundary and behavior, not merely the presence of a name, a green count, or a copied implementation.
 
@@ -199,7 +214,7 @@ Required boundary outcomes:
 
 Do not optimize architecture to satisfy vanity counts. Layer assignments are authoritative until deliberately changed; a metric must not be improved by relabeling the code that violates the boundary.
 
-## 8. Change protocol
+## 9. Change protocol
 
 Before changing a component:
 
@@ -211,7 +226,7 @@ Before changing a component:
 6. Run relevant tests and classify failures by whether they are caused by the change, pre-existing, stale, or infrastructural. Do not perform unrelated cleanup as a prerequisite.
 7. Update this map only when a durable responsibility or verified implementation location changes. Record chronological evidence in the engineering history, not as permanent law in this map.
 
-## 9. Ownership test
+## 10. Ownership test
 
 If a proposed change cannot identify its concern owner, authored source relationship, consumers, and observable proof of ownership, do not add another branch or fallback. Correct the source model or responsibility boundary first.
 
