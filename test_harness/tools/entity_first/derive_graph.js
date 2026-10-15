@@ -11,6 +11,10 @@
  * confidence tables, retirement and recovery tables, the composition index, the picker graph. It contains no authored fact the source does not.
  *
  * Validation and derivation are separate: derive() REFUSES a source that does not pass validate_source.validateFull(); it does not repair it and it does not guess.
+ *
+ * The artifact states what it is (P-SYSTEM-VERSIONS, R-SYSTEM-INDEXPROXY; T177): `$source` names the source it came from (file, schema version, content hash) and the derivation version that produced it;
+ * `interface_version` is the contract a consuming module checks before it reads anything; `manifest.indexes` names, for every index it holds, the Layer Map module that consumes it. An index with
+ * no consumer is not emitted. publish.js gates on all of it.
  */
 const fs = require('fs');
 const lib = require('./lib.js');
@@ -19,6 +23,27 @@ const V = require('./validate_source.js');
 class InvalidSourceError extends Error { constructor(result) { super(`derivation refused: the source has ${result.errors.length} validation finding(s); first: [${result.errors[0].code}] ${result.errors[0].path}: ${result.errors[0].msg}`); this.result = result; this.name = 'InvalidSourceError'; } }
 
 const sortKeys = o => Object.fromEntries(Object.keys(o).sort().map(k => [k, o[k]]));
+
+// Which module reads each index. The module names are the Layer Map's (COMPONENT_LAYER_MAP.md, Module / responsibility column); verify_entity_first_publish.js checks every name against that file, so a consumer
+// cannot be invented. Every consumer below is a TARGET module that is not yet a standalone file (or is the CMS, not yet built): that is the honest state today, and it is recorded as such rather than
+// implied. The time bound is the dual-source transition's end date (ssot/TRANSITION_DUALSOURCE.md).
+const CONSUMER_STATUS = 'target; not yet extracted from the runtime, by the Layer Map';
+const INDEX_CONSUMERS = {
+  entities: [{ module: 'resolver.js', reads: 'entity kind, ancestors and ownership while resolving a BookingContext' }],
+  questions: [{ module: 'composer.js', reads: 'question scope and dependencies when composing a chain' }],
+  option_bridge: [{ module: 'composer.js', reads: 'option id <-> label, for the one place a label is shown' }, { module: 'pricing_engine.js', reads: 'the effects an answer declares' }],
+  chains: [{ module: 'composer.js', reads: 'resolved ask order and edges per service / composition' }],
+  confidence: [{ module: 'confidence_engine.js', reads: 'the uncertainty profile, thresholds and retirement per service / composition' }],
+  retirement_index: [{ module: 'confidence_engine.js', reads: 'which classes an answer retires' }],
+  recovery: [{ module: 'recovery_engine.js', reads: 'open uncertainty and the declared recovery path' }],
+  composition_index: [{ module: 'resolver.js', reads: '(entity, action, modifiers) -> curated service or default composition' }],
+  picker: [{ module: 'resolver.js', reads: 'group entry mode, components and symptoms' }],
+  used_by: [{ module: 'CMS (authoring)', reads: 'impact of editing a question, tag or modifier', status: 'not yet built; the Layer Map names the CMS as the single authoring surface' }],
+  alias_index: [{ module: 'nlp_engine.js', reads: 'customer words that name an entity' }],
+  action_vocabulary: [{ module: 'nlp_engine.js', reads: 'customer verb forms per action' }],
+  formula_inputs: [{ module: 'pricing_engine.js', reads: 'which answers each pricing formula reads, and which formulas scale quantity themselves' }],
+  price_influence: [{ module: 'UIRenderer.js', reads: 'whether a question changes the price (the badge), supplied through a Logic selector' }],
+};
 
 function derive(src, sourceText, opts = {}) {
   const check = opts.validated || V.validateFull(src);
@@ -102,12 +127,46 @@ function derive(src, sourceText, opts = {}) {
   for (const { n } of owners) for (const s of n.intake.steps) (usedBy.questions[s.question_id] = usedBy.questions[s.question_id] || []).push(n.id);
   for (const q of questions.values()) for (const o of q.options || []) { if (o.modifier_id) (usedBy.modifiers[o.modifier_id] = usedBy.modifiers[o.modifier_id] || []).push(`${q.id}#${o.id}`); for (const t of o.tag_ids || []) (usedBy.tags[t] = usedBy.tags[t] || []).push(`${q.id}#${o.id}`); }
 
+  // ---- customer vocabulary (T177) ----
+  const normW = x => String(x).toLowerCase().replace(/\s+/g, ' ').trim();
+  const aliasIndex = {};
+  for (const e of src.entities) for (const w of [normW(e.label), ...e.aliases]) { (aliasIndex[w] = aliasIndex[w] || []); if (!aliasIndex[w].includes(e.id)) aliasIndex[w].push(e.id); }
+  for (const k of Object.keys(aliasIndex)) aliasIndex[k].sort();
+  const av = src.vocabulary.action_vocabulary;
+  const actionVocabulary = Object.fromEntries(av.actions.map(a => [a.action_id, { infinitive: a.infinitive_for_adlib, forms: [...new Set([...a.all_forms, ...(a.synonym_clusters || []).flatMap(c => c.forms)])].sort(), clusters: (a.synonym_clusters || []).map(c => ({ infinitive: c.infinitive, forms: c.forms.slice() })) }]));
+  const unmappedVerbs = Object.fromEntries(av.unmapped_verbs.map(v => [v.verb, { infinitive: v.infinitive_for_adlib, forms: [...new Set([...v.all_forms, ...(v.synonym_clusters || []).flatMap(c => c.forms)])].sort() }]));
+
+  // ---- pricing: the answers each formula reads, and whether a question changes a price (T177) ----
+  // The set of questions a formula owns is DERIVED here from its inputs and fee rows; it replaces the hand-kept qr.html FORMULA_CONSUMED_KEYS.
+  const formulaInputs = {};
+  for (const f of R.pricing_formulas) {
+    const consumed = new Set(); for (const row of f.issue_type_fees || []) consumed.add(row.question_id);
+    for (const inp of f.inputs || []) if (inp.question_id) consumed.add(inp.question_id);
+    if (!(f.inputs || []).length && !consumed.size && !f.qty_aware) continue;
+    formulaInputs[f.id] = { qty_aware: f.qty_aware === true, consumed_question_ids: [...consumed].sort(), inputs: lib.clone(f.inputs || []) };
+  }
+  const QUOTE_EFFECTS = ['minutes', 'quantity', 'complexity', 'branch', 'checkout_state', 'materials'];
+  const priceInfluence = {};
+  for (const [qid, q] of questions) {
+    if (q.instance_of) continue; // an instance question is the same question under another noun
+    const os = optionsOf(q) || []; const priced = os.filter(o => o.affects.includes('price')).map(o => o.id);
+    const claim = q.runtime_compat && typeof q.runtime_compat.affects_price === 'boolean' ? q.runtime_compat.affects_price : null;
+    priceInfluence[qid] = { prices: priced.length > 0, changes_quote: priced.length > 0 || q.type === 'numeric_multiplier' || os.some(o => QUOTE_EFFECTS.some(a => o.affects.includes(a))), price_option_ids: priced, legacy_claim: claim };
+  }
+
   const graph = {
+    $source: { path: 'ssot/btnyc_source.json', sha256: sourceText === undefined ? null : lib.sha(sourceText), source_schema_version: src.source_schema_version, derivation_version: lib.DERIVATION_VERSION }, // the four keys the dual-source ledger's detector reads (transition_status.js PROVENANCE_KEYS)
+    interface_version: lib.INTERFACE_VERSION,
     derivation: { version: lib.DERIVATION_VERSION, source: 'ssot/btnyc_source.json', source_schema_version: src.source_schema_version, source_sha256: sourceText === undefined ? null : lib.sha(sourceText), generated: 'by test_harness/tools/entity_first/derive_graph.js; never edit by hand' },
     counts: { entities: entities.size, questions: questions.size, options_authored: [...questions.values()].reduce((n, q) => n + (q.options ? q.options.length : 0), 0), option_bridge_entries: Object.keys(optionBridge).length, /* an instance question that carries no options of its own is bridged under its own id too */ services: owners.filter(o => o.kind === 'service').length, default_compositions: owners.filter(o => o.kind === 'composition').length, uncertainty_classes: classes.size, composition_points: Object.keys(points).length, curated_only_points: Object.values(points).filter(p => p.curated_only).length },
     entities: sortKeys(entityIndex), questions: sortKeys(questionIndex), option_bridge: sortKeys(optionBridge), chains: sortKeys(chains), confidence: sortKeys(confidence), retirement_index: sortKeys(retiresBy), recovery: sortKeys(recovery),
-    composition_index: sortKeys(points), picker: sortKeys(picker), used_by: { questions: sortKeys(usedBy.questions), tags: sortKeys(usedBy.tags), modifiers: sortKeys(usedBy.modifiers) },
+    composition_index: sortKeys(points), picker: sortKeys(picker), alias_index: sortKeys(aliasIndex), action_vocabulary: { actions: sortKeys(actionVocabulary), unmapped_verbs: sortKeys(unmappedVerbs) }, formula_inputs: sortKeys(formulaInputs), price_influence: sortKeys(priceInfluence), used_by: { questions: sortKeys(usedBy.questions), tags: sortKeys(usedBy.tags), modifiers: sortKeys(usedBy.modifiers) },
   };
+  Object.assign(graph.counts, { alias_words: Object.keys(aliasIndex).length, aliases: src.entities.reduce((n, e) => n + e.aliases.length, 0), action_vocabulary_actions: av.actions.length, unmapped_verbs: av.unmapped_verbs.length, formulas_with_inputs: Object.keys(formulaInputs).length,
+    price_influence_questions: Object.keys(priceInfluence).length, questions_that_price: Object.values(priceInfluence).filter(x => x.prices).length });
+  // the manifest: every index this artifact holds, and who reads it (R-SYSTEM-INDEXPROXY). An index with no consumer shows up here as an empty list, which publish.js refuses.
+  const held = Object.keys(graph).filter(k => !['$source', 'interface_version', 'derivation', 'counts', 'manifest'].includes(k));
+  graph.manifest = { consumer_status: CONSUMER_STATUS, indexes: Object.fromEntries(held.map(k => [k, { consumers: lib.clone(INDEX_CONSUMERS[k] || []) }])) };
   return graph;
 }
 
@@ -127,4 +186,4 @@ function main() {
   return 0;
 }
 if (require.main === module) process.exit(main());
-module.exports = { derive, InvalidSourceError };
+module.exports = { derive, InvalidSourceError, INDEX_CONSUMERS, CONSUMER_STATUS };

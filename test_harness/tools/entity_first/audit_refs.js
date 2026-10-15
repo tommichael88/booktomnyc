@@ -16,6 +16,7 @@ const lib = require('./lib.js');
 const PINNED = [
   { site: '$.entities[].questions[].options[].id', reason: 'an option id is a slug of its label; two labels slug to a word that is also a tag name (the id is scoped to its question and is never a reference by itself)' },
   { site: '$.entities[].uncertainty_classes[].retired_by[].option_ids[]', reason: 'option_ids hold option ids (scoped to retired_by.question_id); same coincidence as the option id above' },
+  { site: '$.registries.pricing_formulas[].inputs[].option_ids[]', reason: 'a formula input names the options it reads by option id (scoped to its question_id); the option id high_ceiling equals the tag name high_ceiling by slug' },
   { site: '$.registries.tags[].answers[].option_id', reason: 'a tag answer is {question_id, option_id}; the option id equals a tag name by slug' },
   { site: '$.entities[].services[].pricing.default_estimates.disclaimer', reason: 'disclaimer is an estimate-disclaimer type (meta.estimate_disclaimers key), not a checkout state; the two vocabularies share a word' },
   { site: '$.entities[].default_compositions[].pricing.default_estimate.disclaimer', reason: 'as above' },

@@ -13,6 +13,7 @@
 const fs = require('fs'), path = require('path');
 const lib = require('./lib.js');
 const refs = require('./refs.js');
+const vocab = require('./vocabulary.js');
 const { clone, stripId } = lib;
 
 function project(src) {
@@ -175,7 +176,8 @@ function project(src) {
   out.furniture_catalog = R.furniture.map(f => { const { id, ...rest } = clone(f); return rest; });
   out.checkout_states = {}; for (const c of R.checkout_states) { const { id, ...rest } = clone(c); out.checkout_states[stripId('chk', id)] = rest; }
   out.pricing_formulas = {};
-  { const fs_ = clone(R.pricing_formulas); refs.inverse(fs_, refs.RULES.formulas, ctx);
+  { const fs_ = clone(R.pricing_formulas); for (const f of fs_) { delete f.inputs; delete f.qty_aware; } // source-only (T177): which answers a formula reads, and that it scales quantity; the runtime reads them from code today
+    refs.inverse(fs_, refs.RULES.formulas, ctx);
     for (const f of fs_) {
       const { id, ...rest } = f;
       if (Array.isArray(rest.issue_type_fees)) rest.issue_type_fees = Object.fromEntries(rest.issue_type_fees.map(r => { const { question_id, option_id, modifier_id, ...more } = r; return [labelOf(question_id, option_id), Object.assign(modifier_id !== undefined ? { modifier_ref: stripId('mod', modifier_id) } : {}, more)]; }));
@@ -188,11 +190,11 @@ function project(src) {
 
   // ---- policy and vocabulary ----
   const gr = clone(src.policy.global_rules); refs.inverse(gr, refs.RULES.global_rules, ctx);
-  gr.modifiers = {}; for (const m of R.modifiers) { const { id, affects, ...rest } = clone(m); gr.modifiers[stripId('mod', id)] = rest; }
+  gr.modifiers = {}; for (const m of R.modifiers) { if (m.role === 'condition') continue; /* a domain condition (T177) is not a fee row; btnyc.json has no such thing */ const { id, affects, ...rest } = clone(m); gr.modifiers[stripId('mod', id)] = rest; }
   out.global_rules = gr;
   out.ui_config = clone(src.policy.ui_config); refs.inverse(out.ui_config, refs.RULES.ui_config, ctx);
-  out.adlib_phrase_overrides = clone(src.vocabulary.adlib_phrase_overrides); out.negation_library = clone(src.vocabulary.negation_library);
-  { const objs = clone(src.vocabulary.nlp_objects); refs.inverse(objs, refs.RULES.nlp_objects, ctx); const fb = clone(src.vocabulary.nlp_default_fallback); refs.inverse(fb, refs.RULES.nlp_default_fallback, ctx); out.intent_mappings = { default_fallback: fb, objects: objs }; }
+  out.adlib_phrase_overrides = clone(src.vocabulary.adlib_phrase_overrides); out.negation_library = Object.assign(clone(src.vocabulary.negation_library), { action_conjugations: vocab.joinActionVocabulary(src.vocabulary.action_vocabulary, R.actions) });
+  { const objs = clone(src.vocabulary.nlp_objects); for (const o of objs) delete o.resolves_to; /* source-only (T177): which entity the object feeds */ refs.inverse(objs, refs.RULES.nlp_objects, ctx); const fb = clone(src.vocabulary.nlp_default_fallback); refs.inverse(fb, refs.RULES.nlp_default_fallback, ctx); out.intent_mappings = { default_fallback: fb, objects: objs }; }
 
   // ---- routing_archetypes: the compiler's seed (curated part) ----
   out.routing_archetypes = {};

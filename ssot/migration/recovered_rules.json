@@ -1,0 +1,507 @@
+{
+  "rules_version": "1.0.0",
+  "target_source_schema_version": "1.1.0",
+  "purpose": "Business rules the legacy runtime applies in code (qr.html) that the entity-first source must state as data. The migration applies this file on top of btnyc.json (migrate_legacy.js); nothing here is re-derived by a tool. Every rule cites the code it was read from; verify_entity_first_pricing_rules.js fails when a cited line no longer exists, so a rule cannot outlive its evidence unnoticed.",
+  "evidence_as_of": {
+    "file": "qr.html",
+    "sha256": "fa009b7f55e0b85b1e4d8afadc87cc2b15efd66c80b49bc2021c43754e0cb57f",
+    "note": "line numbers are as of this hash; the staleness test searches by quote, so a moved line only warns"
+  },
+  "formula_inputs": {
+    "fml.hardware_install_formula": [
+      {
+        "name": "install type",
+        "role": "select_branch",
+        "question_id": "q.install_type",
+        "branches": [
+          {
+            "branch": "swap",
+            "formula_path": "swap",
+            "option_ids": [
+              "swapping_existing_hardware_same_holes"
+            ]
+          },
+          {
+            "branch": "new_holes",
+            "formula_path": "new_holes",
+            "option_ids": [
+              "new_holes_needed_measure_drill_mark"
+            ]
+          }
+        ],
+        "default_branch": "swap",
+        "affects": [
+          "price",
+          "minutes"
+        ],
+        "note": "the code matches the chosen label against /new hole/i or /drilling/i; every other answer, and no answer, is the swap rate. Recovered here as an explicit option-to-branch table so that the meaning no longer depends on label wording.",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1336,
+            "quote": "const isNewHoles = /new hole/i.test(installType) || /drilling/i.test(installType);"
+          },
+          {
+            "file": "qr.html",
+            "line": 1338,
+            "quote": "const rate = isNewHoles ? (f.new_holes || {}) : (f.swap || {});"
+          }
+        ]
+      },
+      {
+        "name": "units",
+        "role": "quantity",
+        "source": "booking",
+        "affects": [
+          "price",
+          "minutes"
+        ],
+        "note": "units = the booked quantity. The code first tries an `answers.unit_count` key; no intake module of that name exists (see dropped_legacy_consumed_keys).",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1337,
+            "quote": "const unitsNum = parseInt(answers.unit_count) || qty || 1;"
+          }
+        ]
+      }
+    ],
+    "fml.tile_repair_formula": [
+      {
+        "name": "tile count",
+        "role": "quantity",
+        "source": "booking",
+        "param": "minutes_per_tile",
+        "affects": [
+          "minutes"
+        ],
+        "note": "tile count = the booked quantity; `answers.tile_count` is not an intake module.",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1421,
+            "quote": "const count = parseInt(answers.tile_count) || qty || 1;"
+          }
+        ]
+      },
+      {
+        "name": "grout repair",
+        "role": "trigger_modifier",
+        "question_id": "q.grout_repair",
+        "option_ids": [
+          "yes"
+        ],
+        "modifier_param": "grout_modifier_ref",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1423,
+            "quote": "if (answers.grout_repair === 'Yes') {"
+          }
+        ]
+      },
+      {
+        "name": "waterproof area",
+        "role": "trigger_modifier",
+        "question_id": "q.waterproof_area",
+        "option_ids": [
+          "yes_requires_membrane"
+        ],
+        "modifier_param": "membrane_modifier_ref",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1448,
+            "quote": "if (answers.waterproof_area === 'Yes (Requires membrane)') {"
+          }
+        ]
+      },
+      {
+        "name": "water damage",
+        "role": "trigger_modifier",
+        "question_id": "q.water_damage",
+        "option_ids": [
+          "yes"
+        ],
+        "modifier_param": "water_damage_modifier_ref",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1453,
+            "quote": "if (answers.water_damage === 'Yes') {"
+          }
+        ]
+      },
+      {
+        "name": "ceiling height",
+        "role": "trigger_modifier",
+        "question_id": "q.ceiling_height",
+        "option_ids": [
+          "high_ceiling"
+        ],
+        "modifier_param": "high_ceiling_modifier_ref",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1458,
+            "quote": "if (answers.ceiling_height === 'High ceiling') {"
+          }
+        ]
+      },
+      {
+        "name": "disposal",
+        "role": "trigger_modifier",
+        "question_id": "q.disposal",
+        "option_ids": [
+          "yes"
+        ],
+        "modifier_param": "disposal_modifier_ref",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1463,
+            "quote": "if (answers.disposal === 'Yes') {"
+          }
+        ]
+      }
+    ],
+    "fml.drywall_repair_formula": [
+      {
+        "name": "area",
+        "role": "quantity",
+        "source": "answer_values",
+        "question_id": "q.area_sqft",
+        "param": "minutes_per_sqft",
+        "default": 2,
+        "affects": [
+          "minutes"
+        ],
+        "values": [
+          {
+            "option_id": "2_sq_ft_a_small_patch_about_a_sheet_of_paper",
+            "value": 2
+          },
+          {
+            "option_id": "10_sq_ft_about_a_dinner_plate_to_basketball_sized_hole",
+            "value": 10
+          },
+          {
+            "option_id": "25_sq_ft_a_few_feet_across_e_g_a_section_of_hallway_wall",
+            "value": 25
+          },
+          {
+            "option_id": "50_sq_ft_or_more_a_large_wall_section_or_multiple_spots",
+            "value": 50
+          }
+        ],
+        "note": "the code takes parseInt() of the chosen LABEL (2, 10, 25, 50) and falls back to 2. The numbers are written down here as data so that no label text is parsed. KNOWN LIMIT, stated not fixed: the top answer is \"50 sq ft or more\" and the engine prices it as exactly 50, so a larger area is under-estimated; an exact-count capture for the open-ended band is the same decision as the dormant item_count_overflow_formula (v9.6).",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1471,
+            "quote": "const sqft = parseInt(answers.area_sqft) || 2;"
+          }
+        ]
+      },
+      {
+        "name": "texture match",
+        "role": "trigger_modifier",
+        "question_id": "q.texture_match",
+        "option_ids": [
+          "yes"
+        ],
+        "modifier_param": "texture_modifier_ref",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1476,
+            "quote": "if (answers.texture_match === 'Yes') {"
+          }
+        ]
+      },
+      {
+        "name": "patch",
+        "role": "constant_modifier",
+        "modifier_param": "patch_modifier_ref",
+        "note": "applied to every drywall repair, whatever the answers",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1473,
+            "quote": "const patchMod = _mod(f.patch_modifier_ref);"
+          }
+        ]
+      }
+    ],
+    "fml.furniture_repair_formula": [
+      {
+        "name": "units",
+        "role": "quantity",
+        "source": "booking",
+        "param": "per_unit_minutes",
+        "scales": "(quantity - 1) * per_unit_minutes",
+        "affects": [
+          "minutes"
+        ],
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1502,
+            "quote": "if (qty > 1) extraMin += (f.per_unit_minutes || 0) * (qty - 1);"
+          }
+        ]
+      }
+    ],
+    "fml.pax_wardrobe_formula": [
+      {
+        "name": "cabinet frames",
+        "role": "quantity",
+        "source": "option_qty_value",
+        "question_id": "q.pax_cabinet_count",
+        "param": "coefficients.cabinet_frame_hours",
+        "affects": [
+          "minutes",
+          "price"
+        ],
+        "note": "each count is the chosen option's qty_value; the code falls back to parseInt() of the label, which would read \"6 or more\" as 6 and is not reproduced",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1524,
+            "quote": "const cabinet = resolveQtyValue('pax_cabinet_count');"
+          },
+          {
+            "file": "qr.html",
+            "line": 1522,
+            "quote": "return chosen?.qty_value ?? (parseInt(label) || 0);"
+          }
+        ]
+      },
+      {
+        "name": "hinge doors",
+        "role": "quantity",
+        "source": "option_qty_value",
+        "question_id": "q.pax_hinge_count",
+        "param": "coefficients.hinge_door_hours",
+        "affects": [
+          "minutes",
+          "price"
+        ],
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1525,
+            "quote": "const hinge = resolveQtyValue('pax_hinge_count');"
+          }
+        ]
+      },
+      {
+        "name": "sliding doors",
+        "role": "quantity",
+        "source": "option_qty_value",
+        "question_id": "q.pax_sliding_count",
+        "param": "coefficients.sliding_door_hours",
+        "affects": [
+          "minutes",
+          "price"
+        ],
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1526,
+            "quote": "const sliding = resolveQtyValue('pax_sliding_count');"
+          }
+        ]
+      },
+      {
+        "name": "interior items",
+        "role": "quantity",
+        "source": "option_qty_value",
+        "question_id": "q.pax_interior_count",
+        "param": "coefficients.interior_item_hours",
+        "affects": [
+          "minutes",
+          "price"
+        ],
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1527,
+            "quote": "const interiors = resolveQtyValue('pax_interior_count');"
+          }
+        ]
+      }
+    ],
+    "fml.buy_the_hour_qty_gate_formula": [
+      {
+        "name": "item count",
+        "role": "select_branch",
+        "question_id": "q.buy_the_hour_qty",
+        "branches": [
+          {
+            "branch": "single_item_flat",
+            "option_ids": [
+              "1_item"
+            ]
+          },
+          {
+            "branch": "multi_item_hourly",
+            "option_ids": [
+              "more_than_1_item"
+            ]
+          }
+        ],
+        "default_branch": "multi_item_hourly",
+        "affects": [
+          "price",
+          "minutes"
+        ],
+        "note": "exactly \"1 item\" is the flat price; any other answer, and no answer, is hourly billing with the minimum billable hour",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1581,
+            "quote": "if (answers.buy_the_hour_qty === '1 item') {"
+          }
+        ]
+      }
+    ],
+    "fml.item_count_overflow_formula": [
+      {
+        "name": "exact count",
+        "role": "quantity",
+        "source": "option_qty_value",
+        "affects": [
+          "price",
+          "minutes"
+        ],
+        "note": "applies to the options that name this formula (formula_id) and carry a qty_value: the open-ended top band prices its own flat modifier plus the overflow rate beyond the service anchor",
+        "evidence": [
+          {
+            "file": "qr.html",
+            "line": 1392,
+            "quote": "if (resp?.formula_override === 'item_count_overflow_formula' && resp.modifier_ref && _mods[resp.modifier_ref]) flat = _mods[resp.modifier_ref];"
+          },
+          {
+            "file": "qr.html",
+            "line": 1393,
+            "quote": "if (exactQty == null && resp?.qty_value != null) exactQty = resp.qty_value;"
+          }
+        ]
+      }
+    ]
+  },
+  "formula_qty_aware": {
+    "formulas": [
+      "fml.furniture_repair_formula",
+      "fml.tile_repair_formula",
+      "fml.hardware_install_formula",
+      "fml.buy_the_hour_qty_gate_formula"
+    ],
+    "meaning": "the formula already accounts for the booked quantity, so the runtime must not also multiply by it (T102, T103, T135)",
+    "evidence": [
+      {
+        "file": "qr.html",
+        "line": 2518,
+        "quote": "const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula', 'buy_the_hour_qty_gate_formula']);"
+      }
+    ]
+  },
+  "dropped_legacy_consumed_keys": [
+    {
+      "formula": "fml.tile_repair_formula",
+      "key": "tile_count",
+      "reason": "no intake module has this key (absent from btnyc.json intake_modules); the quantity is the booked quantity",
+      "evidence": [
+        {
+          "file": "qr.html",
+          "line": 2864,
+          "quote": "tile_repair_formula: ['ceiling_height', 'disposal', 'grout_repair', 'tile_count', 'water_damage', 'waterproof_area'],"
+        }
+      ]
+    },
+    {
+      "formula": "fml.hardware_install_formula",
+      "key": "unit_count",
+      "reason": "no intake module has this key; the quantity is the booked quantity",
+      "evidence": [
+        {
+          "file": "qr.html",
+          "line": 2865,
+          "quote": "hardware_install_formula: ['install_type', 'unit_count'],"
+        }
+      ]
+    },
+    {
+      "formula": "fml.item_count_overflow_formula",
+      "key": "__exact_count",
+      "reason": "a pseudo-key for a numeric-count capture that no UI provides (the formula is dormant by its own note); the exact count comes from an option qty_value",
+      "evidence": [
+        {
+          "file": "qr.html",
+          "line": 2866,
+          "quote": "item_count_overflow_formula: ['__exact_count'],"
+        }
+      ]
+    }
+  ],
+  "legacy_consumed_keys_note": {
+    "summary": "qr.html FORMULA_CONSUMED_KEYS names the answers a formula owns so that the generic per-answer modifier loop does not charge them twice. The source derives the same set from formula inputs (ssot graph: formula_inputs.consumed_question_ids). pax_wardrobe_formula and buy_the_hour_qty_gate_formula read their answers too but are absent from that table; no option of those questions carries a modifier, so the omission never double-charged anything.",
+    "evidence": [
+      {
+        "file": "qr.html",
+        "line": 2862,
+        "quote": "drywall_repair_formula: ['area_sqft', 'texture_match'],"
+      },
+      {
+        "file": "qr.html",
+        "line": 2863,
+        "quote": "furniture_repair_formula: ['issue'],"
+      }
+    ]
+  },
+  "condition_modifiers": [
+    {
+      "id": "mod.hidden_cables",
+      "label": "Hidden cables",
+      "description": "the customer wants the cables concealed in the wall; the job gains an in-wall power step",
+      "service_ids": [
+        "svc.flatscreen_mounting_with_hidden_cables"
+      ],
+      "siblings_without": [
+        "svc.flatscreen_mounting_standard"
+      ],
+      "entity_id": "ent.tv",
+      "action_id": "act.install",
+      "basis": "service identity: its name and description say so (\"Flatscreen Mounting with Hidden Cables\", \"Mount Flatscreen and conceal cables\") and it alone asks q.inwall_power_for_tv"
+    },
+    {
+      "id": "mod.high_ceiling",
+      "label": "High ceiling",
+      "description": "the fixture is more than 10 feet up",
+      "service_ids": [
+        "svc.high_ceiling_bulb_replacement"
+      ],
+      "siblings_without": [
+        "svc.led_bulb_upgrade"
+      ],
+      "entity_id": "ent.bulb",
+      "action_id": "act.install",
+      "basis": "service identity: \"High Ceiling Bulb Replacement\", description \"Replace bulbs in fixtures more than 10 feet high\"; it alone asks q.mounting_height"
+    },
+    {
+      "id": "mod.mortar_mounting",
+      "label": "Mortar, brick or concrete wall",
+      "description": "the shelf mounts into mortar, cement or brick rather than drywall or plaster",
+      "service_ids": [
+        "svc.shelf_mortar_mounting_buy_the_hour"
+      ],
+      "siblings_without": [
+        "svc.shelf_mounting_standard_buy_the_hour"
+      ],
+      "entity_id": "ent.shelf",
+      "action_id": "act.install",
+      "basis": "service identity: \"Shelf Mortar Mounting\", description \"...into mortar, cement or brick walls\" versus \"...into drywall or plaster walls\""
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "$schema": "../schema/btnyc-source.schema.json",
-  "source_schema_version": "1.0.0",
+  "source_schema_version": "1.1.0",
   "meta": {
     "version": "9.6.0",
     "schema_version": "2.0",
@@ -51,7 +51,12 @@
     "migrated_from": "btnyc.json",
     "migration": "test_harness/tools/entity_first/migrate_legacy.js",
     "design": "ssot/ENTITY_FIRST_DESIGN_NOTE.md",
-    "ticket": "T175"
+    "ticket": "T175",
+    "recovered_rules": {
+      "file": "ssot/migration/recovered_rules.json",
+      "rules_version": "1.0.0",
+      "sha256": "4d9e8f551f44410a938f2c5f30cba723079cdce7bd4677697dec5e4575bc8810"
+    }
   },
   "registries": {
     "categories": [
@@ -4022,6 +4027,30 @@
         "affects": [
           "minutes"
         ]
+      },
+      {
+        "id": "mod.hidden_cables",
+        "role": "condition",
+        "label": "Hidden cables",
+        "description": "the customer wants the cables concealed in the wall; the job gains an in-wall power step",
+        "basis": "service identity: its name and description say so (\"Flatscreen Mounting with Hidden Cables\", \"Mount Flatscreen and conceal cables\") and it alone asks q.inwall_power_for_tv",
+        "affects": []
+      },
+      {
+        "id": "mod.high_ceiling",
+        "role": "condition",
+        "label": "High ceiling",
+        "description": "the fixture is more than 10 feet up",
+        "basis": "service identity: \"High Ceiling Bulb Replacement\", description \"Replace bulbs in fixtures more than 10 feet high\"; it alone asks q.mounting_height",
+        "affects": []
+      },
+      {
+        "id": "mod.mortar_mounting",
+        "role": "condition",
+        "label": "Mortar, brick or concrete wall",
+        "description": "the shelf mounts into mortar, cement or brick rather than drywall or plaster",
+        "basis": "service identity: \"Shelf Mortar Mounting\", description \"...into mortar, cement or brick walls\" versus \"...into drywall or plaster walls\"",
+        "affects": []
       }
     ],
     "tags": [
@@ -7873,7 +7902,54 @@
         "base_minutes": 45,
         "minutes_per_sqft": 5,
         "patch_modifier_ref": "mod.drywall_patch",
-        "texture_modifier_ref": "mod.drywall_texture"
+        "texture_modifier_ref": "mod.drywall_texture",
+        "inputs": [
+          {
+            "name": "area",
+            "role": "quantity",
+            "source": "answer_values",
+            "question_id": "q.area_sqft",
+            "param": "minutes_per_sqft",
+            "default": 2,
+            "affects": [
+              "minutes"
+            ],
+            "values": [
+              {
+                "option_id": "2_sq_ft_a_small_patch_about_a_sheet_of_paper",
+                "value": 2
+              },
+              {
+                "option_id": "10_sq_ft_about_a_dinner_plate_to_basketball_sized_hole",
+                "value": 10
+              },
+              {
+                "option_id": "25_sq_ft_a_few_feet_across_e_g_a_section_of_hallway_wall",
+                "value": 25
+              },
+              {
+                "option_id": "50_sq_ft_or_more_a_large_wall_section_or_multiple_spots",
+                "value": 50
+              }
+            ],
+            "note": "the code takes parseInt() of the chosen LABEL (2, 10, 25, 50) and falls back to 2. The numbers are written down here as data so that no label text is parsed. KNOWN LIMIT, stated not fixed: the top answer is \"50 sq ft or more\" and the engine prices it as exactly 50, so a larger area is under-estimated; an exact-count capture for the open-ended band is the same decision as the dormant item_count_overflow_formula (v9.6)."
+          },
+          {
+            "name": "texture match",
+            "role": "trigger_modifier",
+            "question_id": "q.texture_match",
+            "option_ids": [
+              "yes"
+            ],
+            "modifier_param": "texture_modifier_ref"
+          },
+          {
+            "name": "patch",
+            "role": "constant_modifier",
+            "modifier_param": "patch_modifier_ref",
+            "note": "applied to every drywall repair, whatever the answers"
+          }
+        ]
       },
       {
         "id": "fml.furniture_repair_formula",
@@ -7907,7 +7983,20 @@
             "option_id": "piece_detached_or_fell_off_needs_reglued_reattached",
             "modifier_id": "mod.furniture_repair_piece_detached_or_fell_off_nee"
           }
-        ]
+        ],
+        "inputs": [
+          {
+            "name": "units",
+            "role": "quantity",
+            "source": "booking",
+            "param": "per_unit_minutes",
+            "scales": "(quantity - 1) * per_unit_minutes",
+            "affects": [
+              "minutes"
+            ]
+          }
+        ],
+        "qty_aware": true
       },
       {
         "id": "fml.pax_wardrobe_formula",
@@ -7920,7 +8009,54 @@
           "sliding_door_hours": 0.9,
           "interior_item_hours": 0.35
         },
-        "_note": "Moved from base64-obfuscated PAX_COEFF_B64 constant in qr.html. Was: pricePerHour=85, startFee=0, coefficients={cabinet:1.3, standardDoor:0.6, slidingDoor:0.9, insideItem:0.35}. Edit here, not in application code."
+        "_note": "Moved from base64-obfuscated PAX_COEFF_B64 constant in qr.html. Was: pricePerHour=85, startFee=0, coefficients={cabinet:1.3, standardDoor:0.6, slidingDoor:0.9, insideItem:0.35}. Edit here, not in application code.",
+        "inputs": [
+          {
+            "name": "cabinet frames",
+            "role": "quantity",
+            "source": "option_qty_value",
+            "question_id": "q.pax_cabinet_count",
+            "param": "coefficients.cabinet_frame_hours",
+            "affects": [
+              "minutes",
+              "price"
+            ],
+            "note": "each count is the chosen option's qty_value; the code falls back to parseInt() of the label, which would read \"6 or more\" as 6 and is not reproduced"
+          },
+          {
+            "name": "hinge doors",
+            "role": "quantity",
+            "source": "option_qty_value",
+            "question_id": "q.pax_hinge_count",
+            "param": "coefficients.hinge_door_hours",
+            "affects": [
+              "minutes",
+              "price"
+            ]
+          },
+          {
+            "name": "sliding doors",
+            "role": "quantity",
+            "source": "option_qty_value",
+            "question_id": "q.pax_sliding_count",
+            "param": "coefficients.sliding_door_hours",
+            "affects": [
+              "minutes",
+              "price"
+            ]
+          },
+          {
+            "name": "interior items",
+            "role": "quantity",
+            "source": "option_qty_value",
+            "question_id": "q.pax_interior_count",
+            "param": "coefficients.interior_item_hours",
+            "affects": [
+              "minutes",
+              "price"
+            ]
+          }
+        ]
       },
       {
         "id": "fml.tile_repair_formula",
@@ -7935,7 +8071,65 @@
         "high_ceiling_modifier_ref": "mod.tile_high_ceiling",
         "disposal_modifier_ref": "mod.tile_disposal",
         "membrane_penalty_minutes": 45,
-        "membrane_modifier_ref": "mod.waterproof_area_yes_requires_membrane"
+        "membrane_modifier_ref": "mod.waterproof_area_yes_requires_membrane",
+        "inputs": [
+          {
+            "name": "tile count",
+            "role": "quantity",
+            "source": "booking",
+            "param": "minutes_per_tile",
+            "affects": [
+              "minutes"
+            ],
+            "note": "tile count = the booked quantity; `answers.tile_count` is not an intake module."
+          },
+          {
+            "name": "grout repair",
+            "role": "trigger_modifier",
+            "question_id": "q.grout_repair",
+            "option_ids": [
+              "yes"
+            ],
+            "modifier_param": "grout_modifier_ref"
+          },
+          {
+            "name": "waterproof area",
+            "role": "trigger_modifier",
+            "question_id": "q.waterproof_area",
+            "option_ids": [
+              "yes_requires_membrane"
+            ],
+            "modifier_param": "membrane_modifier_ref"
+          },
+          {
+            "name": "water damage",
+            "role": "trigger_modifier",
+            "question_id": "q.water_damage",
+            "option_ids": [
+              "yes"
+            ],
+            "modifier_param": "water_damage_modifier_ref"
+          },
+          {
+            "name": "ceiling height",
+            "role": "trigger_modifier",
+            "question_id": "q.ceiling_height",
+            "option_ids": [
+              "high_ceiling"
+            ],
+            "modifier_param": "high_ceiling_modifier_ref"
+          },
+          {
+            "name": "disposal",
+            "role": "trigger_modifier",
+            "question_id": "q.disposal",
+            "option_ids": [
+              "yes"
+            ],
+            "modifier_param": "disposal_modifier_ref"
+          }
+        ],
+        "qty_aware": true
       },
       {
         "id": "fml.hardware_install_formula",
@@ -7966,7 +8160,47 @@
           }
         ],
         "visit_minimum": 95,
-        "_note": "T135+ REWRITTEN (PRICING_GUIDE section 4.2/10.2 P3, direct business input): replaces the prior flat_tier_price ($140) two-tier model, which had a confirmed, live bug (B3) -- the swap rate's own Tier 2 never activated below 96 units, so every real job from 1 to 95 units priced identically at $140 flat, regardless of actual size. New model: swap covers 20 units for a flat $20, then $1.00/unit; new_holes covers 10 units for a flat $35, then $3.50/unit -- continuous, no downward cliff, verified against the reference ladder (12 units swap=$20/new_holes=$42; 22 units swap=$22/new_holes=$77; 100 units swap=$100/new_holes=$350). T156 (operator ruling #112, option A, 2026-10-07): the old model above priced 1 to 20 swap knobs identically at $20, so a customer with ten knobs was quoted what a customer with one is. It is kept as the FLOOR: price = max(visit_minimum, tier total, the old flat price for the install type), so no job is quoted less than before. `tiers` are GRADUATED (marginal): the first 5 units are $20 each, units 6-15 are $15 each, every unit after the 15th is $10 (up_to_units is the cumulative count the tier runs to; null = open-ended). Graduated, not whole-order, because pricing the whole order at the tier its count falls in makes the price FALL as the count rises (5 knobs $100, 6 knobs $90; 15 knobs $225, 16 knobs $160), which the Charter forbids (quantity-per-unit labor scales continuously, never stepped). The tiers apply to both install types; new holes take longer (6 min per unit against 3) but the ruling set one table, so today they price the same. Reference ladder (swap = new holes): 1-4 -> $95 (the minimum), 5 -> $100, 6 -> $115, 10 -> $175, 15 -> $250, 16 -> $260, 20 -> $300, 50 -> $600."
+        "_note": "T135+ REWRITTEN (PRICING_GUIDE section 4.2/10.2 P3, direct business input): replaces the prior flat_tier_price ($140) two-tier model, which had a confirmed, live bug (B3) -- the swap rate's own Tier 2 never activated below 96 units, so every real job from 1 to 95 units priced identically at $140 flat, regardless of actual size. New model: swap covers 20 units for a flat $20, then $1.00/unit; new_holes covers 10 units for a flat $35, then $3.50/unit -- continuous, no downward cliff, verified against the reference ladder (12 units swap=$20/new_holes=$42; 22 units swap=$22/new_holes=$77; 100 units swap=$100/new_holes=$350). T156 (operator ruling #112, option A, 2026-10-07): the old model above priced 1 to 20 swap knobs identically at $20, so a customer with ten knobs was quoted what a customer with one is. It is kept as the FLOOR: price = max(visit_minimum, tier total, the old flat price for the install type), so no job is quoted less than before. `tiers` are GRADUATED (marginal): the first 5 units are $20 each, units 6-15 are $15 each, every unit after the 15th is $10 (up_to_units is the cumulative count the tier runs to; null = open-ended). Graduated, not whole-order, because pricing the whole order at the tier its count falls in makes the price FALL as the count rises (5 knobs $100, 6 knobs $90; 15 knobs $225, 16 knobs $160), which the Charter forbids (quantity-per-unit labor scales continuously, never stepped). The tiers apply to both install types; new holes take longer (6 min per unit against 3) but the ruling set one table, so today they price the same. Reference ladder (swap = new holes): 1-4 -> $95 (the minimum), 5 -> $100, 6 -> $115, 10 -> $175, 15 -> $250, 16 -> $260, 20 -> $300, 50 -> $600.",
+        "inputs": [
+          {
+            "name": "install type",
+            "role": "select_branch",
+            "question_id": "q.install_type",
+            "branches": [
+              {
+                "branch": "swap",
+                "formula_path": "swap",
+                "option_ids": [
+                  "swapping_existing_hardware_same_holes"
+                ]
+              },
+              {
+                "branch": "new_holes",
+                "formula_path": "new_holes",
+                "option_ids": [
+                  "new_holes_needed_measure_drill_mark"
+                ]
+              }
+            ],
+            "default_branch": "swap",
+            "affects": [
+              "price",
+              "minutes"
+            ],
+            "note": "the code matches the chosen label against /new hole/i or /drilling/i; every other answer, and no answer, is the swap rate. Recovered here as an explicit option-to-branch table so that the meaning no longer depends on label wording."
+          },
+          {
+            "name": "units",
+            "role": "quantity",
+            "source": "booking",
+            "affects": [
+              "price",
+              "minutes"
+            ],
+            "note": "units = the booked quantity. The code first tries an `answers.unit_count` key; no intake module of that name exists (see dropped_legacy_consumed_keys)."
+          }
+        ],
+        "qty_aware": true
       },
       {
         "id": "fml.item_count_overflow_formula",
@@ -8047,12 +8281,52 @@
             "anchor": 4,
             "overflow_modifier_id": "mod.wi_fi_extender_setup_item_count_overflow"
           }
+        ],
+        "inputs": [
+          {
+            "name": "exact count",
+            "role": "quantity",
+            "source": "option_qty_value",
+            "affects": [
+              "price",
+              "minutes"
+            ],
+            "note": "applies to the options that name this formula (formula_id) and carry a qty_value: the open-ended top band prices its own flat modifier plus the overflow rate beyond the service anchor"
+          }
         ]
       },
       {
         "id": "fml.buy_the_hour_qty_gate_formula",
         "_note": "T118 (operator-directed, real user trace, 2026-09-12): implements a flat-vs-hourly switch, both at the service's own base_price as the rate, for 'buy the hour' services where a customer answers a binary '1 item / more than 1 item' question (buy_the_hour_qty) rather than a numeric quantity. See this formula's own dispatch branch in applyPricingFormula (qr.html) for the real logic and the reasoning behind the extraFee: -basePrice cancellation on the >1-item branch. minimum_billable_hours here mirrors global_rules.pricing_engines.hourly_estimate's own field of the same name -- kept as an explicit, local override point (the code checks this local value first) rather than only ever reading the global default, in case a future buy-the-hour service needs a different minimum.",
-        "minimum_billable_hours": 1
+        "minimum_billable_hours": 1,
+        "inputs": [
+          {
+            "name": "item count",
+            "role": "select_branch",
+            "question_id": "q.buy_the_hour_qty",
+            "branches": [
+              {
+                "branch": "single_item_flat",
+                "option_ids": [
+                  "1_item"
+                ]
+              },
+              {
+                "branch": "multi_item_hourly",
+                "option_ids": [
+                  "more_than_1_item"
+                ]
+              }
+            ],
+            "default_branch": "multi_item_hourly",
+            "affects": [
+              "price",
+              "minutes"
+            ],
+            "note": "exactly \"1 item\" is the flat price; any other answer, and no answer, is hourly billing with the minimum billable hour"
+          }
+        ],
+        "qty_aware": true
       }
     ],
     "behavioral_classes": [
@@ -8340,19 +8614,24 @@
     ],
     "pricing_archetypes": [
       {
-        "id": "par.flat_simple"
+        "id": "par.flat_simple",
+        "definition": "A single, fixed base_price with no real, separate labor-time calculation -- the simplest real archetype."
       },
       {
-        "id": "par.hourly_timed"
+        "id": "par.hourly_timed",
+        "definition": "base_price plus a real, computed labor-time estimate (operational_metrics.expected_minutes) at the entity's complexity-tier hourly rate."
       },
       {
-        "id": "par.diagnostic_open"
+        "id": "par.diagnostic_open",
+        "definition": "Real, deliberate non-commitment -- the honest price is the diagnostic/dispatch fee alone; the actual repair cost is genuinely unknown until a technician is on-site."
       },
       {
-        "id": "par.tiered_per_unit"
+        "id": "par.tiered_per_unit",
+        "definition": "A real, two-tier model: a flat price for the realistic, common quantity range, falling through to genuine, continuous per-unit math only once true bulk volume exceeds it -- guaranteed never to charge less for ordering more."
       },
       {
-        "id": "par.formula"
+        "id": "par.formula",
+        "definition": "Delegates to a real, named, registered entry in pricing_formulas for its complete calculation -- the archetype itself defines no fixed shape beyond 'look up and run this formula'."
       }
     ],
     "service_order": [
@@ -8440,7 +8719,11 @@
       "label": "Angle stop",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "shutoff valve",
+        "shut off valve",
+        "angle valve"
+      ],
       "questions": [
         {
           "id": "q.angle_stop_condition",
@@ -8634,7 +8917,15 @@
       "label": "Baseboard",
       "kind": "component",
       "parent_id": "ent.floor",
-      "aliases": [],
+      "aliases": [
+        "baseboards",
+        "baseboard install",
+        "replace baseboard",
+        "crown molding",
+        "crown moulding",
+        "trim",
+        "molding"
+      ],
       "questions": [
         {
           "id": "q.baseboard_length",
@@ -8906,7 +9197,11 @@
       "label": "Bidet",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "bidet attachment",
+        "washlet",
+        "bidet seat"
+      ],
       "questions": [
         {
           "id": "q.action",
@@ -9086,7 +9381,15 @@
       "label": "Blinds",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "curtain rod",
+        "rod",
+        "curtains",
+        "drapes",
+        "blind",
+        "window blinds",
+        "shades"
+      ],
       "questions": [
         {
           "id": "q.blind_curtain_shade_items",
@@ -9139,12 +9442,18 @@
             {
               "id": "1_item",
               "label": "1 item",
-              "affects": []
+              "affects": [
+                "price",
+                "minutes"
+              ]
             },
             {
               "id": "more_than_1_item",
               "label": "More than 1 item",
-              "affects": []
+              "affects": [
+                "price",
+                "minutes"
+              ]
             }
           ],
           "_note": "T118 (operator-directed, real user trace, 2026-09-12): a deliberately binary gate, not a numeric quantity question -- '1 item' -> flat rate; 'More than 1 item' -> real hourly billing at the SAME rate, with a 1-hour minimum. See buy_the_hour_qty_gate_formula in global_rules... (pricing_formulas) for the actual pricing logic this answer drives."
@@ -9416,7 +9725,10 @@
       "label": "Brick",
       "kind": "component",
       "parent_id": "ent.wall",
-      "aliases": [],
+      "aliases": [
+        "mortar",
+        "concrete crack"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.brick_or_concrete_crack_repair",
@@ -9640,7 +9952,12 @@
       "label": "Bulb",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "light bulb",
+        "bulbs",
+        "change bulb",
+        "replace bulb"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.high_ceiling_bulb_replacement",
@@ -9772,7 +10089,9 @@
           "id": "svc.high_ceiling_bulb_replacement",
           "entity_id": "ent.bulb",
           "action_id": "act.install",
-          "modifier_ids": [],
+          "modifier_ids": [
+            "mod.high_ceiling"
+          ],
           "presentation": {
             "ui_taxonomy": {
               "category_id": "cat.electric_lighting",
@@ -9885,10 +10204,6 @@
           "confidence_gate": {
             "mode": "weighted_uncertainty",
             "basis": "seeded_from_confidence_gain"
-          },
-          "decomposition": {
-            "status": "open",
-            "note": "shares entity ent.bulb and action act.install with svc.led_bulb_upgrade; which modifier or entity separates them is an open business decision (PENDING_DECISIONS #209)"
           }
         },
         {
@@ -9999,10 +10314,6 @@
           "confidence_gate": {
             "mode": "weighted_uncertainty",
             "basis": "seeded_from_confidence_gain"
-          },
-          "decomposition": {
-            "status": "open",
-            "note": "shares entity ent.bulb and action act.install with svc.high_ceiling_bulb_replacement; which modifier or entity separates them is an open business decision (PENDING_DECISIONS #209)"
           }
         }
       ],
@@ -10105,7 +10416,20 @@
       "label": "Cabinet door",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "cabinet",
+        "cupboard",
+        "pantry",
+        "drawer front",
+        "cabinet hinge",
+        "cabinet hinges",
+        "cupboard hinge",
+        "hinge on cabinet",
+        "cabinet shelf",
+        "cabinet shelves",
+        "cupboard shelf",
+        "shelf inside cabinet"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.cabinet_door_or_drawer_adjustment",
@@ -10318,7 +10642,16 @@
       "label": "Cables",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "cable",
+        "cable management",
+        "organize cables",
+        "hide cables",
+        "organize",
+        "tidy cables",
+        "cable organization",
+        "clean wires"
+      ],
       "questions": [
         {
           "id": "q.cable_install_item",
@@ -10832,7 +11165,10 @@
       "label": "Ceiling fan",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "overhead fan",
+        "ceiling fan installation"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -10962,7 +11298,13 @@
       "label": "Ceiling light",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "light fixture",
+        "light",
+        "sconce",
+        "fixture",
+        "wall light"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -11085,7 +11427,13 @@
       "label": "Ceiling tile",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "drop ceiling",
+        "acoustic tile",
+        "ceiling panel",
+        "suspended ceiling",
+        "ceiling tiles"
+      ],
       "questions": [
         {
           "id": "q.ceiling_tile_access",
@@ -11276,7 +11624,12 @@
       "label": "Chandelier",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "pendant light",
+        "hanging light",
+        "hanging fixture",
+        "drop light"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -11409,7 +11762,21 @@
       "label": "Computer",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "virus",
+        "malware",
+        "pop ups",
+        "computer virus",
+        "virus removal",
+        "pc",
+        "mac",
+        "personal computer",
+        "desktop pc",
+        "workstation",
+        "laptop repair",
+        "notebook",
+        "macbook"
+      ],
       "questions": [
         {
           "id": "q.battery_signs",
@@ -13075,7 +13442,11 @@
       "label": "Concrete",
       "kind": "component",
       "parent_id": "ent.wall",
-      "aliases": [],
+      "aliases": [
+        "concrete wall",
+        "cement",
+        "cinder block"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [],
@@ -13087,7 +13458,11 @@
       "label": "Deadbolt",
       "kind": "component",
       "parent_id": "ent.door",
-      "aliases": [],
+      "aliases": [
+        "lock",
+        "dead bolt",
+        "lock install"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [],
@@ -13111,7 +13486,11 @@
       "label": "Dimmer switch",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "dimmer",
+        "dimmer install",
+        "light dimmer"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.dimmer_switch_install",
@@ -13377,7 +13756,9 @@
       "label": "Dishwasher",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "dish washer"
+      ],
       "questions": [
         {
           "id": "q.dishwasher_symptom",
@@ -13888,7 +14269,19 @@
       "label": "Door",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "entry door",
+        "interior door",
+        "back door",
+        "entry",
+        "exterior door",
+        "front door",
+        "patio door",
+        "door sweep",
+        "door draft",
+        "weather stripping",
+        "weatherstrip"
+      ],
       "questions": [
         {
           "id": "q.door_issue",
@@ -14422,7 +14815,12 @@
       "label": "Door lock",
       "kind": "component",
       "parent_id": "ent.door",
-      "aliases": [],
+      "aliases": [
+        "door knob",
+        "peephole",
+        "peep hole",
+        "door viewer"
+      ],
       "questions": [
         {
           "id": "q.hardware_type",
@@ -14665,7 +15063,11 @@
       "label": "Drawer",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "drawers",
+        "pull-out",
+        "pull out"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [],
@@ -14677,7 +15079,10 @@
       "label": "Dryer",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "clothes dryer",
+        "tumble dryer"
+      ],
       "questions": [
         {
           "id": "q.dryer_symptom",
@@ -15067,7 +15472,9 @@
       "label": "Drywall",
       "kind": "component",
       "parent_id": "ent.wall",
-      "aliases": [],
+      "aliases": [
+        "sheetrock"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.wall_hole_or_crack_repair",
@@ -15339,7 +15746,12 @@
       "label": "Exhaust fan",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "bathroom fan",
+        "bathroom exhaust",
+        "vent fan",
+        "range hood"
+      ],
       "questions": [
         {
           "id": "q.ducting",
@@ -15531,7 +15943,11 @@
       "label": "Faucet",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "sink",
+        "tap",
+        "basin"
+      ],
       "questions": [
         {
           "id": "q.faucet_part_available",
@@ -15730,7 +16146,12 @@
       "label": "Fill valve",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "flushometer",
+        "commercial toilet",
+        "flush valve",
+        "no tank toilet"
+      ],
       "questions": [
         {
           "id": "q.toilet_symptom",
@@ -15943,7 +16364,11 @@
       "label": "Flat pack",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "furniture assembly",
+        "assemble furniture",
+        "ikea assembly"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -16079,7 +16504,12 @@
       "label": "Floor",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "squeaky",
+        "squeaky floor",
+        "floor squeak",
+        "squeaky floor repair"
+      ],
       "questions": [
         {
           "id": "q.floor_issue",
@@ -16624,7 +17054,14 @@
       "label": "Furniture",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "chair",
+        "table",
+        "desk",
+        "bed",
+        "dresser",
+        "sofa"
+      ],
       "questions": [
         {
           "id": "q.item_type",
@@ -17512,7 +17949,10 @@
       "label": "Garbage disposal",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "disposal",
+        "garbage disposal unit"
+      ],
       "questions": [
         {
           "id": "q.disposal_size",
@@ -19111,22 +19551,34 @@
             {
               "id": "2_sq_ft_a_small_patch_about_a_sheet_of_paper",
               "label": "2 sq ft (a small patch, about a sheet of paper)",
-              "affects": []
+              "affects": [
+                "minutes",
+                "quantity"
+              ]
             },
             {
               "id": "10_sq_ft_about_a_dinner_plate_to_basketball_sized_hole",
               "label": "10 sq ft (about a dinner-plate to basketball-sized hole)",
-              "affects": []
+              "affects": [
+                "minutes",
+                "quantity"
+              ]
             },
             {
               "id": "25_sq_ft_a_few_feet_across_e_g_a_section_of_hallway_wall",
               "label": "25 sq ft (a few feet across, e.g. a section of hallway wall)",
-              "affects": []
+              "affects": [
+                "minutes",
+                "quantity"
+              ]
             },
             {
               "id": "50_sq_ft_or_more_a_large_wall_section_or_multiple_spots",
               "label": "50 sq ft or more (a large wall section or multiple spots)",
-              "affects": []
+              "affects": [
+                "minutes",
+                "quantity"
+              ]
             }
           ],
           "_note": "v9.5: real, new module authored to close backlog item A — closes drywall_repair_formula's area_sqft input. Labels are deliberately formatted as 'NUMBER unit (description)' rather than plain descriptive text, since applyPricingFormula reads answers.area_sqft via parseInt(label) directly (confirmed: answers[moduleKey] is always the chosen label string, never a derived number) -- this format gives the customer real, concrete context while still parsing correctly to the exact leading integer. Distinct from the existing dmg_size module (a separate, valid, less-precise visual-size impression question, e.g. 'fits in your hand') -- dmg_size was confirmed to never drive any real fee/minutes (all effects are 0, only complexity_override), so this new module is the genuine, first real pricing input for square footage, not a duplicate.",
@@ -19153,6 +19605,8 @@
               "id": "high_ceiling",
               "label": "High ceiling",
               "affects": [
+                "price",
+                "minutes",
                 "tags"
               ],
               "tag_ids": [
@@ -19184,6 +19638,8 @@
               "id": "yes",
               "label": "Yes",
               "affects": [
+                "price",
+                "minutes",
                 "tags"
               ],
               "tag_ids": [
@@ -19215,6 +19671,8 @@
               "id": "yes",
               "label": "Yes",
               "affects": [
+                "price",
+                "minutes",
                 "tags"
               ],
               "tag_ids": [
@@ -19309,7 +19767,9 @@
             {
               "id": "yes",
               "label": "Yes",
-              "affects": []
+              "affects": [
+                "price"
+              ]
             }
           ],
           "_note": "v9.5: real, new module authored to close backlog item A — closes drywall_repair_formula's texture_match input. applyPricingFormula checks answers.texture_match === 'Yes' exactly (confirmed via direct read of the real consuming code), so the second answer's label is the literal string 'Yes', matching that exact check.",
@@ -19336,6 +19796,8 @@
               "id": "yes",
               "label": "Yes",
               "affects": [
+                "price",
+                "minutes",
                 "tags"
               ],
               "tag_ids": [
@@ -23170,7 +23632,11 @@
       "label": "Gfci outlet",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "gfci",
+        "ground fault",
+        "gfci replacement"
+      ],
       "questions": [
         {
           "id": "q.gfci_location",
@@ -23451,7 +23917,32 @@
       "label": "Hard drive",
       "kind": "component",
       "parent_id": "ent.computer",
-      "aliases": [],
+      "aliases": [
+        "backup",
+        "data backup",
+        "backup data",
+        "transfer data",
+        "data recovery",
+        "recover data",
+        "lost files",
+        "corrupted disk",
+        "back up",
+        "deleted files",
+        "lost my files",
+        "recover my files",
+        "recover files",
+        "recover deleted files",
+        "ssd",
+        "hard disk",
+        "storage drive",
+        "internal hardware",
+        "internal hardware replacement",
+        "internal parts",
+        "computer internals",
+        "memory upgrade",
+        "power supply",
+        "psu"
+      ],
       "questions": [
         {
           "id": "q.backup_source_device",
@@ -23669,7 +24160,10 @@
       "label": "Hinge",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "door hinge",
+        "hinges"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [],
@@ -23693,7 +24187,16 @@
       "label": "Knob",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "cabinet knob",
+        "cabinet pull",
+        "drawer pull",
+        "cabinet hardware",
+        "cabinet handle",
+        "cabinet handles",
+        "cupboard handle",
+        "drawer handle"
+      ],
       "questions": [
         {
           "id": "q.install_type",
@@ -23708,13 +24211,19 @@
             {
               "id": "swapping_existing_hardware_same_holes",
               "label": "Swapping existing hardware (same holes)",
-              "affects": [],
+              "affects": [
+                "price",
+                "minutes"
+              ],
               "tag_ids": []
             },
             {
               "id": "new_holes_needed_measure_drill_mark",
               "label": "New holes needed (measure, drill, mark)",
-              "affects": [],
+              "affects": [
+                "price",
+                "minutes"
+              ],
               "tag_ids": []
             }
           ],
@@ -23906,7 +24415,11 @@
       "label": "Microwave",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "microwave oven",
+        "built in microwave",
+        "countertop microwave"
+      ],
       "questions": [
         {
           "id": "q.microwave_symptom",
@@ -24429,7 +24942,11 @@
       "label": "Mirror",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "mirrors",
+        "wall mirror",
+        "hang mirror"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [],
@@ -24453,7 +24970,16 @@
       "label": "Os",
       "kind": "component",
       "parent_id": "ent.computer",
-      "aliases": [],
+      "aliases": [
+        "driver",
+        "drivers",
+        "software driver",
+        "driver install",
+        "software",
+        "program",
+        "app install",
+        "software install"
+      ],
       "questions": [
         {
           "id": "q.device_state",
@@ -24842,7 +25368,11 @@
       "label": "P trap",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "p-trap",
+        "sink trap",
+        "drain trap"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -24962,7 +25492,10 @@
       "label": "Pax",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "pax wardrobe",
+        "ikea wardrobe"
+      ],
       "questions": [
         {
           "id": "q.pax_cabinet_count",
@@ -24978,6 +25511,8 @@
               "id": "1",
               "label": "1",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -24987,6 +25522,8 @@
               "id": "2",
               "label": "2",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -24996,6 +25533,8 @@
               "id": "3",
               "label": "3",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25005,6 +25544,8 @@
               "id": "4",
               "label": "4",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25014,6 +25555,8 @@
               "id": "5",
               "label": "5",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25023,6 +25566,8 @@
               "id": "6_or_more_specify_exact_count_in_notes",
               "label": "6 or more (specify exact count in notes)",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25057,6 +25602,8 @@
               "id": "1",
               "label": "1",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25066,6 +25613,8 @@
               "id": "2",
               "label": "2",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25075,6 +25624,8 @@
               "id": "3",
               "label": "3",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25084,6 +25635,8 @@
               "id": "4",
               "label": "4",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25093,6 +25646,8 @@
               "id": "5",
               "label": "5",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25102,6 +25657,8 @@
               "id": "6_or_more_specify_exact_count_in_notes",
               "label": "6 or more (specify exact count in notes)",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25136,6 +25693,8 @@
               "id": "1_2",
               "label": "1-2",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25145,6 +25704,8 @@
               "id": "3_4",
               "label": "3-4",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25154,6 +25715,8 @@
               "id": "5_6",
               "label": "5-6",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25163,6 +25726,8 @@
               "id": "7_or_more_specify_exact_count_in_notes",
               "label": "7 or more (specify exact count in notes)",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25197,6 +25762,8 @@
               "id": "1",
               "label": "1",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25206,6 +25773,8 @@
               "id": "2",
               "label": "2",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25215,6 +25784,8 @@
               "id": "3",
               "label": "3",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25224,6 +25795,8 @@
               "id": "4",
               "label": "4",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25233,6 +25806,8 @@
               "id": "5_or_more_specify_exact_count_in_notes",
               "label": "5 or more (specify exact count in notes)",
               "affects": [
+                "price",
+                "minutes",
                 "quantity"
               ],
               "tag_ids": [],
@@ -25482,7 +26057,11 @@
       "label": "Plaster",
       "kind": "component",
       "parent_id": "ent.wall",
-      "aliases": [],
+      "aliases": [
+        "plaster wall",
+        "plaster repair",
+        "lathe and plaster"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.plaster_wall_repair",
@@ -26350,7 +26929,11 @@
       "label": "Refrigerator",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "fridge",
+        "freezer",
+        "frig"
+      ],
       "questions": [
         {
           "id": "q.refrigerator_symptom",
@@ -26870,7 +27453,11 @@
       "label": "Router",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "wifi router",
+        "internet router",
+        "router setup"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.router_configuration",
@@ -27153,7 +27740,12 @@
       "label": "Shelf",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "shelves",
+        "floating shelf",
+        "wall shelf",
+        "mount shelf"
+      ],
       "questions": [
         {
           "id": "q.wall_mount_items",
@@ -27246,7 +27838,9 @@
           "id": "svc.shelf_mortar_mounting_buy_the_hour",
           "entity_id": "ent.shelf",
           "action_id": "act.install",
-          "modifier_ids": [],
+          "modifier_ids": [
+            "mod.mortar_mounting"
+          ],
           "presentation": {
             "ui_taxonomy": {
               "category_id": "cat.wall_mounting",
@@ -27365,10 +27959,6 @@
           "confidence_gate": {
             "mode": "weighted_uncertainty",
             "basis": "seeded_from_confidence_gain"
-          },
-          "decomposition": {
-            "status": "open",
-            "note": "shares entity ent.shelf and action act.install with svc.shelf_mounting_standard_buy_the_hour; which modifier or entity separates them is an open business decision (PENDING_DECISIONS #209)"
           }
         },
         {
@@ -27485,10 +28075,6 @@
           "confidence_gate": {
             "mode": "weighted_uncertainty",
             "basis": "seeded_from_confidence_gain"
-          },
-          "decomposition": {
-            "status": "open",
-            "note": "shares entity ent.shelf and action act.install with svc.shelf_mortar_mounting_buy_the_hour; which modifier or entity separates them is an open business decision (PENDING_DECISIONS #209)"
           }
         }
       ],
@@ -27500,7 +28086,10 @@
       "label": "Shower head",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "showerhead",
+        "shower head replacement"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -27624,7 +28213,11 @@
       "label": "Sink leak",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "leak under sink",
+        "leaking under sink",
+        "leak under the sink"
+      ],
       "questions": [
         {
           "id": "q.leak_loc",
@@ -27837,7 +28430,12 @@
       "label": "Slow drain",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "clog",
+        "clogged",
+        "drain clog",
+        "unclog"
+      ],
       "questions": [
         {
           "id": "q.drain_speed",
@@ -28109,7 +28707,11 @@
       "label": "Smart plug",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "smart plugs",
+        "smart outlet",
+        "wifi plug"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.smart_plug_configuration",
@@ -28302,7 +28904,12 @@
       "label": "Smart speaker",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "speaker",
+        "alexa",
+        "google home",
+        "homepod"
+      ],
       "questions": [
         {
           "id": "q.brand",
@@ -28494,7 +29101,10 @@
       "label": "Smart switch",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "switch",
+        "light switch"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.smart_switch_install",
@@ -28689,7 +29299,12 @@
       "label": "Stove",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "range",
+        "oven",
+        "cooktop",
+        "burner"
+      ],
       "questions": [
         {
           "id": "q.stove_symptom",
@@ -29055,7 +29670,11 @@
       "label": "Thermostat",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "smart thermostat",
+        "nest",
+        "ecobee"
+      ],
       "questions": [
         {
           "id": "q.thermostat_type",
@@ -29327,7 +29946,16 @@
       "label": "Tile",
       "kind": "component",
       "parent_id": "ent.floor",
-      "aliases": [],
+      "aliases": [
+        "flooring",
+        "ceramic",
+        "porcelain",
+        "subway",
+        "grout",
+        "grout repair",
+        "tile grout",
+        "grout replacement"
+      ],
       "questions": [
         {
           "id": "q.tile_condition",
@@ -29533,7 +30161,10 @@
       "label": "Toilet",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "commode",
+        "water closet"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -29666,7 +30297,15 @@
       "label": "Toilet seat",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "new toilet seat",
+        "replace toilet seat",
+        "seat",
+        "toilet lid",
+        "toilet cover",
+        "seat cover",
+        "toilet seat cover"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -29790,7 +30429,11 @@
       "label": "Tub spout",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "bathtub spout",
+        "tub faucet",
+        "spout replacement"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -29914,7 +30557,15 @@
       "label": "Tv",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "flatscreen",
+        "flat screen",
+        "flat screen tv",
+        "flatscreen tv",
+        "television",
+        "tv mounting",
+        "hang tv"
+      ],
       "questions": [
         {
           "id": "q.inwall_power_for_tv",
@@ -30284,17 +30935,15 @@
           "confidence_gate": {
             "mode": "weighted_uncertainty",
             "basis": "seeded_from_confidence_gain"
-          },
-          "decomposition": {
-            "status": "open",
-            "note": "shares entity ent.tv and action act.install with svc.flatscreen_mounting_with_hidden_cables; which modifier or entity separates them is an open business decision (PENDING_DECISIONS #209)"
           }
         },
         {
           "id": "svc.flatscreen_mounting_with_hidden_cables",
           "entity_id": "ent.tv",
           "action_id": "act.install",
-          "modifier_ids": [],
+          "modifier_ids": [
+            "mod.hidden_cables"
+          ],
           "presentation": {
             "ui_taxonomy": {
               "category_id": "cat.wall_mounting",
@@ -30480,10 +31129,6 @@
           "confidence_gate": {
             "mode": "weighted_uncertainty",
             "basis": "seeded_from_confidence_gain"
-          },
-          "decomposition": {
-            "status": "open",
-            "note": "shares entity ent.tv and action act.install with svc.flatscreen_mounting_standard; which modifier or entity separates them is an open business decision (PENDING_DECISIONS #209)"
           }
         }
       ],
@@ -30495,7 +31140,11 @@
       "label": "Under cabinet light",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "under cabinet",
+        "under-cabinet",
+        "undercabinet"
+      ],
       "questions": [
         {
           "id": "q.under_cabinet_length",
@@ -30683,7 +31332,11 @@
       "label": "Usb outlet",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "usb",
+        "usb plug",
+        "usb receptacle"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.usb_outlet_install",
@@ -31276,7 +31929,12 @@
       "label": "Wall paneling",
       "kind": "component",
       "parent_id": "ent.wall",
-      "aliases": [],
+      "aliases": [
+        "wood panel",
+        "wood paneling",
+        "paneling",
+        "wainscoting"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.wood_paneling_repair",
@@ -31501,7 +32159,10 @@
       "label": "Washer",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "washing machine",
+        "clothes washer"
+      ],
       "questions": [
         {
           "id": "q.washer_type",
@@ -31965,7 +32626,12 @@
       "label": "Water line",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "ice maker",
+        "ice maker water line",
+        "fridge water line",
+        "refrigerator water line"
+      ],
       "questions": [
         {
           "id": "q.water_line_issue",
@@ -32364,7 +33030,11 @@
       "label": "Wax ring",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "toilet wax ring",
+        "wax seal",
+        "toilet seal"
+      ],
       "questions": [],
       "uncertainty_classes": [],
       "services": [
@@ -32485,7 +33155,12 @@
       "label": "Wifi extender",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "wifi",
+        "dead zone",
+        "wifi booster",
+        "internet dead zone"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.wi_fi_extender_setup",
@@ -32680,7 +33355,11 @@
       "label": "Window",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "windows",
+        "windowpane",
+        "window pane"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.window_draft_sealing",
@@ -33116,7 +33795,11 @@
       "label": "Window ac",
       "kind": "component",
       "parent_id": null,
-      "aliases": [],
+      "aliases": [
+        "window air conditioner",
+        "ac unit",
+        "window ac setup"
+      ],
       "questions": [
         {
           "id": "q.window_ac_issue",
@@ -33937,7 +34620,11 @@
       "label": "Window screen",
       "kind": "component",
       "parent_id": "ent.window",
-      "aliases": [],
+      "aliases": [
+        "screen",
+        "screen repair",
+        "screen mesh"
+      ],
       "questions": [
         {
           "id": "q.item_count_template.window_screen_repair",
@@ -35140,6 +35827,7 @@
           "id": "loose_joints_or_wobbling",
           "label": "Loose joints or wobbling",
           "affects": [
+            "minutes",
             "complexity"
           ],
           "tag_ids": [],
@@ -35149,6 +35837,8 @@
           "id": "broken_piece_leg_frame_etc",
           "label": "Broken piece (leg, frame, etc.)",
           "affects": [
+            "price",
+            "minutes",
             "checkout_state",
             "complexity",
             "tags"
@@ -35163,6 +35853,8 @@
           "id": "drawer_that_sticks_or_falls_out",
           "label": "Drawer that sticks or falls out",
           "affects": [
+            "price",
+            "minutes",
             "complexity"
           ],
           "tag_ids": [],
@@ -35172,6 +35864,7 @@
           "id": "surface_damage_scratches_stains",
           "label": "Surface damage (scratches, stains)",
           "affects": [
+            "minutes",
             "complexity"
           ],
           "tag_ids": [],
@@ -35181,6 +35874,8 @@
           "id": "piece_detached_or_fell_off_needs_reglued_reattached",
           "label": "Piece detached or fell off (needs reglued/reattached)",
           "affects": [
+            "price",
+            "minutes",
             "complexity"
           ],
           "tag_ids": [],
@@ -38035,335 +38730,6 @@
   "vocabulary": {
     "negation_library": {
       "_note": "Word lists for NLP negation detection. JS reads these; no inline regex needed. v9.6: negation_confirmations removed -- confirmed genuinely dead, redundant data: the live code's actual negation-confirmation display reads tag.negation_phrase directly (qr.html's own comment: \"SSOT: negation confirmations from tag.negation_phrase\"), confirmed via direct search there are zero real references to this sub-key anywhere in qr.html. Also confirmed the two sources had silently drifted before removal: #fragile_item had its own, real negation_phrase field but was missing from this now-removed, already-unread duplicate. The same class of finding as this project's own prior confidence_tiers removal (a confirmed, unread duplicate of a mechanism the live code already reads from its real, single source elsewhere).",
-      "action_conjugations": {
-        "_note": "SSOT for verb-form matching AND ad-lib infinitive phrasing. Keyed by service_types key where applicable, so it can never drift from service_types[*].verb_natural. Built to fix the bug where 'window fixed' was detected as action='service' (generic fallback) instead of action='Repair', because the old detectAction() regex only matched bare infinitives ('fix') and not conjugated forms ('fixed'). Consumers should build ONE matching regex per action from all_forms+synonyms (word-boundary, case-insensitive), and use infinitive_for_adlib for 'I need to ___' sentence construction.",
-        "Install": {
-          "infinitive_for_adlib": "install",
-          "all_forms": [
-            "install",
-            "installs",
-            "installed",
-            "installing"
-          ],
-          "synonym_clusters": [
-            {
-              "infinitive": "mount",
-              "forms": [
-                "mount",
-                "mounts",
-                "mounted",
-                "mounting"
-              ]
-            },
-            {
-              "infinitive": "hang",
-              "forms": [
-                "hang",
-                "hangs",
-                "hung",
-                "hanging"
-              ]
-            },
-            {
-              "infinitive": "put up",
-              "forms": [
-                "put up",
-                "puts up",
-                "putting up"
-              ]
-            },
-            {
-              "infinitive": "put in",
-              "forms": [
-                "put in",
-                "puts in",
-                "putting in"
-              ]
-            },
-            {
-              "infinitive": "rehang",
-              "forms": [
-                "rehang",
-                "rehangs",
-                "rehung",
-                "rehanging"
-              ]
-            }
-          ]
-        },
-        "Repair": {
-          "infinitive_for_adlib": "fix",
-          "all_forms": [
-            "fix",
-            "fixes",
-            "fixed",
-            "fixing",
-            "repair",
-            "repairs",
-            "repaired",
-            "repairing"
-          ],
-          "synonym_clusters": [
-            {
-              "infinitive": "patch",
-              "forms": [
-                "patch",
-                "patches",
-                "patched",
-                "patching"
-              ]
-            },
-            {
-              "infinitive": "restore",
-              "forms": [
-                "restore",
-                "restores",
-                "restored",
-                "restoring"
-              ]
-            },
-            {
-              "infinitive": "adjust",
-              "forms": [
-                "adjust",
-                "adjusts",
-                "adjusted",
-                "adjusting"
-              ]
-            },
-            {
-              "infinitive": "tighten",
-              "forms": [
-                "tighten",
-                "tightens",
-                "tightened",
-                "tightening"
-              ]
-            },
-            {
-              "infinitive": "reseal",
-              "forms": [
-                "reseal",
-                "reseals",
-                "resealed",
-                "resealing"
-              ]
-            },
-            {
-              "infinitive": "reattach",
-              "forms": [
-                "reattach",
-                "reattaches",
-                "reattached",
-                "reattaching"
-              ]
-            },
-            {
-              "infinitive": "reglue",
-              "forms": [
-                "reglue",
-                "reglues",
-                "reglued",
-                "regluing",
-                "glue",
-                "glues",
-                "glued",
-                "gluing"
-              ]
-            },
-            {
-              "infinitive": "refasten",
-              "forms": [
-                "refasten",
-                "refastens",
-                "refastened",
-                "refastening"
-              ]
-            },
-            {
-              "infinitive": "secure",
-              "forms": [
-                "secure",
-                "secures",
-                "secured",
-                "securing"
-              ]
-            }
-          ]
-        },
-        "Diagnostic": {
-          "infinitive_for_adlib": "look at",
-          "all_forms": [
-            "diagnose",
-            "diagnoses",
-            "diagnosed",
-            "diagnosing"
-          ],
-          "synonym_clusters": [
-            {
-              "infinitive": "check",
-              "forms": [
-                "check",
-                "checks",
-                "checked",
-                "checking"
-              ]
-            },
-            {
-              "infinitive": "look at",
-              "forms": [
-                "look at",
-                "looks at",
-                "looked at",
-                "looking at"
-              ]
-            },
-            {
-              "infinitive": "inspect",
-              "forms": [
-                "inspect",
-                "inspects",
-                "inspected",
-                "inspecting"
-              ]
-            }
-          ]
-        },
-        "Assembly": {
-          "infinitive_for_adlib": "assemble",
-          "all_forms": [
-            "assemble",
-            "assembles",
-            "assembled",
-            "assembling"
-          ],
-          "synonym_clusters": [
-            {
-              "infinitive": "build",
-              "forms": [
-                "build",
-                "builds",
-                "built",
-                "building"
-              ]
-            },
-            {
-              "infinitive": "put together",
-              "forms": [
-                "put together",
-                "puts together",
-                "putting together"
-              ]
-            }
-          ]
-        },
-        "Setup": {
-          "infinitive_for_adlib": "set up",
-          "all_forms": [
-            "set up",
-            "sets up",
-            "setting up"
-          ],
-          "synonym_clusters": [
-            {
-              "infinitive": "configure",
-              "forms": [
-                "setup",
-                "configure",
-                "configures",
-                "configured",
-                "configuring"
-              ]
-            }
-          ]
-        },
-        "_extra_actions_not_tied_to_service_type": {
-          "remove": {
-            "infinitive_for_adlib": "remove",
-            "all_forms": [
-              "remove",
-              "removes",
-              "removed",
-              "removing"
-            ],
-            "synonym_clusters": [
-              {
-                "infinitive": "take down",
-                "forms": [
-                  "take down",
-                  "takes down",
-                  "took down",
-                  "taking down"
-                ]
-              },
-              {
-                "infinitive": "take off",
-                "forms": [
-                  "take off",
-                  "takes off",
-                  "took off",
-                  "taking off"
-                ]
-              },
-              {
-                "infinitive": "uninstall",
-                "forms": [
-                  "uninstall",
-                  "uninstalls",
-                  "uninstalled",
-                  "uninstalling"
-                ]
-              },
-              {
-                "infinitive": "detach",
-                "forms": [
-                  "detach",
-                  "detaches",
-                  "detached",
-                  "detaching"
-                ]
-              },
-              {
-                "infinitive": "pull out",
-                "forms": [
-                  "pull out",
-                  "pulls out",
-                  "pulled out",
-                  "pulling out"
-                ]
-              }
-            ]
-          },
-          "replace": {
-            "infinitive_for_adlib": "replace",
-            "all_forms": [
-              "replace",
-              "replaces",
-              "replaced",
-              "replacing"
-            ],
-            "synonym_clusters": [
-              {
-                "infinitive": "swap",
-                "forms": [
-                  "swap",
-                  "swaps",
-                  "swapped",
-                  "swapping"
-                ]
-              },
-              {
-                "infinitive": "change out",
-                "forms": [
-                  "change out",
-                  "changes out",
-                  "changing out"
-                ]
-              }
-            ]
-          }
-        }
-      },
       "large_size_words": [
         "big",
         "bulky",
@@ -38893,6 +39259,344 @@
         "replacing"
       ]
     },
+    "action_vocabulary": {
+      "_note": "SSOT for verb-form matching AND ad-lib infinitive phrasing. Keyed by service_types key where applicable, so it can never drift from service_types[*].verb_natural. Built to fix the bug where 'window fixed' was detected as action='service' (generic fallback) instead of action='Repair', because the old detectAction() regex only matched bare infinitives ('fix') and not conjugated forms ('fixed'). Consumers should build ONE matching regex per action from all_forms+synonyms (word-boundary, case-insensitive), and use infinitive_for_adlib for 'I need to ___' sentence construction.",
+      "actions": [
+        {
+          "action_id": "act.install",
+          "infinitive_for_adlib": "install",
+          "all_forms": [
+            "install",
+            "installs",
+            "installed",
+            "installing"
+          ],
+          "synonym_clusters": [
+            {
+              "infinitive": "mount",
+              "forms": [
+                "mount",
+                "mounts",
+                "mounted",
+                "mounting"
+              ]
+            },
+            {
+              "infinitive": "hang",
+              "forms": [
+                "hang",
+                "hangs",
+                "hung",
+                "hanging"
+              ]
+            },
+            {
+              "infinitive": "put up",
+              "forms": [
+                "put up",
+                "puts up",
+                "putting up"
+              ]
+            },
+            {
+              "infinitive": "put in",
+              "forms": [
+                "put in",
+                "puts in",
+                "putting in"
+              ]
+            },
+            {
+              "infinitive": "rehang",
+              "forms": [
+                "rehang",
+                "rehangs",
+                "rehung",
+                "rehanging"
+              ]
+            }
+          ]
+        },
+        {
+          "action_id": "act.repair",
+          "infinitive_for_adlib": "fix",
+          "all_forms": [
+            "fix",
+            "fixes",
+            "fixed",
+            "fixing",
+            "repair",
+            "repairs",
+            "repaired",
+            "repairing"
+          ],
+          "synonym_clusters": [
+            {
+              "infinitive": "patch",
+              "forms": [
+                "patch",
+                "patches",
+                "patched",
+                "patching"
+              ]
+            },
+            {
+              "infinitive": "restore",
+              "forms": [
+                "restore",
+                "restores",
+                "restored",
+                "restoring"
+              ]
+            },
+            {
+              "infinitive": "adjust",
+              "forms": [
+                "adjust",
+                "adjusts",
+                "adjusted",
+                "adjusting"
+              ]
+            },
+            {
+              "infinitive": "tighten",
+              "forms": [
+                "tighten",
+                "tightens",
+                "tightened",
+                "tightening"
+              ]
+            },
+            {
+              "infinitive": "reseal",
+              "forms": [
+                "reseal",
+                "reseals",
+                "resealed",
+                "resealing"
+              ]
+            },
+            {
+              "infinitive": "reattach",
+              "forms": [
+                "reattach",
+                "reattaches",
+                "reattached",
+                "reattaching"
+              ]
+            },
+            {
+              "infinitive": "reglue",
+              "forms": [
+                "reglue",
+                "reglues",
+                "reglued",
+                "regluing",
+                "glue",
+                "glues",
+                "glued",
+                "gluing"
+              ]
+            },
+            {
+              "infinitive": "refasten",
+              "forms": [
+                "refasten",
+                "refastens",
+                "refastened",
+                "refastening"
+              ]
+            },
+            {
+              "infinitive": "secure",
+              "forms": [
+                "secure",
+                "secures",
+                "secured",
+                "securing"
+              ]
+            }
+          ]
+        },
+        {
+          "action_id": "act.diagnostic",
+          "infinitive_for_adlib": "look at",
+          "all_forms": [
+            "diagnose",
+            "diagnoses",
+            "diagnosed",
+            "diagnosing"
+          ],
+          "synonym_clusters": [
+            {
+              "infinitive": "check",
+              "forms": [
+                "check",
+                "checks",
+                "checked",
+                "checking"
+              ]
+            },
+            {
+              "infinitive": "look at",
+              "forms": [
+                "look at",
+                "looks at",
+                "looked at",
+                "looking at"
+              ]
+            },
+            {
+              "infinitive": "inspect",
+              "forms": [
+                "inspect",
+                "inspects",
+                "inspected",
+                "inspecting"
+              ]
+            }
+          ]
+        },
+        {
+          "action_id": "act.assembly",
+          "infinitive_for_adlib": "assemble",
+          "all_forms": [
+            "assemble",
+            "assembles",
+            "assembled",
+            "assembling"
+          ],
+          "synonym_clusters": [
+            {
+              "infinitive": "build",
+              "forms": [
+                "build",
+                "builds",
+                "built",
+                "building"
+              ]
+            },
+            {
+              "infinitive": "put together",
+              "forms": [
+                "put together",
+                "puts together",
+                "putting together"
+              ]
+            }
+          ]
+        },
+        {
+          "action_id": "act.setup",
+          "infinitive_for_adlib": "set up",
+          "all_forms": [
+            "set up",
+            "sets up",
+            "setting up"
+          ],
+          "synonym_clusters": [
+            {
+              "infinitive": "configure",
+              "forms": [
+                "setup",
+                "configure",
+                "configures",
+                "configured",
+                "configuring"
+              ]
+            }
+          ]
+        }
+      ],
+      "unmapped_verbs": [
+        {
+          "verb": "remove",
+          "infinitive_for_adlib": "remove",
+          "all_forms": [
+            "remove",
+            "removes",
+            "removed",
+            "removing"
+          ],
+          "synonym_clusters": [
+            {
+              "infinitive": "take down",
+              "forms": [
+                "take down",
+                "takes down",
+                "took down",
+                "taking down"
+              ]
+            },
+            {
+              "infinitive": "take off",
+              "forms": [
+                "take off",
+                "takes off",
+                "took off",
+                "taking off"
+              ]
+            },
+            {
+              "infinitive": "uninstall",
+              "forms": [
+                "uninstall",
+                "uninstalls",
+                "uninstalled",
+                "uninstalling"
+              ]
+            },
+            {
+              "infinitive": "detach",
+              "forms": [
+                "detach",
+                "detaches",
+                "detached",
+                "detaching"
+              ]
+            },
+            {
+              "infinitive": "pull out",
+              "forms": [
+                "pull out",
+                "pulls out",
+                "pulled out",
+                "pulling out"
+              ]
+            }
+          ]
+        },
+        {
+          "verb": "replace",
+          "infinitive_for_adlib": "replace",
+          "all_forms": [
+            "replace",
+            "replaces",
+            "replaced",
+            "replacing"
+          ],
+          "synonym_clusters": [
+            {
+              "infinitive": "swap",
+              "forms": [
+                "swap",
+                "swaps",
+                "swapped",
+                "swapping"
+              ]
+            },
+            {
+              "infinitive": "change out",
+              "forms": [
+                "change out",
+                "changes out",
+                "changing out"
+              ]
+            }
+          ]
+        }
+      ]
+    },
     "adlib_phrase_overrides": {
       "adlib": {
         "sentence_start": "I need",
@@ -38966,7 +39670,11 @@
             "override_base_price": 115
           }
         ],
-        "confidence_weight": 55
+        "confidence_weight": 55,
+        "resolves_to": {
+          "entity_id": "ent.door",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "drywall",
@@ -38983,7 +39691,11 @@
         "_note_keyword_fix": "v9.6 FIX: was 'drywall / wall' -- a compound display-label string that never appeared literally in real customer phrasing, so this entry's full, authored confidence_weight silently never applied (confirmed via direct trace: always fell back to the half-weight synonym path). Renamed to the single, most specific, least cross-category-ambiguous term; the other term remains exactly where it already was, as an existing synonym (unchanged, already correctly half-weight).",
         "full_weight_synonyms": [
           "sheetrock"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.drywall",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "faucet",
@@ -39011,7 +39723,11 @@
         "full_weight_synonyms": [
           "sink"
         ],
-        "_note_full_weight_synonyms": "v9.6: these specific synonyms are genuinely as specific/unambiguous as the primary keyword (same category, no cross-category collision -- checked directly against every other intent_mappings entry), so they earn the same full confidence_weight instead of the generic half-weight every other synonym gets."
+        "_note_full_weight_synonyms": "v9.6: these specific synonyms are genuinely as specific/unambiguous as the primary keyword (same category, no cross-category collision -- checked directly against every other intent_mappings entry), so they earn the same full confidence_weight instead of the generic half-weight every other synonym gets.",
+        "resolves_to": {
+          "entity_id": "ent.faucet",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "furniture",
@@ -39032,7 +39748,11 @@
           "chair",
           "dresser",
           "sofa"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.furniture",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "install",
@@ -39045,7 +39765,11 @@
         "default_service_type": "act.install",
         "confidence_weight": 75,
         "resolver": "object_based",
-        "is_object": false
+        "is_object": false,
+        "resolves_to": {
+          "entity_id": null,
+          "basis": "unresolved"
+        }
       },
       {
         "keyword": "light fixture",
@@ -39078,7 +39802,11 @@
           }
         ],
         "confidence_weight": 82,
-        "default_dynamic_category": "cat.electric_lighting"
+        "default_dynamic_category": "cat.electric_lighting",
+        "resolves_to": {
+          "entity_id": "ent.ceiling_light",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "mount",
@@ -39144,7 +39872,11 @@
           }
         ],
         "_note": "v9.5 FIX: added real, plain single-word verb synonyms after a natural-phrasing test corpus confirmed every rigid, multi-word synonym ('hang on wall', 'attach to wall', etc.) missed common, natural real phrasing entirely -- 'hang a picture on the wall', 'attach a mirror to the wall', and 'fix a bracket to the wall' all previously scored ZERO on this keyword and fell through to drywall_repair_formula instead, the wrong formula for a mounting job. Kept the original rigid multi-word synonyms too (harmless, still correct when they DO match) and added the plain verbs matching this catalog's normal, working convention elsewhere.",
-        "is_object": false
+        "is_object": false,
+        "resolves_to": {
+          "entity_id": null,
+          "basis": "unresolved"
+        }
       },
       {
         "keyword": "other",
@@ -39159,7 +39891,11 @@
           "base_price": 70
         },
         "confidence_weight": 0,
-        "is_object": false
+        "is_object": false,
+        "resolves_to": {
+          "entity_id": null,
+          "basis": "unresolved"
+        }
       },
       {
         "keyword": "tile",
@@ -39179,7 +39915,11 @@
         "full_weight_synonyms": [
           "floor"
         ],
-        "_note_full_weight_synonyms": "v9.6: these specific synonyms are genuinely as specific/unambiguous as the primary keyword (same category, no cross-category collision -- checked directly against every other intent_mappings entry), so they earn the same full confidence_weight instead of the generic half-weight every other synonym gets."
+        "_note_full_weight_synonyms": "v9.6: these specific synonyms are genuinely as specific/unambiguous as the primary keyword (same category, no cross-category collision -- checked directly against every other intent_mappings entry), so they earn the same full confidence_weight instead of the generic half-weight every other synonym gets.",
+        "resolves_to": {
+          "entity_id": "ent.tile",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "toilet",
@@ -39239,7 +39979,11 @@
           "water closet",
           "commode"
         ],
-        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'water closet' is an unambiguous formal synonym, zero collision. 'commode' has a real but rare furniture/medical-device sense elsewhere in English -- promoted anyway since this catalog only ever sees 'fix my X'-shaped repair requests, where 'commode' overwhelmingly means toilet, and it has zero collision with any other of the 80 other intent_mappings entries. Both confirmed via direct detectIntentNLP execution: scored 45 (half of this entry's 90) before this fix, 90 after."
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'water closet' is an unambiguous formal synonym, zero collision. 'commode' has a real but rare furniture/medical-device sense elsewhere in English -- promoted anyway since this catalog only ever sees 'fix my X'-shaped repair requests, where 'commode' overwhelmingly means toilet, and it has zero collision with any other of the 80 other intent_mappings entries. Both confirmed via direct detectIntentNLP execution: scored 45 (half of this entry's 90) before this fix, 90 after.",
+        "resolves_to": {
+          "entity_id": "ent.toilet",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "cabinet",
@@ -39284,7 +40028,11 @@
             "note": "Hardware installation on cabinet/drawer"
           }
         ],
-        "_note_keyword_fix": "v9.6 FIX: was 'cabinet / drawer' -- a compound display-label string that never appeared literally in real customer phrasing, so this entry's full, authored confidence_weight silently never applied (confirmed via direct trace: always fell back to the half-weight synonym path). Renamed to the single, most specific, least cross-category-ambiguous term; the other term remains exactly where it already was, as an existing synonym (unchanged, already correctly half-weight)."
+        "_note_keyword_fix": "v9.6 FIX: was 'cabinet / drawer' -- a compound display-label string that never appeared literally in real customer phrasing, so this entry's full, authored confidence_weight silently never applied (confirmed via direct trace: always fell back to the half-weight synonym path). Renamed to the single, most specific, least cross-category-ambiguous term; the other term remains exactly where it already was, as an existing synonym (unchanged, already correctly half-weight).",
+        "resolves_to": {
+          "entity_id": "ent.cabinet_door",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "fridge",
@@ -39316,7 +40064,11 @@
             "override_sku": "svc.refrigerator_install",
             "note": "Installing a new refrigerator, not repairing an existing one -- matches washer's own, identical, established pattern."
           }
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.refrigerator",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "washer",
@@ -39344,7 +40096,11 @@
         "full_weight_synonyms": [
           "washing machine"
         ],
-        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'washing machine' is the exact formal name for this appliance, zero ambiguity, zero collision against the other 80 entries. Confirmed via direct detectIntentNLP execution: scored 45 before this fix, 90 after. ('clothes washer' was already effectively safe without promotion -- it contains the literal word 'washer', so this entry's own keyword-match path already fires at full weight whenever it appears.)"
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'washing machine' is the exact formal name for this appliance, zero ambiguity, zero collision against the other 80 entries. Confirmed via direct detectIntentNLP execution: scored 45 before this fix, 90 after. ('clothes washer' was already effectively safe without promotion -- it contains the literal word 'washer', so this entry's own keyword-match path already fires at full weight whenever it appears.)",
+        "resolves_to": {
+          "entity_id": "ent.washer",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "dryer",
@@ -39355,7 +40111,11 @@
         ],
         "confidence_weight": 85,
         "default_dynamic_category": "cat.minor_home_repairs",
-        "default_service_type": "act.repair"
+        "default_service_type": "act.repair",
+        "resolves_to": {
+          "entity_id": "ent.dryer",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "dishwasher",
@@ -39382,7 +40142,11 @@
             "override_sku": "svc.dishwasher_install",
             "note": "Installing a new dishwasher, not repairing an existing one -- matches washer's own, identical, established pattern."
           }
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.dishwasher",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "microwave",
@@ -39408,7 +40172,11 @@
         ],
         "confidence_weight": 90,
         "default_dynamic_category": "cat.minor_home_repairs",
-        "default_service_type": "act.repair"
+        "default_service_type": "act.repair",
+        "resolves_to": {
+          "entity_id": "ent.microwave",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "stove",
@@ -39426,7 +40194,11 @@
           "oven",
           "cooktop"
         ],
-        "_note_full_weight_synonyms": "T110 (Operator Brief, Session 2 sweep): 'oven' is genuinely the same shape as computer/laptop -- a distinct word from this entry's own keyword ('stove'), so 'fix my oven' previously scored only 42.5 (half weight) and missed the 50-point route_to_group_other_tile gate. T111 (per-synonym audit): 'cooktop' is the same shape and same fix -- specific, kitchen-appliance-only term, zero collision, scored 42.5 before / 85 after. 'range' and 'burner' were deliberately checked and NOT promoted: both are common general-English words with real meanings unrelated to stoves (a mountain/price/shooting range; a burner phone/account) -- promoting either to full weight would raise, not lower, the risk this catalog's own PENDING_DECISIONS #30 already flags (incidental-keyword hijacking of unrelated free text). Left at the existing half-weight deliberately, not by oversight."
+        "_note_full_weight_synonyms": "T110 (Operator Brief, Session 2 sweep): 'oven' is genuinely the same shape as computer/laptop -- a distinct word from this entry's own keyword ('stove'), so 'fix my oven' previously scored only 42.5 (half weight) and missed the 50-point route_to_group_other_tile gate. T111 (per-synonym audit): 'cooktop' is the same shape and same fix -- specific, kitchen-appliance-only term, zero collision, scored 42.5 before / 85 after. 'range' and 'burner' were deliberately checked and NOT promoted: both are common general-English words with real meanings unrelated to stoves (a mountain/price/shooting range; a burner phone/account) -- promoting either to full weight would raise, not lower, the risk this catalog's own PENDING_DECISIONS #30 already flags (incidental-keyword hijacking of unrelated free text). Left at the existing half-weight deliberately, not by oversight.",
+        "resolves_to": {
+          "entity_id": "ent.stove",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "window",
@@ -39441,7 +40213,11 @@
         "confidence_weight": 75,
         "full_weight_synonyms": [
           "windowpane"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.window",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "pax",
@@ -39453,7 +40229,11 @@
         "default_dynamic_category": "cat.furniture_fixes_assembly",
         "default_service_sku": "svc.pax_wardrobe_assembly",
         "dynamic_rule": "fml.pax_wardrobe_formula",
-        "confidence_weight": 85
+        "confidence_weight": 85,
+        "resolves_to": {
+          "entity_id": "ent.pax",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "ceiling fan",
@@ -39465,7 +40245,11 @@
         "default_dynamic_category": "cat.electric_lighting",
         "default_service_sku": "svc.ceiling_fan_install",
         "confidence_weight": 80,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.ceiling_fan",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "curtain rod",
@@ -39482,7 +40266,11 @@
         "default_dynamic_category": "cat.wall_mounting",
         "default_service_sku": "svc.blinds_shades_curtains_buy_the_hour",
         "confidence_weight": 70,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.blinds",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "deadbolt",
@@ -39495,7 +40283,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.door_lock_or_handle_install",
         "confidence_weight": 65,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.deadbolt",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "garbage disposal",
@@ -39507,7 +40299,11 @@
         "default_dynamic_category": "cat.plumbing_help",
         "default_service_sku": "svc.garbage_disposal_replacement",
         "confidence_weight": 80,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.garbage_disposal",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "outlet",
@@ -39520,7 +40316,11 @@
         ],
         "default_dynamic_category": "cat.electric_lighting",
         "default_service_type": "act.install",
-        "confidence_weight": 80
+        "confidence_weight": 80,
+        "resolves_to": {
+          "entity_id": null,
+          "basis": "unresolved"
+        }
       },
       {
         "keyword": "shower head",
@@ -39536,7 +40336,11 @@
         "full_weight_synonyms": [
           "showerhead"
         ],
-        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'showerhead' (one word) is a pure spelling variant of this entry's own keyword and doesn't share word-boundary substring status with the two-word 'shower head', so it was scoring at half weight (37.5) with no rescue from any other mechanism -- same shape as the original laptop/computer bug. Zero ambiguity, zero collision. Scored 100 after this fix. ('shower head replacement' was already safe without promotion: it contains the literal two-word keyword as a prefix, so the keyword-match path already fires at full weight whenever it appears.)"
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'showerhead' (one word) is a pure spelling variant of this entry's own keyword and doesn't share word-boundary substring status with the two-word 'shower head', so it was scoring at half weight (37.5) with no rescue from any other mechanism -- same shape as the original laptop/computer bug. Zero ambiguity, zero collision. Scored 100 after this fix. ('shower head replacement' was already safe without promotion: it contains the literal two-word keyword as a prefix, so the keyword-match path already fires at full weight whenever it appears.)",
+        "resolves_to": {
+          "entity_id": "ent.shower_head",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "thermostat",
@@ -39553,7 +40357,11 @@
         "full_weight_synonyms": [
           "ecobee"
         ],
-        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'ecobee' is a coined brand name with no other meaning in English -- arguably even less ambiguous than a generic word like 'refrigerator'. Zero collision. Scored 40 before this fix, 80 after. 'nest' was deliberately checked and NOT promoted despite being the same structural shape (a brand name, not a keyword-substring-safe phrase): 'nest' is an extremely common, highly ambiguous English word (bird's nest, nest egg, nesting, plus the tech company itself) with real, meaningful risk of hijacking unrelated free text if scored at full weight -- left at the existing half-weight deliberately, consistent with this catalog's own established caution (see faucet's 'tap'/'basin', also deliberately left half-weight for the same reason). ('smart thermostat' was already safe without promotion: it contains the literal keyword 'thermostat' as a word, so the keyword-match path already fires at full weight whenever it appears.)"
+        "_note_full_weight_synonyms": "T111 (per-synonym audit requested by operator after Session 2): 'ecobee' is a coined brand name with no other meaning in English -- arguably even less ambiguous than a generic word like 'refrigerator'. Zero collision. Scored 40 before this fix, 80 after. 'nest' was deliberately checked and NOT promoted despite being the same structural shape (a brand name, not a keyword-substring-safe phrase): 'nest' is an extremely common, highly ambiguous English word (bird's nest, nest egg, nesting, plus the tech company itself) with real, meaningful risk of hijacking unrelated free text if scored at full weight -- left at the existing half-weight deliberately, consistent with this catalog's own established caution (see faucet's 'tap'/'basin', also deliberately left half-weight for the same reason). ('smart thermostat' was already safe without promotion: it contains the literal keyword 'thermostat' as a word, so the keyword-match path already fires at full weight whenever it appears.)",
+        "resolves_to": {
+          "entity_id": "ent.thermostat",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "light bulb",
@@ -39567,7 +40375,11 @@
         "default_dynamic_category": "cat.electric_lighting",
         "default_service_sku": "svc.led_bulb_upgrade",
         "confidence_weight": 80,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.bulb",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "furniture assembly",
@@ -39583,7 +40395,11 @@
         "default_service_type": "act.assembly",
         "is_object": false,
         "names_the_job": true,
-        "subject_phrase": "furniture assembly"
+        "subject_phrase": "furniture assembly",
+        "resolves_to": {
+          "entity_id": "ent.flat_pack",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "mirror",
@@ -39596,7 +40412,11 @@
         "default_dynamic_category": "cat.wall_mounting",
         "default_service_sku": "svc.shelf_mounting_standard_buy_the_hour",
         "confidence_weight": 70,
-        "default_service_type": "act.mount"
+        "default_service_type": "act.mount",
+        "resolves_to": {
+          "entity_id": "ent.mirror",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "shelf",
@@ -39610,7 +40430,11 @@
         "default_dynamic_category": "cat.wall_mounting",
         "default_service_sku": "svc.shelf_mounting_standard_buy_the_hour",
         "confidence_weight": 75,
-        "default_service_type": "act.mount"
+        "default_service_type": "act.mount",
+        "resolves_to": {
+          "entity_id": "ent.shelf",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "baseboard",
@@ -39627,7 +40451,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.baseboard_install",
         "confidence_weight": 70,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.baseboard",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "bidet",
@@ -39643,7 +40471,11 @@
         "default_service_type": "act.install",
         "full_weight_synonyms": [
           "washlet"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.bidet",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "brick",
@@ -39655,7 +40487,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.brick_or_concrete_crack_repair",
         "confidence_weight": 75,
-        "default_service_type": "act.repair"
+        "default_service_type": "act.repair",
+        "resolves_to": {
+          "entity_id": "ent.brick",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "cable",
@@ -39669,7 +40505,11 @@
         "default_dynamic_category": "cat.wall_mounting",
         "default_service_sku": "svc.cable_management",
         "confidence_weight": 70,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.cables",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "slow drain",
@@ -39686,7 +40526,11 @@
         "default_service_type": "act.install",
         "is_object": false,
         "names_the_job": true,
-        "subject_phrase": "a slow drain"
+        "subject_phrase": "a slow drain",
+        "resolves_to": {
+          "entity_id": "ent.slow_drain",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "dimmer",
@@ -39699,7 +40543,11 @@
         "default_dynamic_category": "cat.electric_lighting",
         "default_service_sku": "svc.dimmer_switch_install",
         "confidence_weight": 80,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.dimmer_switch",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "flatscreen",
@@ -39712,7 +40560,11 @@
         "default_dynamic_category": "cat.wall_mounting",
         "default_service_sku": "svc.flatscreen_mounting_standard",
         "confidence_weight": 85,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.tv",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "gfci",
@@ -39728,7 +40580,11 @@
         "default_service_type": "act.install",
         "full_weight_synonyms": [
           "ground fault"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.gfci_outlet",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "water line",
@@ -39742,7 +40598,11 @@
         "default_dynamic_category": "cat.plumbing_help",
         "default_service_sku": "svc.refrigerator_water_line_install",
         "confidence_weight": 95,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.water_line",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "leak",
@@ -39756,7 +40616,11 @@
         "default_dynamic_category": "cat.plumbing_help",
         "confidence_weight": 80,
         "default_service_type": "act.repair",
-        "is_object": false
+        "is_object": false,
+        "resolves_to": {
+          "entity_id": null,
+          "basis": "unresolved"
+        }
       },
       {
         "keyword": "plaster",
@@ -39769,7 +40633,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.plaster_wall_repair",
         "confidence_weight": 80,
-        "default_service_type": "act.repair"
+        "default_service_type": "act.repair",
+        "resolves_to": {
+          "entity_id": "ent.plaster",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "router",
@@ -39782,7 +40650,11 @@
         "default_dynamic_category": "cat.tech_trouble",
         "default_service_sku": "svc.router_configuration",
         "confidence_weight": 85,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.router",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "smart plug",
@@ -39795,7 +40667,11 @@
         "default_dynamic_category": "cat.tech_trouble",
         "default_service_sku": "svc.smart_plug_configuration",
         "confidence_weight": 80,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.smart_plug",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "squeaky",
@@ -39811,7 +40687,11 @@
         "default_service_type": "act.repair",
         "is_object": false,
         "names_the_job": true,
-        "subject_phrase": "a squeaky floor"
+        "subject_phrase": "a squeaky floor",
+        "resolves_to": {
+          "entity_id": "ent.floor",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "tv",
@@ -39827,7 +40707,11 @@
         "default_service_type": "act.install",
         "full_weight_synonyms": [
           "television"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.tv",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "usb",
@@ -39840,7 +40724,11 @@
         "default_dynamic_category": "cat.electric_lighting",
         "default_service_sku": "svc.usb_outlet_install",
         "confidence_weight": 75,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.usb_outlet",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "virus",
@@ -39860,7 +40748,11 @@
         "subject_phrase": "a computer virus",
         "full_weight_synonyms": [
           "malware"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.computer",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "wifi",
@@ -39874,7 +40766,11 @@
         "default_dynamic_category": "cat.tech_trouble",
         "default_service_sku": "svc.wi_fi_extender_setup",
         "confidence_weight": 80,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.wifi_extender",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "window ac",
@@ -39903,7 +40799,11 @@
             "override_sku": "svc.window_ac_repair",
             "note": "Repairing an existing window AC unit, not installing a new one -- the inverse of washer's own pattern, since this keyword's own default is Install rather than Repair."
           }
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.window_ac",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "angle stop",
@@ -39916,7 +40816,11 @@
         "default_dynamic_category": "cat.plumbing_help",
         "default_service_sku": "svc.angle_stop_replacement",
         "confidence_weight": 75,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.angle_stop",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "backup",
@@ -39949,7 +40853,11 @@
           "recover my files",
           "recover files",
           "recover deleted files"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.hard_drive",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "bathroom fan",
@@ -39966,7 +40874,11 @@
         "default_service_type": "act.install",
         "full_weight_synonyms": [
           "bathroom exhaust"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.exhaust_fan",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "chandelier",
@@ -39981,7 +40893,11 @@
         "default_dynamic_category": "cat.electric_lighting",
         "default_service_sku": "svc.chandelier_or_pendant_install",
         "confidence_weight": 85,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.chandelier",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "computer",
@@ -40009,7 +40925,11 @@
           "notebook",
           "pc"
         ],
-        "_note_full_weight_synonyms": "T110 (Operator Brief, Session 2): promoted -- these are the plain-English nouns a customer actually types ('fix my laptop'), not generic half-weight synonyms; checked directly against all 80 other intent_mappings entries, zero collisions (none of the four appear anywhere else in the catalog). Closes charter S11 item 12: 'fix my laptop' previously scored 42.5 (half of this entry's own confidence_weight) and never cleared the 50-point route_to_group_other_tile gate."
+        "_note_full_weight_synonyms": "T110 (Operator Brief, Session 2): promoted -- these are the plain-English nouns a customer actually types ('fix my laptop'), not generic half-weight synonyms; checked directly against all 80 other intent_mappings entries, zero collisions (none of the four appear anywhere else in the catalog). Closes charter S11 item 12: 'fix my laptop' previously scored 42.5 (half of this entry's own confidence_weight) and never cleared the 50-point route_to_group_other_tile gate.",
+        "resolves_to": {
+          "entity_id": "ent.computer",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "concrete",
@@ -40026,7 +40946,11 @@
         "full_weight_synonyms": [
           "cement",
           "cinder block"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.concrete",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "door knob",
@@ -40037,7 +40961,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.door_lock_or_handle_install",
         "confidence_weight": 85,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.door_lock",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "door sweep",
@@ -40054,7 +40982,11 @@
         "full_weight_synonyms": [
           "weather stripping",
           "weatherstrip"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.door",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "driver",
@@ -40067,7 +40999,11 @@
         "default_dynamic_category": "cat.tech_trouble",
         "default_service_sku": "svc.software_or_driver_install",
         "confidence_weight": 80,
-        "default_service_type": "act.setup"
+        "default_service_type": "act.setup",
+        "resolves_to": {
+          "entity_id": "ent.os",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "flushometer",
@@ -40080,7 +41016,11 @@
         "default_dynamic_category": "cat.plumbing_help",
         "default_service_sku": "svc.toilet_flapper_or_fill_valve_replacement",
         "confidence_weight": 70,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.fill_valve",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "grout",
@@ -40093,7 +41033,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.loose_tile_replacement",
         "confidence_weight": 75,
-        "default_service_type": "act.repair"
+        "default_service_type": "act.repair",
+        "resolves_to": {
+          "entity_id": "ent.tile",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "hard drive",
@@ -40139,7 +41083,11 @@
           "psu"
         ],
         "_note_t166": "T166 (PENDING_DECISIONS #163): the service this keyword routes to is named 'Internal Hardware Replacement' ('Replace RAM, SSD, battery, fan, or other internal parts') and had no alias and no synonym of its own, so a customer who typed its name was routed by accident: through the substring 'cement' in 'replacement' to a concrete-repair category. With the substring defect fixed the name matched nothing at all (verify_confidence_convergence.js, Part 3). The service's own name, its description's words, and 'ram' / 'memory upgrade' are synonyms here, at full weight.",
-        "_note_t170": "T170 (#180): 'power supply' and 'psu' are the name of a part the Computer Repair part service now offers (computer_component 'Power supply (desktop)'); without them 'my psu is dead' and 'install a power supply' matched nothing and fell to a wall-mounting question. Full weight, like 'ram' and 'ssd': a distinct word from this entry's keyword, so at half weight it missed the 50-point gate. 'new power supply for my desktop' still names a computer, which is a stronger object (85); the service's description decides that sibling (see the descriptions of computer_diagnostic and internal_hardware_replacement)."
+        "_note_t170": "T170 (#180): 'power supply' and 'psu' are the name of a part the Computer Repair part service now offers (computer_component 'Power supply (desktop)'); without them 'my psu is dead' and 'install a power supply' matched nothing and fell to a wall-mounting question. Full weight, like 'ram' and 'ssd': a distinct word from this entry's keyword, so at half weight it missed the 50-point gate. 'new power supply for my desktop' still names a computer, which is a stronger object (85); the service's description decides that sibling (see the descriptions of computer_diagnostic and internal_hardware_replacement).",
+        "resolves_to": {
+          "entity_id": "ent.hard_drive",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "cabinet knob",
@@ -40152,7 +41100,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.cabinet_knob_or_pull_install",
         "confidence_weight": 80,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.knob",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "organize",
@@ -40166,7 +41118,11 @@
         "default_service_sku": "svc.cable_management",
         "confidence_weight": 65,
         "default_service_type": "act.install",
-        "is_object": false
+        "is_object": false,
+        "resolves_to": {
+          "entity_id": "ent.cables",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "p trap",
@@ -40182,7 +41138,11 @@
         "default_service_type": "act.install",
         "full_weight_synonyms": [
           "p-trap"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.p_trap",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "screen",
@@ -40195,7 +41155,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.window_screen_repair",
         "confidence_weight": 75,
-        "default_service_type": "act.repair"
+        "default_service_type": "act.repair",
+        "resolves_to": {
+          "entity_id": "ent.window_screen",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "software",
@@ -40208,7 +41172,11 @@
         "default_dynamic_category": "cat.tech_trouble",
         "default_service_sku": "svc.software_or_driver_install",
         "confidence_weight": 80,
-        "default_service_type": "act.setup"
+        "default_service_type": "act.setup",
+        "resolves_to": {
+          "entity_id": "ent.os",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "speaker",
@@ -40227,7 +41195,11 @@
           "alexa",
           "google home",
           "homepod"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.smart_speaker",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "switch",
@@ -40239,7 +41211,11 @@
         "default_dynamic_category": "cat.electric_lighting",
         "default_service_sku": "svc.smart_switch_install",
         "confidence_weight": 80,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.smart_switch",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "tub spout",
@@ -40255,7 +41231,11 @@
         "default_service_type": "act.install",
         "full_weight_synonyms": [
           "bathtub spout"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.tub_spout",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "under cabinet",
@@ -40271,7 +41251,11 @@
         "default_service_type": "act.install",
         "full_weight_synonyms": [
           "undercabinet"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.under_cabinet_light",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "wax ring",
@@ -40287,7 +41271,11 @@
         "default_service_type": "act.install",
         "full_weight_synonyms": [
           "wax seal"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.wax_ring",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "wood panel",
@@ -40304,7 +41292,11 @@
         "full_weight_synonyms": [
           "paneling",
           "wainscoting"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.wall_paneling",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "drawer",
@@ -40348,7 +41340,11 @@
             "override_sku": "svc.cabinet_knob_or_pull_install",
             "note": "Drawer hardware installation"
           }
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.drawer",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "hinge",
@@ -40360,7 +41356,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.door_lock_or_handle_install",
         "default_service_type": "act.install",
-        "confidence_weight": 80
+        "confidence_weight": 80,
+        "resolves_to": {
+          "entity_id": "ent.hinge",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "peephole",
@@ -40375,7 +41375,11 @@
         "confidence_weight": 80,
         "full_weight_synonyms": [
           "peep hole"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.door_lock",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "toilet seat",
@@ -40398,7 +41402,11 @@
           "toilet cover",
           "toilet lid",
           "toilet seat cover"
-        ]
+        ],
+        "resolves_to": {
+          "entity_id": "ent.toilet_seat",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "cabinet hinge",
@@ -40411,7 +41419,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.cabinet_door_or_drawer_adjustment",
         "confidence_weight": 95,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.cabinet_door",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "cabinet handle",
@@ -40424,7 +41436,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.cabinet_knob_or_pull_install",
         "confidence_weight": 95,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.knob",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "cabinet shelf",
@@ -40437,7 +41453,11 @@
         "default_dynamic_category": "cat.minor_home_repairs",
         "default_service_sku": "svc.cabinet_door_or_drawer_adjustment",
         "confidence_weight": 95,
-        "default_service_type": "act.install"
+        "default_service_type": "act.install",
+        "resolves_to": {
+          "entity_id": "ent.cabinet_door",
+          "basis": "default_service_entity"
+        }
       },
       {
         "keyword": "sink leak",
@@ -40450,7 +41470,11 @@
         "default_dynamic_category": "cat.plumbing_help",
         "default_service_sku": "svc.leak_under_sink_repair",
         "confidence_weight": 90,
-        "default_service_type": "act.repair"
+        "default_service_type": "act.repair",
+        "resolves_to": {
+          "entity_id": "ent.sink_leak",
+          "basis": "keyword_is_entity"
+        }
       },
       {
         "keyword": "ceiling tile",
@@ -40470,7 +41494,11 @@
           "suspended ceiling",
           "ceiling panel"
         ],
-        "_note_new_keyword": "v9.6 NEW SERVICE (working design, per explicit instruction to build this out with best judgment -- clearly marked as such, needs business validation): weight 70, deliberately just above the existing 'tile' keyword's own 65 -- confirmed directly this is sufficient for this entry to always win outright over the generic tile match whenever 'ceiling' is present (detectIntentNLP keeps only the single highest-scoring entry). This is the real, structural fix for the routing gap found in T96 -- 'ceiling tile'/'drop ceiling' now resolves to its own real group (minor_home_repairs_ceilings) instead of silently matching the wall/floor tile intent. Real, genuine synonyms given full weight (not the generic half-weight) since each is exactly as specific and unambiguous as the primary keyword itself, same reasoning already established for other entries' full_weight_synonyms."
+        "_note_new_keyword": "v9.6 NEW SERVICE (working design, per explicit instruction to build this out with best judgment -- clearly marked as such, needs business validation): weight 70, deliberately just above the existing 'tile' keyword's own 65 -- confirmed directly this is sufficient for this entry to always win outright over the generic tile match whenever 'ceiling' is present (detectIntentNLP keeps only the single highest-scoring entry). This is the real, structural fix for the routing gap found in T96 -- 'ceiling tile'/'drop ceiling' now resolves to its own real group (minor_home_repairs_ceilings) instead of silently matching the wall/floor tile intent. Real, genuine synonyms given full weight (not the generic half-weight) since each is exactly as specific and unambiguous as the primary keyword itself, same reasoning already established for other entries' full_weight_synonyms.",
+        "resolves_to": {
+          "entity_id": "ent.ceiling_tile",
+          "basis": "keyword_is_entity"
+        }
       }
     ],
     "nlp_default_fallback": {

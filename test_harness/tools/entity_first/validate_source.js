@@ -201,6 +201,106 @@ function validate(src, opts = {}) {
   // a base question asked only through instances: scope of the base covers the instance askers
   for (const q of allQuestions) if (q.instance_of) { const b = questions.get(q.instance_of); const as = askers.get(q.id) || new Set(); if (b && Array.isArray(b.entity_scope)) for (const a of as) if (!b.entity_scope.includes(a)) err('V-SCOPE-ASKER', decl.q.get(b.id).path + '.entity_scope', `${a} asks an instance of ${b.id} but is not in its entity_scope`); }
 
+  // ---- formula inputs (T177): which answers a pricing formula reads, stated as data -------------------------------------------------------------------------------------------------------------------
+  // The runtime reads these answers in code (qr.html applyPricingFormula). The source says which question, which options and which formula parameter, so an option's effects can be backed by a cause the
+  // validator can see, and so the set of questions a formula owns (qr.html FORMULA_CONSUMED_KEYS) is derived instead of kept by hand.
+  const INPUT_ROLES = ['trigger_modifier', 'select_branch', 'quantity', 'constant_modifier'], INPUT_EFFECTS = ['price', 'minutes'];
+  const inputCause = new Map(); // `${qid}#${oid}` -> Set(effect): what a formula input or a fee row makes an answer do
+  const causeAdd = (qid, oid, effects) => { const k = `${qid}#${oid}`; if (!inputCause.has(k)) inputCause.set(k, new Set()); for (const e of effects) inputCause.get(k).add(e); };
+  const consumedBy = new Map(); // qid -> Set(formula id)
+  const consume = (qid, fid) => { if (!consumedBy.has(qid)) consumedBy.set(qid, new Set()); consumedBy.get(qid).add(fid); };
+  const modEff = id => { const m = modById.get(id); return m ? [Number(m.fee) ? 'price' : null, Number(m.minutes) ? 'minutes' : null].filter(Boolean) : []; };
+  const pathGet = (obj, p) => String(p).split('.').reduce((a, k) => (a !== undefined && a !== null ? a[k] : undefined), obj);
+  stats.formulaInputs = 0; stats.formulasWithInputs = 0;
+  R.pricing_formulas.forEach((f, fi) => {
+    if (!lib.isObj(f) || typeof f.id !== 'string') return;
+    const fp = `$.registries.pricing_formulas[${fi}]`;
+    if (f.qty_aware !== undefined && f.qty_aware !== true) err('V-FML-INPUT-SHAPE', fp + '.qty_aware', 'qty_aware is true or absent');
+    for (const row of Array.isArray(f.issue_type_fees) ? f.issue_type_fees : []) if (lib.isObj(row) && typeof row.question_id === 'string' && typeof row.option_id === 'string' && optionById(row.question_id, row.option_id)) { causeAdd(row.question_id, row.option_id, modEff(row.modifier_id)); consume(row.question_id, f.id); }
+    const named = new Set();
+    if (f.inputs !== undefined) {
+      if (!Array.isArray(f.inputs)) err('V-FML-INPUT-SHAPE', fp + '.inputs', 'inputs is an array');
+      else {
+        stats.formulasWithInputs++; const names = new Set(), claimed = new Map();
+        f.inputs.forEach((inp, ii) => {
+          const ip = `${fp}.inputs[${ii}]`; stats.formulaInputs++;
+          if (!lib.isObj(inp) || typeof inp.name !== 'string' || !inp.name) { err('V-FML-INPUT-SHAPE', ip, 'an input has a name'); return; }
+          if (names.has(inp.name)) err('V-FML-INPUT-DUP', ip + '.name', `${f.id} has two inputs named ${inp.name}`); names.add(inp.name);
+          if (!INPUT_ROLES.includes(inp.role)) { err('V-FML-INPUT-SHAPE', ip + '.role', `role ${JSON.stringify(inp.role)} is not one of ${INPUT_ROLES.join(', ')}`); return; }
+          const effects = Array.isArray(inp.affects) ? inp.affects : [];
+          for (const a of effects) if (!INPUT_EFFECTS.includes(a)) err('V-FML-INPUT-SHAPE', ip + '.affects', `${JSON.stringify(a)} is not an effect a formula input can have (${INPUT_EFFECTS.join(', ')})`);
+          // the formula parameter an input names must exist, and a modifier parameter must hold a modifier
+          const modParam = () => {
+            if (typeof inp.modifier_param !== 'string' || typeof f[inp.modifier_param] !== 'string') { err('V-FML-INPUT-PARAM', ip + '.modifier_param', `${f.id} has no modifier parameter ${JSON.stringify(inp.modifier_param)}`); return null; }
+            named.add(inp.modifier_param); return need(`${fp}.${inp.modifier_param}`, f[inp.modifier_param], 'mod') ? f[inp.modifier_param] : null;
+          };
+          const numParam = () => { if (inp.param === undefined) return; if (typeof pathGet(f, inp.param) !== 'number') err('V-FML-INPUT-PARAM', ip + '.param', `${f.id} has no numeric parameter ${JSON.stringify(inp.param)}`); };
+          const claim = (qid, oid) => { const k = `${qid}#${oid}`; if (claimed.has(k)) err('V-FML-INPUT-DUP', ip, `${k} is read by two inputs of ${f.id} (${claimed.get(k)} and ${inp.name})`); else claimed.set(k, inp.name); };
+          const optionsOfInput = () => {
+            if (!need(ip + '.question_id', inp.question_id, 'q')) return null;
+            const os = optionsOf(questions.get(inp.question_id)); if (!os) { err('V-FML-INPUT-OPTION', ip + '.question_id', `${inp.question_id} has no options`); return null; }
+            consume(inp.question_id, f.id); return os;
+          };
+          const optionsExist = (os, ids, p) => { let ok = Array.isArray(ids) && ids.length > 0; if (!ok) err('V-FML-INPUT-OPTION', p, 'the input names no option'); for (const [j, oid] of (Array.isArray(ids) ? ids : []).entries()) if (!os.some(o => o.id === oid)) { err('V-FML-INPUT-OPTION', `${p}[${j}]`, `${oid} is not an option of ${inp.question_id}`); ok = false; } return ok; };
+          if (inp.role === 'constant_modifier') { modParam(); return; }
+          if (inp.role === 'trigger_modifier') {
+            const os = optionsOfInput(); const mid = modParam(); if (!os || !optionsExist(os, inp.option_ids, ip + '.option_ids')) return;
+            for (const oid of inp.option_ids) {
+              claim(inp.question_id, oid); const o = os.find(x => x.id === oid);
+              if (mid && o.modifier_id !== undefined && o.modifier_id !== mid) err('V-FML-INPUT-MODIFIER', ip, `${inp.question_id}/${oid} carries its own modifier ${o.modifier_id}, but ${f.id}.${inp.modifier_param} is ${mid}: the answer would be charged by two rows`);
+              causeAdd(inp.question_id, oid, mid ? modEff(mid) : []);
+            }
+            return;
+          }
+          if (inp.role === 'select_branch') {
+            const os = optionsOfInput(); if (!os) return;
+            if (!Array.isArray(inp.branches) || inp.branches.length < 2) { err('V-FML-BRANCH-COVER', ip + '.branches', 'a branch selector names at least two branches'); return; }
+            const bn = new Set(), all = new Set();
+            inp.branches.forEach((b, bi) => {
+              const bp = `${ip}.branches[${bi}]`;
+              if (!lib.isObj(b) || typeof b.branch !== 'string' || !b.branch) { err('V-FML-INPUT-SHAPE', bp, 'a branch has a name'); return; }
+              if (bn.has(b.branch)) err('V-FML-BRANCH-COVER', bp, `branch ${b.branch} is named twice`); bn.add(b.branch);
+              if (b.formula_path !== undefined && !lib.isObj(pathGet(f, b.formula_path))) err('V-FML-INPUT-PARAM', bp + '.formula_path', `${f.id} has no parameter set ${JSON.stringify(b.formula_path)}`);
+              if (!optionsExist(os, b.option_ids, bp + '.option_ids')) return;
+              for (const oid of b.option_ids) { if (all.has(oid)) err('V-FML-BRANCH-COVER', bp, `${oid} selects two branches`); all.add(oid); claim(inp.question_id, oid); causeAdd(inp.question_id, oid, effects); }
+            });
+            for (const o of os) if (!all.has(o.id)) err('V-FML-BRANCH-COVER', ip + '.branches', `${inp.question_id}/${o.id} selects no branch (every answer of a selector question is assigned one, so no label has to be read)`);
+            if (!bn.has(inp.default_branch)) err('V-FML-BRANCH-COVER', ip + '.default_branch', `default_branch ${JSON.stringify(inp.default_branch)} is not one of the branches`);
+            return;
+          }
+          // quantity
+          numParam();
+          if (!['booking', 'answer_values', 'option_qty_value'].includes(inp.source)) { err('V-FML-INPUT-SHAPE', ip + '.source', `quantity source ${JSON.stringify(inp.source)} is not booking, answer_values or option_qty_value`); return; }
+          if (inp.source === 'booking') { if (inp.question_id !== undefined) err('V-FML-INPUT-SHAPE', ip, 'a booking quantity is read from the booking, not from a question'); return; }
+          if (inp.source === 'answer_values') {
+            const os = optionsOfInput(); if (!os) return;
+            if (!Array.isArray(inp.values)) { err('V-FML-QTY-VALUES', ip + '.values', 'answer_values lists the number each option stands for'); return; }
+            const seen = new Set();
+            inp.values.forEach((v, vi) => {
+              const vp = `${ip}.values[${vi}]`;
+              if (!lib.isObj(v) || !os.some(o => o.id === v.option_id)) { err('V-FML-INPUT-OPTION', vp, `${lib.isObj(v) ? v.option_id : v} is not an option of ${inp.question_id}`); return; }
+              if (seen.has(v.option_id)) err('V-FML-QTY-VALUES', vp, `${v.option_id} is valued twice`); seen.add(v.option_id);
+              if (typeof v.value !== 'number' || !Number.isFinite(v.value) || v.value < 0) err('V-FML-QTY-VALUES', vp + '.value', 'a quantity value is a finite number, zero or more');
+              claim(inp.question_id, v.option_id); causeAdd(inp.question_id, v.option_id, v.value === 0 ? ['quantity'] : ['quantity', ...effects]);
+            });
+            for (const o of os) if (!seen.has(o.id)) err('V-FML-QTY-VALUES', ip + '.values', `${inp.question_id}/${o.id} has no value (the count must never be read from the label)`);
+            if (typeof inp.default !== 'number') err('V-FML-QTY-VALUES', ip + '.default', 'the count used when the question is unanswered is stated');
+            return;
+          }
+          // option_qty_value: the count is each option's own qty_value
+          if (inp.question_id !== undefined) {
+            const os = optionsOfInput(); if (!os) return;
+            for (const o of os) {
+              if (typeof o.qty_value !== 'number') { err('V-FML-QTY-VALUES', ip, `${inp.question_id}/${o.id} has no numeric qty_value`); continue; }
+              claim(inp.question_id, o.id); causeAdd(inp.question_id, o.id, o.qty_value === 0 ? ['quantity'] : ['quantity', ...effects]);
+            }
+          } else for (const q of allQuestions) for (const o of q.options || []) if (o.formula_id === f.id && o.qty_value !== undefined) { claim(q.id, o.id); causeAdd(q.id, o.id, ['quantity', ...effects]); consume(q.id, f.id); }
+        });
+      }
+    }
+    for (const k of Object.keys(f)) if (/_modifier_ref$/.test(k) && !named.has(k)) res('formula_modifier_without_input', `${f.id}.${k}`, `${f.id} names ${f[k]} as ${k}, but no input says which answer (or constant) applies it`);
+  });
+
   // ---- option fields and effects ----------------------------------------------------------------------------------------------------------------------------------------------------
   for (const q of allQuestions) {
     (q.options || []).forEach((o, i) => {
@@ -226,14 +326,17 @@ function validate(src, opts = {}) {
       rule('tags', Array.isArray(o.tag_ids) && o.tag_ids.length > 0, 'tag_ids');
       rule('complexity', has('complexity_override'), 'complexity_override');
       rule('checkout_state', has('checkout_state_id'), 'checkout_state_id');
-      rule('quantity', has('qty_value'), 'qty_value');
+      const ic = inputCause.get(`${q.id}#${o.id}`) || new Set(); // what a formula input or a fee row makes this answer do
+      rule('quantity', has('qty_value') || ic.has('quantity'), 'qty_value or a formula quantity input');
       rule('materials', has('mat_min') || has('mat_max'), 'mat_min/mat_max');
       rule('prep', has('location_hints'), 'location_hints');
       rule('branch', has('route_to') || opensBranch.has(`${q.id}#${o.id}`), 'route_to or a dependent question');
-      if (aff.has('price') && !(has('formula_id') || modPrice)) err('V-OPT-EFFECT', op, `${q.id}/${o.id} declares effect "price" but has no priced modifier and no formula`);
-      if (!aff.has('price') && (has('formula_id') || modPrice)) err('V-OPT-EFFECT', op, `${q.id}/${o.id} has a formula or a priced modifier but does not declare effect "price"`);
-      if (aff.has('minutes') && !modMin) err('V-OPT-EFFECT', op, `${q.id}/${o.id} declares effect "minutes" but has no modifier with minutes`);
-      if (!aff.has('minutes') && modMin) err('V-OPT-EFFECT', op, `${q.id}/${o.id} has a modifier with minutes but does not declare effect "minutes"`);
+      const priceBacked = has('formula_id') || modPrice || ic.has('price'), minBacked = modMin || ic.has('minutes');
+      if (aff.has('price') && !priceBacked) err('V-OPT-EFFECT', op, `${q.id}/${o.id} declares effect "price" but has no priced modifier, no formula and no formula input or fee row that prices it`);
+      if (!aff.has('price') && priceBacked) err('V-OPT-EFFECT', op, `${q.id}/${o.id} has a formula, a priced modifier or a formula input but does not declare effect "price"`);
+      if (aff.has('minutes') && !minBacked) err('V-OPT-EFFECT', op, `${q.id}/${o.id} declares effect "minutes" but has no modifier with minutes and no formula input or fee row that adds minutes`);
+      if (!aff.has('minutes') && minBacked) err('V-OPT-EFFECT', op, `${q.id}/${o.id} has a modifier with minutes or a formula input but does not declare effect "minutes"`);
+      if (mod && mod.role === 'condition') err('V-MOD-ASSIGN', op + '.modifier_id', `${o.modifier_id} is a domain condition, not a fee row: an answer cannot be charged by it`);
       if (o.evidence !== undefined && o.evidence !== 'unknown') err('V-OPT-EFFECT', op + '.evidence', `evidence is "unknown" or absent, found ${JSON.stringify(o.evidence)}`);
       // An unknown answer may still carry a fee or minutes (a contingency for not knowing); that is authored business behavior, so it is reported as a residual for the Operator, not rejected.
       if (o.evidence === 'unknown' && (aff.has('price') || aff.has('minutes'))) res('unknown_option_with_cost_effect', `${q.id}/${o.id}`, `${JSON.stringify(o.label)} is classified as an unknown answer and also changes ${['price', 'minutes'].filter(a => aff.has(a)).join(' and ')}: a contingency for not knowing, or a mis-classified answer`);
@@ -360,6 +463,24 @@ function validate(src, opts = {}) {
   }
   for (const s of services.values()) if (s.decomposition !== undefined && !(lib.isObj(s.decomposition) && s.decomposition.status === 'open')) err('V-COMP-AMBIGUOUS', decl.svc.get(s.id).path + '.decomposition', 'decomposition is {status: "open", note} or absent');
 
+  // ---- condition modifiers (T177): the domain condition that tells two services of one entity and action apart ----------------------------------------------------------------------------------------
+  { const used = new Set();
+    for (const m of R.modifiers) {
+      if (!lib.isObj(m) || !decl.mod.has(m.id)) continue; const mp = decl.mod.get(m.id).path;
+      if (m.role !== undefined && m.role !== 'condition') err('V-MOD-ROLE', mp + '.role', `modifier role is "condition" or absent, found ${JSON.stringify(m.role)}`);
+      if (m.role === 'condition') {
+        if (Number(m.fee) || Number(m.minutes) || (Array.isArray(m.affects) && m.affects.length)) err('V-MOD-ROLE', mp, `${m.id} is a condition modifier and carries no fee or minutes (the service keeps its own price)`);
+        for (const k of ['label', 'basis']) if (typeof m[k] !== 'string' || !m[k]) err('V-MOD-ROLE', `${mp}.${k}`, `a condition modifier states its ${k}`);
+      }
+    }
+    for (const o of owners) {
+      const ids = o.node.modifier_ids || []; if (new Set(ids).size !== ids.length) err('V-MOD-ASSIGN', o.path + '.modifier_ids', `${o.node.id} lists a modifier twice`);
+      ids.forEach((mid, i) => { const m = modById.get(mid); if (!m) return; used.add(mid); if (m.role !== 'condition') err('V-MOD-ASSIGN', `${o.path}.modifier_ids[${i}]`, `${o.node.id} carries ${mid}, which is a fee row (it prices an answer), not a domain condition`); });
+    }
+    for (const m of R.modifiers) if (lib.isObj(m) && m.role === 'condition' && !used.has(m.id)) res('condition_modifier_unused', m.id, `${m.id} is a condition no service or composition carries`);
+    stats.conditionModifiers = R.modifiers.filter(m => lib.isObj(m) && m.role === 'condition').length;
+  }
+
   // service_order is a permutation of the services
   { const so = R.service_order; if (new Set(so).size !== so.length) err('V-ID-DUPLICATE', '$.registries.service_order', 'a service is listed twice');
     so.forEach((id, i) => need(`$.registries.service_order[${i}]`, id, 'svc')); for (const id of services.keys()) if (!so.includes(id)) err('V-REF-DANGLING', '$.registries.service_order', `${id} is a service but is missing from service_order`); }
@@ -432,6 +553,98 @@ function validate(src, opts = {}) {
   };
   for (const k of ['registries', 'entities', 'shared_questions', 'shared_uncertainty_classes', 'policy', 'vocabulary']) walk(src[k], '$.' + k, k);
 
+  // ---- customer vocabulary (T177): how the customer's words reach an entity and an action --------------------------------------------------------------------------------------------------------------
+  { const normS = x => String(x).toLowerCase().replace(/\s+/g, ' ').trim();
+    const idWords = id => id.slice(id.indexOf('.') + 1).replace(/_/g, ' ');
+    const slugS = x => String(x).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const nameOf = new Map(); // the words that already name an entity: its label and its id
+    for (const e of entities.values()) for (const n of [normS(e.label), normS(idWords(e.id))]) { if (!nameOf.has(n)) nameOf.set(n, new Set()); nameOf.get(n).add(e.id); }
+    const claimedBy = new Map(); stats.aliases = 0;
+    src.entities.forEach((e, i) => {
+      const ap = `$.entities[${i}].aliases`; const seen = new Set(); if (!Array.isArray(e.aliases)) return;
+      e.aliases.forEach((a, j) => {
+        const pj = `${ap}[${j}]`; stats.aliases++;
+        if (typeof a !== 'string' || a === '' || a !== normS(a)) { err('V-VOC-ALIAS-SHAPE', pj, `an alias is a non-empty lowercase string with single spaces, found ${JSON.stringify(a)}`); return; }
+        if (seen.has(a)) { err('V-VOC-ALIAS-DUP', pj, `${e.id} lists the alias ${JSON.stringify(a)} twice`); return; } seen.add(a);
+        if ([normS(e.label), normS(idWords(e.id))].includes(a)) err('V-VOC-ALIAS-SHAPE', pj, `the alias ${JSON.stringify(a)} repeats the name of ${e.id} itself`);
+        const others = [...(nameOf.get(a) || [])].filter(x => x !== e.id);
+        if (others.length) err('V-VOC-ALIAS-AMBIGUOUS', pj, `the alias ${JSON.stringify(a)} of ${e.id} is the name of ${others.join(', ')}: a word that names one entity cannot be another's alias`);
+        if (!claimedBy.has(a)) claimedBy.set(a, []); claimedBy.get(a).push(e.id);
+      });
+    });
+    for (const [a, es] of claimedBy) if (es.length > 1) err('V-VOC-ALIAS-AMBIGUOUS', '$.entities', `the alias ${JSON.stringify(a)} is claimed by ${es.join(', ')}: ambiguity is surfaced, not chosen`);
+    (Array.isArray(src.vocabulary.nlp_objects) ? src.vocabulary.nlp_objects : []).forEach((o, i) => {
+      const op = `$.vocabulary.nlp_objects[${i}]`; const r = o.resolves_to;
+      if (!lib.isObj(r)) { err('V-VOC-OBJECT-RESOLVE', op + '.resolves_to', `${o.keyword}: an NLP object records which entity it feeds (or that it feeds none)`); return; }
+      const direct = 'ent.' + slugS(o.keyword);
+      const wantBasis = decl.ent.has(direct) ? 'keyword_is_entity' : (svcEntity.has(o.default_service_sku) ? 'default_service_entity' : 'unresolved');
+      const wantEnt = wantBasis === 'keyword_is_entity' ? direct : (wantBasis === 'default_service_entity' ? svcEntity.get(o.default_service_sku) : null);
+      if (r.basis !== wantBasis || (r.entity_id === undefined ? null : r.entity_id) !== wantEnt) { err('V-VOC-OBJECT-RESOLVE', op + '.resolves_to', `${o.keyword}: feeds ${wantEnt || 'no entity'} by ${wantBasis} (its keyword names an entity, else its default service's entity), but records ${JSON.stringify(r)}`); return; }
+      if (wantBasis === 'unresolved') { res('nlp_object_unresolved', o.keyword, `the NLP object "${o.keyword}" names no entity and has no default service, so none of its words reaches an entity (a category-level word)`); return; }
+      const e = entities.get(wantEnt); const have = new Set([...(e.aliases || []), normS(e.label), normS(idWords(e.id))]); const seenT = new Set();
+      for (const t of [o.keyword, ...(Array.isArray(o.synonyms) ? o.synonyms : [])]) { const n = normS(t); if (seenT.has(n) || have.has(n)) continue; seenT.add(n);
+        const other = [...(nameOf.get(n) || [])].filter(x => x !== wantEnt);
+        res('object_term_not_aliased', `${o.keyword}:${n}`, other.length ? `"${n}" is a synonym of the NLP object "${o.keyword}" (feeding ${wantEnt}) but is also the name of ${other.join(', ')}; it is not an alias of either until an Operator rules which the customer means` : `"${n}" is a synonym of the NLP object "${o.keyword}" (feeding ${wantEnt}) but is not among its aliases`); }
+    });
+    // action vocabulary: id-keyed
+    const av = src.vocabulary.action_vocabulary; const seenA = new Set(), formOwner = new Map();
+    const forms = (x, xp) => {
+      if (typeof x.infinitive_for_adlib !== 'string' || !x.infinitive_for_adlib) err('V-VOC-ACTION-FORMS', xp + '.infinitive_for_adlib', 'an action states its infinitive');
+      if (!Array.isArray(x.all_forms) || !x.all_forms.length || x.all_forms.some(f => typeof f !== 'string' || !f)) { err('V-VOC-ACTION-FORMS', xp + '.all_forms', 'all_forms is a non-empty array of strings'); return []; }
+      const out = [...x.all_forms];
+      (x.synonym_clusters || []).forEach((c, ci) => { if (!lib.isObj(c) || typeof c.infinitive !== 'string' || !Array.isArray(c.forms) || !c.forms.length) { err('V-VOC-ACTION-FORMS', `${xp}.synonym_clusters[${ci}]`, 'a synonym cluster has an infinitive and forms'); return; } if (!c.forms.includes(c.infinitive)) err('V-VOC-ACTION-FORMS', `${xp}.synonym_clusters[${ci}]`, `forms do not include ${JSON.stringify(c.infinitive)}`); out.push(...c.forms); });
+      if (!out.includes(x.infinitive_for_adlib)) err('V-VOC-ACTION-FORMS', xp + '.infinitive_for_adlib', `the infinitive ${JSON.stringify(x.infinitive_for_adlib)} is none of the forms the engine matches (all_forms or a synonym cluster's forms), so the ad-lib sentence would say a word the customer's sentence could never have matched`);
+      return out;
+    };
+    if (lib.isObj(av) && Array.isArray(av.actions) && Array.isArray(av.unmapped_verbs)) {
+      av.actions.forEach((a, i) => {
+        const ap = `$.vocabulary.action_vocabulary.actions[${i}]`; if (!lib.isObj(a) || !need(ap + '.action_id', a.action_id, 'act')) return;
+        if (seenA.has(a.action_id)) err('V-VOC-ACTION-DUP', ap, `${a.action_id} has two vocabulary entries`); seenA.add(a.action_id);
+        for (const f of new Set(forms(a, ap).map(normS))) { if (!formOwner.has(f)) formOwner.set(f, new Set()); formOwner.get(f).add(a.action_id); }
+      });
+      const seenV = new Set();
+      av.unmapped_verbs.forEach((v, i) => { const vp = `$.vocabulary.action_vocabulary.unmapped_verbs[${i}]`; if (!lib.isObj(v) || typeof v.verb !== 'string' || !v.verb) { err('V-VOC-ACTION-FORMS', vp, 'an unmapped verb has a name'); return; } if (seenV.has(v.verb)) err('V-VOC-ACTION-DUP', vp, `${v.verb} is listed twice`); seenV.add(v.verb); forms(v, vp);
+        res('verb_without_action', v.verb, `the customer verb "${v.verb}" has vocabulary but no action in the registry, so it cannot yet reach an (entity, action) pair; whether it becomes an action is an Operator decision`); });
+      for (const a of R.actions) if (lib.isObj(a) && !seenA.has(a.id)) res('action_without_vocabulary', a.id, `${a.id} has no customer vocabulary in action_vocabulary, so no word the customer says maps to it`);
+      for (const [f, as] of formOwner) if (as.size > 1) res('verb_form_shared', f, `the customer form "${f}" is vocabulary of ${[...as].join(' and ')}: which one the customer means is not decided by the vocabulary`);
+    } else err('V-SCHEMA', '$.vocabulary.action_vocabulary', 'action_vocabulary is {actions: [...], unmapped_verbs: [...]}');
+  }
+
+  // ---- pricing archetypes (T177): the shape a service declares must be the shape its engine has -------------------------------------------------------------------------------------------------------------
+  // The legacy file declares an archetype on most services but nothing checks it. Only DECLARED archetypes are checked, and a disagreement is reported (the right side is a pricing decision), never rewritten.
+  { stats.archetypeChecked = 0;
+    for (const o of owners) { const fe = o.node.pricing && o.node.pricing.financial_engine; if (!lib.isObj(fe) || fe.pricing_archetype === undefined) continue; stats.archetypeChecked++;
+      const par = fe.pricing_archetype;
+      if (par === 'par.formula' && !fe.formula_ref) res('pricing_archetype_mismatch', o.node.id, `${o.node.id} declares par.formula but names no formula_ref, so there is no formula to look up and run`);
+      else if (par !== 'par.formula' && fe.formula_ref) res('pricing_archetype_mismatch', o.node.id, `${o.node.id} names the formula ${fe.formula_ref} but declares ${par}, not par.formula`);
+      else if (par === 'par.flat_simple' && fe.type !== 'flat_rate') res('pricing_archetype_mismatch', o.node.id, `${o.node.id} declares par.flat_simple (one fixed base price) but its financial type is ${JSON.stringify(fe.type)}`);
+    }
+  }
+
+  // ---- does a question change the quote? (T177, PENDING_DECISIONS #96) ---------------------------------------------------------------------------------------------------------------------------------------
+  // The legacy flag affects_price is a claim the file makes about a question; its only reader is a UI badge. Whether a question changes a price is a FACT of its options (an option declares the effect "price",
+  // and the validator holds that declaration to its cause). So the claim is checked against the options, in both directions, and every disagreement is reported:
+  //   backed            some option prices the quote                                         (counted)
+  //   price_claim_indirect  claimed, no option prices it, but an option changes minutes, quantity, complexity, a branch, a checkout state or materials
+  //   price_claim_unwired   claimed, and no option changes the quote at all
+  //   price_effect_unclaimed  not claimed, yet an option prices the quote (the badge would be missing)
+  { const QUOTE = ['minutes', 'quantity', 'complexity', 'branch', 'checkout_state', 'materials'];
+    stats.priceClaim = { claimed: 0, backed: 0, indirect: 0, unwired: 0, unclaimed_priced: 0, not_claimed: 0 };
+    for (const q of allQuestions) {
+      if (q.instance_of) continue; // an instance is the same question under another noun
+      const os = optionsOf(q) || []; const any = k => os.some(o => Array.isArray(o.affects) && o.affects.includes(k));
+      const claim = lib.isObj(q.runtime_compat) ? q.runtime_compat.affects_price : undefined;
+      const numeric = q.type === 'numeric_multiplier'; // a count the booking multiplies by: it changes the quote by being a quantity
+      const priced = any('price'), other = numeric || QUOTE.some(any);
+      if (claim === true) {
+        stats.priceClaim.claimed++;
+        if (priced) stats.priceClaim.backed++;
+        else if (other) { stats.priceClaim.indirect++; res('price_claim_indirect', q.id, `${q.id} is claimed to affect price, but no option prices the quote; it changes ${numeric ? 'the quantity (a numeric count)' : QUOTE.filter(any).join(', ')} only`); }
+        else { stats.priceClaim.unwired++; res('price_claim_unwired', q.id, `${q.id} is claimed to affect price, but no option changes the quote (price, minutes, quantity, complexity, branch, checkout state or materials)`); }
+      } else { stats.priceClaim.not_claimed++; if (priced) { stats.priceClaim.unclaimed_priced++; res('price_effect_unclaimed', q.id, `${q.id} carries no affects_price claim, yet an option prices the quote`); } }
+    }
+  }
+
   // ---- coverage facts the report reads --------------------------------------------------------------------------------------------------------------------------------------------------------------
   for (const q of allQuestions) { if (Array.isArray(q.entity_scope) === false && q.entity_scope && q.entity_scope.context === 'ctx.unreferenced') res('question_asked_by_nothing', q.id, `${q.id} is authored but no chain, deep-dive question, default list or action asks it; its entity scope is an Operator decision`); }
   for (const q of allQuestions) for (const o of q.options || []) if (o.evidence === 'unknown') res('unknown_option', `${q.id}/${o.id}`, `${JSON.stringify(o.label)} is classified as an unknown answer by label pattern (never retires uncertainty)`);
@@ -463,14 +676,16 @@ function validateFull(src) {
   return r;
 }
 
-if (require.main === module) {
+function cli() {
   const args = process.argv.slice(2); const file = args.find(a => !a.startsWith('--')) || lib.PATHS.source;
   const r = args.includes('--semantic-only') ? validate(lib.readJson(file)) : validateFull(lib.readJson(file));
-  if (args.includes('--json')) { console.log(JSON.stringify(r, null, 2)); process.exit(r.ok ? 0 : 1); }
+  // process.exit() right after a large write to a pipe drops whatever the pipe had not taken yet (64 KiB): the exit code is set and the process ends when stdout has drained (T177)
+  if (args.includes('--json')) { process.exitCode = r.ok ? 0 : 1; process.stdout.write(JSON.stringify(r, null, 2) + '\n'); return; }
   const byCode = {}; for (const e of r.errors) byCode[e.code] = (byCode[e.code] || 0) + 1;
   if (r.ok) console.log(`source valid: ${r.stats.entities} entities, ${r.stats.questions} questions, ${r.stats.options} options, ${r.stats.services} services, ${r.stats.compositions} compositions, ${r.stats.classes} uncertainty classes; ${r.stats.idsAssigned} ids, ${r.stats.refsChecked} references checked; ${r.residuals.length} declared residual(s)`);
   else { console.log(`source INVALID: ${r.errors.length} finding(s)`); for (const [c, n] of Object.entries(byCode)) console.log(`  ${c}: ${n}`); r.errors.slice(0, 40).forEach(e => console.log(`  [${e.code}] ${e.path}: ${e.msg}`)); }
   if (args.includes('--residuals')) { const g = {}; for (const x of r.residuals) g[x.kind] = (g[x.kind] || 0) + 1; console.log('residuals:', JSON.stringify(g)); }
-  process.exit(r.ok ? 0 : 1);
+  process.exitCode = r.ok ? 0 : 1;
 }
+if (require.main === module) cli();
 module.exports = { validate, validateFull, AFFECTS };

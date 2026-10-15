@@ -63,7 +63,9 @@ function residualTotals(residuals) {
   for (const [sub, parent] of Object.entries(RESIDUAL_SUBSETS)) { const s = ids(sub), p = ids(parent); const n = residuals.filter(r => r.kind === sub).length; if (n && [...s].every(x => p.has(x))) { restated += n; notes.push(`${n} \`${sub}\` restate records of \`${parent}\``); } }
   return `${residuals.length} residual records; ${residuals.length - restated} distinct units${notes.length ? ` (${notes.join('; ')})` : ''}.`;
 }
-const DECISION_NO = { playbook: 206, taxonomy: 207, confidence: 208, composition: 209, unknown: 210, scope: 211, cutover: 212, dangling: 213, reshape: 165 };
+const DECISION_NO = { playbook: 206, taxonomy: 207, confidence: 208, composition: 209, unknown: 210, scope: 211, cutover: 212, dangling: 213, reshape: 165, badge: 215, vocabulary: 216, pax: 217, publish: 218, archetype: 219 };
+const RR = require('./recovered_rules.js');
+const PUB = require('./publish.js');
 
 function coverage(f) {
   const { src, val, m, graph, E, Q, S, C, classes, resid } = f; const R = src.registries;
@@ -89,6 +91,12 @@ function coverage(f) {
     ['Behavioral classes', `${R.behavioral_classes.length}, metadata only (groups are their members; no entity is keyed by one)`],
     ['Picker (curated part of routing_archetypes)', `${R.groups.length} groups: ${R.groups.reduce((a, g) => a + g.picker.component_links.reduce((b, l) => b + l.service_ids.length, 0), 0)} component->service links, ${R.groups.filter(g => g.picker.symptom_question_id).length} declare a symptom question (symptoms compiled from it), ${R.groups.filter(g => g.picker.symptoms).length} carry authored symptoms, ${R.groups.reduce((a, g) => a + (g.picker.real_gaps || []).length, 0)} recorded gaps`],
     ['Derived graph', `${n(graph.counts.entities)} entities, ${n(graph.counts.questions)} questions, ${n(graph.counts.services)} services, ${n(graph.counts.default_compositions)} compositions, ${n(graph.counts.composition_points)} composition points (${graph.counts.curated_only_points} curated-only), reproducible from the source`],
+    ['Formula inputs (pricing knowledge that was in code)', `${val.stats.formulaInputs} inputs on ${val.stats.formulasWithInputs} of ${R.pricing_formulas.length} formulas, each naming the question, the options and the formula parameter it reads, recovered from qr.html applyPricingFormula with a code citation apiece (ssot/migration/recovered_rules.json). ${m.report.counts.formulasQtyAware} formulas are flagged qty_aware (was QTY_AWARE_FORMULAS). ${m.report.counts.droppedLegacyConsumedKeys} legacy consumed keys were dropped because no intake module has them (tile_count, unit_count, __exact_count). ${m.report.counts.optionsEffectsCompletedByFormulaInputs} options gained the price/minutes/quantity effect their formula causes.`],
+    ['Does a question change the quote?', `${val.stats.priceClaim.claimed} questions carry the legacy affects_price claim: ${val.stats.priceClaim.backed} are backed by an option that prices the quote, ${val.stats.priceClaim.indirect} change only minutes, quantity or similar (indirect), ${val.stats.priceClaim.unwired} change nothing (unwired); ${val.stats.priceClaim.unclaimed_priced} questions price the quote with no claim. The source makes no claim of its own: price_influence.prices is derived from the options (${graph.counts.questions_that_price} questions) and the legacy flag stays in runtime_compat for the badge (#${DECISION_NO.badge}).`],
+    ['Condition modifiers', `${val.stats.conditionModifiers} (role "condition": no fee, no minutes), carried by ${m.report.counts.servicesWithConditionModifiers} services, each inferred from the service's own name, description and the question only it asks (basis stated on the modifier). ${f.m.report.counts.servicesInAmbiguousPoints} services at ${f.m.report.counts.ambiguousCompositionPoints} points remain open.`],
+    ['Customer vocabulary', `${val.stats.aliases} aliases on ${m.report.counts.entitiesWithAliases} of ${E.length} entities, seeded from ${m.report.counts.nlpObjectsKeywordIsEntity + m.report.counts.nlpObjectsDefaultServiceEntity} of ${f.src.vocabulary.nlp_objects.length} NLP objects (${m.report.counts.nlpObjectsKeywordIsEntity} by keyword, ${m.report.counts.nlpObjectsDefaultServiceEntity} by default service); ${m.report.counts.nlpObjectsUnresolved} objects feed no entity and ${m.report.counts.aliasTermsSkipped} terms were left out because they name another entity. The action vocabulary is keyed by action id (${f.src.vocabulary.action_vocabulary.actions.length} actions; ${f.src.vocabulary.action_vocabulary.unmapped_verbs.length} verbs have no action) (#${DECISION_NO.vocabulary}).`],
+    ['Pricing archetypes', `${R.pricing_archetypes.length}, each with its definition authored in the source (they were text constants in the compiler). ${val.stats.archetypeChecked} declared archetypes are checked against their engine; ${resid.pricing_archetype_mismatch || 0} disagree (#${DECISION_NO.archetype}).`],
+    ['Published artifact', `${path.relative(lib.ROOT, lib.PATHS.graph)}: provenance ($source: path, sha256, source schema ${graph.$source.source_schema_version}, derivation ${graph.$source.derivation_version}), interface ${graph.interface_version}, and a manifest naming a Layer Map consumer for each of its ${Object.keys(graph.manifest.indexes).length} indexes (every consumer is a target module not yet extracted, or the CMS: #${DECISION_NO.publish}). Written only by publish.js.`],
     ['Migration failures', `${f.m.report.unresolved.length} unresolved; ${f.m.report.findings.length} finding (the ceilings real_action_ids double spelling, declared)`],
   ];
   const residualRows = [
@@ -100,6 +108,14 @@ function coverage(f) {
     ['unknown_option', resid.unknown_option || 0, `options classified "not sure" by label pattern; they can never retire an uncertainty (#${DECISION_NO.unknown}).`],
     ['unknown_option_with_cost_effect', resid.unknown_option_with_cost_effect || 0, `of those, ones that also change price or minutes: a contingency for not knowing, or a mis-classified answer (#${DECISION_NO.unknown}).`],
     ['group_membership_disagreement', resid.group_membership_disagreement || 0, `services whose own group_id and the groups' explicit_services lists disagree (S4): ${val.residuals.filter(r => r.kind === 'group_membership_disagreement' && / no group lists it /.test(r.note)).length} listed by no group, ${val.residuals.filter(r => r.kind === 'group_membership_disagreement' && /groups list it/.test(r.note)).length} listed by two, ${val.residuals.filter(r => r.kind === 'group_membership_disagreement' && /is listed in/.test(r.note)).length} listed only by a group other than their own. Surfaced, not resolved: which side is right is an Operator ruling per service (#${DECISION_NO.reshape}, RESHAPE_SCOPE_S1_S6.md S4).`],
+    ['price_claim_indirect', resid.price_claim_indirect || 0, `questions claimed to affect price whose options change minutes, quantity, complexity, a branch, a checkout state or materials but never the price (#${DECISION_NO.badge}).`],
+    ['price_claim_unwired', resid.price_claim_unwired || 0, `questions claimed to affect price whose options change nothing about the quote (symptom and identification questions); PENDING_DECISIONS #96 (#${DECISION_NO.badge}).`],
+    ['price_effect_unclaimed', resid.price_effect_unclaimed || 0, `questions whose options price the quote but carry no legacy claim, so the badge would be missing (#${DECISION_NO.badge}).`],
+    ['nlp_object_unresolved', resid.nlp_object_unresolved || 0, `NLP objects that name no entity and have no default service (install, mount, other, outlet, leak: category-level words); none of their words reaches an entity (#${DECISION_NO.vocabulary}).`],
+    ['object_term_not_aliased', resid.object_term_not_aliased || 0, `NLP synonyms left out of an entity's aliases because the word already names another entity (laptop, desktop, pendant, door handle, wall, plaster, ram, floor): the object is coarser than the entity the customer means (#${DECISION_NO.vocabulary}).`],
+    ['verb_without_action', resid.verb_without_action || 0, `customer verbs with vocabulary but no action in the registry (remove, replace) (#${DECISION_NO.vocabulary}).`],
+    ['action_without_vocabulary', resid.action_without_vocabulary || 0, `actions no customer word maps to (act.mount; its words "mount" and "hang" are clusters under Install) (#${DECISION_NO.vocabulary}).`],
+    ['pricing_archetype_mismatch', resid.pricing_archetype_mismatch || 0, `services whose declared pricing archetype disagrees with their engine (par.formula with no formula, a formula under par.hourly_timed) (#${DECISION_NO.archetype}).`],
     ['dangling_legacy_reference', resid.dangling_legacy_reference || 0, `legacy names that name no intake module (item_quantity, damage_areas, access x4); kept as {unresolved_name}, not given a target (#${DECISION_NO.dangling}).`],
   ];
   const legacyBars = f.m.report.counts.legacyBarsUnreachable;
@@ -116,6 +132,7 @@ ${table(['What', 'Count'], rows)}
 ${table(['Check', 'Result'], [
     ['Independent validator (schema + semantic)', val.ok ? `valid: 0 findings, ${val.residuals.length} declared residuals` : `INVALID: ${val.errors.length}`],
     ['Source reproduces every authored section of btnyc.json', f.par.undeclared.length === 0 && f.par.problems.length === 0 ? `yes (declared normalizations only: ${f.par.stats.empty_branch_lists.length} empty branch list, ${f.par.stats.compiler_derived_symptom_groups.length} compiler-derived symptom groups, ${f.par.stats.action_double_spelling.length} action double spelling)` : 'NO'],
+    ['Publish gate (validate, derive, reproduce, artifact schema, consumers, compatibility, freshness)', (() => { const r = PUB.run({ sourceText: f.srcText, committedText: fs.existsSync(lib.PATHS.graph) ? fs.readFileSync(lib.PATHS.graph, 'utf8') : null, check: true }); return r.ok ? `passes: the committed artifact is exactly what the source derives` : `REFUSES: ${r.refusals.map(x => x.gate).join(', ')}`; })()],
     ['Production compiler on the projected source reproduces the 8 compiler-owned keys', f.rt.ok ? `yes (${f.rt.layoutDiffers.length} chain copies differ only in layout, pinned)` : 'NO'],
   ])}
 
@@ -139,6 +156,11 @@ ${table(['#', 'Decision'], [
     [DECISION_NO.unknown, `The ${resid.unknown_option || 0} options classified "not sure" by label pattern, ${resid.unknown_option_with_cost_effect || 0} of which change price or minutes.`],
     [DECISION_NO.scope, `Question scope: the 5-entity threshold for a context question; the ${f.unreferenced} questions nothing references and the ${f.defaultIntake} only a default list injects.`],
     [DECISION_NO.cutover, 'Dual-source cutover: when btnyc.json stops being the runtime file; the compiler quirk that makes the listed-versus-branch-target spelling of a chain visible in compiled.module_index; merge_strategy retirement.'],
+    [DECISION_NO.badge, `What the question-level price badge means: ${val.stats.priceClaim.indirect} claims are indirect and ${val.stats.priceClaim.unwired} unwired. Default: the source derives "prices" strictly (some option prices the quote) and keeps the legacy flag only for the badge.`],
+    [DECISION_NO.vocabulary, `Customer words that cannot be aliased without a ruling: ${m.report.counts.aliasTermsSkipped} synonyms that name a more specific entity, ${m.report.counts.nlpObjectsUnresolved} NLP objects that feed no entity, the verbs remove and replace (no action), and act.mount (no vocabulary).`],
+    [DECISION_NO.pax, 'The PAX coefficients exist twice: in the SSOT formula and in a base64 constant in qr.html (read by the custom PAX builder). They agree today; a parity test now fails if they drift. Moving the builder to read the formula is runtime work.'],
+    [DECISION_NO.publish, 'When the runtime reads the published artifact: the artifact path (the candidate ssot/derived/btnyc_graph.json versus btnyc.json), wiring artifact_compat.js into startup, and extracting the consumer modules the manifest names.'],
+    [DECISION_NO.archetype, `${resid.pricing_archetype_mismatch || 0} services whose declared pricing archetype disagrees with their engine: which side is right is a pricing decision.`],
     [DECISION_NO.dangling, 'The 6 legacy references that name no module (Install -> item_quantity, Repair -> damage_areas, and access in the deprecated force-module lists).'],
   ])}
 
@@ -146,7 +168,7 @@ ${table(['#', 'Decision'], [
 
 - No runtime module was written (resolver, confidence engine, composer, recovery engine, route builder). The derived graph is the input they would read.
 - \`btnyc.json\` was not edited, \`archive/T174_184_wip_engine_gate.patch\` was not applied, PR #21 was not merged, the red-test backlog was not repaired.
-- Modifier decomposition of the ${f.m.report.counts.servicesInAmbiguousPoints} ambiguous services, weights for the ${classes.length - weighted} unweighted classes and per-service recovery deep-dives were not invented.
+- Modifier decomposition of the ${f.m.report.counts.servicesInAmbiguousPoints} services that remain ambiguous (the ${m.report.counts.servicesWithConditionModifiers} that were decomposed are inferred from the service itself and flagged for confirmation), weights for the ${classes.length - weighted} unweighted classes and per-service recovery deep-dives were not invented.
 `;
 }
 
@@ -160,7 +182,7 @@ Generated by \`node test_harness/tools/entity_first/report.js --write\`; numbers
 
 ## 1. Result in one paragraph
 
-\`btnyc.json\` (service-first, ${n(fs.readFileSync(lib.PATHS.legacy, 'utf8').split('\n').length)} lines) is re-authored as \`ssot/btnyc_source.json\` (schema \`schema/btnyc-source.schema.json\` 1.0.0): ${f.E.length} entities own their questions, uncertainty classes, curated services and default compositions; actions, modifiers and the other registries are defined once with stable ids; every cross-node relationship is a bare, prefix-typed id. The source reproduces every authored section of \`btnyc.json\` (\`project_legacy.js --check\`) and, fed through the unchanged production compiler, reproduces all 8 compiler-owned keys (\`compiler_roundtrip.js\`), except for the declared normalizations in section 6. \`btnyc.json\` itself is unchanged; the golden-master pricing baseline is identical before and after.
+\`btnyc.json\` (service-first, ${n(fs.readFileSync(lib.PATHS.legacy, 'utf8').split('\n').length)} lines) is re-authored as \`ssot/btnyc_source.json\` (schema \`schema/btnyc-source.schema.json\` ${f.src.source_schema_version}): ${f.E.length} entities own their questions, uncertainty classes, curated services and default compositions; actions, modifiers and the other registries are defined once with stable ids; every cross-node relationship is a bare, prefix-typed id. The source reproduces every authored section of \`btnyc.json\` (\`project_legacy.js --check\`) and, fed through the unchanged production compiler, reproduces all 8 compiler-owned keys (\`compiler_roundtrip.js\`), except for the declared normalizations in section 6. \`btnyc.json\` itself is unchanged; the golden-master pricing baseline is identical before and after.
 
 ## 2. Old field or curated value -> new home
 
@@ -213,7 +235,7 @@ ${table(['Legacy field', 'Count', 'New home', 'Disposition'], [
 - Scope counts a deep-dive question as a use. Design note 7.1 said scope is the entities whose chains ask the question; \`recovery_affordances.deep_dive_question_ids\` is the Fork's second path and is asked of the customer too, so counting chains only scoped a question used by many entities to one (\`q.attempted_fix\`) and filed another as asked by nothing (\`q.computer_attempted_fix\`). The validator enforces it (\`V-SCOPE-ASKER\`, \`V-SCOPE-CLAIM\`).
 - \`entity.family\` was not added. Behavioral classes are keyed by group (\`member_group_ids\`), never by entity, in the legacy data; keeping them as the registry they were is the lossless choice, and the Playbook says classes are metadata.
 - \`registries.service_order\` and \`picker.action_ids\` were added (service order and the curated action union are content).
-- \`registries.pricing_archetypes\` was added as a closed id list: \`par.*\` is referenced by every service's financial_engine and its definitions are constants in the compiler.
+- \`registries.pricing_archetypes\` was added with each archetype's definition authored in the source (T177); \`par.*\` is referenced by every service's financial_engine, and the definitions were constants in the compiler.
 - Weighted-uncertainty classes with no legacy \`confidence_gain\` carry \`weight_basis: "unauthored"\` and no weight, rather than a default.
 - Steps carry \`runtime_compat.legacy_chain_entry: "branch_target_only"\` for the ${f.S.concat(f.C).reduce((a, x) => a + x.intake.steps.filter(s => s.runtime_compat).length, 0)} steps a legacy chain reached only through a \`then\`: the production compiler's \`flatten_intake_chain\` counts listed entries only, so \`compiled.module_index.used_by\` depends on it. The target model ignores it.
 - Legacy chain layout (entry order, redundant \`then\` targets, target-list order) is canonicalized; see section 6.
@@ -245,6 +267,38 @@ node test_harness/tools/entity_first/report.js --check           # these reports
 \`\`\`
 
 The class detectors that can fail (counterfactual mutants) are \`test_harness/verify_entity_first_*.js\`.
+
+${recoveredSection(f)}`;
+}
+
+function recoveredSection(f) {
+  const { src, m, val } = f; const R = RR.load(); const rules = R.rules;
+  const inputRows = []; for (const fm of src.registries.pricing_formulas) for (const i of fm.inputs || []) inputRows.push([fm.id, i.name, i.role, i.role === 'constant_modifier' ? 'every quote of the formula' : i.question_id || (i.source === 'booking' ? 'the booked quantity' : 'options that name this formula and carry a qty_value'), i.option_ids ? i.option_ids.length : i.branches ? i.branches.reduce((a, b) => a + b.option_ids.length, 0) : i.values ? i.values.length : '', i.modifier_param || i.param || '']);
+  return `## 8. Business rules recovered into the source (T177)
+
+The pass that followed the audit moved knowledge the runtime applies in code into the source, from three places: the Playbook (which governs the architecture), \`btnyc.json\` with its decision notes, and the comments and code of \`qr.html\`. Each rule below cites the code line it was read from, in \`ssot/migration/recovered_rules.json\` (sha256 \`${R.sha256}\`, rules version ${rules.rules_version}); \`verify_entity_first_pricing_rules.js\` fails when a cited line no longer exists. Obsolete practice was not carried: the stale consumed keys below, and the behaviours of the code that read answer LABELS (a regular expression over a label, \`parseInt\` of a label) are replaced by explicit option-to-value tables. Known legacy defects are not reproduced as requirements.
+
+### 8.1 Formula inputs (${val.stats.formulaInputs} on ${val.stats.formulasWithInputs} formulas)
+
+${table(['Formula', 'Input', 'Role', 'Reads', 'Options', 'Parameter'], inputRows)}
+
+Dropped from the legacy FORMULA_CONSUMED_KEYS because no intake module has the key:
+
+${table(['Formula', 'Key', 'Why'], rules.dropped_legacy_consumed_keys.map(d => [d.formula, d.key, d.reason]))}
+
+${rules.legacy_consumed_keys_note.summary}
+
+### 8.2 Condition modifiers (service-defining, inferred)
+
+${table(['Modifier', 'Entity + action', 'Service', 'Tells it apart from', 'Basis'], rules.condition_modifiers.map(c => [c.id, c.entity_id + ' + ' + c.action_id, c.service_ids.join(', '), c.siblings_without.join(', '), c.basis]))}
+
+These are inferences from the service's own identity, not statements btnyc.json makes; they are flagged for confirmation under #${DECISION_NO.composition}. The ${f.m.report.counts.servicesInAmbiguousPoints} services still sharing a point differ by verb or by entity (a different action or a different thing), which is not a modifier.
+
+### 8.3 Customer vocabulary
+
+Entity aliases are seeded from the NLP objects by one rule: an object feeds the entity its keyword names (${m.report.counts.nlpObjectsKeywordIsEntity} objects), else the entity of its default service (${m.report.counts.nlpObjectsDefaultServiceEntity}); otherwise none (${m.report.counts.nlpObjectsUnresolved}: ${(m.report.nlpObjectsUnresolved || []).join(', ')}). A word that already names another entity is left out of both. Left out:
+
+${table(['Term', 'Object feeds', 'Reason', 'Also names'], (m.report.aliasSkipped || []).map(x => [x.term, x.entity_id, x.reason, x.other.join(', ')]))}
 `;
 }
 

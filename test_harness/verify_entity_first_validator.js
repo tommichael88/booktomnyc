@@ -181,6 +181,56 @@ mut('two curated services at one (entity, action, modifiers) point, undeclared',
 });
 mut('an open decomposition that loses its note', ['V-COMP-AMBIGUOUS'], s => { const v = servicesOf(s).find(x => x.decomposition) || servicesOf(s)[0]; v.decomposition = { status: 'open', note: 'an open business decision' }; delete v.decomposition.note; });
 mut('a decomposition that is not open', ['V-COMP-AMBIGUOUS'], s => { servicesOf(s)[0].decomposition = { status: 'closed', note: 'x' }; });
+// V-FML-* (T177): the answers a pricing formula reads, stated as data
+const formulaOf = (s, id) => need(s.registries.pricing_formulas.find(f => f.id === id), 'formula ' + id);
+const inputsOf = (s, fid, role) => formulaOf(s, fid).inputs.filter(i => i.role === role);
+const inputOf = (s, fid, role) => need(inputsOf(s, fid, role)[0], `a ${role} input of ${fid}`);
+const optionOfQ = (s, qid, oid) => need(need(questionsOf(s).find(q => q.id === qid), qid).options.find(o => o.id === oid), `${qid}/${oid}`);
+mut('formula input without a name', ['V-FML-INPUT-SHAPE'], s => { delete inputOf(s, 'fml.tile_repair_formula', 'trigger_modifier').name; });
+mut('formula input with a role outside the vocabulary', ['V-FML-INPUT-SHAPE'], s => { inputOf(s, 'fml.tile_repair_formula', 'trigger_modifier').role = 'guess'; });
+mut('a booking quantity that reads a question', ['V-FML-INPUT-SHAPE'], s => { inputsOf(s, 'fml.tile_repair_formula', 'quantity').find(i => i.source === 'booking').question_id = 'q.install_type'; });
+mut('qty_aware that is not true', ['V-FML-INPUT-SHAPE'], s => { s.registries.pricing_formulas.find(f => f.qty_aware === true).qty_aware = false; });
+mut('an input effect outside price / minutes', ['V-FML-INPUT-SHAPE'], s => { inputOf(s, 'fml.hardware_install_formula', 'select_branch').affects = ['price', 'tags']; });
+mut('two inputs of one formula share a name', ['V-FML-INPUT-DUP'], s => { const t = inputsOf(s, 'fml.tile_repair_formula', 'trigger_modifier'); t[1].name = t[0].name; });
+mut('two inputs read the same answer', ['V-FML-INPUT-DUP'], s => { const t = inputsOf(s, 'fml.tile_repair_formula', 'trigger_modifier'); t[1].question_id = t[0].question_id; t[1].option_ids = t[0].option_ids.slice(); });
+mut('an input names an answer the question does not have', ['V-FML-INPUT-OPTION'], s => { inputOf(s, 'fml.tile_repair_formula', 'trigger_modifier').option_ids = ['not_an_answer']; });
+mut('an input names no answer at all', ['V-FML-INPUT-OPTION'], s => { inputOf(s, 'fml.tile_repair_formula', 'trigger_modifier').option_ids = []; });
+mut('an input names a question that has no options', ['V-FML-INPUT-OPTION'], s => { const q = need(questionsOf(s).find(x => !x.options && !x.instance_of), 'a numeric question'); inputOf(s, 'fml.tile_repair_formula', 'trigger_modifier').question_id = q.id; });
+mut('an input names a modifier parameter the formula lacks', ['V-FML-INPUT-PARAM'], s => { inputOf(s, 'fml.tile_repair_formula', 'trigger_modifier').modifier_param = 'no_such_param'; });
+mut('a quantity input names a parameter that is not a number', ['V-FML-INPUT-PARAM'], s => { inputOf(s, 'fml.drywall_repair_formula', 'quantity').param = 'patch_modifier_ref'; });
+mut('a branch names a parameter set the formula lacks', ['V-FML-INPUT-PARAM'], s => { inputOf(s, 'fml.hardware_install_formula', 'select_branch').branches[0].formula_path = 'no_such_rate'; });
+mut('an answer carries its own modifier and the formula charges another', ['V-FML-INPUT-MODIFIER'], s => { optionOfQ(s, 'q.waterproof_area', 'yes_requires_membrane').modifier_id = 'mod.tile_grout'; });
+mut('a branch selector with one branch', ['V-FML-BRANCH-COVER'], s => { inputOf(s, 'fml.hardware_install_formula', 'select_branch').branches.pop(); });
+mut('a branch selector whose default is no branch', ['V-FML-BRANCH-COVER'], s => { inputOf(s, 'fml.hardware_install_formula', 'select_branch').default_branch = 'nowhere'; });
+mut('an answer that selects two branches', ['V-FML-BRANCH-COVER'], s => { const i = inputOf(s, 'fml.hardware_install_formula', 'select_branch'); i.branches[1].option_ids.push(i.branches[0].option_ids[0]); });
+mut('an answer of a selector question that selects no branch', ['V-FML-BRANCH-COVER'], s => { const q = questionsOf(s).find(x => x.id === 'q.install_type'); q.options.push({ id: 'something_else', label: 'Something else', affects: [] }); });
+mut('an answer with no quantity value', ['V-FML-QTY-VALUES'], s => { inputOf(s, 'fml.drywall_repair_formula', 'quantity').values.pop(); });
+mut('a negative quantity value', ['V-FML-QTY-VALUES'], s => { inputOf(s, 'fml.drywall_repair_formula', 'quantity').values[0].value = -1; });
+mut('a quantity input with no default for the unanswered question', ['V-FML-QTY-VALUES'], s => { delete inputOf(s, 'fml.drywall_repair_formula', 'quantity').default; });
+mut('a counted answer with no qty_value', ['V-FML-QTY-VALUES'], s => { delete optionOfQ(s, 'q.pax_cabinet_count', '2').qty_value; });
+// V-MOD-* (T177): a domain condition tells services apart; a fee row prices an answer
+const conditionOf = s => need(s.registries.modifiers.find(m => m.role === 'condition'), 'a condition modifier');
+mut('a condition modifier that carries a fee', ['V-MOD-ROLE'], s => { conditionOf(s).fee = 5; });
+mut('a condition modifier without a basis', ['V-MOD-ROLE'], s => { delete conditionOf(s).basis; });
+mut('a modifier role outside the vocabulary', ['V-MOD-ROLE'], s => { conditionOf(s).role = 'surcharge'; });
+mut('a service carrying a fee row as its condition', ['V-MOD-ASSIGN'], s => { servicesOf(s)[0].modifier_ids = [s.registries.modifiers.find(m => m.role !== 'condition').id]; });
+mut('a service listing a condition twice', ['V-MOD-ASSIGN'], s => { const c = conditionOf(s); servicesOf(s)[0].modifier_ids = [c.id, c.id]; });
+mut('an answer charged by a condition modifier', ['V-MOD-ASSIGN'], s => { questionsOf(s).flatMap(q => q.options || []).find(o => o.modifier_id).modifier_id = conditionOf(s).id; });
+// V-VOC-* (T177): the customer's words
+const entWithAlias = s => need(s.entities.find(e => e.aliases.length), 'an entity with aliases');
+mut('an alias that is not lowercase', ['V-VOC-ALIAS-SHAPE'], s => { entWithAlias(s).aliases[0] = 'Mixed Case'; });
+mut('an alias that repeats the entity\'s own name', ['V-VOC-ALIAS-SHAPE'], s => { const e = entWithAlias(s); e.aliases.push(e.label.toLowerCase()); });
+mut('an alias listed twice by one entity', ['V-VOC-ALIAS-DUP'], s => { const e = entWithAlias(s); e.aliases.push(e.aliases[0]); });
+mut('an alias that is another entity\'s name', ['V-VOC-ALIAS-AMBIGUOUS'], s => { const a = entWithAlias(s); const b = need(s.entities.find(e => e.id !== a.id), 'a second entity'); a.aliases.push(b.label.toLowerCase()); });
+mut('two entities claiming one alias', ['V-VOC-ALIAS-AMBIGUOUS'], s => { const [a, b] = s.entities.filter(e => e.aliases.length === 0 || true).slice(0, 2); a.aliases.push('a thing both claim'); b.aliases.push('a thing both claim'); });
+mut('an NLP object that records the wrong entity', ['V-VOC-OBJECT-RESOLVE'], s => { const o = s.vocabulary.nlp_objects.find(x => x.resolves_to.entity_id); o.resolves_to.entity_id = s.entities.find(e => e.id !== o.resolves_to.entity_id).id; });
+mut('an NLP object that records no resolution', ['V-VOC-OBJECT-RESOLVE'], s => { delete s.vocabulary.nlp_objects[0].resolves_to; });
+mut('an NLP object claiming a basis it does not have', ['V-VOC-OBJECT-RESOLVE'], s => { const o = s.vocabulary.nlp_objects.find(x => x.resolves_to.basis === 'default_service_entity'); o.resolves_to.basis = 'keyword_is_entity'; });
+mut('an action with two vocabulary entries', ['V-VOC-ACTION-DUP'], s => { const av = s.vocabulary.action_vocabulary; av.actions.push(JSON.parse(JSON.stringify(av.actions[0]))); });
+mut('an unmapped verb listed twice', ['V-VOC-ACTION-DUP'], s => { const av = s.vocabulary.action_vocabulary; av.unmapped_verbs.push(JSON.parse(JSON.stringify(av.unmapped_verbs[0]))); });
+mut('an infinitive that is none of the forms the engine matches', ['V-VOC-ACTION-FORMS'], s => { s.vocabulary.action_vocabulary.actions[0].infinitive_for_adlib = 'zzzz'; });
+mut('an action entry with no forms', ['V-VOC-ACTION-FORMS'], s => { s.vocabulary.action_vocabulary.actions[0].all_forms = []; });
+mut('an action vocabulary naming an action that does not exist', ['V-REF-DANGLING'], s => { s.vocabulary.action_vocabulary.actions[0].action_id = 'act.no_such_action'; });
 // the schema also fails, and a schema check that cannot run is a finding
 mut('schema: an unknown property on a service', ['V-SCHEMA'], s => { servicesOf(s)[0].component_id = 'ent.computer'; }, { via: 'full' });
 mut('schema: a compiler-owned key in the authored source', ['V-SCHEMA'], s => { s.compiled = { service_index: {} }; }, { via: 'full' });
@@ -234,7 +284,8 @@ const baseSem = V.validate(lib.clone(SRC)); const resKinds = r => r.residuals.re
   check('an unknown answer that also changes the price is a residual for the Operator, not an error', r.ok && (resKinds(r).unknown_option_with_cost_effect || 0) === (resKinds(baseSem).unknown_option_with_cost_effect || 0) + 1, JSON.stringify(r.errors.slice(0, 2))); }
 { const s = lib.clone(SRC); const o = gated(s)[0]; o.confidence_gate = { mode: 'none', reason: 'authored without a weighted class' }; o.uncertainty_profile = []; const r = V.validate(s);
   check('a service with no confidence gate, and says why, is a residual (never read as 100%)', r.ok && (resKinds(r).confidence_gate_none || 0) === (resKinds(baseSem).confidence_gate_none || 0) + 1, JSON.stringify(r.errors.slice(0, 2))); }
-{ const KNOWN = new Set(['composition_ambiguous', 'uncertainty_weight_unauthored', 'confidence_gate_none', 'recovery_no_authored_path', 'question_asked_by_nothing', 'unknown_option', 'unknown_option_with_cost_effect', 'dangling_legacy_reference', 'group_membership_disagreement']);
+{ const KNOWN = new Set(['composition_ambiguous', 'uncertainty_weight_unauthored', 'confidence_gate_none', 'recovery_no_authored_path', 'question_asked_by_nothing', 'unknown_option', 'unknown_option_with_cost_effect', 'dangling_legacy_reference', 'group_membership_disagreement',
+    'price_claim_indirect', 'price_claim_unwired', 'price_effect_unclaimed', 'nlp_object_unresolved', 'object_term_not_aliased', 'verb_without_action', 'action_without_vocabulary', 'verb_form_shared', 'pricing_archetype_mismatch', 'formula_modifier_without_input', 'condition_modifier_unused']);
   check('every residual the validator reports is of a declared kind and names what it is about (no anonymous gap)', baseSem.residuals.every(r => KNOWN.has(r.kind) && typeof r.id === 'string' && r.id && typeof r.note === 'string' && r.note), [...new Set(baseSem.residuals.filter(r => !KNOWN.has(r.kind)).map(r => r.kind))].join(',')); }
 
 // S4 (#165, RESHAPE_SCOPE_S1_S6.md S4): a group lists its services and a service names its group; they disagree. The validator reports the disagreement and resolves nothing.

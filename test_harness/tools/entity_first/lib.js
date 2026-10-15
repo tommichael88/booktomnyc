@@ -22,8 +22,10 @@ const PATHS = {
 // The keys btnyc_v10_compiler.py owns (its COMPILER_KEYS). They are derived, never authored, and are not in the source.
 const COMPILER_KEYS = ['compiled', 'routing_archetypes', 'pricing_archetypes', '_compiler_metadata', '_validation', '_additive_diff', '_schema_validation', '_archetype_mismatch_report'];
 
-const SOURCE_SCHEMA_VERSION = '1.0.0';
-const DERIVATION_VERSION = '1.0.0';
+const SOURCE_SCHEMA_VERSION = '1.1.0';
+const DERIVATION_VERSION = '1.1.0'; // 1.1.0: $source, interface_version, manifest, alias_index, action_vocabulary, formula_inputs, price_influence (T177)
+// The interface version is the contract a CONSUMING module checks before it reads the artifact (P-SYSTEM-VERSIONS). It moves only when a consumer would break: a removed or reshaped index, a changed key meaning.
+const INTERFACE_VERSION = '1.0.0';
 
 // ---- ids -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // The id types and their prefixes. A reference is a bare id string; the prefix names the target type. There is no second spelling.
@@ -114,5 +116,5 @@ function chainSignature(chain) {
   return resolveChain(chain).map(r => ({ key: r.key, module: r.module, params: r.params, then: Object.fromEntries(Object.entries(r.then).map(([l, ts]) => [l, [...(ts || [])].sort()])) }));
 }
 
-module.exports = { ROOT, PATHS, COMPILER_KEYS, SOURCE_SCHEMA_VERSION, DERIVATION_VERSION, ID_TYPES, ID_RE, idType, idOf, stripId, slug, uniqueSlugger, readJson, toText, sha, writeIfChanged, diff, diffAll,
+module.exports = { ROOT, PATHS, COMPILER_KEYS, SOURCE_SCHEMA_VERSION, DERIVATION_VERSION, INTERFACE_VERSION, ID_TYPES, ID_RE, idType, idOf, stripId, slug, uniqueSlugger, readJson, toText, sha, writeIfChanged, diff, diffAll,
   clone, isObj, authoredLegacy, resolveChain, chainSignature };

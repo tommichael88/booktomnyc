@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tommichael88.github.io/booktomnyc/schema/btnyc-artifact.schema.json",
+  "title": "BTNYC derived runtime artifact",
+  "description": "Interface 1.0.0 of ssot/derived/btnyc_graph.json (T177): the DERIVED artifact a runtime reads, never the authored source and never a file holding both. The key set is closed: an artifact that carries authored-source sections (registries, policy, vocabulary, entities' owned nodes, compiled.*) is refused, and a new index is a change to this schema and to the interface version (R-INVARIANT-FROZEN). Every index named in `manifest.indexes` has at least one consumer (R-SYSTEM-INDEXPROXY).",
+  "type": "object",
+  "required": ["$source", "interface_version", "derivation", "counts", "manifest", "entities", "questions", "option_bridge", "chains", "confidence", "retirement_index", "recovery", "composition_index", "picker", "alias_index", "action_vocabulary", "formula_inputs", "price_influence", "used_by"],
+  "properties": {
+    "$source": {
+      "description": "Provenance reference: which source this was derived from and by which derivation. sha256 is the hash of the source file's text.",
+      "type": "object",
+      "required": ["path", "sha256", "source_schema_version", "derivation_version"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "source_schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "derivation_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      },
+      "additionalProperties": false
+    },
+    "interface_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "derivation": { "type": "object", "required": ["version", "source", "source_schema_version", "source_sha256"] },
+    "counts": { "type": "object" },
+    "manifest": {
+      "type": "object",
+      "required": ["consumer_status", "indexes"],
+      "properties": {
+        "consumer_status": { "type": "string", "minLength": 1 },
+        "indexes": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "required": ["consumers"],
+            "properties": {
+              "consumers": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "object", "required": ["module", "reads"], "properties": { "module": { "type": "string", "minLength": 1 }, "reads": { "type": "string", "minLength": 1 }, "status": { "type": "string" } }, "additionalProperties": false }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "entities": { "type": "object" },
+    "questions": { "type": "object" },
+    "option_bridge": { "type": "object" },
+    "chains": { "type": "object" },
+    "confidence": { "type": "object" },
+    "retirement_index": { "type": "object" },
+    "recovery": { "type": "object" },
+    "composition_index": { "type": "object" },
+    "picker": { "type": "object" },
+    "alias_index": { "type": "object", "additionalProperties": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^ent\\." } } },
+    "action_vocabulary": { "type": "object", "required": ["actions", "unmapped_verbs"], "properties": { "actions": { "type": "object" }, "unmapped_verbs": { "type": "object" } }, "additionalProperties": false },
+    "formula_inputs": { "type": "object", "additionalProperties": { "type": "object", "required": ["qty_aware", "consumed_question_ids", "inputs"] } },
+    "price_influence": { "type": "object", "additionalProperties": { "type": "object", "required": ["prices", "changes_quote", "price_option_ids", "legacy_claim"], "properties": { "prices": { "type": "boolean" }, "changes_quote": { "type": "boolean" }, "price_option_ids": { "type": "array", "items": { "type": "string" } }, "legacy_claim": { "type": ["boolean", "null"] } }, "additionalProperties": false } },
+    "used_by": { "type": "object" }
+  },
+  "additionalProperties": false
+}

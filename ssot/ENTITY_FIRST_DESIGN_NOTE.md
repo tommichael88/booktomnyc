@@ -42,7 +42,7 @@ The Playbook asks for both an entity-first authored shape (entities own their qu
 | Artifact | Role | Owner |
 |---|---|---|
 | `ssot/btnyc_source.json` | **Authored source** (entity-first). Edited by humans/CMS. | the Operator |
-| `schema/btnyc-source.schema.json` | Source schema, `source_schema_version` 1.0.0 | structure |
+| `schema/btnyc-source.schema.json` | Source schema, `source_schema_version` 1.1.0 (1.0.0 until T177; see section 14) | structure |
 | `test_harness/tools/entity_first/validate_source.js` | Independent validator. Callable without derivation. Exit non-zero on any violation. | structure |
 | `test_harness/tools/entity_first/derive_graph.js` | Derives `ssot/derived/btnyc_graph.json`. **Refuses invalid source** (runs the validator first). | structure |
 | `test_harness/tools/entity_first/migrate_legacy.js` | One-time, reproducible migration of `btnyc.json` to the source, with a leaf-level provenance ledger | transition |
@@ -122,7 +122,7 @@ IDs are generated **once**, by the migration, from the legacy key or label (`slu
 
 Legacy spellings normalised at the migration boundary: `{"$ref":"#tag"}` and `"#tag"` -> `tag.x`; `comp.x` -> `ent.x`; bare service ids -> `svc.x`; module keys -> `q.x`; `module::noun` -> an instance question id; label-keyed `then`/`depends_on`/`answers` -> `{question_id, option_id}` pairs; modifier slug keys -> `mod.x`; SKUs -> `mat.x`. Nothing reads a label as a key after this boundary.
 
-## 5. Source layout (`source_schema_version` 1.0.0)
+## 5. Source layout (`source_schema_version` 1.1.0; the 1.0.0 layout plus the additions of section 14)
 
 ```
 meta, source_schema_version, provenance
@@ -228,3 +228,47 @@ The Playbook's glossary, routing section and appendix still describe the chain E
 ## 13. What this task will not claim
 
 Weights and thresholds are seeded from legacy numbers and are not validated business truth. Entity taxonomy for services without a component is a recorded decision. Scope classification for shared questions is rule-derived and listed. Anything the migration cannot map is reported with counts rather than defaulted.
+
+## 14. T177 amendment: pricing rules, condition modifiers, customer vocabulary, the published artifact (source schema 1.0.0 -> 1.1.0)
+
+The operator's directive of 2026-10-15 lifted the audit pause and asked for the domain model to be authored, not re-audited: business knowledge that the legacy runtime applies in code or implies in a name is to be stated in the source, with its evidence, and checked by the independent validator. This section records what changed and where each part is held. Nothing here edits `btnyc.json`, `qr.html`, the Charter or the Layer Map.
+
+### 14.1 Three version numbers, three meanings (P-SYSTEM-VERSIONS)
+
+| Version | Where | Value | Moves when |
+|---|---|---|---|
+| source schema | `source_schema_version`, `$source.source_schema_version` | 1.1.0 (was 1.0.0) | the shape of the authored source changes |
+| derivation | `lib.DERIVATION_VERSION`, `$source.derivation_version` | 1.1.0 (was 1.0.0) | the shape of the generated artifact changes |
+| interface | `lib.INTERFACE_VERSION`, artifact `interface_version` | 1.0.0 (new) | a consuming module would break (major) or an index is added (minor) |
+
+A consumer states which of each it accepts in `schema/btnyc-interface-contract.json` and runs `artifact_compat.js` (it requires nothing) before it reads an index. No runtime module does this yet (PENDING_DECISIONS #218).
+
+### 14.2 What the source gained
+
+| Addition | Where in the source | Evidence and how it is held |
+|---|---|---|
+| Formula `inputs` | `registries.pricing_formulas[].inputs[]`: `trigger_modifier`, `select_branch`, `quantity` (`booking`, `answer_values`, `option_qty_value`), `constant_modifier` | `ssot/migration/recovered_rules.json`: each rule cites `qr.html` code by quoted line. `validate_source.js` V-FML-*; `verify_entity_first_pricing_rules.js` holds each input to `applyPricingFormula` by sensitivity |
+| `qty_aware` | formula flag (4 formulas) | replaces `QTY_AWARE_FORMULAS`; held equal to it by the pricing-rules test |
+| Option effects completed from the inputs | `option.affects` | a quantity option with `qty_value` 0 carries only `quantity`; V-OPT-EFFECT accepts a formula input or a fee row as a cause |
+| Condition modifiers | `registries.modifiers[]` with `role: "condition"`, `basis`; carried by `service.modifier_ids` | three inferred from service names (PENDING_DECISIONS #209). They carry no fee and no minutes, are not projected into `global_rules.modifiers`, and are refused on an option (V-MOD-*) |
+| Entity aliases | `entity.aliases[]` (285 on 65 entities) | seeded from the 81 NLP objects: the keyword is an entity id (43), else the default service's entity (33), else unresolved (5). Each object records `resolves_to {entity_id, basis}`. V-VOC-ALIAS-*, V-VOC-OBJECT-RESOLVE |
+| Action vocabulary | `vocabulary.action_vocabulary {actions[], unmapped_verbs[]}` | replaces `negation_library.action_conjugations` keyed by service-type label; the projector rebuilds the legacy shape exactly. `remove` and `replace` name no action and are listed as unmapped; `act.mount` has no vocabulary |
+| Pricing archetype definitions | `registries.pricing_archetypes[{id, definition}]` | copied from the legacy compiled block; equal to the compiler constant `PRICING_ARCHETYPE_DEFINITIONS`. Four declared archetypes disagree with the formula they name (#219) |
+
+The migration is a pure function of `(btnyc.json, ssot/migration/recovered_rules.json)`; `last_migration.json` records the rules file's hash. All enrichment is source-only and stripped by the projector, so the projection parity with `btnyc.json` stays exact with no new declared normalization.
+
+### 14.3 The price claim
+
+The source makes no price claim of its own. A question prices the quote iff some option declares the `price` effect; the legacy `affects_price` flag survives under `runtime_compat` for the UI badge only. Against the 124 legacy claims: 69 backed by an option's price effect, 50 indirect (the question routes or selects, and the price follows), 5 unwired (the claim has no effect behind it), and 2 priced questions that the legacy file does not claim. These are residuals, not errors, and the badge semantics are an Operator decision (#215).
+
+### 14.4 The published artifact
+
+`ssot/derived/btnyc_graph.json` is the candidate published artifact. Its top-level key set is closed (`schema/btnyc-artifact.schema.json`): `$source`, `interface_version`, `derivation`, `counts`, `manifest` and 14 indexes. Every index names a consumer in `manifest.indexes[k].consumers`, a module of the Layer Map (`resolver.js`, `composer.js`, `confidence_engine.js`, `recovery_engine.js`, `pricing_engine.js`, `nlp_engine.js`, `UIRenderer.js`) or the CMS; the manifest says plainly that those modules are targets, not yet extracted from the runtime (R-SYSTEM-INDEXPROXY). `publish.js` is the only writer and runs eight gates (G-SOURCE, G-DERIVE, G-REPRODUCIBLE, G-ARTIFACT, G-CONSUMERS, G-COMPAT, G-FRESH, and G-COMMITTED under `--check`). It writes the candidate artifact and nothing else; it does not write `btnyc.json`. Moving the artifact path to `btnyc.json` and stamping `$source` into it is the P2 step of the transition, which stays open until 2027-06-30.
+
+### 14.5 What this amendment does not claim
+
+- It does not claim the recovered pricing rules are the Operator's intent, only that they are what the legacy code does, with a citation each. Where the code is plainly a defect it is not reproduced: label parsing, the `parseInt` fallback for a PAX count, and the stale `tile_count`, `unit_count` and `__exact_count` keys are recorded as dropped, with why.
+- "50 sq ft or more" prices as exactly 50 in the legacy code, so a larger area is under-estimated. The source states the value the engine uses.
+- Seven services at three composition points remain open: computer repair (2), furniture repair (3), os setup (2). They differ by verb or entity, not by a modifier, and need an Operator ruling (#209).
+- No runtime module is written or wired. The PAX coefficient constant that `qr.html` still holds is guarded against drift by a test, not replaced (#217).
+

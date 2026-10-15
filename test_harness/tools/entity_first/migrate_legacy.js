@@ -11,6 +11,8 @@
 const fs = require('fs'), path = require('path');
 const lib = require('./lib.js');
 const refs = require('./refs.js');
+const recovered = require('./recovered_rules.js');
+const vocab = require('./vocabulary.js');
 const { clone, slug, uniqueSlugger, isObj } = lib;
 
 // ---- the choices this migration makes, as data ------------------------------------------------------------------------------------------------------------------------------
@@ -42,7 +44,8 @@ const CONTEXT_MIN_ENTITIES = 5;
 
 const titleCase = s => s.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 
-function migrate(L) {
+function migrate(L, opts = {}) {
+  const RR = opts.rules || recovered.load(); // { rules, sha256 }: the cited business rules the legacy file only implies (T177)
   const report = { decisions: [], unresolved: [], findings: [], counts: {}, ledger: [] };
   const note = (kind, text, extra) => report.decisions.push(Object.assign({ kind, text }, extra || {}));
   const unresolved = (what, detail) => report.unresolved.push({ what, detail });
@@ -78,6 +81,8 @@ function migrate(L) {
   });
   ledger('global_rules.modifiers.<slug>', 'registries.modifiers[]', 'keyed object -> array with id mod.<slug>; affects computed from fee/minutes', modifiers.length);
   report.counts.modifiersWithNoEffect = modifiers.filter(m => m.affects.length === 0).length;
+  recovered.addConditionModifiers(modifiers, RR.rules, report); // service-defining domain conditions; appended after the legacy modifiers, which keep their order
+  ledger('recovered_rules.condition_modifiers[]', 'registries.modifiers[] (role: condition)', 'authored from service identity (name, description, the question only that service asks); carries no fee or minutes', RR.rules.condition_modifiers.length, 'Not in btnyc.json: a business inference from the service itself, cited in recovered_rules.json');
 
   // ---- tags (answers are attached once the questions exist) ----
   const tags = Object.entries(A.smart_tags).map(([k, t]) => Object.assign({ id: S.tag_hash.f(k) }, t));
@@ -92,6 +97,8 @@ function migrate(L) {
   const checkoutStates = Object.entries(A.checkout_states).map(([k, c]) => Object.assign({ id: 'chk.' + k }, c));
   const formulas = Object.entries(A.pricing_formulas).map(([k, f]) => Object.assign({ id: 'fml.' + k }, f));
   refs.forward(formulas, refs.RULES.formulas, ctx, counter);
+  recovered.applyFormulas(formulas, RR.rules, report);
+  ledger('recovered_rules.formula_inputs', 'registries.pricing_formulas[].inputs, .qty_aware', 'which answers each formula reads, and which formulas scale quantity themselves, recovered from qr.html applyPricingFormula / FORMULA_CONSUMED_KEYS / QTY_AWARE_FORMULAS', report.counts.formulaInputs, `${RR.rules.dropped_legacy_consumed_keys.length} stale consumed keys dropped (tile_count, unit_count, __exact_count: no intake module has them)`);
   const classes = Object.entries(A.archetypes).map(([k, a]) => {
     const c = Object.assign({ id: 'cls.' + k }, a);
     const d = c.default_confidence_strategy; delete c.default_confidence_strategy;
@@ -407,6 +414,7 @@ function migrate(L) {
   services.forEach(fillProfile); compositions.forEach(fillProfile);
   // Two curated services at one (entity, action, modifiers) point cannot be told apart by the composer. The modifier or entity that separates them is a business decision (nothing in the legacy file
   // says "hidden cables" is a modifier of a TV mount rather than a different service), so the gap is declared on each of them, not resolved by a guess.
+  recovered.assignServiceModifiers(services, RR.rules, report);
   { const at = new Map(); for (const sv of services) { const k = [sv.entity_id, sv.action_id, sv.modifier_ids.join(',')].join('|'); if (!at.has(k)) at.set(k, []); at.get(k).push(sv); }
     report.counts.ambiguousCompositionPoints = 0; report.counts.servicesInAmbiguousPoints = 0;
     for (const list of at.values()) if (list.length > 1) { report.counts.ambiguousCompositionPoints++; for (const sv of list) { report.counts.servicesInAmbiguousPoints++; sv.decomposition = { status: 'open', note: `shares entity ${sv.entity_id} and action ${sv.action_id} with ${list.filter(x => x !== sv).map(x => x.id).join(', ')}; which modifier or entity separates them is an open business decision (PENDING_DECISIONS #209)` }; } } }
@@ -437,6 +445,9 @@ function migrate(L) {
     }
     if (f.anchor_and_overflow_ref_by_service) f.anchor_and_overflow_ref_by_service = Object.entries(f.anchor_and_overflow_ref_by_service).map(([sid, v]) => Object.assign({ service_id: 'svc.' + sid }, Object.fromEntries(Object.entries(v).map(([k, x]) => [k === 'overflow_rate_ref' ? 'overflow_modifier_id' : k, k === 'overflow_rate_ref' ? 'mod.' + x : x]))));
   }
+
+  // ---- option effects that formula inputs and fee rows cause (T177): an answer a formula reads changes the quote even though the option carries no modifier or formula of its own ----
+  recovered.completeOptionEffects(questions, formulas, modifiers, report);
 
   // ================================================================ picker (the curated part of routing_archetypes) ========================================================
   const symptomOptionToTile = (g, ra) => null;
@@ -486,19 +497,26 @@ function migrate(L) {
     e.questions.sort((a, b) => (a.id < b.id ? -1 : 1)); e.uncertainty_classes.sort((a, b) => (a.id < b.id ? -1 : 1));
   }
   shared.sort((a, b) => (a.id < b.id ? -1 : 1)); sharedClasses.sort((a, b) => (a.id < b.id ? -1 : 1));
+  // customer vocabulary (T177): entity aliases from the NLP objects, and the action vocabulary keyed by action id instead of by the legacy service-type label
+  const aliasStats = vocab.seedAliases(entityList, nlpObjects, services);
+  const split = vocab.splitActionVocabulary(A.negation_library, actions, unresolved);
+  ledger('intent_mappings.objects[].synonyms', 'entities[].aliases[]', 'seeded: an object feeds the entity its keyword names, else its default service\'s entity; a word that already names another entity, or that two entities claim, is left out and reported', aliasStats.aliases, `${aliasStats.unresolved.length} object(s) feed no entity (${aliasStats.unresolved.join(', ')})`);
+  ledger('negation_library.action_conjugations', 'vocabulary.action_vocabulary', 'keyed by action id (was the service-type label); remove / replace have no action and stay under unmapped_verbs', split.action_vocabulary.actions.length + split.action_vocabulary.unmapped_verbs.length);
+  report.counts.aliases = aliasStats.aliases; report.counts.entitiesWithAliases = aliasStats.entitiesWithAliases; report.counts.nlpObjectsKeywordIsEntity = aliasStats.keywordIsEntity; report.counts.nlpObjectsDefaultServiceEntity = aliasStats.defaultServiceEntity; report.counts.nlpObjectsUnresolved = aliasStats.unresolved.length; report.counts.aliasTermsSkipped = aliasStats.skipped.length;
+  report.aliasSkipped = aliasStats.skipped; report.nlpObjectsUnresolved = aliasStats.unresolved;
   const source = {
     $schema: '../schema/btnyc-source.schema.json',
     source_schema_version: lib.SOURCE_SCHEMA_VERSION,
     meta: clone(A.meta),
     legacy_envelope: { $schema: A.$schema, $id: A.$id, top_level_order: Object.keys(L).filter(k => !lib.COMPILER_KEYS.includes(k) || k === 'routing_archetypes') },
-    provenance: { migrated_from: 'btnyc.json', migration: 'test_harness/tools/entity_first/migrate_legacy.js', design: 'ssot/ENTITY_FIRST_DESIGN_NOTE.md', ticket: 'T175' },
+    provenance: { migrated_from: 'btnyc.json', migration: 'test_harness/tools/entity_first/migrate_legacy.js', design: 'ssot/ENTITY_FIRST_DESIGN_NOTE.md', ticket: 'T175', recovered_rules: { file: 'ssot/migration/recovered_rules.json', rules_version: RR.rules.rules_version, sha256: RR.sha256 } },
     registries: { categories, groups, actions, modifiers, tags, materials, furniture, checkout_states: checkoutStates, pricing_formulas: formulas, behavioral_classes: classes, contexts: [...contexts.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)), // by id, not by first use: the registry's order must not depend on the order the legacy file happened to list its modules in
-      pricing_archetypes: Object.keys(L.pricing_archetypes || {}).map(k => ({ id: 'par.' + k })), service_order: A.services.map(s => 'svc.' + s.id) },
+      pricing_archetypes: Object.keys(L.pricing_archetypes || {}).map(k => { const d = L.pricing_archetypes[k].definition; if (typeof d !== 'string' || !d) unresolved('pricing archetype with no definition text', k); return { id: 'par.' + k, definition: d }; }), service_order: A.services.map(s => 'svc.' + s.id) },
     entities: entityList,
     shared_questions: shared,
     shared_uncertainty_classes: sharedClasses,
     policy: { workflow: clone(A.workflow), invariants: clone(A.invariants), global_rules: globalRules, ui_config: uiConfig },
-    vocabulary: { negation_library: clone(A.negation_library), adlib_phrase_overrides: clone(A.adlib_phrase_overrides), nlp_objects: nlpObjects, nlp_default_fallback: nlpFallback },
+    vocabulary: { negation_library: split.negation_library, action_vocabulary: split.action_vocabulary, adlib_phrase_overrides: clone(A.adlib_phrase_overrides), nlp_objects: nlpObjects, nlp_default_fallback: nlpFallback },
   };
   // the original, authored chains and branch maps, verbatim, for the record (design note 7.5)
 
@@ -532,7 +550,7 @@ function main() {
       }
     }
     lib.writeIfChanged(lib.PATHS.source, text);
-    lib.writeIfChanged(lib.PATHS.lastMigration, lib.toText({ note: 'written by migrate_legacy.js --write; the sha of the source it last wrote, so a later --write can tell an edited source from an unedited one. Never edit by hand.', output_sha256: outSha, legacy_authored_sha256: lib.sha(JSON.stringify(lib.authoredLegacy(L))) }));
+    lib.writeIfChanged(lib.PATHS.lastMigration, lib.toText({ note: 'written by migrate_legacy.js --write; the sha of the source it last wrote, so a later --write can tell an edited source from an unedited one. Never edit by hand.', output_sha256: outSha, legacy_authored_sha256: lib.sha(JSON.stringify(lib.authoredLegacy(L))), recovered_rules_sha256: recovered.load().sha256 }));
     console.log('wrote', lib.PATHS.source);
   }
   return report.unresolved.length ? 1 : 0;

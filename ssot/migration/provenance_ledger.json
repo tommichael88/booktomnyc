@@ -1,6 +1,6 @@
 {
   "generated": "by test_harness/tools/entity_first/report.js; never edit by hand",
-  "source_schema_version": "1.0.0",
+  "source_schema_version": "1.1.0",
   "ledger": [
     {
       "legacy": "service_types.<Type>",
@@ -29,6 +29,20 @@
       "how": "keyed object -> array with id mod.<slug>; affects computed from fee/minutes",
       "count": 189,
       "note": ""
+    },
+    {
+      "legacy": "recovered_rules.condition_modifiers[]",
+      "source": "registries.modifiers[] (role: condition)",
+      "how": "authored from service identity (name, description, the question only that service asks); carries no fee or minutes",
+      "count": 3,
+      "note": "Not in btnyc.json: a business inference from the service itself, cited in recovered_rules.json"
+    },
+    {
+      "legacy": "recovered_rules.formula_inputs",
+      "source": "registries.pricing_formulas[].inputs, .qty_aware",
+      "how": "which answers each formula reads, and which formulas scale quantity themselves, recovered from qr.html applyPricingFormula / FORMULA_CONSUMED_KEYS / QTY_AWARE_FORMULAS",
+      "count": 18,
+      "note": "3 stale consumed keys dropped (tile_count, unit_count, __exact_count: no intake module has them)"
     },
     {
       "legacy": "archetypes.<class>",
@@ -85,11 +99,30 @@
       "how": "carried; references normalised",
       "count": 1,
       "note": ""
+    },
+    {
+      "legacy": "intent_mappings.objects[].synonyms",
+      "source": "entities[].aliases[]",
+      "how": "seeded: an object feeds the entity its keyword names, else its default service's entity; a word that already names another entity, or that two entities claim, is left out and reported",
+      "count": 285,
+      "note": "5 object(s) feed no entity (install, mount, other, outlet, leak)"
+    },
+    {
+      "legacy": "negation_library.action_conjugations",
+      "source": "vocabulary.action_vocabulary",
+      "how": "keyed by action id (was the service-type label); remove / replace have no action and stay under unmapped_verbs",
+      "count": 7,
+      "note": ""
     }
   ],
   "counts": {
     "modifiersWithNoEffect": 0,
+    "conditionModifiers": 3,
     "furnitureIdsNormalised": 1,
+    "formulaInputs": 18,
+    "formulasWithInputs": 7,
+    "formulasQtyAware": 4,
+    "droppedLegacyConsumedKeys": 3,
     "optionsWithoutIdBefore": 516,
     "serviceEntityBasis": {
       "decision table": 11,
@@ -121,10 +154,18 @@
     },
     "unknownOptions": 48,
     "questionsAllUnknown": 0,
-    "ambiguousCompositionPoints": 6,
-    "servicesInAmbiguousPoints": 13,
+    "servicesWithConditionModifiers": 3,
+    "ambiguousCompositionPoints": 3,
+    "servicesInAmbiguousPoints": 7,
     "gateNone": 6,
     "legacyBarsUnreachable": 41,
+    "optionsEffectsCompletedByFormulaInputs": 39,
+    "aliases": 285,
+    "entitiesWithAliases": 65,
+    "nlpObjectsKeywordIsEntity": 43,
+    "nlpObjectsDefaultServiceEntity": 33,
+    "nlpObjectsUnresolved": 5,
+    "aliasTermsSkipped": 8,
     "entities": 105,
     "entityKinds": {
       "component": 82,
@@ -151,7 +192,7 @@
       "chk": 9,
       "fml": 5
     },
-    "optionsWithEffects": 472
+    "optionsWithEffects": 481
   },
   "findings": [
     {
@@ -616,21 +657,15 @@
     },
     {
       "kind": "composition_ambiguous",
-      "count": 13,
+      "count": 7,
       "ids": [
-        "svc.high_ceiling_bulb_replacement",
-        "svc.led_bulb_upgrade",
         "svc.computer_diagnostic",
         "svc.internal_hardware_replacement",
         "svc.furniture_disassembly_for_moving",
         "svc.furniture_repair_hourly",
         "svc.scratch_or_water_ring_removal",
         "svc.software_or_driver_install",
-        "svc.system_restore_or_reset",
-        "svc.shelf_mortar_mounting_buy_the_hour",
-        "svc.shelf_mounting_standard_buy_the_hour",
-        "svc.flatscreen_mounting_standard",
-        "svc.flatscreen_mounting_with_hidden_cables"
+        "svc.system_restore_or_reset"
       ]
     },
     {
@@ -655,6 +690,131 @@
         "$.policy.global_rules.force_modules_by_variability_DEPRECATED.medium[1]",
         "$.policy.global_rules.force_modules_by_variability_DEPRECATED.high[1]",
         "$.policy.global_rules.force_modules_by_variability_DEPRECATED.diagnostic[1]"
+      ]
+    },
+    {
+      "kind": "object_term_not_aliased",
+      "count": 8,
+      "ids": [
+        "drywall:wall",
+        "drywall:plaster",
+        "tile:floor",
+        "chandelier:pendant",
+        "computer:laptop",
+        "computer:desktop",
+        "door knob:door handle",
+        "hard drive:ram"
+      ]
+    },
+    {
+      "kind": "nlp_object_unresolved",
+      "count": 5,
+      "ids": [
+        "install",
+        "mount",
+        "other",
+        "outlet",
+        "leak"
+      ]
+    },
+    {
+      "kind": "verb_without_action",
+      "count": 2,
+      "ids": [
+        "remove",
+        "replace"
+      ]
+    },
+    {
+      "kind": "action_without_vocabulary",
+      "count": 1,
+      "ids": [
+        "act.mount"
+      ]
+    },
+    {
+      "kind": "pricing_archetype_mismatch",
+      "count": 4,
+      "ids": [
+        "svc.blinds_shades_curtains_buy_the_hour",
+        "svc.furniture_repair_hourly",
+        "svc.pax_wardrobe_assembly",
+        "svc.loose_tile_replacement"
+      ]
+    },
+    {
+      "kind": "price_claim_indirect",
+      "count": 50,
+      "ids": [
+        "q.action",
+        "q.battery_signs",
+        "q.computer_attempted_fix",
+        "q.computer_component",
+        "q.desktop_outlet_check",
+        "q.desktop_power_signs",
+        "q.heat_signs",
+        "q.laptop_charger_check",
+        "q.laptop_power_signs",
+        "q.slow_pattern",
+        "q.startup_screen",
+        "q.dishwasher_symptom",
+        "q.door_type",
+        "q.hardware_type",
+        "q.dryer_symptom",
+        "q.floor_type",
+        "q.item_type",
+        "q.disposal_size",
+        "q.garbage_disposal_issue",
+        "q.area_sqft",
+        "q.Setup",
+        "q.microwave_symptom",
+        "q.device_state",
+        "q.door_style_pref",
+        "q.refrigerator_symptom",
+        "q.router_owned",
+        "q.leak_loc",
+        "q.brand",
+        "q.stove_symptom",
+        "q.washer_type",
+        "q.water_line_issue",
+        "q.window_ac_issue",
+        "q.attempted_fix",
+        "q.computer_symptom",
+        "q.electrical_item",
+        "q.furn_item",
+        "q.general_symptom",
+        "q.has_matching_tiles",
+        "q.item_count_template",
+        "q.leak_type",
+        "q.location",
+        "q.mounting_item",
+        "q.plumbing_fixture",
+        "q.plumbing_fixture_issue",
+        "q.project_scale",
+        "q.sink_type",
+        "q.symptom",
+        "q.tech_device",
+        "q.toilet_style_pref",
+        "q.window_type"
+      ]
+    },
+    {
+      "kind": "price_effect_unclaimed",
+      "count": 2,
+      "ids": [
+        "q.buy_the_hour_qty",
+        "q.tech_issue_source"
+      ]
+    },
+    {
+      "kind": "price_claim_unwired",
+      "count": 5,
+      "ids": [
+        "q.install_target",
+        "q.generic_tech_symptom",
+        "q.laptop_or_desktop",
+        "q.network_symptom",
+        "q.smart_device_symptom"
       ]
     },
     {
