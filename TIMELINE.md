@@ -11670,3 +11670,63 @@ The experiment was re-run from scratch for this commit (same 32 points, 8 per se
 - **Ledger linter** 14 of 14; **file integrity** 93 of 93 (6 operator-local files not in this checkout, not counted).
 - **Regression gate**, clean worktree at `ab66d33` (harness dependencies installed, Chrome path set), against `archive/suite_T177.tsv`: **219 tests: 148 pass (146 in full, 2 with their browser half skipped for want of a puppeteer-cache Chrome), 71 fail (the same known baseline: none repaired, none newly red); 0 pass→fail, 0 red→worse, 0 red→no count, 0 new or missing tests** (`archive/suite_T178.tsv`, `archive/suite_T178_gate.txt`; the gate's exit 0 tolerates the 71, so the populations are kept apart here). The changes since the T177 gate are the validator check, one test and records, so no new test was added.
 - **Not run:** Jekyll itself (RubyGems unreachable here), the `tsc` baseline, any request for a price on the live site.
+
+## T179 — your message of 2026-10-15 16:23 NY ("Proceed with runtime adoption"): `modules/resolver.js` is the first runtime reader of the published artifact and owns the component/symptom tap decision; at all 1,371 tap points the page does what it did before, whichever decides
+
+Governing message: yours, 2026-10-15 16:23 NY. Move to `resolver.js` and through the planned runtime migration without reopening settled decisions or auditing again; the Playbook and the Layer Map are binding; the golden master detects unintended changes, it does not require reproducing known defects; preserve intended business behavior, correct established defects only on evidence, test and document every intentional change; before `resolver.js` is a runtime dependency verify it consumes the published artifact through the compatibility boundary, that incompatible or stale artifacts fail safely, and that pricing and routing stay with their canonical engines; leave #219 unchanged and open; record non-blocking choices as autonomy decisions; stay on `main`, no new branch or PR without a concrete reason; report only what was implemented, the validation, a consequential blocker, and the next milestone.
+
+**Ledger (R-GOVERN-TRANSITION).**
+
+- **Rationale.** The Layer Map lists `resolver.js` as a target module whose responsibility is "embedded in existing runtime code", and the published artifact had no runtime reader at all (the manifest said so: every consumer a target). The dual-source transition (P1, `btnyc.json` still what the page reads) cannot move toward P2 until a runtime module reads the artifact through the boundary the Charter requires (`R-SYSTEM-DEPLOY-CONTRACT`).
+- **Endpoint.** `modules/resolver.js` reads the published artifact's `picker` index only after `ArtifactCompat.check` accepted it against `schema/btnyc-interface-contract.json`, owns the decision "what does a tap on this component or symptom mean" (one service, a short list, or none), and returns it with provenance. The page draws that decision. The artifact can be missing, stale, incompatible, malformed, or behind the data the page serves, and in each case the page decides as it did before.
+- **Expected cost.** One background fetch of 760 KB plus the 3 KB contract, off the boot's critical path. No price, label or route changes (golden master: 0 of 2,988 differ). Rollback: revert the commit; the page's own decision is still in `qr.html` as `legacyComponentSymptomDecision`.
+- **Retirement.** `legacyComponentSymptomDecision` and the page's `expect_services` list retire with the legacy data shape (#212, target end 2027-06-30); nothing else is retired this round. The six superseded branches of T178 §1b are still not deleted (the permission layer refused; the command is in that section).
+
+### 1. The seam, and why this one
+
+I surveyed every place the runtime resolves evidence against the graph: a tapped component or symptom (`resolveComponentSymptomTap`), free text to an entity (`orch_resolve_entity` and `orch_apply_object_based_resolution`), a group's declared symptoms (`resolveGroupSymptoms`), the dynamic service of a category/type/group (`resolveDynamicService`), and the branch a `route_to` answer takes (`orch_find_route_tos`, `ROUTE_TO_MAX_HOPS`, `option_bridge`). Only the first is pure, has an artifact index already (`picker`), and can be compared exhaustively with what it replaces. The free-text slice shares its function with confidence weights (`_matchConfidence`, `confidence_weight`) and the branch slice with composer logic; the Layer Map forbids the resolver to absorb either, so each has to be cut at its seam first. They are the next slices (#221).
+
+### 2. What was built
+
+- **`modules/resolver.js`** (new, Logic / Engine, UMD): `create(artifact, contract)` returns an instance with `available`, `reason`, `detail`, `provenance` and `resolveTap({ group_id, action, evidence, expect_services })`; `install` / `current` hold the page's one instance and `current()` never returns null (before an install it is an unavailable resolver, so a caller branches on a status, never on existence). The answer: `status: 'resolved'` with `decision` (`service` | `choose` | `unresolved`), `services` (artifact id, the id the page holds, action), `source` (`archetype_default`, or `fallback` when no service is mapped), `because`, and the evidence echoed back; otherwise `unavailable` / `unknown` / `stale` with a reason.
+- **`modules/artifact_compat.js`** (moved from `test_harness/tools/entity_first/`, UMD): the consumer runs the check the publisher ran, from one file; the old path is a one-line re-export (#223).
+- **The artifact** gained `picker[group].services` (each reachable service's action id and label): interface 1.1.0, derivation 1.2.0 (#222). The consumer contract needs 1.1.0 and accepts 1.2.0 only. The manifest now says the picker has a runtime consumer.
+- **`qr.html`**: two `<script src>` tags; a boot step that fetches the artifact and contract in the background and installs the resolver, recording `window.__resolverStatus`; `decideComponentSymptomTap` (Logic) asks the resolver and takes a resolved answer as it is; `legacyComponentSymptomDecision` is the old body, kept as the named fail-safe; `resolveComponentSymptomTap` now only draws (service card, choice list, guided builder); the three call sites pass the tile that was tapped.
+
+### 3. The compatibility boundary and failing safe
+
+| State | How the resolver sees it | What the page does |
+|---|---|---|
+| no artifact (404, network, never arrives) | `missing` | decides as before; console warning; the boot is not waiting |
+| older than the consumer needs (interface 1.0.0, derivation 1.1.0: the T177 artifact) | `stale` | decides as before |
+| different major interface, unaccepted source schema or derivation, no `$source`, a required index absent | `incompatible` | decides as before |
+| passes the check but lacks what the resolver reads (`picker.services`) | `malformed` | decides as before |
+| compatible, but lists something else than `btnyc.json` lists for this tile | `stale` for that tap (`runtime_data_differs`) | decides that tap itself, says so on the console; the other tiles stay the resolver's |
+| `resolver.js` or `artifact_compat.js` itself missing | (page fault) | boot-failure panel, like any missing module |
+
+Pricing and routing are not in the resolver: the file is scanned (comments and strings blanked) for price, confidence arithmetic, route, question-chain, DOM, legacy-catalog, authored-source and network tokens, and the scan is shown able to fail with a mutant per class. The resolver names exactly one artifact index, `picker`. It returns ids and an action; it does not read a price or choose a next question.
+
+### 4. Intentional behavior changes
+
+None. Differences between the artifact and the legacy page are named and pinned, not tolerated: the artifact's picker holds 22 symptoms (six appliance groups) that the page never draws as an id-keyed tile; taps on declared-symptom tiles carry no evidence and stay the page's (#226). `Mount` and `Diagnostic` as chosen actions still match no service, as before (the sweep covers every action label).
+
+### 5. Open, recorded, not blocking
+
+- **#219** unchanged: the three formula-priced hourly services quote less labor/minutes on a tagged job than the hourly engine would. The resolver neither reads nor decides it.
+- **#225** the Layer Map's snapshot row lists nine modules and no resolver; the map is not edited; a ratchet in the deployment-shape test names the two adopted modules and fails when the map catches up.
+- **#226** declared-symptom taps (`resolveGroupSymptoms`) are the next resolver slice with free-text entity resolution (#221, #220).
+- The six superseded branches are not deleted (T178 §1b).
+
+### 6. Verified
+
+- **`verify_resolver_module.js`: 111 checks.** The artifact is accepted only through the compatibility check; 19 unusable-artifact cases each give an unavailable resolver with the right reason and no exception; a runtime list that disagrees is `stale`; ownership scan with 8 mutants; **equivalence with the legacy decision (frozen in the test) at every (group, tile, action) point of all 39 groups, 0 differences**, with two counterfactuals showing the sweep sees a reordered service list and a mislabeled action.
+- **`verify_resolver_wiring.js`: 36 checks.** The page booted under six artifacts and one that never arrives; at **1,371 points** the page's drawing is identical whether the artifact is published, missing, incompatible, stale, malformed or drifted; the resolver decided all 1,129 points that carry evidence and the page all 242 that do not; the drifted tile alone was the page's.
+- **Production-shaped boot** (`verify_external_modules_boot.js`, 20 checks): the page served from the deployed URL shape fetches the artifact from the deployed path, the resolver becomes available, and `comp.hard_drive` + Repair is decided by the resolver in a real browser; a 404 on either new module is a visible boot failure.
+- The UI click-through suites (`verify_component_symptom_picker.js` 101 with the resolver available, 100 without; `verify_group_symptoms_one_derivation.js` 26) pass in both states.
+- **Golden master:** 2,988 price points, **0 differ** (`archive/golden_master_T179.json`).
+- **Entity-first tests:** 658 checks, 0 failed; `publish.js --check`, `derive_graph.js --check`, `report.js --check`, `id_register.js --check`, `project_legacy.js --check`, ledger linter 14/14, file integrity.
+- **Regression gate**, clean worktree at `e0b4e62`, against `archive/suite_T178.tsv`: GATE_RESULT.
+
+### 7. Next milestone
+
+Free-text entity resolution (`orch_resolve_entity` and the object-based step) as the resolver's second slice, cut from the confidence weight it sets today, with #220 (the six words, which needs the source's placement field) and `resolveGroupSymptoms` alongside; then the confidence engine reads `confidence` / `retirement_index` from the same artifact through the same boundary.
