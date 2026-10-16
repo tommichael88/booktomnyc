@@ -12434,15 +12434,17 @@ function addToCart(entry) {
             // is now authored as a full, real sentence rather than a short
             // machine key -- appended as its own sentence rather than after
             // a "credit policy: " label, so this reads correctly either way.
-            const _divergenceNote = (S._divergencePath === 'onsite' && q.isDiagnostic) ?
-                '\n' + onsiteDiagnosticTerms(q).bookingNote :
-                '';
+            // R-WHITEFLAG-FORKB (T180 6/n): the Fork-B line carries the fee the Fork showed -- the same flat fee the curated card adds (renderCuratedCardFromRoute) --
+            // not the quote's labor estimate. This entry used to write the estimate as the price while its own note said "$85 diagnostic fee".
+            const _onsiteTerms = (S._divergencePath === 'onsite' && q.isDiagnostic) ? onsiteDiagnosticTerms(q) : null;
+            const _divergenceNote = _onsiteTerms ? '\n' + _onsiteTerms.bookingNote : '';
             addToCart({
                 id: 'sq-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
                 serviceId: S.intent?.key || 'smartquote',
                 category_id: S.intent?.category || 'other',
                 name: (S.intent?.label || 'Service') + (S.intent?.group && S.intent.group !== S.intent.label ? ' – ' + S.intent.group : ''),
-                price: '$' + q.laborCalc,
+                price: '$' + (_onsiteTerms ? _onsiteTerms.fee : q.laborCalc),
+                _variant: _onsiteTerms ? 'onsite' : null,    // discriminates the Fork-B line, as the curated card's entry does
                 icon: '⚡',
                 detail: S.desc?.substring(0, 80) || 'SmartQuote estimate',
                 notes: 'SmartQuote · ' + (S.desc || '') + (q.activeLabels.length ? '\nConditions: ' + q.activeLabels.join(', ') : '') +

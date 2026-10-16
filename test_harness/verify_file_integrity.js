@@ -119,6 +119,10 @@ if (process.argv.includes('--update')) {
     }
 
     const manifest = {};
+    // R-INVARIANT-FIXEDPOINT / R-SYSTEM-UNBOUNDED (T180 6/n): identical inputs give a byte-identical manifest. An entry's `updated` moves only when that file's content did, so a second --update
+    // on an unchanged tree writes the same bytes (it used to restamp all ~325 entries every run: a diff of the whole file on every commit, and output that drifted on a second run).
+    const NOW = new Date().toISOString().slice(0, 19);
+    const stamped = (name, result) => (existing[name] && existing[name].hash === result.hash && existing[name].updated) ? existing[name].updated : NOW;
 
     // Source files in REPO_ROOT.
     // v9.6+ FIX (2026-08-28 recovery session): was a fixed 12-item list --
@@ -172,7 +176,7 @@ if (process.argv.includes('--update')) {
         if (!fs.existsSync(filePath)) continue;
         const result = sha256(filePath);
         const label = (existing[name] || {}).label || name;
-        manifest[name] = { hash: result.hash, lines: result.lines, bytes: result.bytes, label, updated: new Date().toISOString().slice(0, 19), ...(((existing[name] || {}).local_only || localOnlyFlag.has(name)) ? { local_only: true } : {}) };
+        manifest[name] = { hash: result.hash, lines: result.lines, bytes: result.bytes, label, updated: stamped(name, result), ...(((existing[name] || {}).local_only || localOnlyFlag.has(name)) ? { local_only: true } : {}) };
         console.log(`  [src]  ${name}: ${result.hash} (${result.lines} lines)`);
     }
 
@@ -184,27 +188,23 @@ if (process.argv.includes('--update')) {
     // the moment it's rewritten after this loop already recorded its
     // pre-rewrite hash. Confirmed directly this was a real, live issue --
     // verify mode failed on it immediately after a fresh --update.
-    const testFiles = walk(TEST_DIR).filter(f => f !== 'FILE_MANIFEST.json.sha256' && !excludedByFlag.has(f) && !isGenerated(f));   // T151: recursive (was readdirSync of the top level only)
+    const testFiles = walk(TEST_DIR).filter(f => f !== 'FILE_MANIFEST.json' && f !== 'FILE_MANIFEST.json.sha256' && !excludedByFlag.has(f) && !isGenerated(f));   // the manifest does not list itself (R-SYSTEM-UNBOUNDED); its sidecar holds its hash   // T151: recursive (was readdirSync of the top level only)
     for (const fname of testFiles) {
         const filePath = path.join(TEST_DIR, fname);
         const result = sha256(filePath);
         const label = (existing[fname] || {}).label || fname;
-        manifest[fname] = { hash: result.hash, lines: result.lines, bytes: result.bytes, label, updated: new Date().toISOString().slice(0, 19), ...(isRunnerTest(fname) ? { authority: 'MASTER_TEST_SUITE.json' } : {}) };   // T151: a test's hash here is accounting only; MASTER is the authority
+        manifest[fname] = { hash: result.hash, lines: result.lines, bytes: result.bytes, label, updated: stamped(fname, result), ...(isRunnerTest(fname) ? { authority: 'MASTER_TEST_SUITE.json' } : {}) };   // T151: a test's hash here is accounting only; MASTER is the authority
         console.log(`  [test] ${fname}: ${result.hash}`);
     }
 
-    // v9.6+ FIX: set _meta BEFORE the self-referencing checksum bootstrap
-    // below, not after -- this manifest hashes ITSELF as one of its own
-    // tracked entries (FILE_MANIFEST.json), so anything added to the object
-    // after that hash is computed makes the recorded hash stale relative to
-    // the actual, final written bytes. Confirmed directly this would have
-    // been a real bug: an earlier draft of this fix added _meta after the
-    // bootstrap instead of before, which would have shipped a manifest whose
-    // own self-hash silently didn't match its own final content.
     if (process.argv.includes('--keep-absent')) {   // T151: a sandbox that lacks some of the operator's local files must not silently drop their entries
         for (const name of Object.keys(existing)) { if (name === 'FILE_MANIFEST.json' || name === '_meta' || manifest[name] || isGenerated(name)) continue; manifest[name] = { ...existing[name], ...(localOnlyFlag.has(name) ? { local_only: true } : {}) }; console.log(`  [kept] ${name} (not present here; entry preserved verbatim)`); }
     }
-    if (process.env.CLAUDE_SESSION_LABEL) {
+    // _meta is provenance, not a tracked file. It records the last CHANGE: when nothing in the manifest changed, the previous _meta stands, so a second --update on an unchanged tree
+    // writes the same bytes (R-INVARIANT-FIXEDPOINT).
+    const sameEntries = JSON.stringify(manifest) === JSON.stringify(Object.fromEntries(Object.entries(existing).filter(([k]) => k !== '_meta')));
+    if (sameEntries && existing._meta) manifest._meta = existing._meta;
+    else if (process.env.CLAUDE_SESSION_LABEL) {
         manifest._meta = {
             generated_by: 'Claude sandbox',
             session_label: process.env.CLAUDE_SESSION_LABEL,
@@ -212,36 +212,11 @@ if (process.argv.includes('--update')) {
         };
     }
 
+    // The manifest does NOT list itself (R-SYSTEM-UNBOUNDED: no generated artifact may use its own mutable contents as an input to a value written back into those contents). It used to: an
+    // entry for FILE_MANIFEST.json was written, which changed the file, which made the entry stale, which was patched by a second and a third write that could not converge ("Not solved here").
+    // Its integrity value is the sidecar, FILE_MANIFEST.json.sha256: the hash of the manifest exactly as written, in a file that does not contain itself, so there is no fixed point to find.
+    // One write, then one hash of those bytes.
     fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
-    // Bootstrap fix: FILE_MANIFEST.json's own checksum was just invalidated
-    // by the write above. Re-hash and update the entry, then write once more.
-    const selfResult = sha256(MANIFEST_PATH);
-    manifest['FILE_MANIFEST.json'] = { ...selfResult, label: 'File integrity manifest (self-referencing)', updated: new Date().toISOString().slice(0, 19) };
-    fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
-    // One final re-hash after the second write
-    const selfResult2 = sha256(MANIFEST_PATH);
-    // Note: FILE_MANIFEST.json recording its own hash is an inherent
-    // self-reference problem -- writing the corrected hash changes the
-    // file's bytes again, which the just-written hash then doesn't reflect.
-    // Not solved here; matches the original design's own acknowledgment
-    // ("cannot verify itself without circularity") in the verify-mode skip
-    // below. Harmless in practice since nothing ever checks this specific
-    // field -- this fix only corrects the field NAME so it's at least
-    // consistent with every other entry, not a claim of perfect accuracy.
-    manifest['FILE_MANIFEST.json'].hash = selfResult2.hash;
-    manifest['FILE_MANIFEST.json'].bytes = selfResult2.bytes;
-    manifest['FILE_MANIFEST.json'].lines = selfResult2.lines;
-    fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
-    // v9.6+ FIX: a genuine, clean solution to the self-reference problem
-    // noted above, rather than another approximation pass -- a sidecar file
-    // containing ONLY the manifest's own final hash. Since this sidecar
-    // doesn't contain itself, computing it has no fixed-point issue at all:
-    // hash the manifest exactly as it was just written, write that single
-    // value to a separate file. This also closes a real, previously-vestigial
-    // gap: the manifest's own docstring says tracking itself "prevents silent
-    // manifest tampering," but verify mode (below) has always explicitly
-    // skipped self-verification as impossible without this -- it's now
-    // actually possible, using this sidecar as the real, external anchor.
     const finalManifestHash = sha256(MANIFEST_PATH);
     fs.writeFileSync(MANIFEST_PATH + '.sha256', finalManifestHash.hash + '\n');
     console.log(`\nManifest written: ${Object.keys(manifest).length} files tracked`);

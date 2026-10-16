@@ -688,7 +688,7 @@ function validate(src, opts = {}) {
       if (lib.isObj(AX.batch_signals)) for (const k of ['overflow_formula', 'per_unit_penalty_minutes', 'single_use_consumable', 'scope_changing_branch']) if (!(k in AX.batch_signals)) vErr('.batch_signals.' + k, 'the Charter names this signal (R-COMPLEX-COMPOUNDS); the vocabulary must carry it');
       if (!Array.isArray(AX.single_use_consumable_material_ids)) vErr('.single_use_consumable_material_ids', 'an array of material ids');
       else AX.single_use_consumable_material_ids.forEach((m, i) => { if (!decl.mat.has(m)) vErr(`.single_use_consumable_material_ids[${i}]`, `${JSON.stringify(m)} names no material`); });
-      if (!lib.isObj(AX.assembly_classes) || !sameList(Object.keys(AX.assembly_classes), ['A0', 'A1', 'A2', 'A3'])) vErr('.assembly_classes', 'the assembly classes are A0, A1, A2, A3 (P-COMPLEX-FURNITURE)');
+      if (!lib.isObj(AX.assembly_classes) || !sameList(Object.keys(AX.assembly_classes).sort(), ['A0', 'A1', 'A2', 'A3'])) vErr('.assembly_classes', 'the assembly classes are A0, A1, A2, A3, each named by its key; the order the keys were written in is not meaning (P-COMPLEX-FURNITURE, R-INVARIANT-FIXEDPOINT)');
       else for (const [c, d] of Object.entries(AX.assembly_classes)) if (!lib.isObj(d) || !(AX.tiers || []).includes(d.minimum_tier)) vErr('.assembly_classes.' + c, 'an assembly class names the minimum skill tier it implies');
       if (!Array.isArray(AX.assembly_family_service_ids)) vErr('.assembly_family_service_ids', 'an array of service ids');
       else AX.assembly_family_service_ids.forEach((id, i) => { if (!services.has(id)) vErr(`.assembly_family_service_ids[${i}]`, `${JSON.stringify(id)} names no service`); });
