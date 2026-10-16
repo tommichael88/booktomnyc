@@ -2,7 +2,7 @@
 /**
  * verify_trace_observation_only.js
  *
- * @enforces R-GOVERN-INDEX
+ * (No @enforces tag: it held R-GOVERN-INDEX, now G-GOVERN-INDEX, a Governance Process, and the Charter declares no Rule for trace; the contract it holds is the Layer Map's Observation layer.)
  *
  * WHAT THIS PROVES (PHASE_PLAN.md Phase A, A4, with PENDING_DECISIONS #77's qualifier: "trace is observation-only; a trace code path that affects results is a defect").
  * Trace is non-optional: every `_trace` call is recorded in a bounded ring buffer whether or not the overlay is open, every workflow step reports to it, and

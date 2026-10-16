@@ -2,7 +2,7 @@
 /**
  * verify_ssot_boot_validation.js
  *
- * @enforces R-SYSTEM-NODATA, R-GOVERN-INDEX
+ * @enforces R-SYSTEM-NODATA
  *
  * WHAT THIS PROVES (PHASE_PLAN.md Phase A, A3). The page validates btnyc.json against btnyc_schema.json at boot, and stops if the data does not conform.
  * Three claims, each shown to be able to fail (a check that cannot fail proves nothing; R-INVARIANT-PREFIX: this file was run against the pre-change page first and

@@ -14,6 +14,8 @@
  *   V-REF-DANGLING    an id-shaped value or key that names nothing   V-REF-TYPE  a reference site that holds an id of the wrong type   V-REF-LABEL   a reference that is a label, not an id pair
  *   V-SCOPE-MISSING / V-SCOPE-ASKER / V-SCOPE-CLAIM / V-SCOPE-OWNER   a question's entity_scope, in both directions
  *   V-DEP-DANGLING / V-DEP-OPTION / V-DEP-NOTINCHAIN / V-DEP-SELF / V-DEP-CYCLE / V-DEP-SHAPE   depends_on
+ *   V-COMPLEX-*       the three axes every service declares (R-COMPLEX-AXES, R-COMPLEX-COMPOUNDS, P-COMPLEX-FURNITURE): PROFILE (a missing or illegal axis), TIER (the skill tier is declared twice and the two disagree), RISK (the risk tier is not the highest hazard it names),
+ *                     BATCH (the flag is not what its signals say), ASSEMBLY (the assembly class), VOCAB (the vocabulary they are written in)
  *   V-UNC-*           uncertainty classes, profiles and retirement       V-CONF-*   confidence policy and gate       V-OPT-*   option effects     V-COMP-*   unsafe-to-compose services
  * Declared gaps are not errors and not hidden: they are returned as `residuals` and counted in the coverage report.
  */
@@ -33,6 +35,20 @@ function eachAt(node, segs, fn, p = '') {
   if (s === '[]') { if (Array.isArray(node)) node.forEach((x, i) => eachAt(x, rest, fn, `${p}[${i}]`)); }
   else if (s === '*') { if (lib.isObj(node)) for (const k of Object.keys(node)) eachAt(node[k], rest, fn, `${p}.${k}`); }
   else if (lib.isObj(node) && s in node) eachAt(node[s], rest, fn, `${p}.${s}`);
+}
+
+// R-COMPLEX-COMPOUNDS: the batch-risk flag is read from signals in the SSOT, not asserted by belief. These are the four signals the Charter names, derived from a service's own record.
+// An overflow rate or penalty minutes anywhere in the service's formula; a required material that policy.complexity_axes lists as a single-use consumable; an answer in its intake that routes to another service.
+function complexitySignals(svc, formulas, questions, consumables) {
+  const out = [];
+  const hasKey = (o, re) => { let hit = false; (function w(x) { if (x && typeof x === 'object') for (const k of Object.keys(x)) { if (k.startsWith('_')) continue; if (re.test(k)) hit = true; w(x[k]); } })(o); return hit; };
+  const f = svc.pricing && formulas.get(svc.pricing.formula_id);
+  if (f && (f.id === 'fml.item_count_overflow_formula' || hasKey(f, /overflow/))) out.push('overflow_formula');
+  if (f && hasKey(f, /penalty_minutes/)) out.push('per_unit_penalty_minutes');
+  for (const m of (svc.pricing && svc.pricing.required_material_ids) || []) if (consumables.includes(m)) out.push('single_use_consumable:' + m);
+  const qids = [...((svc.intake && svc.intake.steps) || []).map(s => s.question_id), ...((svc.recovery_affordances && svc.recovery_affordances.deep_dive_question_ids) || [])];
+  if (qids.some(id => { const q = questions.get(id); return q && Array.isArray(q.options) && q.options.some(o => o.route_to && o.route_to.service_id && o.route_to.service_id !== svc.id); })) out.push('scope_changing_branch');
+  return out;
 }
 
 function validate(src, opts = {}) {
@@ -655,6 +671,77 @@ function validate(src, opts = {}) {
     }
   }
 
+  // ---- the three axes (R-COMPLEX-AXES, R-COMPLEX-COMPOUNDS, P-COMPLEX-FURNITURE) -----------------------------------------------------------------------------------------------------------------------
+  // Every curated service declares complexity_profile {tier, risk_tier, batch_risk_compounds}; none is inferred from another. The risk tier is the highest tier of the hazards the profile names, the batch flag is true exactly
+  // when it names a ground (a physical one the Charter lists, or a signal this validator can read from the service's own record), and a signal present in the record must be named: belief alone is not a signal.
+  { const AX = src.policy && src.policy.complexity_axes; let vocabOk = true;
+    const vErr = (p, m) => { vocabOk = false; err('V-COMPLEX-VOCAB', '$.policy.complexity_axes' + p, m); };
+    if (!lib.isObj(AX)) vErr('', 'policy.complexity_axes is missing: the three axes have no vocabulary to be declared in');
+    else {
+      const sameList = (a, b) => Array.isArray(a) && a.length === b.length && b.every((x, i) => a[i] === x);
+      if (!sameList(AX.tiers, ['routine', 'skilled', 'specialized', 'project'])) vErr('.tiers', 'the skill tiers are routine, skilled, specialized, project, in that order (R-COMPLEX-AXES)');
+      if (!sameList(AX.risk_tiers, ['R0', 'R1', 'R2', 'R3'])) vErr('.risk_tiers', 'the risk tiers are R0, R1, R2, R3, in that order (R-COMPLEX-AXES)');
+      if (!lib.isObj(AX.risk_hazards) || !Object.keys(AX.risk_hazards).length) vErr('.risk_hazards', 'risk_hazards names the hazards a risk tier rests on');
+      else for (const [h, d] of Object.entries(AX.risk_hazards)) { if (!lib.isObj(d) || !(AX.risk_tiers || []).includes(d.tier) || typeof d.meaning !== 'string' || !d.meaning) vErr('.risk_hazards.' + h, 'a hazard names its risk tier (one of R0..R3) and its meaning'); }
+      if (lib.isObj(AX.risk_hazards) && !(AX.risk_hazards.none && AX.risk_hazards.none.tier === 'R0')) vErr('.risk_hazards.none', 'the hazard "none" is R0 (a service with no hazard says so; it does not leave the axis blank)');
+      for (const k of ['batch_physical_bases', 'batch_signals']) if (!lib.isObj(AX[k]) || !Object.keys(AX[k]).length) vErr('.' + k, k + ' is a non-empty object of code -> meaning');
+      if (lib.isObj(AX.batch_signals)) for (const k of ['overflow_formula', 'per_unit_penalty_minutes', 'single_use_consumable', 'scope_changing_branch']) if (!(k in AX.batch_signals)) vErr('.batch_signals.' + k, 'the Charter names this signal (R-COMPLEX-COMPOUNDS); the vocabulary must carry it');
+      if (!Array.isArray(AX.single_use_consumable_material_ids)) vErr('.single_use_consumable_material_ids', 'an array of material ids');
+      else AX.single_use_consumable_material_ids.forEach((m, i) => { if (!decl.mat.has(m)) vErr(`.single_use_consumable_material_ids[${i}]`, `${JSON.stringify(m)} names no material`); });
+      if (!lib.isObj(AX.assembly_classes) || !sameList(Object.keys(AX.assembly_classes), ['A0', 'A1', 'A2', 'A3'])) vErr('.assembly_classes', 'the assembly classes are A0, A1, A2, A3 (P-COMPLEX-FURNITURE)');
+      else for (const [c, d] of Object.entries(AX.assembly_classes)) if (!lib.isObj(d) || !(AX.tiers || []).includes(d.minimum_tier)) vErr('.assembly_classes.' + c, 'an assembly class names the minimum skill tier it implies');
+      if (!Array.isArray(AX.assembly_family_service_ids)) vErr('.assembly_family_service_ids', 'an array of service ids');
+      else AX.assembly_family_service_ids.forEach((id, i) => { if (!services.has(id)) vErr(`.assembly_family_service_ids[${i}]`, `${JSON.stringify(id)} names no service`); });
+    }
+    const formulas = new Map(R.pricing_formulas.map(f => [f.id, f]));
+    stats.complexity = { profiled: 0, services: services.size, batch_true: 0, risk: { R0: 0, R1: 0, R2: 0, R3: 0 } };
+    for (const s of services.values()) {
+      const path = decl.svc.get(s.id).path + '.complexity_profile'; const p = s.complexity_profile;
+      if (!lib.isObj(p)) { err('V-COMPLEX-PROFILE', path, `${s.id} declares no complexity_profile (R-COMPLEX-AXES: every service declares all three axes; none is left to be inferred)`); continue; }
+      if (!vocabOk) continue;
+      let okP = true;
+      if (!AX.tiers.includes(p.tier)) { okP = false; err('V-COMPLEX-PROFILE', path + '.tier', `${s.id}: tier ${JSON.stringify(p.tier)} is not one of ${AX.tiers.join(' | ')}`); }
+      if (!AX.risk_tiers.includes(p.risk_tier)) { okP = false; err('V-COMPLEX-PROFILE', path + '.risk_tier', `${s.id}: risk_tier ${JSON.stringify(p.risk_tier)} is not one of ${AX.risk_tiers.join(' | ')}`); }
+      if (typeof p.batch_risk_compounds !== 'boolean') { okP = false; err('V-COMPLEX-PROFILE', path + '.batch_risk_compounds', `${s.id}: batch_risk_compounds is true or false, found ${JSON.stringify(p.batch_risk_compounds)}`); }
+      if (!Array.isArray(p.risk_basis) || !p.risk_basis.length) { okP = false; err('V-COMPLEX-RISK', path + '.risk_basis', `${s.id}: the risk tier names the hazards it rests on (a service with none says ["none"])`); }
+      if (!Array.isArray(p.batch_risk_basis)) { okP = false; err('V-COMPLEX-BATCH', path + '.batch_risk_basis', `${s.id}: batch_risk_basis is an array (empty when the flag is false)`); }
+      if (!okP) continue;
+      stats.complexity.profiled++; stats.complexity.risk[p.risk_tier]++; if (p.batch_risk_compounds) stats.complexity.batch_true++;
+      // the skill tier is declared in two places (the profile, and pricing.operational_metrics which the runtime reads today); one axis, one value
+      const om = s.pricing && s.pricing.operational_metrics;
+      if (om && om.complexity_tier !== p.tier) err('V-COMPLEX-TIER', path + '.tier', `${s.id}: the profile says tier ${p.tier} but pricing.operational_metrics.complexity_tier says ${om.complexity_tier}; the two declare the same axis and must agree`);
+      // the risk tier is the highest tier among the hazards named: it follows from named hazards, it is not a free-hand value
+      const hz = p.risk_basis; let top = 'R0', hazOk = true;
+      for (const h of hz) { const d = AX.risk_hazards[h]; if (!d) { hazOk = false; err('V-COMPLEX-RISK', path + '.risk_basis', `${s.id}: ${JSON.stringify(h)} is not a hazard in policy.complexity_axes.risk_hazards`); continue; } if (AX.risk_tiers.indexOf(d.tier) > AX.risk_tiers.indexOf(top)) top = d.tier; }
+      if (new Set(hz).size !== hz.length) err('V-COMPLEX-RISK', path + '.risk_basis', `${s.id}: a hazard is named twice`);
+      if (hz.includes('none') && hz.length > 1) err('V-COMPLEX-RISK', path + '.risk_basis', `${s.id}: "none" cannot be named beside another hazard`);
+      if (hazOk && top !== p.risk_tier) err('V-COMPLEX-RISK', path + '.risk_tier', `${s.id}: risk_tier is ${p.risk_tier} but the hazards it names (${hz.join(', ')}) reach ${top}`);
+      // the batch flag: true exactly when a ground is named; a physical ground must be one the vocabulary lists; a signal must be backed by the service's own record, and a signal in the record must be named
+      const sig = complexitySignals(s, formulas, questions, AX.single_use_consumable_material_ids || []);
+      const bb = p.batch_risk_basis;
+      if (new Set(bb).size !== bb.length) err('V-COMPLEX-BATCH', path + '.batch_risk_basis', `${s.id}: a ground is named twice`);
+      for (const b of bb) {
+        if (typeof b !== 'string') { err('V-COMPLEX-BATCH', path + '.batch_risk_basis', `${s.id}: a ground is a string code`); continue; }
+        if (b in AX.batch_physical_bases) continue;
+        if (b in AX.batch_signals || b.startsWith('single_use_consumable:')) { if (!sig.includes(b)) err('V-COMPLEX-BATCH', path + '.batch_risk_basis', `${s.id}: names the signal ${b}, which its own record does not show (belief alone is not a signal; R-COMPLEX-COMPOUNDS)`); continue; }
+        err('V-COMPLEX-BATCH', path + '.batch_risk_basis', `${s.id}: ${JSON.stringify(b)} is neither a physical ground nor a signal in policy.complexity_axes`);
+      }
+      for (const g of sig) if (!bb.includes(g)) err('V-COMPLEX-BATCH', path + '.batch_risk_basis', `${s.id}: its record shows the signal ${g} (R-COMPLEX-COMPOUNDS), so it compounds and must name it`);
+      if (p.batch_risk_compounds !== (bb.length > 0)) err('V-COMPLEX-BATCH', path + '.batch_risk_compounds', `${s.id}: batch_risk_compounds is ${p.batch_risk_compounds} but it names ${bb.length} ground(s); the flag is true exactly when a ground is named`);
+      // P-COMPLEX-FURNITURE: the assembly-family services declare their class, and the tier is at least the class's minimum; no other service carries one
+      const fam = AX.assembly_family_service_ids.includes(s.id);
+      if (fam && p.assembly_class === undefined) err('V-COMPLEX-ASSEMBLY', path + '.assembly_class', `${s.id} is an assembly-family service and declares its assembly class explicitly (P-COMPLEX-FURNITURE)`);
+      if (!fam && p.assembly_class !== undefined) err('V-COMPLEX-ASSEMBLY', path + '.assembly_class', `${s.id} is not in policy.complexity_axes.assembly_family_service_ids but declares an assembly class`);
+      if (p.assembly_class !== undefined) {
+        const ac = AX.assembly_classes[p.assembly_class];
+        if (!ac) err('V-COMPLEX-ASSEMBLY', path + '.assembly_class', `${s.id}: ${JSON.stringify(p.assembly_class)} is not one of ${Object.keys(AX.assembly_classes).join(', ')}`);
+        else if (AX.tiers.indexOf(p.tier) < AX.tiers.indexOf(ac.minimum_tier)) err('V-COMPLEX-ASSEMBLY', path + '.tier', `${s.id}: assembly class ${p.assembly_class} implies a tier of at least ${ac.minimum_tier}, but the tier is ${p.tier}`);
+      }
+    }
+    // a dynamic service inherits the axes of the group it resolves into (P-COMPLEX-DYNAMIC); no group declares axes, so a default composition carries only its skill tier. Declared, counted, not hidden.
+    for (const c of compositions.values()) res('composition_axes_undeclared', c.id, `${c.id}: a dynamic service inherits its group's axes (P-COMPLEX-DYNAMIC), and no group declares a risk tier or batch-risk flag yet; only the skill tier is declared`);
+  }
+
   // ---- coverage facts the report reads --------------------------------------------------------------------------------------------------------------------------------------------------------------
   for (const q of allQuestions) { if (Array.isArray(q.entity_scope) === false && q.entity_scope && q.entity_scope.context === 'ctx.unreferenced') res('question_asked_by_nothing', q.id, `${q.id} is authored but no chain, deep-dive question, default list or action asks it; its entity scope is an Operator decision`); }
   for (const q of allQuestions) for (const o of q.options || []) if (o.evidence === 'unknown') res('unknown_option', `${q.id}/${o.id}`, `${JSON.stringify(o.label)} is classified as an unknown answer by label pattern (never retires uncertainty)`);
@@ -698,4 +785,4 @@ function cli() {
   process.exitCode = r.ok ? 0 : 1;
 }
 if (require.main === module) cli();
-module.exports = { validate, validateFull, AFFECTS };
+module.exports = { validate, validateFull, AFFECTS, complexitySignals };

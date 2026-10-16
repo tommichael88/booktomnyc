@@ -1,0 +1,874 @@
+{
+  "note": "Authored input of migrate_legacy.js (T180), beside recovered_rules.json: the three independent axes every service declares (R-COMPLEX-AXES) and the vocabulary they are written in, which btnyc.json does not carry. The migration is a pure function of (btnyc.json, recovered_rules.json, this file). The skill tier is NOT here: it is read from btnyc.json (operational_metrics.complexity_tier), where it is already declared, so there is one authored value of it. validate_source.js checks everything in this file against the source alone (V-COMPLEX-*). Edit a value here, run migrate_legacy.js --write, then publish.js and report.js --write.",
+  "axes_version": "1.0.0",
+  "vocabulary": {
+    "charter": {
+      "rules": [
+        "R-COMPLEX-AXES",
+        "R-COMPLEX-COMPOUNDS",
+        "R-COMPLEX-VOLUME",
+        "P-COMPLEX-DYNAMIC",
+        "P-COMPLEX-FURNITURE"
+      ],
+      "note": "The vocabulary of the three independent axes (skill tier, risk tier, batch-risk flag). Every term is the Charter's own; a hazard or basis a service cites must be named here, so the choice of each value can be reviewed against the meaning. A service's profile is the floor of its typical resolved shape: an answer, a tag or a branch promotes it as the job reveals itself (P-COMPLEX-DYNAMIC). The risk tier is the highest tier among the hazards a service names; the batch flag is true exactly when it names a ground. No axis is derived from another.",
+      "decided_under": "G-GOVERN-AUTONOMY (T180): the values were derived from the Charter's definitions and each service's authored record, not asserted; PENDING_DECISIONS.md lists what an Operator may overrule."
+    },
+    "tiers": [
+      "routine",
+      "skilled",
+      "specialized",
+      "project"
+    ],
+    "risk_tiers": [
+      "R0",
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "risk_hazards": {
+      "none": {
+        "tier": "R0",
+        "meaning": "R0: no hazard, no shutoff, no permit, no regulation."
+      },
+      "minor_water": {
+        "tier": "R1",
+        "meaning": "R1: minor water. Work at a fixture downstream of its own working stop valve; a failure leaks at the fixture and is contained."
+      },
+      "minor_electrical": {
+        "tier": "R1",
+        "meaning": "R1: minor electrical. Work at a lamp socket or bulb, or on low-voltage control wiring; no fixed branch-circuit wiring is opened. Plugging a device into an outlet is not a hazard."
+      },
+      "ladder_under_16ft": {
+        "tier": "R1",
+        "meaning": "R1: ladder work with the working height under sixteen feet."
+      },
+      "weight_to_50lb": {
+        "tier": "R1",
+        "meaning": "R1: handles weights up to fifty pounds."
+      },
+      "dust_debris": {
+        "tier": "R1",
+        "meaning": "R1: dust and debris, but no structural involvement."
+      },
+      "active_water": {
+        "tier": "R2",
+        "meaning": "R2: active water. Replaces or alters a stop valve, a supply line or a sealed supply or drain connection; a failure leaks under line pressure or into the structure."
+      },
+      "active_electrical": {
+        "tier": "R2",
+        "meaning": "R2: active electrical. Opens or connects fixed branch-circuit wiring (an outlet, a switch, a fixture, a fan) or the inside of a mains-powered appliance."
+      },
+      "active_gas": {
+        "tier": "R2",
+        "meaning": "R2: active gas. Work on, or on the connection of, a gas appliance."
+      },
+      "structural": {
+        "tier": "R2",
+        "meaning": "R2: structural condition. The work meets, or may reveal, a condition in framing, subfloor, masonry or a crack that can signal movement."
+      },
+      "permit_or_code": {
+        "tier": "R2",
+        "meaning": "R2: a permit is required or a code applies to the work."
+      },
+      "height_over_16ft": {
+        "tier": "R2",
+        "meaning": "R2: working height over sixteen feet."
+      },
+      "weight_over_50lb": {
+        "tier": "R2",
+        "meaning": "R2: handles weights over fifty pounds."
+      },
+      "life_safety": {
+        "tier": "R3",
+        "meaning": "R3: life-safety work."
+      },
+      "regulated_trade": {
+        "tier": "R3",
+        "meaning": "R3: a regulated trade."
+      },
+      "structural_engineering": {
+        "tier": "R3",
+        "meaning": "R3: structural engineering."
+      },
+      "commercial_kitchen": {
+        "tier": "R3",
+        "meaning": "R3: commercial kitchen."
+      },
+      "hazmat": {
+        "tier": "R3",
+        "meaning": "R3: hazardous materials."
+      }
+    },
+    "batch_physical_bases": {
+      "drilled_hole": "A drilled hole: one bad hole among many is a door, a wall or a cabinet that needs replacing (R-COMPLEX-AXES).",
+      "cut": "A cut: a mis-cut length or opening cannot be un-cut.",
+      "sealed_joint": "A sealed joint whose seal is made once (a compression ferrule, a wax seal, a solvent weld): a bad one is redone by replacing the part.",
+      "adhered_surface": "An adhered surface: an adhesive, a compound or a patch that cannot be lifted and reapplied.",
+      "mis_sized_order": "A mis-sized order: the part is made to fit one opening and fits no other."
+    },
+    "batch_signals": {
+      "overflow_formula": "The service's pricing formula declares an overflow rate (R-COMPLEX-COMPOUNDS: each unit past the included count is nearly a full job).",
+      "per_unit_penalty_minutes": "The service's pricing formula declares penalty minutes (R-COMPLEX-COMPOUNDS: its author believed the N-th unit carries non-linear risk).",
+      "single_use_consumable": "The service's required materials include a single-use consumable listed in single_use_consumable_material_ids (R-COMPLEX-COMPOUNDS: one mistake wastes a consumable that cannot be reused). Written as single_use_consumable:<material id>.",
+      "scope_changing_branch": "An answer in the service's intake routes to another service (R-COMPLEX-COMPOUNDS: the batch has heterogeneous instances, and one of them can promote the whole job)."
+    },
+    "single_use_consumable_material_ids": [
+      "mat.MAT-PLM-TLT-WaxRing",
+      "mat.MAT-MHR-WIN-Caulk",
+      "mat.MAT-MHR-FLR-Grout",
+      "mat.MAT-MHR-DRY-Mud",
+      "mat.MAT-MHR-DRY-PatchSmall",
+      "mat.MAT-MHR-DRY-PatchLarge",
+      "mat.MAT-MHR-DOR-Weatherstrip"
+    ],
+    "assembly_classes": {
+      "A0": {
+        "minimum_tier": "routine",
+        "meaning": "Simple: identical SKU within the authored per-item, total-duration and quantity limits; no wall anchoring, electrical work, cutting, two-person lift or site modification."
+      },
+      "A1": {
+        "minimum_tier": "skilled",
+        "meaning": "Standard flat-pack: mixed SKUs, a duration or quantity beyond the A0 limits, or one mild complication."
+      },
+      "A2": {
+        "minimum_tier": "specialized",
+        "meaning": "Complex: configurable or large assembly, wall anchoring, a required two-person lift, or work beyond the authored standard limits."
+      },
+      "A3": {
+        "minimum_tier": "project",
+        "meaning": "Custom or built-in: site measurement, cutting, electrical integration, structural involvement, a permit, or a multi-visit project."
+      }
+    },
+    "assembly_family_service_ids": [
+      "svc.furniture_assembly_flat_pack",
+      "svc.furniture_disassembly_for_moving",
+      "svc.pax_wardrobe_assembly"
+    ]
+  },
+  "services": {
+    "angle_stop_replacement": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "active_water"
+      ],
+      "batch_risk_basis": [
+        "sealed_joint"
+      ]
+    },
+    "baseboard_install": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "cut"
+      ]
+    },
+    "bidet_attachment_install_or_removal": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_water"
+      ],
+      "batch_risk_basis": []
+    },
+    "blinds_shades_curtains_buy_the_hour": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "ladder_under_16ft",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole"
+      ]
+    },
+    "brick_or_concrete_crack_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "structural",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "adhered_surface",
+        "single_use_consumable:mat.MAT-MHR-DRY-Mud"
+      ]
+    },
+    "high_ceiling_bulb_replacement": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_electrical",
+        "ladder_under_16ft"
+      ],
+      "batch_risk_basis": []
+    },
+    "led_bulb_upgrade": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_electrical"
+      ],
+      "batch_risk_basis": []
+    },
+    "cabinet_door_or_drawer_adjustment": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "cable_management": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "ceiling_fan_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical",
+        "ladder_under_16ft"
+      ],
+      "batch_risk_basis": []
+    },
+    "light_fixture_replacement": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical",
+        "ladder_under_16ft"
+      ],
+      "batch_risk_basis": []
+    },
+    "chandelier_or_pendant_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical",
+        "ladder_under_16ft",
+        "weight_to_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "computer_diagnostic": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": [
+        "scope_changing_branch"
+      ]
+    },
+    "internal_hardware_replacement": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": [
+        "scope_changing_branch"
+      ]
+    },
+    "virus_or_malware_removal": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "dimmer_switch_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical"
+      ],
+      "batch_risk_basis": []
+    },
+    "dishwasher_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_water",
+        "active_electrical"
+      ],
+      "batch_risk_basis": []
+    },
+    "dishwasher_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_water",
+        "active_electrical",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "door_repair_impact_damage": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "adhered_surface",
+        "single_use_consumable:mat.MAT-MHR-DRY-PatchSmall"
+      ]
+    },
+    "door_weatherstripping": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": [
+        "cut",
+        "adhered_surface",
+        "single_use_consumable:mat.MAT-MHR-DOR-Weatherstrip"
+      ]
+    },
+    "door_lock_or_handle_install": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole"
+      ]
+    },
+    "dryer_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical",
+        "active_gas",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "wall_hole_or_crack_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "structural",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "adhered_surface",
+        "single_use_consumable:mat.MAT-MHR-DRY-PatchSmall",
+        "single_use_consumable:mat.MAT-MHR-DRY-Mud"
+      ]
+    },
+    "bathroom_exhaust_fan_replacement": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical",
+        "ladder_under_16ft"
+      ],
+      "batch_risk_basis": []
+    },
+    "faucet_repair_drip": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_water"
+      ],
+      "batch_risk_basis": []
+    },
+    "toilet_flapper_or_fill_valve_replacement": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_water"
+      ],
+      "batch_risk_basis": []
+    },
+    "furniture_assembly_flat_pack": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": [],
+      "assembly_class": "A0"
+    },
+    "squeaky_floor_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "structural"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole"
+      ]
+    },
+    "furniture_disassembly_for_moving": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "weight_to_50lb"
+      ],
+      "batch_risk_basis": [],
+      "assembly_class": "A0"
+    },
+    "furniture_repair_hourly": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": [
+        "adhered_surface"
+      ]
+    },
+    "scratch_or_water_ring_removal": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "dust_debris"
+      ],
+      "batch_risk_basis": []
+    },
+    "garbage_disposal_replacement": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_water",
+        "active_electrical",
+        "weight_to_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "gfci_outlet_replacement": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical"
+      ],
+      "batch_risk_basis": []
+    },
+    "data_backup_or_transfer": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "cabinet_knob_or_pull_install": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole",
+        "overflow_formula"
+      ]
+    },
+    "microwave_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical"
+      ],
+      "batch_risk_basis": []
+    },
+    "microwave_setup": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "weight_to_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "software_or_driver_install": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "system_restore_or_reset": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": [
+        "scope_changing_branch"
+      ]
+    },
+    "p_trap_cleaning": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_water"
+      ],
+      "batch_risk_basis": []
+    },
+    "pax_wardrobe_assembly": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "weight_to_50lb"
+      ],
+      "batch_risk_basis": [],
+      "assembly_class": "A1"
+    },
+    "plaster_wall_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "structural",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "adhered_surface",
+        "single_use_consumable:mat.MAT-MHR-DRY-PatchSmall",
+        "single_use_consumable:mat.MAT-MHR-DRY-Mud"
+      ]
+    },
+    "prehung_interior_door_install": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "weight_to_50lb",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "mis_sized_order",
+        "cut"
+      ]
+    },
+    "repair_appliances": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "refrigerator_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "router_configuration": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "shelf_mortar_mounting_buy_the_hour": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "weight_to_50lb",
+        "ladder_under_16ft",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole"
+      ]
+    },
+    "shelf_mounting_standard_buy_the_hour": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "weight_to_50lb",
+        "ladder_under_16ft",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole"
+      ]
+    },
+    "shower_head_replacement": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_water"
+      ],
+      "batch_risk_basis": []
+    },
+    "leak_under_sink_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_water"
+      ],
+      "batch_risk_basis": []
+    },
+    "slow_drain_clearing": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_water"
+      ],
+      "batch_risk_basis": []
+    },
+    "smart_plug_configuration": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "smart_speaker_setup": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "smart_switch_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical"
+      ],
+      "batch_risk_basis": []
+    },
+    "stove_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical",
+        "active_gas",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "thermostat_replacement": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_electrical"
+      ],
+      "batch_risk_basis": []
+    },
+    "loose_tile_replacement": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "adhered_surface",
+        "per_unit_penalty_minutes",
+        "single_use_consumable:mat.MAT-MHR-FLR-Grout"
+      ]
+    },
+    "toilet_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "active_water",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": [
+        "sealed_joint",
+        "single_use_consumable:mat.MAT-PLM-TLT-WaxRing"
+      ]
+    },
+    "toilet_seat_replacement": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "tub_spout_replacement": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "minor_water"
+      ],
+      "batch_risk_basis": []
+    },
+    "flatscreen_mounting_standard": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "weight_to_50lb",
+        "ladder_under_16ft",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole"
+      ]
+    },
+    "flatscreen_mounting_with_hidden_cables": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "weight_to_50lb",
+        "ladder_under_16ft",
+        "dust_debris",
+        "minor_electrical"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole",
+        "cut"
+      ]
+    },
+    "under_cabinet_light_install": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "minor_electrical"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole"
+      ]
+    },
+    "usb_outlet_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical"
+      ],
+      "batch_risk_basis": []
+    },
+    "generic_mounting_service": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "weight_to_50lb",
+        "ladder_under_16ft",
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "drilled_hole"
+      ]
+    },
+    "wood_paneling_repair": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "dust_debris"
+      ],
+      "batch_risk_basis": [
+        "adhered_surface"
+      ]
+    },
+    "washer_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_water",
+        "active_electrical",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "washer_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_water",
+        "active_electrical",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "refrigerator_water_line_install": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "active_water"
+      ],
+      "batch_risk_basis": [
+        "sealed_joint"
+      ]
+    },
+    "toilet_wax_ring_replacement": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "active_water",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": [
+        "sealed_joint",
+        "single_use_consumable:mat.MAT-PLM-TLT-WaxRing"
+      ]
+    },
+    "wi_fi_extender_setup": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "window_draft_sealing": {
+      "risk_tier": "R1",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "ladder_under_16ft"
+      ],
+      "batch_risk_basis": [
+        "sealed_joint",
+        "single_use_consumable:mat.MAT-MHR-WIN-Caulk"
+      ]
+    },
+    "window_ac_setup": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "window_ac_repair": {
+      "risk_tier": "R2",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "active_electrical",
+        "weight_over_50lb"
+      ],
+      "batch_risk_basis": []
+    },
+    "window_hardware_repair": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": false,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": []
+    },
+    "window_screen_repair": {
+      "risk_tier": "R0",
+      "batch_risk_compounds": true,
+      "risk_basis": [
+        "none"
+      ],
+      "batch_risk_basis": [
+        "cut"
+      ]
+    }
+  }
+}

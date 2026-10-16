@@ -711,7 +711,7 @@ setSuite(SUITE.META);
 logHeader('SUITE 1 — META-CHARTER (PROJECT_CHARTER.html self-audit)');
 
 if (!charterHtmlContent) {
-  assertExistence('R-GOVERN-INDEX', true, 'Charter absent — meta-suite skipped');
+  assertExistence('G-GOVERN-INDEX', true, 'Charter absent — meta-suite skipped');
 } else {
   // T156: this section used to carry its own copy of verify_charter_rules.js's regex audit (a third copy of how to read the Charter). Both now run
   // the ONE audit in charter_model.js (R-INVARIANT-SINGLEDEF), which reads the document with a real parser, fails when it cannot see the document
@@ -723,19 +723,19 @@ if (!charterHtmlContent) {
   const of = (...kinds) => problems.filter(p => kinds.includes(p.kind)).map(p => p.msg);
   const show = list => list.slice(0, 8).join(' | ') + (list.length > 8 ? ` (+${list.length - 8} more)` : '');
 
-  assertMeta('R-GOVERN-INDEX', self.misses.length === 0,
+  assertMeta('G-GOVERN-INDEX', self.misses.length === 0,
     `The Charter audit has teeth: it reads the document the same from both serializations and fails on ${self.mutantCount} deliberately broken copies`,
     show(self.misses));
-  assertMeta('R-GOVERN-INDEX', of('vacuity').length === 0,
+  assertMeta('G-GOVERN-INDEX', of('vacuity').length === 0,
     `The Charter is visible to its readers (${charterModel.definitions.length} definitions, ${charterModel.index.size} directory rows, ${charterModel.ids.size} ids, ${charterModel.anchors.size} anchors)`,
     show(of('vacuity')));
-  assertMeta('R-GOVERN-INDEX', of('format').length === 0,
+  assertMeta('G-GOVERN-INDEX', of('format').length === 0,
     `Every code matches <R|G|P>-<DOMAIN>-<NAME> with DOMAIN ∈ {${charterModule.DOMAINS.join(', ')}}`, show(of('format')));
-  assertMeta('R-GOVERN-INDEX', of('duplicate', 'reference').length === 0,
+  assertMeta('G-GOVERN-INDEX', of('duplicate', 'reference').length === 0,
     'Every rule is defined once, and nothing but a definition uses the rule-code span', show(of('duplicate', 'reference')));
-  assertMeta('R-GOVERN-INDEX', of('prefix').length === 0,
+  assertMeta('G-GOVERN-INDEX', of('prefix').length === 0,
     'Every code\'s prefix matches its category (R- Rule, G- Governance Process, P- Principle)', show(of('prefix')));
-  assertMeta('R-GOVERN-INDEX', of('index').length === 0,
+  assertMeta('G-GOVERN-INDEX', of('index').length === 0,
     'The directory and the definitions agree (same codes, each row in the directory for its own category, no duplicate rows)', show(of('index')));
   // T158: R-GOVERN-STOPTHELINE ("a rule declared Enforced lands with its test") is no longer in the Charter, and the Charter no longer authors Enforced / Partial at all
   // (R-GOVERN-INDEX: "the projection records whether the named mechanism is active, partial, incomplete, or absent. None of those states changes the Rule's normative force").
@@ -744,7 +744,7 @@ if (!charterHtmlContent) {
   console.log(`    ℹ  pairing (reported, not asserted -- the 2026-10-09 amendment removed mandatory pairing): ${pairingReport.oneWay.length} one-way directory citation(s), ${pairingReport.citesNone.length} Rule(s) citing no Principle, ${pairingReport.uncited.length} Principle(s) cited by no Rule`);
   const projection = charterModule.coverage(charterModel, testDirEnf);
   console.log(`    ℹ  projection: ${projection.rows.length - projection.absent.length} of ${projection.rows.length} Rules name a mechanism in this harness; ABSENT: ${projection.absent.join(', ') || 'none'}`);
-  assertMeta('R-GOVERN-INDEX', of('orphan').length === 0,
+  assertMeta('G-GOVERN-INDEX', of('orphan').length === 0,
     'Every @enforces tag and tagged assertion names a code the Charter declares (and @enforces names a Rule)', show(of('orphan')));
   assertMeta('R-INVARIANT-ANCHOR', of('anchor').length === 0,
     `Every internal anchor (href="#...") resolves (${charterModel.anchors.size} referenced, ${charterModel.ids.size} ids)`, show(of('anchor')));
@@ -800,7 +800,7 @@ logHeader('SUITE 2 — LEGACY-REGEX (original verify_charter_rule_index.js)');
     const def = tiers[t];
     return !def || typeof def.hourly_rate !== 'number' || typeof def.min_minutes !== 'number';
   });
-  assertStructural('R-GOVERN-PRECEDENCE',
+  assertStructural('G-GOVERN-PRECEDENCE',
     missing.length === 0 && malformed.length === 0,
     'complexity_tiers contains routine/skilled/specialized with numeric rates and boundaries',
     `missing=[${missing.join(',')}] malformed=[${malformed.join(',')}]`);
@@ -1570,11 +1570,11 @@ logHeader('SUITE 2 — LEGACY-REGEX (original verify_charter_rule_index.js)');
 
 {
   const t = btnycData.workflow?.resolution_thresholds;
-  assertStructural('R-GOVERN-PRECEDENCE',
+  assertStructural('G-GOVERN-PRECEDENCE',
     !!t && typeof t.auto_select_named_service === 'number' && typeof t.route_to_group_other_tile === 'number',
     'workflow.resolution_thresholds carries both numeric thresholds');
   const freeTextSrc = extractFunctionBody(qrHtmlContent, 'collectBookingContext_freeText');
-  assertStructural('R-GOVERN-PRECEDENCE',
+  assertStructural('G-GOVERN-PRECEDENCE',
     !!freeTextSrc && (/resolution_thresholds/.test(freeTextSrc) || /_resolutionThresholds\s*\(/.test(freeTextSrc)),
     'collectBookingContext_freeText reads thresholds from the SSOT, not hardcoded literals');
 }
@@ -1809,13 +1809,13 @@ assertStructural('R-INVARIANT-ANCHOR', qrHtmlContent.includes('<!DOCTYPE html>')
 
 if (charterHtmlContent) {
   const dupes = charterModel.indexDuplicates;
-  assertMeta('R-GOVERN-INDEX', dupes.length === 0, 'Charter index contains no duplicate rule codes', dupes.join(', '));
+  assertMeta('G-GOVERN-INDEX', dupes.length === 0, 'Charter index contains no duplicate rule codes', dupes.join(', '));
   const bad = [...charterModel.index.values()].filter(r => !charterModule.STATUSES.includes(r.status)).map(r => `${r.code}:${r.status}`);
-  assertMeta('R-GOVERN-INDEX', bad.length === 0, 'Every directory entry declares a valid category (Rule | Governance Process | Principle)', bad.join(', '));
+  assertMeta('G-GOVERN-INDEX', bad.length === 0, 'Every directory entry declares a valid category (Rule | Governance Process | Principle)', bad.join(', '));
   // T158: G-GOVERN-RULEPARITY ("All Rules have equal normative weight") was retired from the Charter by the 2026-10-08 revision, and its check -- no text declaring one rule
   // higher priority than another -- went with it. (The idea survives in R-GOVERN-INDEX's projection boundary, which is checked by the pairing assertion above; this is not a retag.)
 } else {
-  assertMeta('R-GOVERN-INDEX', true, 'Charter absent', '', KIND.EXISTENCE);
+  assertMeta('G-GOVERN-INDEX', true, 'Charter absent', '', KIND.EXISTENCE);
 }
 
 {
@@ -1924,15 +1924,15 @@ if (charterHtmlContent) {
     const def = tiers[t];
     return !def || typeof def.hourly_rate !== 'number' || typeof def.min_minutes !== 'number';
   });
-  assertStructural('R-GOVERN-PRECEDENCE', missing.length === 0 && malformed.length === 0,
+  assertStructural('G-GOVERN-PRECEDENCE', missing.length === 0 && malformed.length === 0,
     'complexity_tiers contains routine/skilled/specialized with numeric rates/boundaries',
     `missing=[${missing.join(',')}] malformed=[${malformed.join(',')}]`);
   const t = btnycData.workflow?.resolution_thresholds;
-  assertStructural('R-GOVERN-PRECEDENCE',
+  assertStructural('G-GOVERN-PRECEDENCE',
     !!t && typeof t.auto_select_named_service === 'number' && typeof t.route_to_group_other_tile === 'number',
     'workflow.resolution_thresholds carries both numeric thresholds');
   const ft = extractFunctionBody(qrHtmlContent, 'collectBookingContext_freeText');
-  assertStructural('R-GOVERN-PRECEDENCE', !!ft && /_resolutionThresholds|resolution_thresholds/.test(ft),
+  assertStructural('G-GOVERN-PRECEDENCE', !!ft && /_resolutionThresholds|resolution_thresholds/.test(ft),
     'collectBookingContext_freeText reads thresholds from SSOT');
 }
 
@@ -3805,7 +3805,7 @@ if (charterHtmlContent) {
   // separate check "The directory and the definitions agree" (red, a Charter defect filed under #206); one defect, one failing check.
   const declared = new Set([...charterIndex.rules.keys(), ...charterIndex.inlineCodes]);
   const orphans = [...asserted].filter(c => c && !declared.has(c));
-  assertMeta('R-GOVERN-INDEX', orphans.length === 0,
+  assertMeta('G-GOVERN-INDEX', orphans.length === 0,
     'No assertion is tagged with a rule code the Charter does not declare',
     orphans.join(', '));
 
@@ -3826,7 +3826,7 @@ if (charterHtmlContent) {
   const notAsserted = judgment.filter(c => !asserted.has(c));
   if (notAsserted.length) console.log(`    ℹ  ${notAsserted.length} Principles / Governance Processes un-asserted (doctrine-only): ${notAsserted.slice(0, 12).join(', ')}${notAsserted.length > 12 ? ' …' : ''}`);
 } else {
-  assertMeta('R-GOVERN-INDEX', true, 'Charter absent — audit skipped', '', KIND.EXISTENCE);
+  assertMeta('G-GOVERN-INDEX', true, 'Charter absent — audit skipped', '', KIND.EXISTENCE);
   assertMeta('R-INVARIANT-BEHAVIORAL', true, 'Charter absent — audit skipped', '', KIND.EXISTENCE);
   assertMeta('P-GOVERN-GOODHART', true, 'Charter absent — audit skipped', '', KIND.EXISTENCE);
 }

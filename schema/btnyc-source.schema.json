@@ -39,7 +39,7 @@
     "entities": { "type": "array", "items": { "$ref": "#/$defs/entity" } },
     "shared_questions": { "description": "Questions asked by more than one entity, or by every entity in a context. A question asked by exactly one entity lives under that entity.", "type": "array", "items": { "$ref": "#/$defs/question" } },
     "shared_uncertainty_classes": { "type": "array", "items": { "$ref": "#/$defs/uncertainty_class" } },
-    "policy": { "type": "object", "required": ["workflow", "invariants", "global_rules", "ui_config"] },
+    "policy": { "type": "object", "required": ["workflow", "invariants", "global_rules", "ui_config", "complexity_axes"], "properties": { "complexity_axes": { "description": "The vocabulary of the three axes (R-COMPLEX-AXES): legal tiers and risk tiers, the hazards and their risk tier, the batch-risk grounds and signals, the single-use consumables, the assembly classes. Semantics are checked by validate_source.js.", "type": "object", "required": ["tiers", "risk_tiers", "risk_hazards", "batch_physical_bases", "batch_signals", "single_use_consumable_material_ids", "assembly_classes", "assembly_family_service_ids"] } } },
     "vocabulary": { "type": "object", "required": ["negation_library", "action_vocabulary", "adlib_phrase_overrides", "nlp_objects", "nlp_default_fallback"], "properties": { "action_vocabulary": { "$ref": "#/$defs/action_vocabulary" }, "nlp_objects": { "type": "array", "items": { "type": "object", "required": ["keyword", "resolves_to"], "properties": { "keyword": { "type": "string", "minLength": 1 }, "resolves_to": { "type": "object", "required": ["entity_id", "basis"], "properties": { "entity_id": { "oneOf": [{ "$ref": "#/$defs/id_ent" }, { "type": "null" }] }, "basis": { "enum": ["keyword_is_entity", "default_service_entity", "unresolved"] } }, "additionalProperties": false } } } } } }
   },
   "additionalProperties": false,
@@ -189,9 +189,23 @@
       "additionalProperties": false
     },
 
+    "complexity_profile": {
+      "description": "The three independent axes every service declares (R-COMPLEX-AXES): skill tier, risk tier, batch-risk flag. No axis is derived from another. risk_basis names the hazards the risk tier rests on and batch_risk_basis the grounds of the flag (R-COMPLEX-COMPOUNDS); both are checked against policy.complexity_axes by validate_source.js (V-COMPLEX-*). assembly_class is declared by the assembly-family services only (P-COMPLEX-FURNITURE).",
+      "type": "object",
+      "required": ["tier", "risk_tier", "batch_risk_compounds", "risk_basis", "batch_risk_basis"],
+      "properties": {
+        "tier": { "type": "string" },
+        "risk_tier": { "type": "string" },
+        "batch_risk_compounds": { "type": "boolean" },
+        "risk_basis": { "type": "array", "items": { "type": "string" } },
+        "batch_risk_basis": { "type": "array", "items": { "type": "string" } },
+        "assembly_class": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "service": {
       "type": "object",
-      "required": ["id", "entity_id", "action_id", "modifier_ids", "presentation", "pricing", "intake", "confidence_policy", "runtime_compat", "recovery_affordances", "uncertainty_profile", "confidence_gate"],
+      "required": ["id", "entity_id", "action_id", "modifier_ids", "presentation", "pricing", "complexity_profile", "intake", "confidence_policy", "runtime_compat", "recovery_affordances", "uncertainty_profile", "confidence_gate"],
       "properties": {
         "id": { "$ref": "#/$defs/id_svc" },
         "entity_id": { "$ref": "#/$defs/id_ent" },
@@ -201,6 +215,7 @@
         "pricing": { "type": "object", "required": ["financial_engine", "operational_metrics", "default_estimates"],
           "properties": { "engine": { "type": "string" }, "formula_id": { "$ref": "#/$defs/id_fml" }, "financial_engine": { "type": "object" }, "operational_metrics": { "type": "object" }, "default_estimates": { "type": "object" }, "per_unit_answers_vary": {}, "override_root": {}, "required_material_ids": { "type": "array", "items": { "$ref": "#/$defs/id_mat" } }, "optional_material_ids": { "type": "array", "items": { "$ref": "#/$defs/id_mat" } }, "materials_included": {}, "requires_furniture_selection": {} },
           "additionalProperties": false },
+        "complexity_profile": { "$ref": "#/$defs/complexity_profile" },
         "intake": { "type": "object", "required": ["steps"], "properties": { "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } }, "module_refs": {}, "behavior": {} }, "additionalProperties": false },
         "tags": { "type": "object", "properties": { "default_tag_ids": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } }, "suggested_tag_ids": { "type": "array", "items": { "$ref": "#/$defs/id_tag" } } }, "additionalProperties": false },
         "related_service_ids": { "type": "array", "items": { "$ref": "#/$defs/id_svc" } },

@@ -19,6 +19,14 @@
  *   REPORTED, never asserted -- even though R-GOVERN-INDEX still carries a stale "Pairing invariant" paragraph (see pairing() for the contradiction, filed with the operator).
  *   So this model has no enforcement status and no pairing check.
  *
+ * T180: THE CHARTER'S SHAPE CHANGED A THIRD TIME (the 2026-10-16 edition, the Constitution), and this file follows it; the Charter is not edited to suit the reader (PENDING_DECISIONS #227).
+ *   (1) A statement's kind is now a `<span class="rule-kind rule|governance|principle">` beside the `<span class="rule-code">` (it was `rule-status`); both are read.
+ *   (2) A code's id is on the span (`<span class="rule-code" id="G-INVARIANT-PREFIX">`) OR on the heading that holds it (`<h2 id="R-SYSTEM-NODATA"><span class="rule-code">`); a rule-code span that is the
+ *       first element of a heading whose id is its own code is a DEFINITION. (Before, only a span id or a status span made one, so the new edition read as 46 definitions of 131.)
+ *   (3) The directory's third column is "Related sections" for Rules and for Principles (it was Serves / Served by) and "Home" for Governance Processes; the Charter says those links
+ *       "are navigation only; they do not imply a required Rule-Principle pairing or a causal dependency", so they are read into `serves` / `servedBy` for the report and asserted by nothing.
+ *       Which directory a table is comes from its second header (Title / Section = Rules, Statement = Principles) and its third (Home = Governance Processes).
+ *   (4) Four governance processes moved from R-GOVERN-* to G-GOVERN-* (ANTISTALE, INDEX, PRECEDENCE, TRANSITION) and G-GOVERN-VISIONLINK is new.
  * THE MODEL.
  *   definitions : every <span class="rule-code"> that DEFINES a code -- one that carries an id ("rule-R-X" / "principle-P-X") or has a <span class="rule-status"> beside it.
  *                 The category is the code's prefix (R- Rule, G- Governance Process, P- Principle); `status` holds that category. A rule-code span that does neither is a
@@ -40,11 +48,23 @@ const CODE_RE = /^([RGP])-([A-Z]+)-([A-Z0-9-]+)$/;
 // The check below is that every code the Charter DEFINES uses a listed domain, so a fifth new domain fails it until it is listed here on purpose (non-vacuity: selfTest below carries a broken copy with an unlisted domain).
 const DOMAINS = ['GOVERN', 'CLIENT', 'DOMAIN', 'CONF', 'FRICTION', 'INTAKE', 'WHITEFLAG', 'PRICE', 'SYSTEM', 'INVARIANT', 'COMPLEX', 'RESOLUTION', 'TEAM', 'CONTENT', 'TEST', 'DOC'];
 const CATEGORY_BY_PREFIX = { R: 'rule', G: 'governance', P: 'principle' };
+// Codes the Charter RENAMED. The 2026-10-16 edition moved four governance processes from R-GOVERN-* to G-GOVERN-* ("Governance processes that carry the G-GOVERN-* prefix are governance
+// processes by kind, not operational product Rules"). History is append-only (TIMELINE.md entries and the register cite the code that was current when they were written and are not
+// rewritten), so a HISTORICAL reference is resolved through this map (currentCode); a LIVE tag (an @enforces, a tagged assertion) is still an orphan under the old name. One definition
+// (R-INVARIANT-SINGLEDEF); a rename the Charter makes later is added here, with the edition that made it.
+const RENAMED_CODES = Object.freeze({
+  'R-GOVERN-ANTISTALE': 'G-GOVERN-ANTISTALE',
+  'R-GOVERN-INDEX': 'G-GOVERN-INDEX',
+  'R-GOVERN-PRECEDENCE': 'G-GOVERN-PRECEDENCE',
+  'R-GOVERN-TRANSITION': 'G-GOVERN-TRANSITION',
+});
+function currentCode(code) { return Object.prototype.hasOwnProperty.call(RENAMED_CODES, code) ? RENAMED_CODES[code] : code; }
 const STATUSES = ['rule', 'governance', 'principle'];
 
 // The category a <span class="rule-status"> names (its second class), or null when `el` is not a status span.
 function statusOf(el) {
-  if (!el || !el.classList || !el.classList.contains('rule-status')) return null;
+  // `rule-kind` (the 2026-10-16 edition) or `rule-status` (the earlier ones): the span beside a code that names its category.
+  if (!el || !el.classList || !(el.classList.contains('rule-kind') || el.classList.contains('rule-status'))) return null;
   for (const c of el.classList) if (STATUSES.includes(c)) return c;
   return 'unknown';
 }
@@ -60,9 +80,12 @@ function loadCharter(charterPath) {
     const code = span.textContent.trim();
     const sib = span.nextElementSibling;
     const siblingStatus = statusOf(sib);
-    if (span.id || siblingStatus) {
+    // The id may sit on the heading that holds the code (`<h2 id="R-X"><span class="rule-code">R-X</span>...`): then the span is its first element and the heading names the same code.
+    const heading = span.parentElement && /^H[1-6]$/.test(span.parentElement.tagName) && span.parentElement.firstElementChild === span ? span.parentElement : null;
+    const headingId = heading && heading.id === code ? heading.id : null;
+    if (span.id || siblingStatus || headingId) {
       const holder = span.closest('h1,h2,h3,.callout,li,p,div') || span.parentElement;
-      definitions.push({ code, status: CATEGORY_BY_PREFIX[code[0]] || 'unknown', siblingStatus, id: span.id || null, text: (holder ? holder.textContent : '').replace(/\s+/g, ' ').trim() });
+      definitions.push({ code, status: CATEGORY_BY_PREFIX[code[0]] || 'unknown', siblingStatus, id: span.id || headingId || null, text: (holder ? holder.textContent : '').replace(/\s+/g, ' ').trim() });
     } else {
       referenceSpans.push({ code, context: (span.parentElement ? span.parentElement.textContent : '').replace(/\s+/g, ' ').trim().slice(0, 140) });
     }
@@ -73,9 +96,14 @@ function loadCharter(charterPath) {
   const indexDuplicates = [];
   const directoryTables = [...doc.querySelectorAll('table.directory')];
   for (const table of directoryTables) {
-    // Which directory this is, from its third column's header: Serves (Rules), Served by (Principles), Home (Governance Processes).
-    const third3 = ([...table.querySelectorAll('th')][2] || { textContent: '' }).textContent.trim().toLowerCase();
-    const kind = third3 === 'serves' ? 'rule' : third3 === 'served by' ? 'principle' : third3 === 'home' ? 'governance' : 'unknown';
+    // Which directory this is. 2026-10-16 edition: Code | Title / Section | Related sections (Rules), Code | Statement | Related sections (Principles), Code | Title | Home (Governance Processes).
+    // Earlier editions: the third column read Serves (Rules) / Served by (Principles). Both are read.
+    const ths = [...table.querySelectorAll('th')].map(t => t.textContent.trim().toLowerCase());
+    const second = ths[1] || '', third3 = ths[2] || '';
+    const kind = third3 === 'home' ? 'governance'
+      : (third3 === 'serves' || (third3 === 'related sections' && second === 'title / section')) ? 'rule'
+      : (third3 === 'served by' || (third3 === 'related sections' && second === 'statement')) ? 'principle'
+      : 'unknown';
     for (const tr of table.querySelectorAll('tr')) {
       const tds = [...tr.querySelectorAll('td')];
       const codeEl = tds[0] && tds[0].querySelector('code');
@@ -181,7 +209,7 @@ function audit(model, enf) {
   const declaredRules = new Set([...declared].filter(c => categoryOf(c) === 'rule'));
   for (const [c, files] of enf.tagged) {
     if (declaredRules.has(c)) continue;
-    const why = declared.has(c) ? `${c} is a ${categoryOf(c) === 'principle' ? 'Principle' : 'Governance Process'}, which is not enforced by definition` : `${c} is not declared in the Charter (renamed or retired?)`;
+    const why = declared.has(c) ? `${c} is a ${categoryOf(c) === 'principle' ? 'Principle' : 'Governance Process'}, which is not enforced by definition` : `${c} is not declared in the Charter (${RENAMED_CODES[c] ? 'renamed to ' + RENAMED_CODES[c] + ' in the 2026-10-16 edition; a Governance Process is not enforced, so drop the tag or name the Rule' : 'renamed or retired?'})`;
     E('orphan', `@enforces ${c} in ${files.join(', ')}: ${why}`);
   }
   for (const [c, files] of enf.asserted) {
@@ -265,4 +293,4 @@ function selfTest(model, enf, charterPath) {
   return { misses, mutantCount: Object.keys(mutants).length };
 }
 
-module.exports = { loadCharter, categoryOf, prefixPermits, CODE_RE, DOMAINS, STATUSES, FLOORS, readEnforcements, audit, pairing, coverage, selfTest };
+module.exports = { loadCharter, categoryOf, prefixPermits, currentCode, RENAMED_CODES, CODE_RE, DOMAINS, STATUSES, FLOORS, readEnforcements, audit, pairing, coverage, selfTest };

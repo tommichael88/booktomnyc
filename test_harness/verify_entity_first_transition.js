@@ -3,7 +3,7 @@
  * verify_entity_first_transition.js -- the dual-source transition btnyc.json -> ssot/btnyc_source.json is BOUNDED, and its detector can say complete, not complete, overdue and malformed (T175; R-SYSTEM-DUALSOURCE).
  *
  * @enforces R-SYSTEM-DUALSOURCE
- * @enforces R-GOVERN-TRANSITION
+ * (The ledger it follows is G-GOVERN-TRANSITION and G-SYSTEM-TRANSITION-CLOSURE, Governance Processes, which are not enforced by definition; the Rule it enforces is R-SYSTEM-DUALSOURCE.)
  * @enforces R-SYSTEM-DEPLOY-CONTRACT
  *
  * THE DEFECT-SHAPE. "Both are authoritative" drifts into a steady state: two live sources, no owner, no end, no way to know when the old one can go. R-SYSTEM-DUALSOURCE asks for six fields in a ledger

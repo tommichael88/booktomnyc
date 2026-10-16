@@ -12,6 +12,7 @@ const fs = require('fs'), path = require('path');
 const lib = require('./lib.js');
 const refs = require('./refs.js');
 const recovered = require('./recovered_rules.js');
+const complexityAxes = require('./complexity_axes.js');
 const vocab = require('./vocabulary.js');
 const { clone, slug, uniqueSlugger, isObj } = lib;
 
@@ -46,6 +47,7 @@ const titleCase = s => s.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 
 function migrate(L, opts = {}) {
   const RR = opts.rules || recovered.load(); // { rules, sha256 }: the cited business rules the legacy file only implies (T177)
+  const CX = opts.axes || complexityAxes.load(); // { axes, sha256 }: the three independent axes btnyc.json does not carry (T180, R-COMPLEX-AXES)
   const report = { decisions: [], unresolved: [], findings: [], counts: {}, ledger: [] };
   const note = (kind, text, extra) => report.decisions.push(Object.assign({ kind, text }, extra || {}));
   const unresolved = (what, detail) => report.unresolved.push({ what, detail });
@@ -311,7 +313,7 @@ function migrate(L, opts = {}) {
     if (s.detail_prompt !== undefined) presentation.detail_prompt = s.detail_prompt; if (s.details !== undefined) presentation.details = s.details;
     const intake = { steps }; if (s.intake_modules_refs !== undefined) intake.module_refs = Array.isArray(s.intake_modules_refs) ? s.intake_modules_refs.map(m => 'q.' + m) : s.intake_modules_refs;
     if (s.behavior !== undefined) intake.behavior = clone(s.behavior);
-    const svc = { id: 'svc.' + s.id, entity_id: ent, action_id: S.act.f(s.service_type), modifier_ids: [], presentation, pricing, intake };
+    const svc = { id: 'svc.' + s.id, entity_id: ent, action_id: S.act.f(s.service_type), modifier_ids: [], presentation, pricing, complexity_profile: complexityAxes.profileFor(CX, s.id, s.operational_metrics.complexity_tier), intake };
     if (s.default_tags !== undefined || s.suggested_tags !== undefined) { svc.tags = {}; if (s.default_tags !== undefined) svc.tags.default_tag_ids = s.default_tags.map(S.tag_ref.f); if (s.suggested_tags !== undefined) svc.tags.suggested_tag_ids = s.suggested_tags.map(S.tag_ref.f); }
     if (s.related_services !== undefined) svc.related_service_ids = s.related_services.map(x => 'svc.' + x);
     const pol = buildPolicy(s.confidence_strategy, s.ui_taxonomy.group_id, 'service ' + s.id);
@@ -322,6 +324,8 @@ function migrate(L, opts = {}) {
     Object.assign(svc, notes && Object.keys(notes).length ? { notes } : {});
     svc._legacy_order = services.length; services.push(svc);
   }
+  complexityAxes.reconcile(CX, A.services.map(s => s.id), unresolved);
+  ledger('complexity_axes.json', 'entities[].services[].complexity_profile, policy.complexity_axes', 'the skill tier is btnyc.json\'s own (operational_metrics.complexity_tier); the risk tier, the batch-risk flag and the grounds of each are authored in the axes file (R-COMPLEX-AXES, R-COMPLEX-COMPOUNDS); the vocabulary is copied to policy', services.length, 'Not in btnyc.json. Authored input, not derived: ssot/migration/complexity_axes.json.');
   ledger('services[]', 'entities[].services[]', 'one entity-owned service per legacy service: entity_id/action_id added; fields regrouped into presentation / pricing / intake / tags; intake_chain -> intake.steps (resolved order, depends_on)', services.length);
 
   // ---- dynamic services -> default compositions ----
@@ -509,13 +513,13 @@ function migrate(L, opts = {}) {
     source_schema_version: lib.SOURCE_SCHEMA_VERSION,
     meta: clone(A.meta),
     legacy_envelope: { $schema: A.$schema, $id: A.$id, top_level_order: Object.keys(L).filter(k => !lib.COMPILER_KEYS.includes(k) || k === 'routing_archetypes') },
-    provenance: { migrated_from: 'btnyc.json', migration: 'test_harness/tools/entity_first/migrate_legacy.js', design: 'ssot/ENTITY_FIRST_DESIGN_NOTE.md', ticket: 'T175', recovered_rules: { file: 'ssot/migration/recovered_rules.json', rules_version: RR.rules.rules_version, sha256: RR.sha256 } },
+    provenance: { migrated_from: 'btnyc.json', migration: 'test_harness/tools/entity_first/migrate_legacy.js', design: 'ssot/ENTITY_FIRST_DESIGN_NOTE.md', ticket: 'T175', recovered_rules: { file: 'ssot/migration/recovered_rules.json', rules_version: RR.rules.rules_version, sha256: RR.sha256 }, complexity_axes: { file: 'ssot/migration/complexity_axes.json', axes_version: CX.axes.axes_version, sha256: CX.sha256 } },
     registries: { categories, groups, actions, modifiers, tags, materials, furniture, checkout_states: checkoutStates, pricing_formulas: formulas, behavioral_classes: classes, contexts: [...contexts.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)), // by id, not by first use: the registry's order must not depend on the order the legacy file happened to list its modules in
       pricing_archetypes: Object.keys(L.pricing_archetypes || {}).map(k => { const d = L.pricing_archetypes[k].definition; if (typeof d !== 'string' || !d) unresolved('pricing archetype with no definition text', k); return { id: 'par.' + k, definition: d }; }), service_order: A.services.map(s => 'svc.' + s.id) },
     entities: entityList,
     shared_questions: shared,
     shared_uncertainty_classes: sharedClasses,
-    policy: { workflow: clone(A.workflow), invariants: clone(A.invariants), global_rules: globalRules, ui_config: uiConfig },
+    policy: { workflow: clone(A.workflow), invariants: clone(A.invariants), global_rules: globalRules, ui_config: uiConfig, complexity_axes: clone(CX.axes.vocabulary) },
     vocabulary: { negation_library: split.negation_library, action_vocabulary: split.action_vocabulary, adlib_phrase_overrides: clone(A.adlib_phrase_overrides), nlp_objects: nlpObjects, nlp_default_fallback: nlpFallback },
   };
   // the original, authored chains and branch maps, verbatim, for the record (design note 7.5)
@@ -550,7 +554,7 @@ function main() {
       }
     }
     lib.writeIfChanged(lib.PATHS.source, text);
-    lib.writeIfChanged(lib.PATHS.lastMigration, lib.toText({ note: 'written by migrate_legacy.js --write; the sha of the source it last wrote, so a later --write can tell an edited source from an unedited one. Never edit by hand.', output_sha256: outSha, legacy_authored_sha256: lib.sha(JSON.stringify(lib.authoredLegacy(L))), recovered_rules_sha256: recovered.load().sha256 }));
+    lib.writeIfChanged(lib.PATHS.lastMigration, lib.toText({ note: 'written by migrate_legacy.js --write; the sha of the source it last wrote, so a later --write can tell an edited source from an unedited one. Never edit by hand.', output_sha256: outSha, legacy_authored_sha256: lib.sha(JSON.stringify(lib.authoredLegacy(L))), recovered_rules_sha256: recovered.load().sha256, complexity_axes_sha256: complexityAxes.load().sha256 }));
     console.log('wrote', lib.PATHS.source);
   }
   return report.unresolved.length ? 1 : 0;

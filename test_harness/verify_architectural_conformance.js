@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * verify_architectural_conformance.js -- the one test that answers "is the tree still the architecture the 2026-10-10 mandate landed?", and the check
- * R-GOVERN-TRANSITION asks for on the ledger of that mandate.
+ * G-GOVERN-TRANSITION asks for on the ledger of that mandate (a Governance Process; it was the Rule R-GOVERN-TRANSITION until the Charter's 2026-10-16 edition, and the
+ * TIMELINE entries of this mandate cite that name, which charter_model.currentCode resolves).
  *
  * @enforces R-INVARIANT-DISEASE
- * @enforces R-GOVERN-TRANSITION
  *
  * WHAT IT HOLDS. Items B to G each landed one rule and one class detector. This file holds the SET. Its roster (ROSTER, below) names, for each landed item, the
  * Charter rules it serves, the defect class (when the Charter has one), the kind of claim it is (P-GOVERN-GOODHART: behavioral, source-shape or mixed), the detector
@@ -18,7 +18,7 @@
  *      a text match over source for a rule about behavior.
  *   4. It RUNS GREEN, and has not been hollowed out: it exits 0, its own summary says no check failed, and it reports at least the floor of checks. A floor is
  *      raised when a detector gains checks and lowered only here, in a reasoned edit (a detector that quietly loses half its checks stays green on its own).
- *   5. Its LEDGER ENTRY (R-GOVERN-TRANSITION): TIMELINE.md has the item's entry, and the entry states the workaround the old shape forced (Rationale), the shape it
+ *   5. Its LEDGER ENTRY (G-GOVERN-TRANSITION): TIMELINE.md has the item's entry, and the entry states the workaround the old shape forced (Rationale), the shape it
  *      ended at (Endpoint), the defect class, the detector and the rules, each concrete (it names things in backticks), the detector the one the roster holds, every
  *      code it cites a declared one. The Charter: "The enforcement check asserts that every ledger entry describing a structural change carries both a rationale
  *      and an endpoint." Nothing asserted it until this file.
@@ -76,7 +76,7 @@ const ROSTER = [
       rules: ['R-INTAKE-NONRETIRING', 'R-INTAKE-WIREREMOVE'], defect: 'DEFECT-NON-RETIRING-ANSWER' },
 ];
 // This file's own entry. It is held to the ledger leg like the rest; it is not a row (it is not one of the detectors it runs).
-const SELF_ROW = { item: 'H', ticket: 'T165', claim: 'the set of detectors, and the ledger', file: SELF, rules: ['R-INVARIANT-DISEASE', 'R-GOVERN-TRANSITION'], defect: null };
+const SELF_ROW = { item: 'H', ticket: 'T165', claim: 'the set of detectors, and the ledger', file: SELF, rules: ['R-INVARIANT-DISEASE'], defect: null };
 
 const KINDS = ['behavioral', 'source-shape', 'mixed'];
 const LABELS = ['Rationale', 'Endpoint', 'Defect class', 'Detector', 'Rules'];
@@ -136,7 +136,7 @@ function checkRun(row, run) {
 
 function checkRegistered(file, master) { return (master.test_files || []).includes(file) ? [] : [`${file} is not listed in MASTER_TEST_SUITE.json (the suite does not run it)`]; }
 
-// R-GOVERN-TRANSITION: the entry's ledger block.
+// G-GOVERN-TRANSITION: the entry's ledger block. The entries of this mandate (T159-T165) were written when it was the Rule R-GOVERN-TRANSITION and cite that name; history is not rewritten, so either name is the block.
 function ledgerOf(section) {
     const out = {};
     for (const l of LABELS) { const m = new RegExp('^- \\*\\*' + l + '\\.\\*\\* (.+)$', 'm').exec(section); out[l] = m ? m[1].trim() : null; }
@@ -145,7 +145,7 @@ function ledgerOf(section) {
 function checkLedger(section, row, declared) {
     const probs = [];
     if (section == null) return [`TIMELINE.md has no entry headed "## ${row.ticket} -- Item ${row.item} of the 2026-10-10 mandate"`];
-    if (!/R-GOVERN-TRANSITION/.test(section)) probs.push('the entry has no Ledger block (R-GOVERN-TRANSITION)');
+    if (!/[RG]-GOVERN-TRANSITION/.test(section)) probs.push('the entry has no Ledger block (G-GOVERN-TRANSITION)');
     const L = ledgerOf(section);
     for (const l of LABELS) if (!L[l]) probs.push(`the Ledger block has no "${l}." line`);
     const concrete = t => /`[^`]+`/.test(t);
@@ -169,8 +169,10 @@ function checkLedger(section, row, declared) {
     }
     if (L.Rules) {
         const codes = L.Rules.match(CODE_RE_G) || [];
-        for (const c of codes) if (!declared.all.has(c)) probs.push(`the Rules line cites ${c}, which the Charter does not declare`);
-        for (const c of row.rules) if (!codes.includes(c)) probs.push(`the Rules line omits ${c}, which the detector's header enforces`);
+        // A code the Charter renamed is read as its current name (charter_model.currentCode): the entry cites the one that was current when it was written.
+        const current = codes.map(charterModel.currentCode);
+        for (const c of codes) if (!declared.all.has(charterModel.currentCode(c))) probs.push(`the Rules line cites ${c}, which the Charter does not declare`);
+        for (const c of row.rules) if (!current.includes(charterModel.currentCode(c))) probs.push(`the Rules line omits ${c}, which the detector's header enforces`);
     }
     return probs;
 }
@@ -264,10 +266,11 @@ function probes(declared) {
             Endpoint: 'One frozen `TIER_RANK` in the pricing engine, read everywhere the tiers are compared.',
             'Defect class': '`DEFECT-DUPLICATE-REGISTRY`.', Detector: '`verify_probe_good.js`.', Rules: '`R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT-SCOPE-IS-REAL`.',
         }, over);
-        return '## T999 — Item X of the 2026-10-10 mandate: x\n\n**Ledger (R-GOVERN-TRANSITION: ...).**\n\n' + LABELS.filter(l => f[l] !== null).map(l => `- **${l}.** ${f[l]}`).join('\n') + '\n';
+        return '## T999 — Item X of the 2026-10-10 mandate: x\n\n**Ledger (G-GOVERN-TRANSITION: ...).**\n\n' + LABELS.filter(l => f[l] !== null).map(l => `- **${l}.** ${f[l]}`).join('\n') + '\n';
     };
     probe('ledger: a complete block conforms', checkLedger(block(), row, declared), 'clean');
     probe('ledger: no entry at all is found', checkLedger(null, row, declared), /no entry headed/);
+    probe('ledger: an entry that cites the code by the name it had when it was written conforms (R-GOVERN-TRANSITION, renamed G-GOVERN-TRANSITION)', checkLedger(block({ Rules: '`R-INVARIANT-SINGLEDEF`, `R-SYSTEM-SCRIPT-SCOPE-IS-REAL`, `R-GOVERN-TRANSITION`.' }), row, declared), 'clean');
     probe('ledger: an entry with no block is found', checkLedger('## T999 — Item X of the 2026-10-10 mandate: x\n\nprose only\n', row, declared), /no Ledger block/);
     probe('ledger: a block with no Endpoint is found', checkLedger(block({ Endpoint: null }), row, declared), /no "Endpoint\." line/);
     probe('ledger: a placeholder Rationale is found', checkLedger(block({ Rationale: 'TBD' }), row, declared), /Rationale is a placeholder/);
@@ -340,7 +343,7 @@ async function main() {
         check(`it is listed in MASTER_TEST_SUITE.json`, checkRegistered(row.file, master));
         check(`its header tags are real: @enforces ${row.rules.join(', ')}${row.defect ? '; @detects ' + row.defect : ''}`, exists ? checkHeader(row.file, row, enf, declared) : ['no detector to read']);
         check(`its mechanism fits the claim (${row.kind}, P-GOVERN-GOODHART)`, exists ? checkMechanism(row.kind, fs.readFileSync(path.join(HARNESS, row.file), 'utf8')) : ['no detector to read']);
-        check(`its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)`, checkLedger(sectionOf(row), row, declared));
+        check(`its ledger entry carries rationale, endpoint, class, detector, rules (G-GOVERN-TRANSITION)`, checkLedger(sectionOf(row), row, declared));
         let verdict = 'no detector';
         if (exists) {
             const run = await runs.get(row.file);
@@ -360,7 +363,7 @@ async function main() {
     console.log(`\nH. ${SELF_ROW.ticket}  ${SELF_ROW.claim}   [${SELF}]`);
     check(`its header tags are real: @enforces ${SELF_ROW.rules.join(', ')}`, checkHeader(SELF, SELF_ROW, enf, declared));
     check(`it is listed in MASTER_TEST_SUITE.json`, checkRegistered(SELF, master));
-    check(`its ledger entry carries rationale, endpoint, class, detector, rules (R-GOVERN-TRANSITION)`, checkLedger(sectionOf(SELF_ROW), SELF_ROW, declared));
+    check(`its ledger entry carries rationale, endpoint, class, detector, rules (G-GOVERN-TRANSITION)`, checkLedger(sectionOf(SELF_ROW), SELF_ROW, declared));
 
     console.log('\nCOMPLETENESS (both ways)');
     check(`every "Item X of the 2026-10-10 mandate" entry in TIMELINE.md has a roster row, and every row has its entry`, checkCompleteness(entries, [...ROSTER, SELF_ROW]));

@@ -558,7 +558,7 @@ logHeader('2. Governance & Client Operations (R-GOVERN / R-CLIENT)');
     return !def || typeof def.hourly_rate !== 'number' || typeof def.min_minutes !== 'number';
   });
   assertRule(
-    'R-GOVERN-PRECEDENCE',
+    'G-GOVERN-PRECEDENCE',
     missing.length === 0 && malformed.length === 0,
     'complexity_tiers contains routine/skilled/specialized with numeric rates and boundaries',
     `missing=[${missing.join(',')}] malformed=[${malformed.join(',')}]`
@@ -2213,7 +2213,7 @@ assertRule(
 {
   const t = btnycData.workflow?.resolution_thresholds;
   assertRule(
-    'R-GOVERN-PRECEDENCE',
+    'G-GOVERN-PRECEDENCE',
     !!t && typeof t.auto_select_named_service === 'number' && typeof t.route_to_group_other_tile === 'number',
     'workflow.resolution_thresholds carries both numeric thresholds'
   );
@@ -2224,7 +2224,7 @@ assertRule(
     /_resolutionThresholds\s*\(/.test(freeTextSrc)
   );
   assertRule(
-    'R-GOVERN-PRECEDENCE',
+    'G-GOVERN-PRECEDENCE',
     usesSSoT,
     'collectBookingContext_freeText reads thresholds from the SSOT, not hardcoded literals'
   );

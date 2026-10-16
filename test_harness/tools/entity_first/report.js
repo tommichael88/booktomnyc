@@ -63,7 +63,7 @@ function residualTotals(residuals) {
   for (const [sub, parent] of Object.entries(RESIDUAL_SUBSETS)) { const s = ids(sub), p = ids(parent); const n = residuals.filter(r => r.kind === sub).length; if (n && [...s].every(x => p.has(x))) { restated += n; notes.push(`${n} \`${sub}\` restate records of \`${parent}\``); } }
   return `${residuals.length} residual records; ${residuals.length - restated} distinct units${notes.length ? ` (${notes.join('; ')})` : ''}.`;
 }
-const DECISION_NO = { playbook: 206, taxonomy: 207, confidence: 208, composition: 209, unknown: 210, scope: 211, cutover: 212, dangling: 213, reshape: 165, badge: 215, vocabulary: 216, pax: 217, publish: 218, archetype: 219 };
+const DECISION_NO = { playbook: 206, taxonomy: 207, confidence: 208, composition: 209, unknown: 210, scope: 211, cutover: 212, dangling: 213, reshape: 165, badge: 215, vocabulary: 216, pax: 217, publish: 218, archetype: 219, axes: 228 };
 const RR = require('./recovered_rules.js');
 const PUB = require('./publish.js');
 
@@ -104,6 +104,7 @@ function coverage(f) {
     ['uncertainty_weight_unauthored', resid.uncertainty_weight_unauthored || 0, `uncertainty classes whose question had no confidence_gain in the legacy file; they count toward no service's confidence (#${DECISION_NO.confidence}).`],
     ['confidence_gate_none', resid.confidence_gate_none || 0, `services/compositions that ask no weighted question, so confidence cannot be computed for them (#${DECISION_NO.confidence}).`],
     ['recovery_no_authored_path', resid.recovery_no_authored_path || 0, `of those, ones with no deep-dive question either: recovery can only take the declared when_no_path route.`],
+    ['composition_axes_undeclared', resid.composition_axes_undeclared || 0, `default compositions (dynamic services) that carry only a skill tier: a dynamic service inherits the axes of its group (P-COMPLEX-DYNAMIC) and no group declares a risk tier or batch-risk flag yet (#${DECISION_NO.axes}).`],
     ['question_asked_by_nothing', resid.question_asked_by_nothing || 0, `authored questions no chain, default or action asks; kept, scope is an Operator decision (#${DECISION_NO.scope}).`],
     ['unknown_option', resid.unknown_option || 0, `options classified "not sure" by label pattern; they can never retire an uncertainty (#${DECISION_NO.unknown}).`],
     ['unknown_option_with_cost_effect', resid.unknown_option_with_cost_effect || 0, `of those, ones that also change price or minutes: a contingency for not knowing, or a mis-classified answer (#${DECISION_NO.unknown}).`],

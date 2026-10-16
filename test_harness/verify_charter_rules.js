@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
- * verify_charter_rules.js -- the meta-test for the Charter's own code system (R-GOVERN-INDEX).
+ * verify_charter_rules.js -- the meta-test for the Charter's own code system (G-GOVERN-INDEX; named R-GOVERN-INDEX before the 2026-10-16 edition).
  *
- * @enforces R-GOVERN-INDEX, R-INVARIANT-ANCHOR
+ * @enforces R-INVARIANT-ANCHOR
+ *
+ * (G-GOVERN-INDEX is a Governance Process, which is "not enforced by definition" (this file's own audit): it is the policy this meta-test follows, not a Rule it enforces.)
  *
  * Reads PROJECT_CHARTER.html through charter_model.js (a real HTML parser; see that file for why a pattern match is not allowed here)
  * and runs its `audit`, against the Charter as the 2026-10-08 revision shaped it: three categories by prefix (Rule R-, Governance Process G-, Principle P-), NO enforcement status

@@ -62,6 +62,7 @@ function washerSource() {
   const gr = f.policy.global_rules; gr.intake_defaults.group_defaults = {}; gr.intake_defaults.category_defaults = {};
   for (const k of Object.keys(gr.force_modules_by_variability_DEPRECATED)) if (Array.isArray(gr.force_modules_by_variability_DEPRECATED[k])) gr.force_modules_by_variability_DEPRECATED[k] = [];
   f.policy.ui_config.step2_types = ['act.repair'];
+  f.policy.complexity_axes.single_use_consumable_material_ids = []; f.policy.complexity_axes.assembly_family_service_ids = []; // the washer owns no catalog material and is no assembly service; the three axes it declares are the real washer_repair's (R-COMPLEX-AXES)
   f.vocabulary.nlp_objects = []; f.vocabulary.nlp_default_fallback.category = 'cat.fixture_home';
   f.vocabulary.action_vocabulary.actions = f.vocabulary.action_vocabulary.actions.filter(a => a.action_id === 'act.repair');
 
@@ -69,6 +70,7 @@ function washerSource() {
   const donor = REAL.entities.find(e => e.id === 'ent.computer').services.find(s => s.confidence_gate && s.confidence_gate.mode === 'weighted_uncertainty');
   const svc = lib.clone(donor); delete svc.decomposition;
   Object.assign(svc, { id: 'svc.washer_repair', entity_id: 'ent.washer', action_id: 'act.repair', modifier_ids: [] });
+  svc.complexity_profile = { tier: svc.pricing.operational_metrics.complexity_tier, risk_tier: 'R2', batch_risk_compounds: false, risk_basis: ['active_water', 'active_electrical'], batch_risk_basis: [] }; // the three axes, set by hand like every other identity of the washer (R-COMPLEX-AXES)
   svc.presentation.ui_taxonomy.category_id = 'cat.fixture_home'; svc.presentation.ui_taxonomy.group_id = 'grp.fixture_washers'; svc.presentation.ui_taxonomy.display_name = 'Washer Repair';
   svc.pricing.required_material_ids = []; svc.pricing.optional_material_ids = []; svc.tags = { default_tag_ids: [], suggested_tag_ids: [] };
   svc.intake = { steps: [{ question_id: 'q.washer_type', depends_on: [] }, { question_id: 'q.washer_symptom', depends_on: [] }, { question_id: 'q.washer_leak_source', depends_on: [{ question_id: 'q.washer_symptom', option_id: 'sym.leaking' }] }] };

@@ -166,6 +166,35 @@ mut('an option carries a priced modifier but does not declare price', ['V-OPT-EF
 mut('an option lists an effect twice', ['V-OPT-EFFECT'], s => { const o = questionsOf(s).flatMap(q => q.options || []).find(x => x.affects.length); o.affects = [o.affects[0], o.affects[0]]; });
 mut('evidence that is not "unknown"', ['V-OPT-EFFECT'], s => { questionsOf(s).find(q => q.options).options[0].evidence = 'probably'; });
 mut('two answers of a question share a label', ['V-OPT-LABEL-DUP'], s => { const q = questionsOf(s).find(x => x.options && x.options.length > 1); q.options[1].label = q.options[0].label; });
+// V-COMPLEX-* (R-COMPLEX-AXES, R-COMPLEX-COMPOUNDS, P-COMPLEX-FURNITURE: the three axes every service declares)
+const svcNamed = (s, id) => need(servicesOf(s).find(v => v.id === 'svc.' + id), 'service ' + id);
+mut('a service that declares no complexity_profile', ['V-COMPLEX-PROFILE'], s => { delete servicesOf(s)[0].complexity_profile; });
+mut('a skill tier outside the four', ['V-COMPLEX-PROFILE'], s => { servicesOf(s)[0].complexity_profile.tier = 'expert'; });
+mut('a risk tier outside R0..R3', ['V-COMPLEX-PROFILE'], s => { servicesOf(s)[0].complexity_profile.risk_tier = 'R9'; });
+mut('a batch-risk flag that is not a boolean', ['V-COMPLEX-PROFILE'], s => { servicesOf(s)[0].complexity_profile.batch_risk_compounds = 'yes'; });
+mut('a profile that has lost a key (the batch flag)', ['V-COMPLEX-PROFILE'], s => { delete servicesOf(s)[0].complexity_profile.batch_risk_compounds; });
+mut('a profile skill tier that disagrees with pricing.operational_metrics.complexity_tier', ['V-COMPLEX-TIER'], s => { const v = servicesOf(s)[0]; v.complexity_profile.tier = v.complexity_profile.tier === 'skilled' ? 'specialized' : 'skilled'; });
+mut('a risk tier below the hazards it names', ['V-COMPLEX-RISK'], s => { const v = svcNamed(s, 'gfci_outlet_replacement'); v.complexity_profile.risk_tier = 'R0'; });
+mut('a risk tier above the hazards it names', ['V-COMPLEX-RISK'], s => { const v = svcNamed(s, 'router_configuration'); v.complexity_profile.risk_tier = 'R2'; });
+mut('a hazard that is not in the vocabulary', ['V-COMPLEX-RISK'], s => { svcNamed(s, 'gfci_outlet_replacement').complexity_profile.risk_basis.push('gremlins'); });
+mut('"none" named beside another hazard', ['V-COMPLEX-RISK'], s => { svcNamed(s, 'gfci_outlet_replacement').complexity_profile.risk_basis.push('none'); });
+mut('a risk tier that names no hazard', ['V-COMPLEX-RISK'], s => { svcNamed(s, 'router_configuration').complexity_profile.risk_basis = []; });
+mut('a batch flag that is true and names no ground', ['V-COMPLEX-BATCH'], s => { svcNamed(s, 'router_configuration').complexity_profile.batch_risk_compounds = true; });
+mut('a batch flag that is false while a ground is named', ['V-COMPLEX-BATCH'], s => { svcNamed(s, 'cabinet_knob_or_pull_install').complexity_profile.batch_risk_compounds = false; });
+mut('a signal named that the service\'s own record does not show (belief alone is not a signal)', ['V-COMPLEX-BATCH'], s => { const p = svcNamed(s, 'router_configuration').complexity_profile; p.batch_risk_basis = ['overflow_formula']; p.batch_risk_compounds = true; });
+mut('a signal the record shows (a required single-use consumable) that the profile does not name', ['V-COMPLEX-BATCH'], s => { const p = svcNamed(s, 'toilet_install').complexity_profile; p.batch_risk_basis = p.batch_risk_basis.filter(b => !b.startsWith('single_use_consumable:')); });
+mut('a signal the record shows (a routing answer) that the profile does not name', ['V-COMPLEX-BATCH'], s => { const p = svcNamed(s, 'computer_diagnostic').complexity_profile; p.batch_risk_basis = []; p.batch_risk_compounds = false; });
+mut('a batch ground that is neither physical nor a signal', ['V-COMPLEX-BATCH'], s => { svcNamed(s, 'router_configuration').complexity_profile.batch_risk_basis = ['it_feels_risky']; svcNamed(s, 'router_configuration').complexity_profile.batch_risk_compounds = true; });
+mut('an assembly-family service that does not declare its assembly class', ['V-COMPLEX-ASSEMBLY'], s => { delete svcNamed(s, 'pax_wardrobe_assembly').complexity_profile.assembly_class; });
+mut('an assembly class on a service outside the assembly family', ['V-COMPLEX-ASSEMBLY'], s => { svcNamed(s, 'router_configuration').complexity_profile.assembly_class = 'A0'; });
+mut('an assembly class whose minimum tier the service\'s tier is below', ['V-COMPLEX-ASSEMBLY'], s => { svcNamed(s, 'pax_wardrobe_assembly').complexity_profile.assembly_class = 'A2'; });
+mut('an assembly class outside A0..A3', ['V-COMPLEX-ASSEMBLY'], s => { svcNamed(s, 'pax_wardrobe_assembly').complexity_profile.assembly_class = 'A9'; });
+mut('the axes vocabulary removed', ['V-COMPLEX-VOCAB'], s => { delete s.policy.complexity_axes; });
+mut('a hazard whose risk tier is outside R0..R3', ['V-COMPLEX-VOCAB'], s => { s.policy.complexity_axes.risk_hazards.minor_water.tier = 'R7'; });
+mut('the skill tiers reordered', ['V-COMPLEX-VOCAB'], s => { s.policy.complexity_axes.tiers = ['skilled', 'routine', 'specialized', 'project']; });
+mut('a single-use consumable that names no material', ['V-COMPLEX-VOCAB'], s => { s.policy.complexity_axes.single_use_consumable_material_ids.push('mat.MAT-NO-SUCH'); });
+mut('an assembly family that names no service', ['V-COMPLEX-VOCAB'], s => { s.policy.complexity_axes.assembly_family_service_ids.push('svc.no_such_service'); });
+mut('a vocabulary that has lost a signal the Charter names', ['V-COMPLEX-VOCAB'], s => { delete s.policy.complexity_axes.batch_signals.single_use_consumable; });
 // V-COMP-*
 mut('a service filed under an entity it does not name', ['V-COMP-OWNER'], s => { const e = s.entities.find(x => x.services.length); e.services[0].entity_id = s.entities.find(x => x.id !== e.id).id; });
 mut('a service without a financial engine', ['V-COMP-PRICING'], s => { delete servicesOf(s)[0].pricing.financial_engine; });
@@ -286,7 +315,7 @@ const baseSem = V.validate(lib.clone(SRC)); const resKinds = r => r.residuals.re
 { const s = lib.clone(SRC); const o = gated(s)[0]; o.confidence_gate = { mode: 'none', reason: 'authored without a weighted class' }; o.uncertainty_profile = []; const r = V.validate(s);
   check('a service with no confidence gate, and says why, is a residual (never read as 100%)', r.ok && (resKinds(r).confidence_gate_none || 0) === (resKinds(baseSem).confidence_gate_none || 0) + 1, JSON.stringify(r.errors.slice(0, 2))); }
 { const KNOWN = new Set(['composition_ambiguous', 'uncertainty_weight_unauthored', 'confidence_gate_none', 'recovery_no_authored_path', 'question_asked_by_nothing', 'unknown_option', 'unknown_option_with_cost_effect', 'dangling_legacy_reference', 'group_membership_disagreement',
-    'price_claim_indirect', 'price_claim_unwired', 'price_effect_unclaimed', 'nlp_object_unresolved', 'object_term_not_aliased', 'verb_without_action', 'action_without_vocabulary', 'verb_form_shared', 'pricing_archetype_mismatch', 'formula_modifier_without_input', 'condition_modifier_unused']);
+    'price_claim_indirect', 'price_claim_unwired', 'price_effect_unclaimed', 'nlp_object_unresolved', 'object_term_not_aliased', 'verb_without_action', 'action_without_vocabulary', 'verb_form_shared', 'pricing_archetype_mismatch', 'formula_modifier_without_input', 'condition_modifier_unused', 'composition_axes_undeclared']);
   check('every residual the validator reports is of a declared kind and names what it is about (no anonymous gap)', baseSem.residuals.every(r => KNOWN.has(r.kind) && typeof r.id === 'string' && r.id && typeof r.note === 'string' && r.note), [...new Set(baseSem.residuals.filter(r => !KNOWN.has(r.kind)).map(r => r.kind))].join(',')); }
 
 // S4 (#165, RESHAPE_SCOPE_S1_S6.md S4): a group lists its services and a service names its group; they disagree. The validator reports the disagreement and resolves nothing.

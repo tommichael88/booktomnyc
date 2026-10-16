@@ -3,7 +3,8 @@
  * verify_resolver_wiring.js -- the page with modules/resolver.js in it (T179): the resolver decides when it can, the page decides when it cannot, and the customer cannot tell which.
  *
  * @enforces R-SYSTEM-DEPLOY-CONTRACT
- * @enforces R-INVARIANT-DEFECT-ARBITRATION
+ * @enforces R-INVARIANT-PROVENANCE
+ * @detects DEFECT-ARBITRATION
  *
  * verify_resolver_module.js proves the module against the legacy decision it replaces. This file proves the PAGE: it boots qr.html (assembled, as every page test does) under six different
  * artifacts and, in each, drives resolveComponentSymptomTap -- the function every component / symptom tile of the picker goes through -- at every (group, tile, action) point the catalog has,
@@ -171,7 +172,7 @@ function sweep(w) {
         check('the page never names the authored source (R-SYSTEM-DEPLOY-CONTRACT)', !/btnyc_source/.test(QR_TEXT));
         const dec = (QR_TEXT.match(/function decideComponentSymptomTap[\s\S]*?\n        }\n/) || [''])[0];
         check('decideComponentSymptomTap asks the installed resolver and takes a resolved answer as it is', /Resolver\.current\(\)\.resolveTap\(/.test(dec) && /answer\.status === 'resolved'\) return \{ decision: answer\.decision, serviceIds: answer\.services\.map/.test(dec), dec.slice(0, 200));
-        check('... with no `||` or `??` on the resolver\'s answer (R-INVARIANT-DEFECT-ARBITRATION)', !/answer[\w.]*\s*(\|\||\?\?)/.test(dec) && !/(\|\||\?\?)\s*answer/.test(dec));
+        check('... with no `||` or `??` on the resolver\'s answer (R-INVARIANT-PROVENANCE; class DEFECT-ARBITRATION)', !/answer[\w.]*\s*(\|\||\?\?)/.test(dec) && !/(\|\||\?\?)\s*answer/.test(dec));
         const tap = (QR_TEXT.match(/function resolveComponentSymptomTap[\s\S]*?\n        }\n/) || [''])[0];
         check('resolveComponentSymptomTap draws the decision: it no longer holds the service_type comparison that made it', /decideComponentSymptomTap\(/.test(tap) && !/service_type\s*===/.test(tap));
         check('the evidence reaches the resolver from all three call sites (single tile, tile handler, "Something else")', /kind: isComponentFirst \? 'component' : 'symptom', id: ids\[0\]/.test(QR_TEXT) && /id: entry\.id/.test(QR_TEXT) && /\{ kind: 'none' \}/.test(QR_TEXT));

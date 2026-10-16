@@ -24,7 +24,7 @@
  * is stale for that question, whatever its version says.
  *
  * PROVENANCE (R-INVARIANT-PROVENANCE): every answer carries `source`: 'archetype_default' when the group's routing archetype (the picker) names the service(s), 'fallback' when it names none.
- * A caller reads `decision`, `services` and `source` as they are; it does not default them, merge them with another source, or recompute them (R-INVARIANT-DEFECT-ARBITRATION).
+ * A caller reads `decision`, `services` and `source` as they are; it does not default them, merge them with another source, or recompute them (R-INVARIANT-PROVENANCE).
  *
  * THE ID BOUNDARY (a transition adapter, removed with the legacy data shape, #212): the page still holds the ids btnyc.json holds ("tech_trouble_computer_repair", "comp.hard_drive",
  * "computer_diagnostic"); the artifact holds the entity-first ids ("grp.tech_trouble_computer_repair", "ent.hard_drive", "svc.computer_diagnostic"). The three rules below are the same ones

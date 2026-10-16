@@ -11731,3 +11731,65 @@ None. Differences between the artifact and the legacy page are named and pinned,
 ### 7. Next milestone
 
 Free-text entity resolution (`orch_resolve_entity` and the object-based step) as the resolver's second slice, cut from the confidence weight it sets today, with #220 (the six words, which needs the source's placement field) and `resolveGroupSymptoms` alongside; then the confidence engine reads `confidence` / `retirement_index` from the same artifact through the same boundary.
+
+---
+
+## T180 — your messages of 2026-10-16 17:35 NY ("ensure compliance with the new Charter playbook revision") and 17:53 NY ("Is this governance missing from the update Charter? This is a critical miss if we failed to include this"): the revised Charter and its prototype are installed, and all 76 services declare the three axes `R-COMPLEX-AXES` requires; no price moved
+
+Governing messages: yours, 2026-10-16 17:35 NY. The `PROJECT_CHARTER.html` in the Project is now the Constitution and supersedes the repo's copy; update the repo file; `PROTOTYPE_SMARTQUOTE.html` supports it and accompanies it; ensure compliance with the revised Playbook, which corrects internal contradictions, unclear direction and UI problems of the earlier edition and should clear open items that asked for clarification. And yours, 17:53 NY, on seeing me record that "no service declares the risk tier or batch-risk flag that the three-axes rule now requires of every service": whether that governance is missing from the updated Charter, called a critical miss if so. The standing directives of 09:14, 15:41 and 16:23 NY still bind: decide from the Playbook, the Layer Map and the evidence; record non-blocking choices as autonomy decisions; correct an established defect only on evidence and document every intentional change; leave #219 open and unchanged; stay on `main`; report what was implemented, the validation, a consequential blocker, and the next milestone.
+
+**Ledger (R-GOVERN-TRANSITION).**
+
+- **Rationale.** The Charter's `R-COMPLEX-AXES` requires every service to declare a skill tier, a risk tier and a batch-risk flag, independently of each other, with a structural test and a resolver test. The repo declared one axis (`operational_metrics.complexity_tier`), no test read any of the three, and the gap was in no register. The revised edition tightened the rule from "where required" to "every service", which is what turned a latent gap into a failing requirement.
+- **Endpoint.** Every service of the source carries `complexity_profile {tier, risk_tier, batch_risk_compounds, risk_basis, batch_risk_basis}` (plus `assembly_class` for the three assembly-family services), authored once in `ssot/migration/complexity_axes.json`, copied by the migration, checked by `validate_source.js` (`V-COMPLEX-*`) and by an independent structural test. The vocabulary (risk hazards, batch grounds, assembly classes) lives in the source's `policy.complexity_axes`, from the Charter's own definitions.
+- **Expected cost.** The source grows by 30 KB (1,435,098 to 1,465,394 bytes); the published artifact is the same size (it carries no axis and no consumer reads one) with a new `$source` hash. No price, label or route changes (golden master: 0 of 2,988 differ). Rollback: revert the commit and republish; nothing at run time reads the new fields.
+- **Retirement.** None. The legacy `btnyc.json` never carries the risk tier or the batch flag (source-only knowledge, sanctioned by `TRANSITION_DUALSOURCE.md`, which has the new row); they retire with the dual-source transition (#212, target end 2027-06-30) by becoming the only copy.
+
+### 1. Your question, answered
+
+Yes and no, and the part that is mine matters more. `R-COMPLEX-AXES` is in both editions of the Charter (the new one says "every service" where the old one said "where required"), together with `R-COMPLEX-COMPOUNDS`, `R-COMPLEX-VOLUME`, `P-COMPLEX-DYNAMIC`, `P-COMPLEX-FURNITURE` and `DEFECT-AXIS-CONFLATION`. The governance was not missing from the Charter; the repo never implemented or tested it, and no earlier record said so. I had read the gap as a missing value to default; it was a missing declaration for 76 services, which the Charter's own definitions and each service's own record are enough to derive. So I did not default it. The values, each with the hazard or ground it rests on, are in `ssot/migration/complexity_axes.json`; the register has the decision (#228).
+
+### 2. The revised Charter and its prototype
+
+- **Installed byte-for-byte** (`PROJECT_CHARTER.html`, 476,160 bytes, sha256 `78ea62b6c3a365b42cebc789bbefeb3f2fb85138f1a5237dc487f555cf4f09af`; `PROTOTYPE_SMARTQUOTE.html`, 25,365 bytes, sha256 `14075b9920ebc72bb0533dc124c9c3bc1678355077d8a88b5703347766ee6a31`, new). The Charter embeds the prototype by iframe, sandboxed to scripts; both are in the repo root where the iframe expects it.
+- **The tooling follows the new markup** (`charter_model.js`, the one Charter reader: 131 of 131 definitions; a status span renamed, ids on headings, the Governance Processes under a `G-` prefix, three directory tables). Four Governance Processes were renamed by the edition (`R-GOVERN-ANTISTALE`, `-INDEX`, `-PRECEDENCE`, `-TRANSITION` became `G-GOVERN-*`); `RENAMED_CODES` maps each to its current name so this append-only file and the register keep the names they were written under. Eight tests that read the Charter were brought to it (the conformance, rule-index v2 and v10, rules, transition, boot-validation, trace and resolver-wiring tests: mostly renamed codes and a retag).
+- **Your document's own remaining problems are reported, not edited** (23, listed in #227): three rule codes written as references, four Governance Processes listed twice and in the Rules directory, `R-INVARIANT-DONE` in the Principles directory, five links with no target. `AGGREGATOR.html` and `charter-status.js` are named by the Charter as optional or projections; neither exists and I did not invent them.
+- **The prototype is held by a test** (`verify_charter_prototype_embed.js`, 5 checks): the pair is whole and sandboxed to scripts only; the prototype boots inside the Charter's own frame (6 category tiles, 4 slots); "I need 2 doors repaired in the kitchen" fills all four and enables Continue and Edit; it requests nothing but the two font hosts; and the same checks find three broken copies (no prototype, a script that throws, a parser that is gone).
+
+### 3. The three axes
+
+- **Skill tier** is the one `btnyc.json` already declares (54 skilled, 19 specialized, 3 routine); none was re-tiered, which is why no price moved. The validator checks the profile and the pricing block agree.
+- **Risk tier** is the highest tier among the hazards the profile names, each a term from the Charter's R0 to R3 definitions: 19 R0, 28 R1, 29 R2, none R3 (see #230).
+- **Batch-risk flag** is true for 29 services and false for 47, and true exactly when a ground is named: a physical ground the Charter lists (drilled hole, cut, sealed joint, adhered surface, mis-sized order) or a signal read from the service's own record (an overflow rate, per-unit penalty minutes, a required single-use consumable, an answer that routes to another service). A signal present in the record must be named, and a signal named but not in the record is refused ("belief alone is not a signal"). Sixteen services are true on a physical ground alone, because the Charter's `R-COMPLEX-AXES` defines the flag by irreversibility and `R-COMPLEX-COMPOUNDS` by four signals, none of which says "drilled"; I applied both and listed the 16 in #228.
+- **Independence.** No axis is derived from another; the structural test shows it as data (across the catalog no axis is a function of another: a catalog where the risk tier followed from the skill tier would pass every per-service check and still fail there). The Charter's two worked examples hold: a knob install is skilled / R1 / true, a wall-crack repair is specialized / R2 / true.
+- **Assembly** (`P-COMPLEX-FURNITURE`): flat-pack and disassembly are class A0, PAX is A1, each at or above the matrix's tier minimum.
+- **Where it lives.** The vocabulary and the 76 profiles are authored in `ssot/migration/complexity_axes.json` (a migration input beside `recovered_rules.json`); `migrate_legacy.js` copies them, so the source is still a pure function of its inputs and `--write` still refuses to overwrite a source that is not the last migration's output. Source schema version stays 1.1.0.
+
+### 4. Intentional behavior changes
+
+None. Nothing at run time reads any of the three axes' new fields, the skill tier of every service is the one it had, and the golden master is unchanged.
+
+### 5. Open, recorded
+
+- **#229 (OPEN, the one consequential item).** Building the resolver half of the test I found that the runtime derives the skill tier from the job's minutes (`deriveComplexityTier` in `pricing_engine.js` and its copy in `qr.html`), which `R-COMPLEX-VOLUME` forbids ("skill_tier := f(minutes)") and the Charter names `DEFECT-AXIS-CONFLATION`. Measured with the derivation removed in a scratch copy: 393 of 2,988 golden-master points change, 366 of them lower, none higher (12 of the 76 curated services at the sampled points plus 51 dynamic-service keys). A loose-tile replacement is skilled at one tile and specialized at twenty, from quantity alone. **Nothing was changed**: it moves prices. `verify_complexity_axes.js` pins the two minutes sites and fails on a third. *Operator question:* remove the derivation and accept the lower quotes? *Default if unanswered:* no price changes; the pin stays and the violation stays recorded.
+- **#230 (OPEN).** No service is R3 (life safety, regulated trades, structural engineering, commercial kitchens, hazardous materials), and the record cannot say whether any should be; it turns on licensing and lead-paint rules the repo does not state. *Default if unanswered:* none is R3; the R2 values stand with their hazards named.
+- **#231 (OPEN).** 29 of the Charter's 75 Rules are named by no test (`R-COMPLEX-AXES` was one until today); the list is in the register. *Default if unanswered:* the list is the backlog, price-affecting Rules first.
+- **#227, #228, #232 (resolved, autonomy decisions).** #232: the Charter writes confidence 0 to 1, `btnyc.json` percentages, the source 0 to 1; the confidence engine converts once, at the boundary, when it moves to the artifact.
+- **Declared residual.** The 82 dynamic services inherit their group's axes (`P-COMPLEX-DYNAMIC`) and no group declares them; the Charter defines none. Counted in the coverage report as `composition_axes_undeclared`.
+- **#219** unchanged and open. The six superseded branches of T178 §1b are still not deleted.
+
+### 6. Verified
+
+- **`verify_complexity_axes.js`: 51 checks** (new). Legal values are read from the Charter's text; the structural check is written independently of the validator; independence is shown as data; the two worked examples; the signal rules; the assembly classes; "authored in one place" (the axes file, the source and its provenance agree, and the migration reproduces the committed source byte for byte); 15 mutants each rejected; the resolver half pins #229.
+- **`verify_entity_first_validator.js`: 186 checks, 155 mutants over 56 rule codes** (27 new mutants over `V-COMPLEX-VOCAB`, `-PROFILE`, `-TIER`, `-RISK`, `-BATCH`, `-ASSEMBLY`). The other entity-first tests: id_freeze 45, independent 66, migration 65, pricing_rules 88, publish 62, references 45, transition 45, vocabulary 85; all pass.
+- **`verify_charter_prototype_embed.js`: 5 checks** (new, in a real browser).
+- **Charter reading and conformance:** `verify_architectural_conformance.js` 87 of 87; `verify_charter_rules.js` reads 131 of 131 definitions and reports the 23 problems above (it is in the known-red baseline, as before). `verify_resolver_module.js` 111, `verify_resolver_wiring.js` 36, `verify_ssot_boot_validation.js` 22, `verify_trace_observation_only.js` 20.
+- **Golden master:** 2,988 price points, **0 differ** from `archive/golden_master_T179.json`.
+- **Production-shaped boot** (`verify_external_modules_boot.js`): 20 of 20.
+- **Checks:** `publish.js`, `derive_graph.js`, `report.js`, `id_register.js` current; `project_legacy.js` parity holds; ledger linter 14 of 14; file integrity.
+- **Master suite:** 223 tests listed (221 plus the two new ones), build T180.
+- **Regression gate**, clean worktree, against `archive/suite_T179.tsv`: recorded in the commit that follows this one.
+
+### 7. Next milestone
+
+Free-text entity resolution (`orch_resolve_entity` and the object-based step) as the resolver's second slice, with #220 (the six words, which needs the source's placement field) and `resolveGroupSymptoms` alongside; then the confidence engine reads `confidence` / `retirement_index` from the same artifact through the same boundary, converting the scale once (#232). The Rules no test names (#231) are closed in the order the register gives, price-affecting first; #229 waits on your ruling and changes nothing until then.
