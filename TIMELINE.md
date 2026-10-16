@@ -11788,7 +11788,7 @@ None. Nothing at run time reads any of the three axes' new fields, the skill tie
 - **Production-shaped boot** (`verify_external_modules_boot.js`): 20 of 20.
 - **Checks:** `publish.js`, `derive_graph.js`, `report.js`, `id_register.js` current; `project_legacy.js` parity holds; ledger linter 14 of 14; file integrity.
 - **Master suite:** 223 tests listed (221 plus the two new ones), build T180.
-- **Regression gate**, clean worktree, against `archive/suite_T179.tsv`: recorded in the commit that follows this one.
+- **Regression gate**, clean worktree at `080875d`, against `archive/suite_T179.tsv` (`archive/suite_T180.tsv`, `archive/suite_T180_gate.txt`): **223 tests: 152 pass, 71 fail (the same known baseline, none repaired); 0 pass→fail, 0 red→no count, 0 fail→pass; 2 new tests (the axes test and the prototype test), both green; one red→worse: `verify_charter_rule_index_v10.js`, 21 to 24 failing assertions.** I diffed that test's failures against the T179 tree: the other 26 lines are identical, and the three new ones are the revised Charter's own defects recorded in #227, which this test reads: the four Governance Processes listed twice (its "no duplicate rule codes" assertion, reported under `G-GOVERN-INDEX`) and the five dead internal anchors (counted by two assertions). The test is right about the document and the system did not regress; the Charter is the Operator's and is not edited here. The next gate's baseline is `archive/suite_T180.tsv`.
 
 ### 7. Next milestone
 
