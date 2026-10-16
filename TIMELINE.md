@@ -11793,3 +11793,39 @@ None. Nothing at run time reads any of the three axes' new fields, the skill tie
 ### 7. Next milestone
 
 Free-text entity resolution (`orch_resolve_entity` and the object-based step) as the resolver's second slice, with #220 (the six words, which needs the source's placement field) and `resolveGroupSymptoms` alongside; then the confidence engine reads `confidence` / `retirement_index` from the same artifact through the same boundary, converting the scale once (#232). The Rules no test names (#231) are closed in the order the register gives, price-affecting first; #229 waits on your ruling and changes nothing until then.
+
+---
+
+## T180 (3/n) — your message of 2026-10-16 18:49 NY ("push, merge and clean up branches, PRs, whatever needs to happen to get the most updated/compliant git repo ... my concern is retention of legacy files, side projects and other documents I've written uniquely over the years in main"): `main` holds the T180 work, your older files are in `legacy/` byte for byte with the whole pre-move tree kept as a branch, and the 23 branches `main` already contained are gone
+
+Governing message: yours, 2026-10-16 18:49 NY. Use my judgement to push, merge and clean up branches and pull requests so the repository is the most current and compliant, without losing any work done toward the Charter's goals; the concern is retention of the legacy files, side projects and documents written over the years, mostly the files in the root of `main` (not the directories), which could go in a legacy or projects branch or into their own archive; and the `btnyc.json` migration and schema being Charter-compliant and entity-driven is what you are looking forward to.
+
+**Ledger (R-GOVERN-TRANSITION).**
+
+- **Rationale.** The root of `main` mixed the live site and the Charter's system with about sixty older catalogs, page variants and side-project scripts that nothing reads, and eighteen of them are data files that look like second catalogs (`btnyc_v2.json`, `btnyc_v3.json`, `btnyc_v4.json`, `btnyc_v10_final.json`, ...). The Charter allows one source of business truth; a reader (or a future tool globbing the root) cannot tell the history from the source. The remote also held 23 branches, every one already inside `main`'s history.
+- **Endpoint.** The root holds the live site, the system and the files live addresses depend on. The rest is in `legacy/` (`catalogs`, `pages`, `qqb`), indexed with a sha256 each, and the pre-move tree is the branch `legacy-archive`. A test holds that nothing was dropped or changed and nothing reads the archive.
+- **Expected cost.** None to prices, labels or routes (no runtime file changed). The moved pages are served at `/legacy/<group>/<name>` now; anything outside the repository that embeds an old address (the Square site, Setmore, a saved link) would find it gone. I checked every reference the repository has and the live home page, found none for these files, and could not see outside it (#233 asks). Rollback: `git mv legacy/<group>/<name> <name>`, or `git checkout legacy-archive -- <name>`.
+- **Retirement.** None. Nothing here is a retirement in the Charter's sense (a retired artifact is deleted); these are the Operator's files, which are not mine to delete.
+
+### 1. What was found
+
+- **The clone was shallow.** With only the tip of each branch fetched, every old branch looked unrelated to `main`; with full history (3,200 commits) all of them, except `master`, have **0 commits of their own**: 17 `alert-autofix-*`, `t158-adopt-operator-qr`, `t166-ssot-audit`, `t167-question-pass`, `t173-followup`, `t174-landing` and `ssot-entity-first`. `master` (the old default branch, an unrelated history) has two commits `main` does not have: the v8 compiled schema and a `.gitignore`.
+- **Pull requests:** 21 in all, all closed or merged, none open. Nothing to merge.
+- **Live addresses.** Pages and agreements in the repository link to `…/booktomnyc/ServiceAgreement` (100 times), `/Privacy`, `/SOW`, `/cat.html`, `/js/marquee.js`, `/External/styles.css`; the site's own home page (a saved copy of the Square page) links to category pages. These stay where they are.
+
+### 2. What was done
+
+- **T180 pushed to `main`** (`df7352a`): the Charter and prototype, the three axes, the gate record. The Pages deploy follows from the push.
+- **`legacy-archive`**: a branch at that commit, the whole tree before the move. A tag was the stronger snapshot; this session's git proxy refuses tag pushes and tag creation through the GitHub API, so the branch is the snapshot (a note in #233).
+- **58 files moved** (`git mv`, history follows): `legacy/catalogs/` 18, `legacy/pages/` 32, `legacy/qqb/` 8. `legacy/INDEX.json` (old path, new path, sha256, bytes, first and last edit) and `legacy/README.md` (what each is, when it was last edited, what stayed in the root and why, the deleted branches' tips). **Left in the root:** the live addresses, `new_services.json` (the service worker caches it), the served CSS and script assets, the six category icons, `qr2` and `state.js` (edited in July 2026; I would not guess).
+- **23 branches deleted** with their tips recorded in the README (`git branch <name> <sha>` brings one back; each commit is still in `main`). `master` kept.
+
+### 3. Verified
+
+- **`verify_legacy_archive.js`: 11 checks** (new): every indexed file is at its new path with the indexed bytes and not also at the root; every one has the same sha256 at the snapshot commit; 32 runtime files (pages, modules, bridge, service worker, manifest, entity-first tools) name nothing in `legacy/`; and the same checks find five broken trees (a deleted file, a changed byte, a copy left at the root, a page that loads from `legacy/`, a module that fetches a moved file by name).
+- **Regression gate** on the final tree: recorded below the next line once it has run.
+
+### 4. Open
+
+- **#233 (resolved as an autonomy decision, with three questions for you):** anything finished in the root to move; any moved page that something outside the repository embeds; whether `master` stays.
+- **#229, #230, #231** unchanged (T180 §5). **#219** unchanged.
