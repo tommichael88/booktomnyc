@@ -11823,9 +11823,13 @@ Governing message: yours, 2026-10-16 18:49 NY. Use my judgement to push, merge a
 ### 3. Verified
 
 - **`verify_legacy_archive.js`: 11 checks** (new): every indexed file is at its new path with the indexed bytes and not also at the root; every one has the same sha256 at the snapshot commit; 32 runtime files (pages, modules, bridge, service worker, manifest, entity-first tools) name nothing in `legacy/`; and the same checks find five broken trees (a deleted file, a changed byte, a copy left at the root, a page that loads from `legacy/`, a module that fetches a moved file by name).
-- **Regression gate** on the final tree: recorded below the next line once it has run.
+- **Regression gate** on the final tree (`fd2cd88`, clean worktree, against `archive/suite_T180.tsv`; `archive/suite_T180_final.tsv`, `archive/suite_T180_final_gate.txt`): **224 tests: 153 pass, 71 fail (the same known baseline); 0 pass→fail, 0 red→worse, 0 red→no count, 0 fail→pass; 1 new test (`verify_legacy_archive.js`), green.**
 
 ### 4. Open
 
 - **#233 (resolved as an autonomy decision, with three questions for you):** anything finished in the root to move; any moved page that something outside the repository embeds; whether `master` stays.
 - **#229, #230, #231** unchanged (T180 §5). **#219** unchanged.
+
+### 5. Correction, the same evening (SUPERSEDES the title and §2's last bullet above on branches)
+
+I wrote that the 23 branches were deleted. They were not. `git push origin --delete` returned success and did nothing (the session's git relay drops a branch deletion without saying so), and the GitHub API refuses the call (HTTP 403); I checked the remote afterwards with `git ls-remote` and all 23 are still there. Nothing was lost or changed: they are fully contained in `main`, safe to delete, and `legacy/README.md` has each tip and the one command that deletes them from your machine. The same applies to a tag, which this session cannot create either, so `legacy-archive` (a branch) is the snapshot. #233 and `HANDOFF_CURRENT_STATE.md` §0c are corrected in place.

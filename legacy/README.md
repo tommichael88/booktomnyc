@@ -1,6 +1,6 @@
 # legacy/ — your older files, kept
 
-Moved out of the repository root on 2026-10-16 (T180) so the root holds the live site and the Charter's system, and nothing else. **Nothing was deleted or edited**: every file below is byte-for-byte what it was (`INDEX.json` records the sha256 of each, and `test_harness/verify_legacy_archive.js` fails if one is missing or changed).
+Moved out of the repository root on 2026-10-16 (T180) so the root holds the live site, the files live addresses depend on, and the Charter's system. **Nothing was deleted or edited**: every file below is byte-for-byte what it was (`INDEX.json` records the sha256 of each, and `test_harness/verify_legacy_archive.js` fails if one is missing or changed).
 
 ## How they are kept
 
@@ -103,9 +103,15 @@ These are linked from live pages or used by the site, or were edited recently en
 - **Recent**: `qr2` (edited 2026-07-03) and `state.js` (2026-07-02). Tell me if either is finished and I will move it here.
 - **The system**: `qr.html`, `btnyc.json`, `btnyc_schema.json`, `cms_bridge.js`, `trace.js`, `run_vectors.js`, `innerhtml_audit.json`, the Charter, its prototype, the Layer Map, `TIMELINE.md`, `PENDING_DECISIONS.md` and the other records.
 
-## Branches removed the same day
+## Branches that are safe to delete
 
-Each of these was already fully contained in `main` (0 commits of their own), so deleting the branch name lost nothing; the commit is still reachable. To bring one back: `git branch <name> <sha>`.
+Each of these is already fully contained in `main` (0 commits of their own), so deleting the branch name loses nothing: the commits stay in `main`'s history. They are **still on GitHub**: the session that tidied the repository could not delete them (its git access refuses branch deletion). This table records where each tip is, so a deleted branch can be recreated with `git branch <name> <sha>`. `master` is not listed: it holds two commits `main` does not, and stays.
+
+To delete them all from your own machine:
+
+```
+for b in alert-autofix-8 alert-autofix-10 alert-autofix-12 alert-autofix-14 alert-autofix-23 alert-autofix-24 alert-autofix-28 alert-autofix-29 alert-autofix-31 alert-autofix-32 alert-autofix-35 alert-autofix-38 alert-autofix-42 alert-autofix-51 alert-autofix-64 alert-autofix-67 alert-autofix-312 t158-adopt-operator-qr t166-ssot-audit t167-question-pass t173-followup t174-landing ssot-entity-first; do git push origin --delete "$b"; done
+```
 
 | Branch | Tip |
 |---|---|
