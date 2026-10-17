@@ -11922,3 +11922,14 @@ Governing messages: yours, 2026-10-17 00:15 NY (the work recorded in T181 1/n).
 
 **The next gate's baseline** is `archive/suite_T181.tsv`, golden master `archive/golden_master_T180_8n.json`.
 
+
+## T182 (1/n) — the amended Charter (the chip-terminology amendment) is installed
+
+Governing message: yours, 2026-10-17 02:33 NY ("Project Charter has also been amended in Project files and attached here").
+
+**Ledger (R-GOVERN-TRANSITION).**
+
+- **Rationale.** The Charter is the Constitution and the repository copy must be the edition you hold. Yours differs from the installed edition by the amendment proposed in the Project document `claude/charter_chip_terminology_amendment.md`, which you applied.
+- **Endpoint.** `PROJECT_CHARTER.html` is your attached file, byte for byte (sha256 `8f30b1e2…`; identical to the copy in the Project). Ten hunks by a token-level comparison, nothing else: the five passages that used "chip" for the guided builder's choices now say "builder's choices" or "guided builder"; the glossary gains **Chip** (a smart-tag chip, never a pricing input) and **Answer / response** (what the client selects or states; carries facts and time; not called a chip); a dagger marker links "Passive Applicable Chips" to the glossary. No Rule changed (131 definitions, 131 directory rows before and after). Every test that reads the Charter gives the same result as on the previous edition (compared line by line for the five that were already red; the only differences are the id and anchor counts, 219→221 and 167→169, both new ids resolving). The Charter is not a manifest entry, so the integrity manifest does not change. The optional sentence in P-INVARIANT-CHIPSNOTFEES was not adopted by you and is not in the file.
+- **Not changed.** Code, data and tests: the engine already treats a #smart_tag as never pricing (T180 8/n), and the repository's records already reserve "chip" for it. The register entry is #236 (updated).
+- **Reversal.** Restore `PROJECT_CHARTER.html` from the commit before this one.

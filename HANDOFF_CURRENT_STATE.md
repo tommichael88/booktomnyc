@@ -2,6 +2,10 @@
 
 Written for a fresh Claude session. It records what is true of the repository **as observed**, not what was intended. It is not a victory report. Where a claim was not run or read, it says so.
 
+## 0g. T182 (1/n) update (2026-10-17 02:33 NY): the amended Charter is installed
+
+- `PROJECT_CHARTER.html` is the edition you amended in the Project (the chip-terminology amendment: "chip" means a smart-tag chip only; builder choices are "answers"; two glossary entries; no Rule changed). It is byte for byte your attached file. Records: #236 (updated), TIMELINE T182 (1/n). Read §0f next.
+
 ## 0f. T181 update (2026-10-17, after your 00:07 and 00:15 NY messages): read this first; it supersedes §0d's pre-flight line about ids
 
 - **The live `btnyc.json` now carries every field the Charter requires of it, and the schema requires them.** Your 00:07 question ("have the btnyc.json and schema been authored with data per the Charter") was answered no for the live file; it is yes now (#237). Written only from `ssot/btnyc_source.json` by `node test_harness/tools/entity_first/carry_charter.js --write` (`--check` is in the gate; a hand edit or a stale value fails it). `$source` in the file says from which source (sha256) and where each id lives.
