@@ -24,7 +24,13 @@
     "furniture_catalog",
     "workflow",
     "invariants",
-    "_archetype_mismatch_report"
+    "_archetype_mismatch_report",
+    "$source",
+    "entities",
+    "shared_uncertainty_classes",
+    "contexts",
+    "actions",
+    "modifiers"
   ],
   "additionalProperties": false,
   "properties": {
@@ -751,11 +757,7 @@
             },
             "id": {"type": "string", "description": "Charter: the record's stable typed id."}
           },
-          "required": [
-            "ui_badge_label",
-            "ui_badge_icon",
-            "quote_badge_key"
-          ]
+          "required": ["ui_badge_label", "ui_badge_icon", "quote_badge_key", "id"]
         }
       },
       "additionalProperties": false
@@ -1248,7 +1250,8 @@
             "applicable_categories",
             "is_logistic",
             "ui_phrase",
-            "negation_phrase"
+            "negation_phrase",
+            "id"
           ]
         }
       },
@@ -1297,12 +1300,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "display_name",
-          "icon",
-          "group_ids"
-        ],
+        "required": ["id", "display_name", "icon", "group_ids", "charter_id"],
         "properties": {
           "id": {
             "type": "string"
@@ -1327,12 +1325,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "category_id",
-          "display_name",
-          "icon"
-        ],
+        "required": ["id", "category_id", "display_name", "icon", "charter_id"],
         "properties": {
           "id": {
             "type": "string"
@@ -1384,7 +1377,16 @@
           "ui_taxonomy",
           "operational_metrics",
           "confidence_strategy",
-          "verb_natural"
+          "verb_natural",
+          "charter_id",
+          "entity_id",
+          "action_id",
+          "modifier_ids",
+          "complexity_profile",
+          "uncertainty_profile",
+          "confidence_policy",
+          "confidence_gate",
+          "recovery_affordances"
         ],
         "properties": {
           "id": {
@@ -1824,7 +1826,15 @@
           },
           "required": [
             "financial_engine",
-            "confidence_strategy"
+            "confidence_strategy",
+            "charter_id",
+            "entity_id",
+            "action_id",
+            "modifier_ids",
+            "uncertainty_profile",
+            "confidence_policy",
+            "confidence_gate",
+            "recovery_affordances"
           ]
         }
       },
@@ -1910,9 +1920,7 @@
                   "affects": {"$ref": "#/$defs/affects"},
                   "evidence": {"type": "string"}
                 },
-                "required": [
-                  "label"
-                ]
+                "required": ["label", "id", "affects"]
               }
             },
             "purpose": {
@@ -1977,22 +1985,9 @@
             },
             "id": {"type": "string", "description": "Charter: the question's stable id, q.<module key>."},
             "entity_scope": {"$ref": "#/$defs/entity_scope"},
-            "depends_on": {
-              "description": "Charter spelling is [{question_id, option_id}]; the legacy {module key: option label} is still accepted until every consumer has moved (stage 1 of the carry rollout).",
-              "oneOf": [
-                {"$ref": "#/$defs/depends_on_pairs"},
-                {
-                  "type": "object",
-                  "additionalProperties": {"type": "string"},
-                  "description": "Legacy spelling: {module key: option label}."
-                }
-              ]
-            }
+            "depends_on": {"$ref": "#/$defs/depends_on_pairs"}
           },
-          "required": [
-            "question",
-            "type"
-          ]
+          "required": ["question", "type", "id", "entity_scope", "depends_on"]
         }
       }
     },
@@ -2001,14 +1996,7 @@
       "patternProperties": {
         "^MAT-": {
           "type": "object",
-          "required": [
-            "sku",
-            "name",
-            "price",
-            "markup_percent",
-            "unit",
-            "category"
-          ],
+          "required": ["sku", "name", "price", "markup_percent", "unit", "category", "id"],
           "properties": {
             "sku": {
               "type": "string"
@@ -2044,14 +2032,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "display_name",
-          "brand",
-          "type",
-          "minutes",
-          "flat_fee",
-          "sku"
-        ],
+        "required": ["display_name", "brand", "type", "minutes", "flat_fee", "sku", "id"],
         "properties": {
           "display_name": {
             "type": "string"
@@ -2327,7 +2308,8 @@
           "default_routing_strategy",
           "default_confidence_strategy",
           "typical_actions",
-          "member_group_ids"
+          "member_group_ids",
+          "id"
         ],
         "properties": {
           "display_name": {
@@ -2521,15 +2503,14 @@
                   "affects": {"$ref": "#/$defs/affects"},
                   "evidence": {"type": "string"}
                 },
-                "required": [
-                  "label"
-                ]
+                "required": ["label", "id", "affects"]
               }
             },
             "id": {"type": "string", "description": "Charter: the question's stable id, q.<module key>."},
             "entity_scope": {"$ref": "#/$defs/entity_scope"},
             "depends_on": {"$ref": "#/$defs/depends_on_pairs"}
-          }
+          },
+          "required": ["id", "entity_scope", "depends_on"]
         }
       },
       "required": [
