@@ -123,7 +123,7 @@ for (const [text, note] of [
 console.log('\n=== Real pricing computation, using the correct S.intent._groupId pattern (confirmed via direct trace of computeQuoteFromState/line 8238 -- NOT a dynDef property passed in directly, a real mistake caught while building this test) ===');
 const PRICING_FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const pricingSandbox = { DB, window: { DB }, console };

@@ -64,7 +64,7 @@ const findFn = engineAwareFindFn(_cherryPickFn);
 // this test exercises the identical real call graph.
 const FNS = [
     'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'mathFurnitureAssembly', '_resolveIntakeChain', '_isModVisible',
     'resolveGroupFromIntent', 'collectBookingContext_catalog',

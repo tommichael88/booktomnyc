@@ -57,13 +57,17 @@ console.log('\n1. R-CONF-COMPLEXITY, by construction: the confidence functions n
   check('all four confidence functions are found in the engine modules: ' + found.map(x => x[0] + ' (' + x[1] + ')').join(', '), found.every(x => x[2]), found.filter(x => !x[2]).map(x => x[0]).join(', '));
   const bad = found.filter(x => x[2] && COMPLEXITY.test(x[2])).map(x => x[0] + ': ' + x[2].match(COMPLEXITY)[0]);
   check('and none of them reads a complexity input', bad.length === 0, bad.join('; '));
-  check('the detector can fail: the same pattern finds a complexity input in a function that has one (deriveComplexityTier)', COMPLEXITY.test(functionBody(CODE['pricing_engine.js'], 'deriveComplexityTier') || ''));
+  // T182: deriveComplexityTier is gone (the tier is no longer read from minutes, #229); computeArchetypeQuote reads global_rules.complexity_tiers for its rate, so it is the function that has a complexity input.
+  check('the detector can fail: the same pattern finds a complexity input in a function that has one (computeArchetypeQuote)', COMPLEXITY.test(functionBody(CODE['pricing_engine.js'], 'computeArchetypeQuote') || ''));
 }
 
 console.log('\n2-3. R-CONF-COMPLEXITY, by behaviour: same evidence, complexity tiers redrawn');
-const redrawn = (() => { const db = clone(DB0); const t = db.global_rules.complexity_tiers; const names = Object.keys(t);
-  // every boundary moved: all minutes become routine, except nothing is skilled or specialized -- the tier of most services changes
-  names.forEach((k, i) => { t[k].min_minutes = i === 0 ? 0 : 100000 + i; t[k].max_minutes = i === 0 ? 100000 : null; }); return db; })();
+const redrawn = (() => { const db = clone(DB0);
+  // T182: the skill tier is the tier an entity DECLARES (it used to be read from the minutes, and this check redrew the minute boundaries). Redrawn now means every declared tier is routine: the skill
+  // tier of every service that declared another one changes, with the evidence the same.
+  for (const s of db.services) if (s.operational_metrics) s.operational_metrics.complexity_tier = 'routine';
+  for (const d of Object.values(db.dynamic_services || {})) if (d.operational_metrics) d.operational_metrics.complexity_tier = 'routine';
+  return db; })();
 function complexitySweep(patch) {
   const a = load(clone(DB0), patch), b = load(redrawn, patch);
   const o = { services: 0, tierMoved: 0, confMoved: [], errors: [] };

@@ -53,8 +53,11 @@ console.log('=== The real, exact, reported scenario: prehung_interior_door_insta
         urgency: 'Urgent - today or tomorrow',
     };
     const q = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers, qty: 1 });
-    check('laborEstimate is the real, correct, unchanged $225 (this is a display fix, not a pricing change)', q.laborEstimate === 225);
-    check('totalMin/tierRate are still genuinely, correctly computed (745min baseline + 20 from answers = 765, $110/hr specialized)', q.totalMin === 765 && q.tierRate === 110);
+    // T182 (#229, #234; the Operator, 2026-10-17 02:30 NY, "prehung door pricing needs to be raised to $250 baseline"): the baseline is $250 for 180 to 240 minutes of labor (it was $150 for a range of 475 to 925
+    // minutes), the procurement answer's 45 minutes are priced as time ($55), the per-visit fees keep their fees ($25 + $50), and the tier is the one the service declares (skilled, $85), not one read from the
+    // minutes ($110). The display fix this test is about is unchanged: the service states "project estimate" outright, so its time stays hidden.
+    check('laborEstimate is the baseline $250 + $55 of priced procurement time + $75 of per-visit fees = $380 (the T182 price; this test is about the display, hideTime)', q.laborEstimate === 380, 'got ' + q.laborEstimate);
+    check('totalMin/tierRate are genuinely computed (210min baseline + 65 from answers = 275, the declared skilled tier at $85/hr; no longer read from the minutes)', q.totalMin === 275 && q.tierRate === 85, `${q.totalMin} / ${q.tierRate}`);
     check('hideTime is now true -- the misleading time/rate breakdown will not render', q.hideTime === true);
 }
 

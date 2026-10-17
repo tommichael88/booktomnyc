@@ -1440,7 +1440,7 @@ assertRule(
     'applyLiveConfidenceEscalation',
     'applyPricingFormula',
     'computeArchetypeQuote',
-    'deriveComplexityTier',
+    'resolveSkillTier','priceAddedTime','splitAddedTimeDollars',
     'resolveServiceCheckoutStateKey',
     'sqTagLabel',
     'computeUnifiedQuote',
@@ -1507,19 +1507,27 @@ assertRule(
 
         const d1 = oneMod.laborEstimate - noMods.laborEstimate;
         const d2 = twoMods.laborEstimate - noMods.laborEstimate;
+        // T182 (#229, #234): on a flat-rate service a per-unit modifier's price is its MINUTES at the SSOT's time price (the minutes of all the answers round together to the
+        // nearest round_to dollars); a per-unit modifier with no minutes keeps its fee. The expectation is restated here from the SSOT's own numbers, not asked of the engine.
+        const tp = btnycData.global_rules.pricing_engines.flat_rate.time_pricing;
+        const timed = svc.financial_engine.type === 'flat_rate' && !!tp;
+        const priced = (mods) => timed
+          ? Math.round(mods.reduce((a, m) => a + (m.minutes > 0 ? m.minutes : 0), 0) * tp.rate_per_hour / 60 / tp.round_to) * tp.round_to + mods.reduce((a, m) => a + (m.minutes > 0 ? 0 : m.fee), 0)
+          : mods.reduce((a, m) => a + m.fee, 0);
+        const want1 = priced([wallMod]), want2 = priced([wallMod, weightMod]);
 
         assertRule('R-PRICE-REACHES',
-          d1 === wallMod.fee,
-          `one modifier (wall_type) adds exactly its declared fee ($${wallMod.fee}) to laborEstimate`,
+          d1 === want1,
+          `one modifier (wall_type) adds exactly its declared price ($${want1}: ${timed ? wallMod.minutes + ' min at the flat-rate time price' : 'its fee'}) to laborEstimate`,
           `base=${noMods.laborEstimate} +1=${oneMod.laborEstimate} delta=${d1}`);
 
         assertRule('R-PRICE-REACHES',
-          d2 === wallMod.fee + weightMod.fee,
-          `two modifiers sum exactly ($${wallMod.fee} + $${weightMod.fee}) into laborEstimate`,
-          `base=${noMods.laborEstimate} +2=${twoMods.laborEstimate} delta=${d2} expected=${wallMod.fee + weightMod.fee}`);
+          d2 === want2,
+          `two modifiers sum exactly (${timed ? wallMod.minutes + ' + ' + weightMod.minutes + ' min' : '$' + wallMod.fee + ' + $' + weightMod.fee}) into laborEstimate`,
+          `base=${noMods.laborEstimate} +2=${twoMods.laborEstimate} delta=${d2} expected=${want2}`);
 
-        assertDeepEqual('R-PRICE-REACHES', d2, wallMod.fee + weightMod.fee,
-          'sum of modifier deltas deep-equals sum of declared modifier fees (no swallowed variables)');
+        assertDeepEqual('R-PRICE-REACHES', d2, want2,
+          'sum of modifier deltas deep-equals the sum of the declared modifier prices (no swallowed variables)');
 
         const breakdownSources = (twoMods.feeBreakdown || []).map(b => b.source);
         assertRule('R-PRICE-REACHES',
@@ -1985,7 +1993,7 @@ assertRule(
     'resolveServiceCheckoutStateKey',
     'applyPricingFormula',
     'applyLiveConfidenceEscalation',
-    'deriveComplexityTier',
+    'resolveSkillTier','priceAddedTime','splitAddedTimeDollars',
     'computeArchetypeQuote',
     'sqTagLabel',
   ];
@@ -2256,7 +2264,7 @@ assertRule(
     'resolveServiceCheckoutStateKey',
     'applyPricingFormula',
     'applyLiveConfidenceEscalation',
-    'deriveComplexityTier',
+    'resolveSkillTier','priceAddedTime','splitAddedTimeDollars',
     'computeArchetypeQuote',
     'sqTagLabel',
   ];
@@ -2455,7 +2463,7 @@ const expectedModuleAPIs = {
   'pricing_engine.js': [
     'resolveDynamicService', 'resolveEngineKey', 'entityHasOwnQtyQuestion',
     'resolveServiceBadge', 'resolveServiceBadgeKey', 'resolveBaseConfidenceStrategy',
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier',
     'applyPricingFormula', 'getServiceProfile',
     'formatServicePrice', 'tagValidForCategory', 'isDiagnosticService',
     'isLogisticTag', 'sqTagLabel', 'sqTagFeeImpact', 'mathFurnitureAssembly',
@@ -2541,7 +2549,7 @@ const safeSignatureSamples = {
     { name: 'resolveEngineKey', args: ["'hourly'"], expect: 'string' },
     { name: 'sqTagLabel', args: ['null', "'#brick_wall'"], expect: 'string' },
     { name: 'isLogisticTag', args: ["'#brick_wall'"], expect: 'boolean' },
-    { name: 'deriveComplexityTier', args: ['30', 'null', 'null'], expect: 'string' },
+    { name: 'resolveSkillTier', args: ["'skilled'", 'null'], expect: 'string' },
   ],
   'nlp_engine.js': [
     { name: 'extractQty', args: ["'fix 5 tiles'"], expect: 'number' },

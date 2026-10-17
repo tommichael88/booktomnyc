@@ -60,7 +60,7 @@ console.log('\n=== The real, complete, upgraded export -- tested end to end agai
 const TRACE_FNS = ['_trace', '_traceStart', '_traceExport', '_traceToggle', '_traceNarrative', '_describeInteractionTarget'];
 const PRICING_FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const sandbox = { DB, window: { DB, _traceEnabled: false, _traceLog: [], _traceInput: null }, console };

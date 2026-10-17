@@ -73,7 +73,7 @@ const FNS = ['initNlpSets', 'isServiceVerb', 'extractObject', 'extractQty', 'ext
     'detectIntentNLP', 'detectTagsNLP', 'resolveGroupFromIntent', 
     'resolveDynamicService', 'entityHasOwnQtyQuestion', 'resolveEngineKey',
     'syncTagSynthesizedAnswers', '_isModVisible', 'resolveBaseConfidenceStrategy',
-    'resolveServiceCheckoutStateKey', 'applyLiveConfidenceEscalation', 'deriveComplexityTier',
+    'resolveServiceCheckoutStateKey', 'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars',
     'applyPricingFormula', 'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const sandbox = { DB, window: { DB }, console };

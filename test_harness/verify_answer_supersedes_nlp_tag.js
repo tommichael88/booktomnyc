@@ -51,7 +51,7 @@ function _cherryPickFn(name) {
     return null;
 }
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote'];
 const code = FNS.map(findFn).filter(Boolean).join('\n\n');

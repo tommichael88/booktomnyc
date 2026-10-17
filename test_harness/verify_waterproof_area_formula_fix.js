@@ -50,7 +50,7 @@ function findFn(name) {
 
 const FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const code = FNS.map(findFn).join('\n\n');

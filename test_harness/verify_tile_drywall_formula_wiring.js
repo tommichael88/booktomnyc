@@ -127,7 +127,7 @@ console.log('\n=== End-to-end: the real, exact customer scenario from the origin
 console.log('\n=== Hand-verified, real end-to-end pricing math for a tile job with grout + water damage ===');
 {
     const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-        'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+        'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
         'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
         'resolveServiceBadge', 'computeUnifiedQuote'];
     const code = FNS.map(findFn).join('\n\n');

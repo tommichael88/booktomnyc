@@ -74,7 +74,7 @@ const findFn = engineAwareFindFn(_cherryPickFn);
 
 const PRICING_FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const sandbox = { DB, window: { DB }, console };
@@ -102,16 +102,16 @@ const screenshotAnswers = {
 };
 // R-GOVERN-GOODHART: a sandbox that omits a function the real code calls measures something else. This test once asserted $925 here and passed ONLY because
 // its hand-picked function list left out entityHasOwnQtyQuestion (so the guard below did not exist in the sandbox). In the real browser -- original file and
-// current build alike -- this scenario prices at $245. The sandbox now loads the engine modules whole (the T136 `_engine.js` loader), and its fidelity is asserted.
+// current build alike -- this scenario prices at one unit's price ($245 until T182; $235 since, when the answers' time rather than their fees prices the job: $145 of baseline and per-visit fees + $90 for the 75 minutes the answers add, at the flat-rate $70/h). The sandbox now loads the engine modules whole (the T136 `_engine.js` loader), and its fidelity is asserted.
 check('the sandbox is FAITHFUL: it contains the quantity guard the product has (entityHasOwnQtyQuestion)', typeof sandbox.entityHasOwnQtyQuestion === 'function');
 const q5 = quoteFor(wallSvc, screenshotAnswers, 5).laborCalc, q1 = quoteFor(wallSvc, screenshotAnswers, 1).laborCalc;
-check(`documented contract (the quantity guard, brief section 3.6): wall_hole_or_crack_repair owns a dedicated quantity question (item_count_template), so an OUTER quantity of 5 does not multiply it -- $${q5} at qty 5 equals $${q1} at qty 1 ($245), as in the real browser. (The $925 once asserted here was the pre-guard T118 contract.)`,
-    sandbox.entityHasOwnQtyQuestion(wallSvc) === true && q5 === q1 && q5 === 245);
+check(`documented contract (the quantity guard, brief section 3.6): wall_hole_or_crack_repair owns a dedicated quantity question (item_count_template), so an OUTER quantity of 5 does not multiply it -- $${q5} at qty 5 equals $${q1} at qty 1 ($235 under the T182 time model), as in the real browser. (The $925 once asserted here was the pre-guard T118 contract.)`,
+    sandbox.entityHasOwnQtyQuestion(wallSvc) === true && q5 === q1 && q5 === 235);
 // T147: a single-unit service (per_unit_answers_vary) prices ONE unit by design, so the contrast must be a BATCHED service that owns no count question and really scales
 const plain = DB.services.find(s => s.per_unit_answers_vary !== true && s.financial_engine && s.financial_engine.base_price > 0 && !sandbox.entityHasOwnQtyQuestion(s) && quoteFor(s, {}, 3).laborCalc > quoteFor(s, {}, 1).laborCalc);
 check('contrast (so the check above is not vacuous): for a service WITHOUT its own quantity question the outer quantity still multiplies', !!plain && quoteFor(plain, {}, 3).laborCalc > quoteFor(plain, {}, 1).laborCalc, { got: plain && [plain.id, quoteFor(plain, {}, 1).laborCalc, quoteFor(plain, {}, 3).laborCalc] });
-check('the same scenario at qty=1 correctly produces $245 (the real, per-unit price)',
-    quoteFor(wallSvc, screenshotAnswers, 1).laborCalc === 245);
+check('the same scenario at qty=1 correctly produces $235 (the real, per-unit price: $145 of baseline and per-visit fees + $90 for the 75 minutes its answers add, at the flat-rate $70/h)',
+    quoteFor(wallSvc, screenshotAnswers, 1).laborCalc === 235);
 
 console.log('\n=== computeArchetypeQuote now genuinely matches computeUnifiedQuote across real qty values (was previously silently wrong for ALL qty>1 formula cases) ===');
 const knob = DB.services.find(s => s.id === 'cabinet_knob_or_pull_install');

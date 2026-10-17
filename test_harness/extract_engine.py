@@ -63,7 +63,7 @@ PUBLIC_API = [
     "applyPricingFormula",
     "resolveBaseConfidenceStrategy",
     "resolveServiceCheckoutStateKey",
-    "deriveComplexityTier",
+    "resolveSkillTier",           # T182: replaced deriveComplexityTier (the tier is no longer read from minutes, #229)
     "applyLiveConfidenceEscalation",
     "mathFurnitureAssembly",
     "buildCheckoutStateModel",   # T150: was resolveCheckoutState; renamed because it never resolved anything

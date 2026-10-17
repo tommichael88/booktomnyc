@@ -138,9 +138,9 @@ check('every tag that moves a price on the production path has `answers` (the an
 check('...and the channel is real: at least one tag moves a price through its answers (a leg with no mover proves nothing)', movers.length > 0, movers.length + ' movers');
 
 console.log('\n5. Non-vacuity: the engine is mutated and the sweeps must go red');
-const LOOP_NEEDLE = 'const complexityTier = deriveComplexityTier(totalMin, answerOverrideTier, exactTier);';
+const LOOP_NEEDLE = 'const complexityTier = resolveSkillTier(exactTier, answerOverrideTier);'; // T182: was deriveComplexityTier(totalMin, answerOverrideTier, exactTier)
 const LOOP_BACK = 'let _worst = answerOverrideTier; for (const tid of activeTagIds) { const o = smartTags[tid]?.escalate_complexity; if (o && (TIER_RANK[o] || 0) > (TIER_RANK[_worst] || 0)) _worst = o; } ' +
-  'const complexityTier = deriveComplexityTier(totalMin, _worst, exactTier);';
+  'const complexityTier = resolveSkillTier(exactTier, _worst);';
 const m1src = editOnce(SRC['pricing_engine.js'], LOOP_NEEDLE, LOOP_BACK);
 check('M1 applies exactly once (the needle is in the engine exactly once)', m1src !== null, 'needle count != 1');
 if (m1src !== null) {

@@ -75,8 +75,12 @@ console.log('=== Bug 1: the misleading +Xmin label now respects pricing_archetyp
         svc.financial_engine.pricing_archetype === 'flat_simple');
     const withoutAnswer = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers: { existing_frame: 'Yes' }, qty: 1 });
     const withAnswer = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers: { existing_frame: 'Yes', client_supplying_door: 'No, I need you to procure it' }, qty: 1 });
-    check('confirms the real bug: this answer genuinely has zero price effect for this service',
-        withoutAnswer.laborEstimate === withAnswer.laborEstimate);
+    // T182 (#229, #234): the reported case was an answer that carried 45 minutes and no fee, so its "+45 min" label sat next to an unchanged price. The time model closes it from the other
+    // side: on a flat-rate service the minutes an answer adds ARE its price (45 min at the SSOT's $70/h, rounded to $5 = $55), so the label is no longer misleading -- it is the reason for the price.
+    const tpCfg = DB.global_rules.pricing_engines.flat_rate.time_pricing, ansMin = DB.global_rules.modifiers.client_supplying_door_no_i_need_you_to_procure_it.minutes;
+    const ansPrice = Math.round(ansMin * tpCfg.rate_per_hour / 60 / tpCfg.round_to) * tpCfg.round_to;
+    check('this answer (45 min, fee $0) no longer has zero price effect: its minutes are priced at the flat-rate time price, so the "+Xmin" label explains a real price change (the reported case, closed by the time model)',
+        ansMin === 45 && ansPrice > 0 && withAnswer.timePriced === true && withAnswer.laborEstimate === withoutAnswer.laborEstimate + ansPrice);
 
     // (Two source-shape checks on the retired legacy curated-intake builder -- `minsAffectPrice` and its archetype gate -- were
     // removed with that builder. The customer-facing intent, "no misleading +Xmin label", is verified on the LIVE card, in a real

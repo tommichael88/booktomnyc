@@ -44,7 +44,7 @@ function _cherryPickFn(name) {
 }
 
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey',
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'computeUnifiedQuote', 'sqTagLabel', 'mathFurnitureAssembly', 'buildCheckoutStateModel',
     '_resolveIntakeChain', 'orch_compose_intake_chain'];
 const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };

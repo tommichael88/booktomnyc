@@ -55,7 +55,7 @@ const findFn = engineAwareFindFn(_cherryPickFn);
 
 const FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const code = FNS.map(findFn).join('\n\n');
@@ -103,8 +103,10 @@ const door = testService('door_repair_impact_damage', {
 });
 check(`door_repair_impact_damage: Small ($${door.small}) < Medium ($${door.medium}) < Large ($${door.large}) -- was previously flat regardless of answer`,
     door.small < door.medium && door.medium < door.large);
+// T182 (#229, #234): the damage-size answers add TIME (Medium 15 min, Large 25 min) and the time prices the job at $70 an hour rounded to $5 ($17.50 -> $20, $29.17 -> $30), so the exact figures
+// are 115 / 135 / 145 and were 115 / 130 / 150 (authored fees $15 and $35); the ordering this test is about is unchanged. Listed in archive/golden_change_T182_time_model.md.
 check('door_repair_impact_damage: exact, expected values',
-    door.small === 115 && door.medium === 130 && door.large === 150);
+    door.small === 115 && door.medium === 135 && door.large === 145);
 
 const wall = testService('wall_hole_or_crack_repair', {
     wall_type: 'Drywall (standard)',
@@ -113,8 +115,8 @@ const wall = testService('wall_hole_or_crack_repair', {
 });
 check(`wall_hole_or_crack_repair: Small ($${wall.small}) < Medium ($${wall.medium}) < Large ($${wall.large}) -- was previously flat regardless of answer`,
     wall.small < wall.medium && wall.medium < wall.large);
-check('wall_hole_or_crack_repair: exact, expected values',
-    wall.small === 70 && wall.medium === 85 && wall.large === 105);
+check('wall_hole_or_crack_repair: exact, expected values (T182: 70 / 90 / 100, were 70 / 85 / 105; see door_repair_impact_damage above)',
+    wall.small === 70 && wall.medium === 90 && wall.large === 100);
 
 console.log(`\n[dmg_size wiring fix] ${pass} passed, ${fail} failed (of ${pass + fail} checks)\n`);
 process.exit(fail > 0 ? 1 : 0);

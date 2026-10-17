@@ -72,7 +72,7 @@ check('pax_cabinet_count has no open-ended range label like "2-3" left in the co
 console.log('\n=== Hand-verified, real end-to-end math for the exact case the team flagged (6 cabinet frames) ===');
 {
     const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-        'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+        'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
         'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
         'resolveServiceBadge', 'computeUnifiedQuote'];
     const code = FNS.map(findFn).join('\n\n');

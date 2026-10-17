@@ -2,6 +2,15 @@
 
 Written for a fresh Claude session. It records what is true of the repository **as observed**, not what was intended. It is not a victory report. Where a claim was not run or read, it says so.
 
+## 0h. T182 (2/n) update (2026-10-17, after your 02:30 NY message): read this first; it supersedes §0f's gate-baseline line
+
+- **The time model is built (#229, #234 resolved).** On a flat-rate service the card shows the authored baseline ("From $X · materials included"); the minutes the client's answers add are priced at `global_rules.pricing_engines.flat_rate.time_pricing` ($70 an hour, rounded to $5); 30 or more added minutes make a project estimate that shows its time; per-visit modifiers keep their fee; `resolveSkillTier(declaredTier, answerOverrideTier)` replaced `deriveComplexityTier`, so a tier is never read from minutes. Prehung door base is $250. Every changed number, by entity, is in `archive/golden_change_T182_time_model.md` (526 of 2,988 golden-master points; no rise outside flat-rate services); the register rows are the "Autonomy decisions (T182)" table in `PENDING_DECISIONS.md`.
+- **Judgement calls to know about (your "use your judgement"):** the count and overflow minutes of `plaster_wall_repair`, `squeaky_floor_repair` and nine overflow rates were set to carry the prices the owner had already decided (rule #80 and the v9.6 10% rule), because the T180 measurement that said count answers change nothing was wrong; a stepladder (30 minutes) alone makes a project estimate; the heavy-weight and extension-ladder answers keep their authored minutes (the lever is in #229's table); a dynamic service's declared `specialized` tier is held (#239); the six tier minute-band fields are unread and not yet deleted (#240).
+- **#230 is untouched** (all 20 candidates stay; open for your later decision).
+- **Edit path (unchanged):** source first; `ssot_patch.js`; `carry_charter.js --write`; `splice_compiled.py btnyc.json --write`; `report.js --write`; `publish.js`. `time_pricing` is required by the strict schema; the first push of this change uses a schema that makes it optional (see T182 3/n for the three-step order).
+- **Tests:** any test that cuts engine functions out of `qr.html` by name needs `resolveSkillTier`, `priceAddedTime`, `splitAddedTimeDollars` beside `computeUnifiedQuote`. `verify_time_model.js` is the detector for the model; `verify_complexity_axes.js` now enforces `R-COMPLEX-VOLUME`.
+- **The next gate's baseline** is the T182 gate recorded in TIMELINE T182 (3/n) (golden master `archive/golden_master_T182.json`).
+
 ## 0g. T182 (1/n) update (2026-10-17 02:33 NY): the amended Charter is installed
 
 - `PROJECT_CHARTER.html` is the edition you amended in the Project (the chip-terminology amendment: "chip" means a smart-tag chip only; builder choices are "answers"; two glossary entries; no Rule changed). It is byte for byte your attached file. Records: #236 (updated), TIMELINE T182 (1/n). Read §0f next.

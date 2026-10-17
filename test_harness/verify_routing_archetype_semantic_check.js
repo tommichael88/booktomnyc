@@ -52,7 +52,7 @@ function findConstSets() {
 }
 
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'computeUnifiedQuote', 'computeArchetypeQuote', 'mathFurnitureAssembly', 'sqTagLabel', 'mathFurnitureAssembly', 'readRoutePath',
     'evaluateInvariant', 'describeInvariantFailure', 'checkRoutingArchetypeConsistency',
     'validateRoute', 'collectBookingContext_catalog', 'collectBookingContext_freeText',

@@ -40,7 +40,7 @@ function _cherryPickFn(name) {
 }
 
 const code = [
-    findFn('resolveDynamicService'), findFn('resolveBaseConfidenceStrategy'), findFn('resolveServiceCheckoutStateKey'), findFn('applyLiveConfidenceEscalation'), findFn('deriveComplexityTier'), findFn('applyPricingFormula'),
+    findFn('resolveDynamicService'), findFn('resolveBaseConfidenceStrategy'), findFn('resolveServiceCheckoutStateKey'), findFn('applyLiveConfidenceEscalation'), findFn('resolveSkillTier'), findFn('priceAddedTime'), findFn('splitAddedTimeDollars'), findFn('applyPricingFormula'),
     findFn('buildCheckoutStateModel'), findFn('sqTagLabel'), findFn('tagValidForCategory'),
     findFn('resolveEngineKey'), findFn('resolveServiceBadge'), findFn('mathFurnitureAssembly'),
     findFn('computeArchetypeQuote'), findFn('computeUnifiedQuote'),

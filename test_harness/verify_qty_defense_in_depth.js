@@ -44,7 +44,7 @@ function _cherryPickFn(name) {
 
 const PRICING_FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'entityHasOwnQtyQuestion', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const sandbox = { DB, window: { DB }, console };

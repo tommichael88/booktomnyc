@@ -269,21 +269,29 @@ function resolveConfidence(evidence, DB) {
             };
         }
 
-function deriveComplexityTier(totalMinutes, answerOverrideTier, exactTier) {
-            const tiers = DB.global_rules?.complexity_tiers || {};
-            let durationTier = 'routine';
-            for (const [key, def] of Object.entries(tiers)) {
-                const min = def.min_minutes ?? 0;
-                const max = def.max_minutes;
-                if (totalMinutes >= min && (max == null || totalMinutes <= max)) {
-                    durationTier = key;
-                    break;
-                }
-            }
-            let result = durationTier;
-            if (exactTier && (TIER_RANK[exactTier] || 0) > (TIER_RANK[result] || 0)) result = exactTier;
+function resolveSkillTier(declaredTier, answerOverrideTier) {
+            let result = (declaredTier && TIER_RANK[declaredTier] !== undefined) ? declaredTier : 'skilled';
             if (answerOverrideTier && (TIER_RANK[answerOverrideTier] || 0) > (TIER_RANK[result] || 0)) result = answerOverrideTier;
             return result;
+        }
+
+function priceAddedTime(minutes, timePricing) {
+            const tp = timePricing;
+            if (!tp || !(minutes > 0) || !(tp.rate_per_hour > 0)) return 0;
+            const step = tp.round_to > 0 ? tp.round_to : 1;
+            return Math.round((minutes * tp.rate_per_hour / 60) / step) * step;
+        }
+
+function splitAddedTimeDollars(lines, totalDollars) {
+            const mins = lines.map(l => l.minutes || 0);
+            const sum = mins.reduce((a, b) => a + b, 0);
+            if (!(sum > 0) || !(totalDollars > 0)) return mins.map(() => 0);
+            const exact = mins.map(m => totalDollars * m / sum);
+            const out = exact.map(Math.floor);
+            let left = totalDollars - out.reduce((a, b) => a + b, 0);
+            const order = exact.map((x, i) => ({ i, r: x - Math.floor(x) })).sort((a, b) => b.r - a.r || a.i - b.i);
+            for (let k = 0; left > 0 && k < order.length; k++, left--) out[order[k].i]++;
+            return out;
         }
 
 function applyPricingFormula(formulaId, answers, qty, svc = null) {
@@ -658,7 +666,7 @@ function resolveServiceCheckoutStateKey(svc, dynDef) {
             };
         }
 
-function buildCheckoutStateModel(checkoutStateKey, laborTotal, svc) {
+function buildCheckoutStateModel(checkoutStateKey, laborTotal, svc, timeSwitched = false) {
             const cs = DB.checkout_states?.[checkoutStateKey] || {};
             const discs = DB.meta?.estimate_disclaimers || {};
             const isDiag = checkoutStateKey === 'diagnostic';
@@ -686,14 +694,14 @@ function buildCheckoutStateModel(checkoutStateKey, laborTotal, svc) {
             // 'flat_fee'. Simplified below, but if diagnostic was SUPPOSED to
             // map to a distinct disclaimer key, that intent is being silently
             // lost and this line is the place to fix it.
-            const discKey = svcDiscKey || (isProject ? 'project_based' : 'flat_fee');
+            const discKey = (timeSwitched && isProject) ? 'project_based' : (svcDiscKey || (isProject ? 'project_based' : 'flat_fee'));
 
             const disclaimerText = discs[discKey] || cs.ui_message || FALLBACKS.disclaimer_text;
             return {
                 btnText,
                 disclaimerText,
                 uiMessage: cs.ui_message || '',
-                hideTime: cs.hide_time || false,
+                hideTime: (timeSwitched && isProject) ? false : (cs.hide_time || false),
                 hideMaterials: cs.hide_materials || false,
                 isDiag,
                 isProject
@@ -896,6 +904,19 @@ function computeUnifiedQuote(ctx) {
             // never resolve to anything and this branch was silently dead).
             const formulaResult = effectiveFormulaId ? applyPricingFormula(effectiveFormulaId, answers, qty, svc) : null;
 
+            // T182 (PENDING_DECISIONS #229, #234; the Operator's direction of 2026-10-16 23:34 NY, confirmed 2026-10-17 02:30 NY): on a FLAT-RATE service the client's answers add TIME and the time
+            // prices the job. The flat price is the authored baseline; the minutes the answers add are priced at global_rules.pricing_engines.flat_rate.time_pricing.rate_per_hour, rounded to
+            // round_to dollars; at project_after_minutes of added work the quote is a project estimate that shows its time. `timePriced` says whether this quote is priced that way; it is not
+            // when the data authors no time_pricing, when the service is not flat-rate, when a formula that is not named in time_pricing.priced_formulas prices the job (its own fee IS the
+            // price), or when the archetype calculator owns the price (below). A per-visit modifier keeps its fee (the visit, not the work, costs it) and is not priced twice. A per-unit modifier
+            // that authors a fee and NO minutes keeps its fee: there is no time to price, and dropping it would price the answer at nothing. The data test holds that no such modifier is reachable
+            // from a flat service today (verify_time_model.js).
+            const _timeCfg = DB.global_rules?.pricing_engines?.flat_rate?.time_pricing || null;
+            const _archetypeOwnsPrice = !!(_archetypeResult && (_pricingArchetype === 'tiered_per_unit' || _pricingArchetype === 'formula'));
+            const timePriced = !!_timeCfg && pricingType === 'flat_rate' && !_archetypeOwnsPrice &&
+                (!formulaResult || (_timeCfg.priced_formulas || []).includes(effectiveFormulaId));
+            let timeMin = 0; // the per-unit minutes the answers, the formula and the context add, priced as time
+            const timeLines = []; // the breakdown lines that carry timeMin, so the dollars can be shared out over them once the quantity is known
 
             let extraFee = 0,
                 extraMin = 0;
@@ -927,22 +948,38 @@ function computeUnifiedQuote(ctx) {
             // applied via activeTagIds (detTagIds) — only the override's
             // own dollar/minute adjustment was silently lost on this NLP
             // free-text path specifically.
-            extraFee += ctxAdjFee;
             extraMin += ctxAdjMin;
-            if (ctxAdjFee) feeBreakdown.push({
-                source: 'contextual_override',
-                label: 'Context-specific adjustment',
-                fee: ctxAdjFee
-            });
+            if (timePriced && ctxAdjMin > 0) {
+                // T182: the override's TIME prices the job; its authored fee is the figure that time was written to match, not a second charge.
+                timeMin += ctxAdjMin;
+                const _line = { source: 'contextual_override', label: 'Context-specific adjustment', fee: 0, minutes: ctxAdjMin, timePriced: true };
+                feeBreakdown.push(_line);
+                timeLines.push(_line);
+            } else {
+                extraFee += ctxAdjFee;
+                if (ctxAdjFee) feeBreakdown.push({
+                    source: 'contextual_override',
+                    label: 'Context-specific adjustment',
+                    fee: ctxAdjFee
+                });
+            }
 
             if (formulaResult) {
-                extraFee += formulaResult.extraFee;
                 extraMin += formulaResult.extraMin;
-                if (formulaResult.extraFee) feeBreakdown.push({
-                    source: 'formula',
-                    label: 'Pricing formula adjustment',
-                    fee: formulaResult.extraFee
-                });
+                if (timePriced && formulaResult.extraMin > 0) {
+                    // T182: a named formula's minutes price the job in time (its band modifiers author the minutes beside the fee); the formula's fee is not added on top.
+                    timeMin += formulaResult.extraMin;
+                    const _line = { source: 'formula', label: 'Pricing formula adjustment', fee: 0, minutes: formulaResult.extraMin, timePriced: true };
+                    feeBreakdown.push(_line);
+                    timeLines.push(_line);
+                } else {
+                    extraFee += formulaResult.extraFee;
+                    if (formulaResult.extraFee) feeBreakdown.push({
+                        source: 'formula',
+                        label: 'Pricing formula adjustment',
+                        fee: formulaResult.extraFee
+                    });
+                }
             } else {
                 for (const tid of activeTagIds) {
                     const t = smartTags[tid];
@@ -1110,13 +1147,29 @@ function computeUnifiedQuote(ctx) {
                         // TIMELINE.md's T118 Step 6 item 1 entry), so this default
                         // is a safety net for future data, not a live behavior for
                         // any modifier today.
+                        // T182: on a time-priced flat service a per-unit answer that adds minutes is priced by those minutes (timeMin, below), not by a fee of its own; a per-visit answer keeps
+                        // its fee (R-PRICE-SCOPE); a per-unit answer with a fee and no minutes keeps its fee. Everywhere else the answer's fee is added as it always was.
+                        const _answerIsTime = timePriced && m.scope !== 'per_visit' && (m.minutes || 0) > 0;
                         if (m.scope === 'per_visit') {
                             perVisitFee += m.fee || 0;
-                        } else {
+                        } else if (!_answerIsTime) {
                             extraFee += m.fee || 0;
                         }
                         extraMin += m.minutes || 0;
-                        if (m.fee) feeBreakdown.push({
+                        if (_answerIsTime) {
+                            timeMin += m.minutes;
+                            const _line = {
+                                source: 'answer',
+                                moduleKey,
+                                label: (mod.question ? mod.question + ': ' : '') + answerLabel,
+                                fee: 0,
+                                minutes: m.minutes,
+                                scope: m.scope || 'per_unit',
+                                timePriced: true
+                            };
+                            feeBreakdown.push(_line);
+                            timeLines.push(_line);
+                        } else if (m.fee) feeBreakdown.push({
                             source: 'answer',
                             moduleKey,
                             label: (mod.question ? mod.question + ': ' : '') + answerLabel,
@@ -1221,9 +1274,10 @@ function computeUnifiedQuote(ctx) {
             // was byte-identical to the condition under which qtyMultiplier
             // (below) independently multiplies the ENTIRE estimate by qty --
             // so every service that ever hit this line got quantity applied
-            // twice: once via inflated minutes (which could also cross a
-            // deriveComplexityTier threshold and silently raise the hourly
-            // rate), once via the outer multiplication of that already-
+            // twice: once via inflated minutes (which could also cross the
+            // minutes-derived tier threshold of the time and silently raise
+            // the hourly rate; T182: a tier is no longer derived from
+            // minutes), once via the outer multiplication of that already-
             // inflated result. Confirmed empirically before removing this:
             // blinds_shades_curtains_buy_the_hour priced at $750 for qty=5
             // against a genuine $50 base (15x, not the intended ~5x). Without
@@ -1242,8 +1296,13 @@ function computeUnifiedQuote(ctx) {
             // (answerOverrideTier). A fact the NLP detected still reaches the price the proper way: the tag's own `answers` map is synthesized
             // into real answers upstream, and those answers carry the fee / minutes / tier. `escalate_complexity` on a tag is still read by
             // applyLiveConfidenceEscalation for the confidence bar (a bar, not a price). See verify_chips_not_fees.js.
-            const exactTier = svc?.operational_metrics?.complexity_tier || null;
-            const complexityTier = deriveComplexityTier(totalMin, answerOverrideTier, exactTier);
+            // T182 (#229): and the tier is no longer read from the minutes either (R-COMPLEX-VOLUME); it is the tier the entity declares, raised by an answer that says the job is harder. A service's declared tier
+            // is read as it always was. A DYNAMIC service ("Other" routes) also declares one (all 82 do), which was never read: its quote was priced from its minutes. Reading a declared routine or skilled tier
+            // keeps those quotes where the minutes had put them; reading a declared specialized tier (45 of the 82) would RAISE 270 golden-master points by up to about $100, which nobody has approved, so that
+            // one is HELD, not applied (PENDING_DECISIONS #239; delete the second clause below to apply it).
+            const _declaredTier = _entity?.operational_metrics?.complexity_tier || null;
+            const exactTier = (svc || !_declaredTier || (TIER_RANK[_declaredTier] || 0) <= (TIER_RANK.skilled || 0)) ? _declaredTier : null;
+            const complexityTier = resolveSkillTier(exactTier, answerOverrideTier);
             const tierRate = DB.global_rules?.complexity_tiers?.[complexityTier]?.hourly_rate || FALLBACKS.tier_rate;
             const effectiveHourlyRate = (formulaResult && formulaResult.overrideHourlyRate != null) ? formulaResult.overrideHourlyRate : tierRate;
 
@@ -1279,8 +1338,17 @@ function computeUnifiedQuote(ctx) {
             // qtyMultiplier` was the entire formula PENDING_DECISIONS.md #29
             // diagnosed -- multiplying access/urgency/parking/disposal/pets/
             // item_volume fees by quantity when they're logically one-time.
+            // T182: the time the answers add, for all the units, priced once and rounded once; the dollars are then shared out over the lines that added it so the lines add up to the total.
+            const pricedMin = timePriced ? timeMin * qtyMultiplier : 0;
+            const timeFee = timePriced ? priceAddedTime(pricedMin, _timeCfg) : 0;
+            if (timeLines.length) {
+                const _shares = splitAddedTimeDollars(timeLines, timeFee);
+                timeLines.forEach((l, i) => { l.fee = _shares[i]; });
+            }
+            // A job whose answers add project_after_minutes or more of work is a project estimate, whatever the service's own checkout state.
+            const timeSwitched = timePriced && pricedMin >= (_timeCfg.project_after_minutes || Infinity);
             if (isFlatRate) {
-                laborEstimate = Math.round((base + extraFee) * qtyMultiplier) + perVisitFee;
+                laborEstimate = Math.round((base + extraFee) * qtyMultiplier) + timeFee + perVisitFee;
             } else {
                 laborEstimate = Math.round((base + extraFee + (totalMin / 60) * effectiveHourlyRate) * qtyMultiplier) + perVisitFee;
             }
@@ -1329,8 +1397,12 @@ function computeUnifiedQuote(ctx) {
             }
             const _answerOverrideWins = !!(answerCheckoutOverride &&
                 (CS_RESTRICTIVENESS[answerCheckoutOverride] || 0) > (CS_RESTRICTIVENESS[staticCheckoutStateKey] || 0));
-            const checkoutStateKey = _answerOverrideWins ? answerCheckoutOverride : staticCheckoutStateKey;
-            const checkoutStateSource = _answerOverrideWins ? 'answer_override' : _checkoutState.source;
+            // T182: the added time is one more rung of the same ratchet. It can only make the state MORE restrictive than the one the service and the answers already name, so it never
+            // overrides a diagnostic and never turns a project_based service back into a flat one. The quote names the rung that won (checkoutStateSource 'added_time').
+            const _stateBeforeTime = _answerOverrideWins ? answerCheckoutOverride : staticCheckoutStateKey;
+            const _timeSwitchWins = timeSwitched && (CS_RESTRICTIVENESS.project_based || 0) > (CS_RESTRICTIVENESS[_stateBeforeTime] || 0);
+            const checkoutStateKey = _timeSwitchWins ? 'project_based' : _stateBeforeTime;
+            const checkoutStateSource = _timeSwitchWins ? 'added_time' : (_answerOverrideWins ? 'answer_override' : _checkoutState.source);
             const cs = DB.checkout_states?.[checkoutStateKey] || {};
             const btnKey = cs.hide_materials ? 'button_text_no_mat' : 'button_text_with_mat';
             let btnText = (cs[btnKey] || cs.button_text || 'Add to Request').replace('${labor_total}', '$' + laborEstimate);
@@ -1421,6 +1493,9 @@ function computeUnifiedQuote(ctx) {
                 complexityTier,
                 tierRate: effectiveHourlyRate,
                 laborEstimate,
+                timePriced,
+                pricedMin,
+                timeFee,
                 dispatchFee,
                 checkoutStateKey,
                 checkoutStateSource,
@@ -1471,7 +1546,13 @@ function computeUnifiedQuote(ctx) {
                 btnClass,
                 uiMessage: cs.ui_message || '',
                 hideMaterials: !!cs.hide_materials,
-                hideTime: !!cs.hide_time,
+                // A project estimate that the added time produced SHOWS that time (the Operator, 2026-10-16: "the time shown rises with it"); a project the service states outright keeps hiding it.
+                hideTime: _timeSwitchWins ? false : !!cs.hide_time,
+                // T182 (#229, #234): the time model's own record. pricedMin is the minutes the answers added (all units), timeFee what they are worth, timeSwitched whether they reached the project line.
+                timePriced,
+                pricedMin,
+                timeFee,
+                timeSwitched,
                 isDiagnostic: checkoutStateKey === 'diagnostic',
                 isProject: checkoutStateKey === 'project_based' || base >= 150,
                 isAssembly: checkoutStateKey === 'database_summation',
@@ -1578,9 +1659,8 @@ function computeArchetypeQuote(entity, archetype, answers, qty, db, formulaId) {
                     (formulaResult ? 0 : (om.expected_minutes ?? om.minimum_minutes ?? FALLBACKS.no_estimate_minutes));
                 const totalMin = baseMinutes + (formulaResult ? formulaResult.extraMin : 0);
                 const extraFee = formulaResult ? formulaResult.extraFee : 0;
-                const realTier = typeof deriveComplexityTier === 'function' ?
-                    deriveComplexityTier(totalMin, null, om.complexity_tier || null) :
-                    (om.complexity_tier || 'skilled');
+                // T182 (#229): the tier the entity declares (R-COMPLEX-AXES), never one read from its minutes (R-COMPLEX-VOLUME).
+                const realTier = resolveSkillTier(om.complexity_tier || null, null);
                 const realRate = (formulaResult && formulaResult.overrideHourlyRate != null) ? formulaResult.overrideHourlyRate : ((db.global_rules?.complexity_tiers?.[realTier]?.hourly_rate) || rate);
                 // v9.6 FIX: a third, real bug in the same family as
                 // computeUnifiedQuote's own two fixes above (found the same
@@ -1623,4 +1703,4 @@ function computeArchetypeQuote(entity, archetype, answers, qty, db, formulaId) {
             return null; // genuinely unrecognized archetype -- caller must fall back to the legacy path
         }
 
-module.exports = { computeUnifiedQuote, applyPricingFormula, resolveBaseConfidenceStrategy, resolveServiceCheckoutStateKey, deriveComplexityTier, applyLiveConfidenceEscalation, mathFurnitureAssembly, buildCheckoutStateModel, resolveDynamicService };
+module.exports = { computeUnifiedQuote, applyPricingFormula, resolveBaseConfidenceStrategy, resolveServiceCheckoutStateKey, resolveSkillTier, applyLiveConfidenceEscalation, mathFurnitureAssembly, buildCheckoutStateModel, resolveDynamicService };

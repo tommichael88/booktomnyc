@@ -48,7 +48,7 @@ check('the curated-card branch is deliberately untouched (sqBuildCuratedIntake s
 
 console.log('\n=== The real, live ResolvedRoute correctly resolves all 3 real self-quote services ===');
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'mathFurnitureAssembly',
     '_resolveIntakeChain', '_isModVisible',

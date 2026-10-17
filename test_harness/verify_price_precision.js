@@ -10,14 +10,15 @@
  * tags): the least resolved state a quote can be asked for. For each point: the checkout state, whether the legacy confidence bar is met (meetsConfidenceBar, the engine's existing measure of "enough evidence"),
  * and the FORM of the presented price: an exact "$X", or a lower bound "From $X".
  *
- * WHAT IS FOUND (T180, pinned below; the numbers are the evidence in #234):
- *   - the presentation has two forms, exact and "From $", chosen by the checkout state alone (q.isDiag || q.isProject); the Rule's other two outcomes, a bounded range and a conditional quote, do not exist;
- *   - the form does not respond to the evidence: with the confidence bar unmet, the exact form is still presented at 132 of 152 points; with the bar met it is the same form -- the code comment that introduced
- *     "From $X" says it is for "the not-yet-fully-confident case, and a plain $X once confident", and the code does not do that;
- *   - the catalog authors no precision policy (no bands, no thresholds, no ranges), so the Rule's mechanical test -- fixtures "at each supported precision boundary" -- has no boundary to be written at.
- * It changes what customers are shown, so it is an Operator decision (#234, packaged with the duration state). NOTHING in the runtime is changed here.
+ * WHAT IS FOUND (T180, pinned below; the numbers are the evidence in #234), AND WHAT T182 CHANGED. At T180 the presentation had two forms, exact and "From $", chosen by the checkout state alone, so the exact form was
+ *   presented below the confidence bar at 132 of 152 no-evidence points. The Operator's direction (2026-10-16 23:34 NY, confirmed 2026-10-17 02:30 NY) is that a flat quote is a FLOOR that rises with the time the
+ *   client's answers add: it reads "From $X" until the engine's own confidence bar is met and a plain "$X" once the client has answered what sets the time (resolvePriceStatement, one definition for the panel and the
+ *   card). That is now built for every quote the time model prices (q.timePriced: flat-rate services), which is 106 of the 132 points: the form follows the evidence for them. What remains is pinned: 26 of 152 points
+ *   are services the time model does not price (hourly and assembly estimates drawn on the flat-rate card), and they still present an exact amount below the bar. The Rule's other two outcomes, a bounded range
+ *   and a conditional quote, still do not exist, and the catalog still authors no precision policy (no bands, no thresholds, no ranges), so the Rule's mechanical test has no boundary to be written at.
+ *   The 26 are an Operator decision (#234, packaged with the duration state). NOTHING about them is changed here.
  *
- * HOW A RULING CHANGES THIS TEST. When #234 is ruled and implemented: delete the KNOWN pins; the line "no exact amount is presented below the confidence bar", already written as the Rule states it, replaces them.
+ * HOW A RULING CHANGES THIS TEST. When the 26 are ruled and implemented: delete the KNOWN pin; the line "no exact amount is presented below the confidence bar", already written as the Rule states it, replaces it.
  *
  * NON-VACUITY (R-TEST-CANFAIL): the detector is run on synthetic points (an exact amount at an unmet bar is a violation; a "From $" is not; an exact amount at a met bar is not) and counts exactly those; the sweep
  * contains points in each state and in both bar statuses, so the detector was not handed a one-sided catalog.
@@ -53,7 +54,7 @@ for (const s of DB.services) for (const q of QTYS) {
   try {
     const m = sb.buildQuotePanelModel(st, DB);
     if (m.mode !== 'quote') { forks++; continue; }
-    rows.push({ id: s.id, q, state: m.q.checkoutStateKey, bar: !!m.q.meetsConfidenceBar, form: formOf(m.q.priceDisplay), shown: m.q.priceDisplay });
+    rows.push({ id: s.id, q, state: m.q.checkoutStateKey, bar: !!m.q.meetsConfidenceBar, timePriced: !!m.q.timePriced, form: formOf(m.q.priceDisplay), shown: m.q.priceDisplay });
   } catch (e) { errors++; }
 }
 check('the sweep ran through the production panel path for all ' + DB.services.length + ' services x ' + QTYS.length + ' quantities with no error and no fork panel', rows.length === DB.services.length * QTYS.length && errors === 0 && forks === 0, 'rows ' + rows.length + ', errors ' + errors + ', forks ' + forks);
@@ -61,18 +62,18 @@ check('every presented price is one of the two forms (no range, no condition any
 const tally = {}; for (const r of rows) { const k = r.state + ' | bar ' + (r.bar ? 'met' : 'unmet') + ' | ' + r.form; tally[k] = (tally[k] || 0) + 1; }
 console.log('     (' + Object.entries(tally).sort().map(([k, v]) => k + ': ' + v).join('; ') + ')');
 
-// the form is a function of the checkout state alone
-const formsByState = {}; for (const r of rows) (formsByState[r.state] = formsByState[r.state] || new Set()).add(r.form);
-check('the form is decided by the checkout state alone: each state presents one form at every point, whatever the confidence', Object.values(formsByState).every(s => s.size === 1), JSON.stringify(Object.fromEntries(Object.entries(formsByState).map(([k, s]) => [k, [...s]]))));
-const flat = rows.filter(r => r.state === 'standard_flat_rate');
-check('the two forms map onto the checkout states: diagnostic and project_based present "From $", standard_flat_rate presents the exact amount', rows.filter(r => r.state === 'diagnostic' || r.state === 'project_based').every(r => r.form === 'from') && rows.filter(r => r.state === 'standard_flat_rate').every(r => r.form === 'exact') && rows.some(r => r.state === 'diagnostic') && rows.some(r => r.state === 'project_based'));
-check('... and the flat-rate state presents the same exact form with the bar met (' + flat.filter(r => r.bar).length + ' points) as with it unmet (' + flat.filter(r => !r.bar).length + ' points): the evidence does not move it', flat.filter(r => r.bar).length > 0 && flat.filter(r => !r.bar).length > 0 && flat.every(r => r.form === 'exact'));
+// T182: the form follows the evidence for every quote the time model prices; for the rest it is still a function of the checkout state alone
+const timed = rows.filter(r => r.timePriced && (r.state === 'standard_flat_rate'));
+check('diagnostic and project_based present "From $" at every point (' + rows.filter(r => r.state === 'diagnostic' || r.state === 'project_based').length + ' points), whatever the confidence', rows.filter(r => r.state === 'diagnostic' || r.state === 'project_based').every(r => r.form === 'from') && rows.some(r => r.state === 'diagnostic') && rows.some(r => r.state === 'project_based'));
+check('a flat quote the time model prices presents "From $" below the confidence bar (' + timed.filter(r => !r.bar).length + ' points) and the exact amount once the bar is met (' + timed.filter(r => r.bar).length + ' points): the form follows the evidence (#234, T182)',
+  timed.filter(r => !r.bar).length > 0 && timed.filter(r => r.bar).length > 0 && timed.filter(r => !r.bar).every(r => r.form === 'from') && timed.filter(r => r.bar).every(r => r.form === 'exact'), JSON.stringify(timed.filter(r => (r.form === 'from') === r.bar).slice(0, 3)));
+check('every flat-rate service the time model prices is in that group (a time-priced quote is never presented as an exact amount below the bar)', unsupported(rows.filter(r => r.timePriced)).length === 0);
 
-const PIN = { points: 152, exactBelowBar: 132 };
+const PIN = { points: 152, exactBelowBar: 26 };
 const bad = unsupported(rows);
-check('KNOWN VIOLATION (pinned, #234): an exact amount is presented below the confidence bar at ' + PIN.exactBelowBar + ' of ' + PIN.points + ' no-evidence points (measured: ' + bad.length + ' of ' + rows.length + ')', rows.length === PIN.points && bad.length === PIN.exactBelowBar, bad.length + ' of ' + rows.length);
+check('KNOWN VIOLATION (pinned, #234): an exact amount is presented below the confidence bar at ' + PIN.exactBelowBar + ' of ' + PIN.points + ' no-evidence points (measured: ' + bad.length + ' of ' + rows.length + '); it was 132 before the time model, and none of the 26 is a quote the time model prices', rows.length === PIN.points && bad.length === PIN.exactBelowBar && bad.every(r => !r.timePriced), bad.length + ' of ' + rows.length);
 const svcs = [...new Set(bad.map(r => r.id))];
-console.log('     (services affected at either quantity: ' + svcs.length + ' of ' + DB.services.length + ')');
+console.log('     (services affected at either quantity: ' + svcs.length + ' of ' + DB.services.length + ': ' + svcs.join(', ') + ')');
 
 console.log('\n3. Non-vacuity: the detector counts exactly the violations it is given');
 {
@@ -89,5 +90,5 @@ console.log('\n3. Non-vacuity: the detector counts exactly the violations it is 
   check('and the sweep it was run on holds both bar statuses and both forms (the detector was not handed a one-sided catalog)', rows.some(r => r.bar) && rows.some(r => !r.bar) && rows.some(r => r.form === 'exact') && rows.some(r => r.form === 'from'));
 }
 
-console.log('\n[Price precision: a pinned known violation (#234)] ' + passed + ' passed, ' + failed + ' failed (of ' + (passed + failed) + ' checks)');
+console.log('\n[Price precision: the time model closes 106 of the 132 (#234); 26 pinned] ' + passed + ' passed, ' + failed + ' failed (of ' + (passed + failed) + ' checks)');
 process.exit(failed ? 1 : 0);

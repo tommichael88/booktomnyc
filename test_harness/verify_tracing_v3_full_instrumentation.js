@@ -94,7 +94,7 @@ check('DOM snapshot captured the real, visible add-to-cart button label', !!snap
 console.log('\n=== 3. Friction: computed exactly per the Charter\'s own formula (Friction = max(0, threshold - confidence)) ===');
 const PRICING_FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'entityHasOwnQtyQuestion', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const pricingSandbox = { DB, window: { DB, _traceEnabled: true, _traceLog: [], _traceInput: null }, console };

@@ -4,6 +4,7 @@
  *
  * @enforces R-COMPLEX-AXES
  * @enforces R-COMPLEX-COMPOUNDS
+ * @enforces R-COMPLEX-VOLUME
  * @enforces R-TEST-CANFAIL
  * @detects DEFECT-AXIS-CONFLATION
  * @detects DEFECT-TEST-CANTFAIL
@@ -21,10 +22,11 @@
  *   5. The Charter's own worked examples hold (a cabinet-knob install is skilled / R1 / true; a wall crack repair is specialized / R2 / true).
  *   6. Authored in ONE place: the axes file, copied by the migration; the source, the marker and the provenance record its hash.
  *   7. Every check above is shown able to fail: a service without a profile, a lost key, an illegal value, a risk tier that follows the skill tier, a lost signal, an unnamed signal ...
- *   8. THE RESOLVER HALF, and what it finds. The runtime derives the skill tier from minutes (deriveComplexityTier, global_rules.complexity_tiers min_minutes/max_minutes), which R-COMPLEX-VOLUME names
- *      as forbidden ("skill_tier := f(minutes)"). That is DEFECT-AXIS-CONFLATION. It changes the hourly rate, so it is an Operator decision (PENDING_DECISIONS #229): it is NOT changed here. It is PINNED:
- *      the exact sites that read minutes to derive a tier, and the exact services whose tier moves when only the quantity changes. A new site, or a new service, fails; so does a fix that leaves the pin
- *      (remove the pin when #229 is ruled). No runtime code reads risk_tier, batch_risk_compounds or complexity_profile yet, so nothing derives them; that is pinned too, so the first consumer arrives with its check.
+ *   8. THE RESOLVER HALF. The runtime used to derive the skill tier from minutes (deriveComplexityTier, global_rules.complexity_tiers min_minutes/max_minutes), which R-COMPLEX-VOLUME names as forbidden
+ *      ("skill_tier := f(minutes)"), DEFECT-AXIS-CONFLATION. FOUND at T180 by this test and pinned as a violation (PENDING_DECISIONS #229); the Operator directed its removal (2026-10-16 23:34 NY, confirmed
+ *      2026-10-17 02:30 NY) and T182 removed it: the tier is resolveSkillTier(declared tier, answer override) and nothing else. Now HELD as a rule: no runtime site reads a tier's min_minutes/max_minutes, and
+ *      no service's tier changes while only the quantity changes; both are shown able to fail by putting the derivation back (a mutant engine) and watching the same sweep find loose_tile_replacement again.
+ *      No runtime code reads risk_tier, batch_risk_compounds or complexity_profile yet, so nothing derives them; that is pinned too, so the first consumer arrives with its check.
  *
  * Node only; no browser, no network.
  */
@@ -172,30 +174,32 @@ const stripComments = t => t.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(
 const runtimeFiles = ['qr.html', 'pricing_engine.js', 'orchestrator_engine.js', 'nlp_engine.js', ...fs.readdirSync(path.join(ROOT, 'modules')).filter(f => f.endsWith('.js')).map(f => 'modules/' + f)].filter(f => fs.existsSync(path.join(ROOT, f)));
 const code = Object.fromEntries(runtimeFiles.map(f => [f, stripComments(fs.readFileSync(path.join(ROOT, f), 'utf8'))]));
 const functionBody = (t, name) => { const i = t.indexOf('function ' + name + '('); if (i < 0) return null; let d = 0, j = t.indexOf('{', i); for (let k = j; k < t.length; k++) { if (t[k] === '{') d++; else if (t[k] === '}' && --d === 0) return t.slice(i, k + 1); } return null; };
-// The pin. FOUND at T180 by this test. Price-affecting (the hourly rate follows the tier), so it is an Operator decision, PENDING_DECISIONS #229; remove the pin when #229 is ruled and the derivation is gone.
-const PINNED_MINUTES_SITES = ['pricing_engine.js', 'qr.html'];
+// FOUND at T180 by this test (pinned as KNOWN VIOLATION #229); REMOVED at T182. The rule now: no runtime site reads a tier's min_minutes/max_minutes.
 const sites = runtimeFiles.filter(f => /\.(min|max)_minutes\b/.test(code[f]));
-check('KNOWN VIOLATION (pinned, #229): the only runtime sites that read global_rules.complexity_tiers min_minutes/max_minutes to derive a skill tier are exactly pricing_engine.js and qr.html', JSON.stringify(sites.slice().sort()) === JSON.stringify(PINNED_MINUTES_SITES.slice().sort()), sites.join(', '));
-check('...and each is inside deriveComplexityTier(totalMinutes, ...), the one function that derives a tier from minutes', sites.every(f => { const b = functionBody(code[f], 'deriveComplexityTier'); return b && /\.min_minutes/.test(b) && /totalMinutes/.test(b); }));
-check('...and nothing else in the runtime reads minutes to name a tier (a second site would be a new derivation)', runtimeFiles.every(f => (code[f].match(/\.(min|max)_minutes\b/g) || []).length === (sites.includes(f) ? 2 : 0)));
+check('R-COMPLEX-VOLUME: no runtime code reads global_rules.complexity_tiers min_minutes/max_minutes, so no skill tier is derived from minutes', sites.length === 0, sites.join(', '));
+check('...and the tier a quote is priced at comes from resolveSkillTier(declared tier, answer override), which takes no minutes', /function resolveSkillTier\(declaredTier, answerOverrideTier\)/.test(code['qr.html']) && !/function deriveComplexityTier/.test(code['qr.html']) && !/deriveComplexityTier\s*\(/.test(code['pricing_engine.js']));
 check('no runtime code reads risk_tier, batch_risk_compounds or complexity_profile yet, so no code path derives either from anything; the first consumer arrives with its own no-derivation check', runtimeFiles.every(f => !/risk_tier|batch_risk|complexity_profile/.test(code[f])));
 { // the symptom the Charter names: a tier that changes while only the quantity changes (DEFECT-AXIS-CONFLATION). Same answers, quantity 1..20, through the production quote path.
-  const DB = lib.readJson(lib.PATHS.legacy); const sb = { DB, SERVICE_DATA: DB, window: { DB }, console: { log() {}, warn() {}, error() {} } }; sb.global = sb; vm.createContext(sb);
-  for (const f of ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sb, { filename: f });
-  const moved = []; let swept = 0;
-  for (const s of DB.services) {
-    const st = q => ({ qty: q, intent: { key: s.id, category: s.ui_taxonomy.category_id, label: 'x', qtyLabel: 'item' }, stype: 'Repair', answers: {}, detTagIds: [], manTagIds: [], negatedTagIds: [], inherentTagIds: [] });
-    const tiers = [1, 2, 3, 5, 10, 20].map(q => { try { return sb.computeQuoteFromState(st(q)).tierKey; } catch (e) { return 'ERR'; } });
-    swept++; if (new Set(tiers).size > 1) moved.push(s.id);
-  }
-  const PINNED_MOVED = ['loose_tile_replacement'];
+  const DB = lib.readJson(lib.PATHS.legacy);
+  const boot = engineSrc => { const sb = { DB, SERVICE_DATA: DB, window: { DB }, console: { log() {}, warn() {}, error() {} } }; sb.global = sb; vm.createContext(sb);
+    vm.runInContext(engineSrc, sb, { filename: 'pricing_engine.js' }); for (const f of ['nlp_engine.js', 'orchestrator_engine.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sb, { filename: f }); return sb; };
+  const sweep = sb => { const moved = []; let swept = 0;
+    for (const s of DB.services) {
+      const st = q => ({ qty: q, intent: { key: s.id, category: s.ui_taxonomy.category_id, label: 'x', qtyLabel: 'item' }, stype: 'Repair', answers: {}, detTagIds: [], manTagIds: [], negatedTagIds: [], inherentTagIds: [] });
+      const tiers = [1, 2, 3, 5, 10, 20].map(q => { try { return sb.computeQuoteFromState(st(q)).tierKey; } catch (e) { return 'ERR'; } });
+      swept++; if (new Set(tiers).size > 1) moved.push(s.id);
+    }
+    return { moved, swept }; };
+  const real = fs.readFileSync(path.join(ROOT, 'pricing_engine.js'), 'utf8');
+  const { moved, swept } = sweep(boot(real));
   check(`non-vacuity: the sweep ran through the production quote path for all ${DB.services.length} services`, swept === DB.services.length && swept >= 70);
-  check('KNOWN VIOLATION (pinned, #229): the services whose tier changes while ONLY the quantity changes are exactly ' + PINNED_MOVED.join(', ') + ' (skilled at 1 tile, specialized at 20: the hourly rate follows the minutes)', JSON.stringify(moved) === JSON.stringify(PINNED_MOVED), moved.join(', '));
-  // the detector can fail: with the minutes derivation removed from the engine, the same sweep finds no service whose tier follows quantity
-  const patched = fs.readFileSync(path.join(ROOT, 'pricing_engine.js'), 'utf8').replace(/if \(totalMinutes >= min && \(max == null \|\| totalMinutes <= max\)\) \{/, 'if (false) {');
-  const sb2 = { DB, SERVICE_DATA: DB, window: { DB }, console: { log() {}, warn() {}, error() {} } }; sb2.global = sb2; vm.createContext(sb2);
-  vm.runInContext(patched, sb2, { filename: 'pricing_engine.js' }); for (const f of ['nlp_engine.js', 'orchestrator_engine.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sb2, { filename: f });
-  check('counterfactual: the same sweep on an engine whose tier no longer follows minutes finds no service whose tier follows quantity (the detector sees the derivation, and only it)', patched !== fs.readFileSync(path.join(ROOT, 'pricing_engine.js'), 'utf8') && DB.services.every(s => { const t = q => sb2.computeQuoteFromState({ qty: q, intent: { key: s.id, category: s.ui_taxonomy.category_id, label: 'x', qtyLabel: 'item' }, stype: 'Repair', answers: {}, detTagIds: [], manTagIds: [], negatedTagIds: [], inherentTagIds: [] }).tierKey; try { return new Set([1, 2, 3, 5, 10, 20].map(t)).size === 1; } catch (e) { return true; } })); }
+  check('R-COMPLEX-VOLUME: no service\'s skill tier changes while ONLY the quantity changes (DEFECT-AXIS-CONFLATION; loose_tile_replacement was skilled at 1 tile and specialized at 20 until T182)', moved.length === 0, moved.join(', '));
+  // the detector can fail: put the derivation back (a tier named by the minutes' band, kept if higher than the declared one: the engine as it was) and the same sweep finds the service again
+  const NEEDLE = 'const complexityTier = resolveSkillTier(exactTier, answerOverrideTier);';
+  const BACK = 'let _t = resolveSkillTier(exactTier, answerOverrideTier); for (const [k, d] of Object.entries(DB.global_rules.complexity_tiers)) { if (totalMin >= d.min_minutes && (d.max_minutes == null || totalMin <= d.max_minutes) && (TIER_RANK[k] || 0) > (TIER_RANK[_t] || 0)) _t = k; } const complexityTier = _t;';
+  check('the mutant applies exactly once (the needle is in the engine exactly once)', real.split(NEEDLE).length === 2);
+  const bad = sweep(boot(real.replace(NEEDLE, BACK)));
+  check('counterfactual: with the minutes derivation put back, the same sweep finds loose_tile_replacement again (the detector sees the derivation, and only it)', JSON.stringify(bad.moved) === JSON.stringify(['loose_tile_replacement']), bad.moved.join(', ')); }
 
 // ---- 6. the declared gap ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 console.log('\nThe declared gap: dynamic services (P-COMPLEX-DYNAMIC)');

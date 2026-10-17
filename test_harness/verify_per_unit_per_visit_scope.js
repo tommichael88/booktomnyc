@@ -42,7 +42,7 @@ function _cherryPickFn(text, name) {
 }
 
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey',
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'computeUnifiedQuote', 'sqTagLabel', 'mathFurnitureAssembly', 'buildCheckoutStateModel',
     '_resolveIntakeChain', 'orch_compose_intake_chain'];
 
@@ -108,13 +108,17 @@ console.log('\n=== The motivating trace, on a BATCHED service ===');
     check('the fee breakdown correctly tags this answer as per_visit scope',
         qDisposal.feeBreakdown.find(f => f.moduleKey === 'disposal_request')?.scope === 'per_visit');
 
+    // T182 (#229, #234): generic_mounting_service is flat-rate, so a per-unit answer's TIME prices the job (the answer's minutes, for every unit, at the flat-rate time price), and the time scales with the
+    // quantity exactly as the fee did; the per-visit fee is still charged once. The expectation is the same shape, derived from the SSOT: (base * qty) + the price of (minutes * qty) + the per-visit fee.
+    const TP = DB.global_rules.pricing_engines.flat_rate.time_pricing, priceTime = m => Math.round(m * TP.rate_per_hour / 60 / TP.round_to) * TP.round_to;
+    const perUnitMin = DB.global_rules.modifiers.wall_type_brick_or_concrete.minutes;
     const qWall = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers: { wall_type: 'Brick or concrete' }, qty: 10 });
-    check(`qty=10, brick wall (a real per-unit cost): $${(base + perUnit) * 10} (base+fee)*qty -- still correctly SCALES with quantity, the fix did not neuter real per-unit scaling`,
-        qWall.laborEstimate === (base + perUnit) * 10);
+    check(`qty=10, brick wall (a real per-unit cost, ${perUnitMin} minutes each): $${base * 10 + priceTime(perUnitMin * 10)} (base*qty + the price of minutes*qty) -- still correctly SCALES with quantity, the fix did not neuter real per-unit scaling`,
+        qWall.laborEstimate === base * 10 + priceTime(perUnitMin * 10), 'got ' + qWall.laborEstimate);
 
     const qBoth = sandbox.computeUnifiedQuote({ svc, activeTagIds: [], answers: { wall_type: 'Brick or concrete', disposal_request: 'Yes, please haul it away' }, qty: 10 });
-    check(`qty=10, both together: $${(base + perUnit) * 10 + perVisit} -- (base+per_unit_fee)*qty + per_visit_fee, correctly combining both scopes`,
-        qBoth.laborEstimate === (base + perUnit) * 10 + perVisit);
+    check(`qty=10, both together: $${base * 10 + priceTime(perUnitMin * 10) + perVisit} -- base*qty + the per-unit time*qty + the per-visit fee ONCE, correctly combining both scopes`,
+        qBoth.laborEstimate === base * 10 + priceTime(perUnitMin * 10) + perVisit, 'got ' + qBoth.laborEstimate);
 
     const door = DB.services.find(s => s.id === 'prehung_interior_door_install');
     check('and the single-unit door service prices ONE unit at qty=10 -- the stance, not the scope, decides (verify_quantity_question_ratchet sweeps every single-unit service)',

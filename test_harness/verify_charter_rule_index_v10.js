@@ -1412,7 +1412,7 @@ logHeader('SUITE 2 — LEGACY-REGEX (original verify_charter_rule_index.js)');
 
   const deps = [
     'resolveBaseConfidenceStrategy','resolveServiceCheckoutStateKey','applyPricingFormula',
-    'applyLiveConfidenceEscalation','deriveComplexityTier','computeArchetypeQuote','sqTagLabel',
+    'applyLiveConfidenceEscalation','resolveSkillTier','priceAddedTime','splitAddedTimeDollars','computeArchetypeQuote','sqTagLabel',
   ];
   const decls = [], missingDeps = [];
   for (const name of deps) {
@@ -1597,7 +1597,7 @@ logHeader('SUITE 2 — LEGACY-REGEX (original verify_charter_rule_index.js)');
 {
   const deps = [
     'resolveBaseConfidenceStrategy','resolveServiceCheckoutStateKey','applyPricingFormula',
-    'applyLiveConfidenceEscalation','deriveComplexityTier','computeArchetypeQuote','sqTagLabel',
+    'applyLiveConfidenceEscalation','resolveSkillTier','priceAddedTime','splitAddedTimeDollars','computeArchetypeQuote','sqTagLabel',
   ];
   const decls = [], missingDeps = [];
   for (const name of deps) {
@@ -2035,7 +2035,7 @@ if (charterHtmlContent) {
     'describeInvariantFailure','validateRoute','catastrophicFallbackRoute',
     'checkRoutingArchetypeConsistency','_resolveIntakeChain','resolveBaseConfidenceStrategy',
     'applyLiveConfidenceEscalation','applyPricingFormula','computeArchetypeQuote',
-    'deriveComplexityTier','resolveServiceCheckoutStateKey','buildCheckoutStateModel','sqTagLabel',
+    'resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey','buildCheckoutStateModel','sqTagLabel',
     'computeUnifiedQuote','_computePrice','synthesizeAnswersFromTags','closeTagsOverRequires',
     'requiredTagIdsFor','isDiagnosticService','isLogisticTag','sqTagFeeImpact',
     'resolveServiceBadge','resolveServiceBadgeKey','resolveEngineKey','entityHasOwnQtyQuestion',
@@ -2286,7 +2286,7 @@ if (charterHtmlContent) {
     'describeInvariantFailure','validateRoute','catastrophicFallbackRoute',
     'checkRoutingArchetypeConsistency','_resolveIntakeChain','resolveBaseConfidenceStrategy',
     'applyLiveConfidenceEscalation','applyPricingFormula','computeArchetypeQuote',
-    'deriveComplexityTier','resolveServiceCheckoutStateKey','buildCheckoutStateModel',
+    'resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey','buildCheckoutStateModel',
     'sqTagLabel','computeUnifiedQuote','_computePrice','synthesizeAnswersFromTags',
     'closeTagsOverRequires','requiredTagIdsFor','tagValidForCategory','isDiagnosticService',
     'isLogisticTag','sqTagFeeImpact','resolveServiceBadge','resolveServiceBadgeKey',
@@ -2533,7 +2533,7 @@ if (charterHtmlContent) {
     'describeInvariantFailure','validateRoute','catastrophicFallbackRoute',
     'checkRoutingArchetypeConsistency','_resolveIntakeChain','resolveBaseConfidenceStrategy',
     'applyLiveConfidenceEscalation','applyPricingFormula','computeArchetypeQuote',
-    'deriveComplexityTier','resolveServiceCheckoutStateKey','buildCheckoutStateModel',
+    'resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey','buildCheckoutStateModel',
     'sqTagLabel','computeUnifiedQuote','_computePrice','synthesizeAnswersFromTags',
     'closeTagsOverRequires','requiredTagIdsFor','tagValidForCategory','isDiagnosticService',
     'isLogisticTag','sqTagFeeImpact','resolveServiceBadge','resolveServiceBadgeKey',
@@ -2564,7 +2564,7 @@ if (charterHtmlContent) {
 {
   const bundle = bundleFunctions([
     'resolveBaseConfidenceStrategy','applyLiveConfidenceEscalation','applyPricingFormula',
-    'computeArchetypeQuote','deriveComplexityTier','resolveServiceCheckoutStateKey',
+    'computeArchetypeQuote','resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey',
     'buildCheckoutStateModel','sqTagLabel','computeUnifiedQuote','_computePrice',
     'synthesizeAnswersFromTags','closeTagsOverRequires','requiredTagIdsFor','tagValidForCategory',
     'isDiagnosticService','isLogisticTag','sqTagFeeImpact','resolveServiceBadge',
@@ -2669,7 +2669,7 @@ assertStructural('R-PRICE-REGISTERED',
 {
   const bundle = bundleFunctions([
     'resolveBaseConfidenceStrategy','applyLiveConfidenceEscalation','applyPricingFormula',
-    'computeArchetypeQuote','deriveComplexityTier','resolveServiceCheckoutStateKey',
+    'computeArchetypeQuote','resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey',
     'sqTagLabel','computeUnifiedQuote',
   ], { prelude: enginePrelude() });
   if (_bundleGuard(bundle)) {
@@ -2684,10 +2684,13 @@ assertStructural('R-PRICE-REGISTERED',
         const run = (a) => vm.runInContext(`${bundle.source}\ncomputeUnifiedQuote(${JSON.stringify({ ...base, answers: a })});`, sandbox, { timeout: 6000 });
         const no = run({}); const one = run({ wall_type: 'Brick or concrete' });
         const two = run({ wall_type: 'Brick or concrete', weight: '20 to 50 lbs (moderate)' });
-        assertBehavioral('R-PRICE-REACHES', one.laborEstimate - no.laborEstimate === wallMod.fee,
-          `one modifier adds exactly its declared fee ($${wallMod.fee})`);
-        assertBehavioral('R-PRICE-REACHES', two.laborEstimate - no.laborEstimate === wallMod.fee + weightMod.fee,
-          `two modifiers sum exactly ($${wallMod.fee + weightMod.fee})`);
+        // T182 (#229, #234): a flat-rate service prices a per-unit modifier by its minutes (all the answers' minutes round together at the SSOT's time price); restated from the SSOT, not asked of the engine
+        const tp = btnycData.global_rules.pricing_engines.flat_rate.time_pricing, timed = svc.financial_engine.type === 'flat_rate' && !!tp;
+        const priced = (mods) => timed ? Math.round(mods.reduce((a, m) => a + (m.minutes > 0 ? m.minutes : 0), 0) * tp.rate_per_hour / 60 / tp.round_to) * tp.round_to + mods.reduce((a, m) => a + (m.minutes > 0 ? 0 : m.fee), 0) : mods.reduce((a, m) => a + m.fee, 0);
+        assertBehavioral('R-PRICE-REACHES', one.laborEstimate - no.laborEstimate === priced([wallMod]),
+          `one modifier adds exactly its declared price ($${priced([wallMod])})`);
+        assertBehavioral('R-PRICE-REACHES', two.laborEstimate - no.laborEstimate === priced([wallMod, weightMod]),
+          `two modifiers sum exactly ($${priced([wallMod, weightMod])})`);
         assertBehavioral('R-PRICE-REACHES', (two.feeBreakdown || []).filter(b => b.source === 'answer').length >= 2,
           'feeBreakdown includes both modifier contributions');
       }
@@ -2837,7 +2840,7 @@ assertStructural('R-SYSTEM-NODATA', !qrHtmlContent.includes('"services": [{"id":
     'describeInvariantFailure','validateRoute','catastrophicFallbackRoute',
     'checkRoutingArchetypeConsistency','_resolveIntakeChain','resolveBaseConfidenceStrategy',
     'applyLiveConfidenceEscalation','applyPricingFormula','computeArchetypeQuote',
-    'deriveComplexityTier','resolveServiceCheckoutStateKey','buildCheckoutStateModel',
+    'resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey','buildCheckoutStateModel',
     'sqTagLabel','computeUnifiedQuote','_computePrice','synthesizeAnswersFromTags',
     'closeTagsOverRequires','requiredTagIdsFor','tagValidForCategory','isDiagnosticService',
     'isLogisticTag','sqTagFeeImpact','resolveServiceBadge','resolveServiceBadgeKey',
@@ -2904,7 +2907,7 @@ assertStructural('R-SYSTEM-NODATA', !qrHtmlContent.includes('"services": [{"id":
     assertStructural('R-INVARIANT-BOUNDARY', false, 'UIRenderer.js body not located');
   } else {
     const RENDERER_ALLOWLIST = new Set(['cacheDOM','init','buildDataMaps','escapeHtml','addBackButton']);
-    const FORBIDDEN_CALLS = ['computeUnifiedQuote','orch_compute_confidence','resolveDynamicService','tagValidForCategory','resolveBaseConfidenceStrategy','applyPricingFormula','computeArchetypeQuote','deriveComplexityTier'];
+    const FORBIDDEN_CALLS = ['computeUnifiedQuote','orch_compute_confidence','resolveDynamicService','tagValidForCategory','resolveBaseConfidenceStrategy','applyPricingFormula','computeArchetypeQuote','resolveSkillTier','priceAddedTime','splitAddedTimeDollars'];
     const violations = [];
     const rendererFns = findTopLevelFunctionDeclarations(uiBody);
     for (const d of rendererFns) {
@@ -3050,7 +3053,7 @@ assertStructural('R-SYSTEM-NODATA', !qrHtmlContent.includes('"services": [{"id":
   const uBody = extractFunctionBody(qrHtmlContent, 'computeUnifiedQuote');
   assertStructural('R-INVARIANT-CANONICAL', !!uAst && !!uBody && uBody.length > 2000,
     'computeUnifiedQuote structurally complete (>2000 chars)');
-  const deps = ['resolveBaseConfidenceStrategy','resolveServiceCheckoutStateKey','applyPricingFormula','applyLiveConfidenceEscalation','deriveComplexityTier','computeArchetypeQuote','sqTagLabel'];
+  const deps = ['resolveBaseConfidenceStrategy','resolveServiceCheckoutStateKey','applyPricingFormula','applyLiveConfidenceEscalation','resolveSkillTier','priceAddedTime','splitAddedTimeDollars','computeArchetypeQuote','sqTagLabel'];
   const decls = [], missing = [];
   for (const n of deps) {
     const d = extractFunctionDeclaration(qrHtmlContent, n);
@@ -3162,7 +3165,7 @@ assertStructural('R-SYSTEM-NODATA', !qrHtmlContent.includes('"services": [{"id":
 // T158: ADDED `orch_recommended_service_ids` (orchestrator: the one place a route's recommended services are listed, which the renderer now reads from the route); DROPPED `sqRenderSelfQuoteAdlib`
 // (AppController: a declared retirement -- it is in DECLARED_RETIRED below -- that the operator's revised qr.html finally deleted; a retired function cannot also be a required public API).
 const expectedModuleAPIs = {
-  'pricing_engine.js': ['resolveDynamicService','resolveEngineKey','entityHasOwnQtyQuestion','resolveServiceBadge','resolveServiceBadgeKey','resolveBaseConfidenceStrategy','applyLiveConfidenceEscalation','deriveComplexityTier','applyPricingFormula','getServiceProfile','formatServicePrice','tagValidForCategory','isDiagnosticService','isLogisticTag','sqTagLabel','sqTagFeeImpact','mathFurnitureAssembly','resolveServiceCheckoutStateKey','buildCheckoutStateModel','computeUnifiedQuote','computeArchetypeQuote','_computePrice','syncTagSynthesizedAnswers','resolveQuantityUnits','resolveQuantityMultiplier','resolveBuilderQuantity','classifyServiceIntake', 'isQuantityFixed', 'isFlatCheckoutState','buildQuotePanelModel','requiredTagIdsFor','closeTagsOverRequires','toggleTagState','buildServiceSessionSeed','synthesizeAnswersFromTags','computeQuoteFromState','onsiteDiagnosticTerms'],
+  'pricing_engine.js': ['resolveDynamicService','resolveEngineKey','entityHasOwnQtyQuestion','resolveServiceBadge','resolveServiceBadgeKey','resolveBaseConfidenceStrategy','applyLiveConfidenceEscalation','resolveSkillTier','applyPricingFormula','getServiceProfile','formatServicePrice','tagValidForCategory','isDiagnosticService','isLogisticTag','sqTagLabel','sqTagFeeImpact','mathFurnitureAssembly','resolveServiceCheckoutStateKey','buildCheckoutStateModel','computeUnifiedQuote','computeArchetypeQuote','_computePrice','syncTagSynthesizedAnswers','resolveQuantityUnits','resolveQuantityMultiplier','resolveBuilderQuantity','classifyServiceIntake', 'isQuantityFixed', 'isFlatCheckoutState','buildQuotePanelModel','requiredTagIdsFor','closeTagsOverRequires','toggleTagState','buildServiceSessionSeed','synthesizeAnswersFromTags','computeQuoteFromState','onsiteDiagnosticTerms'],
   'nlp_engine.js': ['initNlpSets','refreshNlpPreviewBindings','understandRequest','composeAdlibParts','composeAdlibSentence','detectActionsInOrder','detectIntentNLP','detectTagsNLP','isServiceVerb','extractObjectDetailed','extractObject','extractQty','extractLocation','extractSizeHint','inferTagsFromContext','computeNegatedGroupHints','resolveGroupFromIntent','extractCondition'],
   'orchestrator_engine.js': ['executeWorkflow','orch_resolve_entity','orch_apply_object_based_resolution','orch_enrich_from_dynamic_service','orch_compute_variability_flags','orch_compose_intake_chain','orch_depends_on_as_labels','orch_apply_location_hints','orch_compute_confidence','orch_select_ui_template','orch_merge_materials_estimate','orch_compute_quote','orch_apply_intake_bypass_rules','readRoutePath','evaluateInvariant','describeInvariantFailure','validateRoute','catastrophicFallbackRoute','collectBookingContext_catalog','collectBookingContext_otherTile','collectBookingContext_freeText','makeBookingContext','checkRoutingArchetypeConsistency','orch_max_followup_questions','orch_splice_remote_deep_dive','orch_apply_remote_divergence','orch_apply_answer','orch_apply_quantity','buildOtherTilesForGroup','orch_validate_ssot','orch_resolve_schema_location','orch_recommended_service_ids'],
   'UIRenderer.js': ['renderCuratedCardFromRoute','renderSelfQuoteFromRoute','renderTagAffirmationFromRoute'],
@@ -3170,7 +3173,7 @@ const expectedModuleAPIs = {
 };
 
 const safeSig = {
-  'pricing_engine.js': [{ name: 'resolveEngineKey', args: ["'hourly'"], expect: 'string' },{ name: 'sqTagLabel', args: ['null', "'#brick_wall'"], expect: 'string' },{ name: 'isLogisticTag', args: ["'#brick_wall'"], expect: 'boolean' },{ name: 'deriveComplexityTier', args: ['30', 'null', 'null'], expect: 'string' }],
+  'pricing_engine.js': [{ name: 'resolveEngineKey', args: ["'hourly'"], expect: 'string' },{ name: 'sqTagLabel', args: ['null', "'#brick_wall'"], expect: 'string' },{ name: 'isLogisticTag', args: ["'#brick_wall'"], expect: 'boolean' },{ name: 'resolveSkillTier', args: ["'skilled'", 'null'], expect: 'string' }],
   'nlp_engine.js': [{ name: 'extractQty', args: ["'fix 5 tiles'"], expect: 'number' },{ name: 'isServiceVerb', args: ["'install'", 'new Set(["install"])'], expect: 'boolean' }],
   'orchestrator_engine.js': [{ name: 'readRoutePath', args: ['{a:{b:1}}', "'a.b'"], expect: 'number' },{ name: 'catastrophicFallbackRoute', args: ['null', '[]'], expect: 'object' },{ name: 'orch_validate_ssot', args: ['{}', "{type:'object'}"], expect: 'object' },{ name: 'orch_resolve_schema_location', args: ['{}'], expect: 'object' }],
   'UIRenderer.js': [{ name: 'renderIcon', args: ["'ti ti-home'"], expect: 'string' }],
@@ -3246,7 +3249,7 @@ for (const [fname, api] of Object.entries(expectedModuleAPIs)) {
 {
   const bundle = bundleFunctions([
     'resolveBaseConfidenceStrategy','applyLiveConfidenceEscalation','applyPricingFormula',
-    'computeArchetypeQuote','deriveComplexityTier','resolveServiceCheckoutStateKey',
+    'computeArchetypeQuote','resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey',
     'buildCheckoutStateModel','sqTagLabel','computeUnifiedQuote','_computePrice',
     'synthesizeAnswersFromTags','closeTagsOverRequires','requiredTagIdsFor','tagValidForCategory',
     'isDiagnosticService','isLogisticTag','sqTagFeeImpact','resolveServiceBadge','resolveServiceBadgeKey',
@@ -3279,7 +3282,7 @@ for (const [fname, api] of Object.entries(expectedModuleAPIs)) {
         if (!Number.isFinite(r.laborEstimate)) fail.nonFinite.push(`${svc.id}#${i}`);
         if (r.laborEstimate < 0) fail.negative.push(`${svc.id}#${i}`);
         const attr = (r.feeBreakdown || []).reduce((s, e) => s + (e.fee || 0), 0);
-        if (Math.abs((r.extraFee + (r.perVisitFee || 0)) - attr) > 1e-6) fail.breakdown.push(`${svc.id}#${i}: ${r.extraFee}+${r.perVisitFee || 0} vs ${attr}`); // T148: per-visit fees are added once, OUTSIDE extraFee (R-PRICE-SCOPE), so they belong on this side of the invariant
+        if (Math.abs((r.extraFee + (r.perVisitFee || 0) + (r.timeFee || 0)) - attr) > 1e-6) fail.breakdown.push(`${svc.id}#${i}: ${r.extraFee}+${r.perVisitFee || 0}+${r.timeFee || 0} vs ${attr}`); // T148: per-visit fees are added once, OUTSIDE extraFee (R-PRICE-SCOPE), so they belong on this side of the invariant. T182: so does the priced time (#229): the lines that were priced by their minutes carry their whole-dollar share of timeFee
       }
       assertHeuristic('R-PRICE-REACHES', fail.nonFinite.length === 0, `Pricing fuzz (${ITER} iterations): every laborEstimate finite`, fail.nonFinite.slice(0, 3).join(' | '));
       assertHeuristic('R-PRICE-REACHES', fail.negative.length === 0, 'Pricing fuzz: no negative laborEstimate', fail.negative.slice(0, 3).join(' | '));
@@ -3298,7 +3301,7 @@ for (const [fname, api] of Object.entries(expectedModuleAPIs)) {
     'describeInvariantFailure','validateRoute','catastrophicFallbackRoute',
     'checkRoutingArchetypeConsistency','_resolveIntakeChain','resolveBaseConfidenceStrategy',
     'applyLiveConfidenceEscalation','applyPricingFormula','computeArchetypeQuote',
-    'deriveComplexityTier','resolveServiceCheckoutStateKey','buildCheckoutStateModel',
+    'resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey','buildCheckoutStateModel',
     'sqTagLabel','computeUnifiedQuote','_computePrice','synthesizeAnswersFromTags',
     'closeTagsOverRequires','requiredTagIdsFor','tagValidForCategory','isDiagnosticService',
     'isLogisticTag','sqTagFeeImpact','resolveServiceBadge','resolveServiceBadgeKey',
@@ -3503,7 +3506,7 @@ const KNOWN_PATH_DIVERGENCES = new Set([]);
 {
   const bundle = bundleFunctions([
     'resolveBaseConfidenceStrategy','applyLiveConfidenceEscalation','applyPricingFormula',
-    'computeArchetypeQuote','deriveComplexityTier','resolveServiceCheckoutStateKey',
+    'computeArchetypeQuote','resolveSkillTier','priceAddedTime','splitAddedTimeDollars','resolveServiceCheckoutStateKey',
     'buildCheckoutStateModel','sqTagLabel','computeUnifiedQuote','_computePrice',
     'synthesizeAnswersFromTags','closeTagsOverRequires','requiredTagIdsFor','tagValidForCategory',
     'isDiagnosticService','isLogisticTag','sqTagFeeImpact','resolveServiceBadge','resolveServiceBadgeKey',

@@ -53,7 +53,7 @@ check('every invariant has id, rule, and check', DB.invariants.every(i => i.id &
 
 const FNS = ['readRoutePath', 'evaluateInvariant', 'describeInvariantFailure', 'checkRoutingArchetypeConsistency', 'validateRoute',
     'catastrophicFallbackRoute', 'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey',
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars',
     'applyPricingFormula', 'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory',
     'resolveEngineKey', 'resolveServiceBadge', 'computeUnifiedQuote', '_resolveIntakeChain',
     '_isModVisible', 'resolveGroupFromIntent', 'collectBookingContext_catalog', 'makeBookingContext',

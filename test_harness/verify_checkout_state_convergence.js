@@ -9,7 +9,7 @@
  *   1. the resolver answers for EVERY entity, with a valid key and a named source, and never needs its fallback (the fallback is a net, not a data path);
  *   2. the card path never self-quotes what the route does not, never self-quotes a service whose QUANTITY moves its price (the card can express one price), and -- since T154
  *      (operator ruling "LED yes" on PENDING_DECISIONS #108) -- the two paths AGREE for every service: no declared exceptions remain. The route's own LED outcome is held directly
- *      (curated card, asks the bulb count, prices $20 / $35 / $50 by answer), and the self-quote half of the comparison is kept non-vacuous by a counterfactual world;
+ *      (curated card, asks the bulb count, prices $20 / $40 / $50 by answer (was $35 for the middle band until T182)), and the self-quote half of the comparison is kept non-vacuous by a counterfactual world;
  *   3. the quote carries the resolver's key and source on both the route path and the state path; an answer-level override is named as such;
  *   4. counterfactual worlds: (A) every archetype defaults to 'diagnostic' and every reader must follow the inheritance (the real data hides a reader that ignores it); (B) the LED bulb
  *      service (the one authored bypass_intake count template) becomes single-unit: the route must then self-quote it via template-matrix rule 5 and the card path must agree;
@@ -80,7 +80,9 @@ check('and its route is the curated card, not a self-quote', ledRow.tpl === 'cur
   const ledSvc = DB.services.find(x => x.id === LED), askRoute = ans => { const c = sb.collectBookingContext_catalog(ledSvc, ledSvc.ui_taxonomy.category_id); c.answers = ans; return sb.executeWorkflow(c, DB); };
   const bands = ledSvc.intake_chain[0].params.client_response.map(r => r.label), priced = bands.map(l => askRoute({ item_count_template: l }).quote.laborEstimate);
   check('the route ASKS the bulb count (an unanswered visible question) and does not bypass intake', askRoute({}).bypassIntake === false && askRoute({}).intakeChain.length === 1 && askRoute({}).flags.all_visible_real_questions_answered === false);
-  check('and prices it $20 / $35 / $50 by answer -- the same figure the card tap produces (no price moved by the ruling)', JSON.stringify(priced) === JSON.stringify([20, 35, 50]), 'priced: ' + priced.join(', '));
+  // T182 (#229, #234): the bands' minutes now price the job (15 minutes at $70 an hour is $17.50, rounded to the nearest $5 is $20), so the 2-3 bulb band is $40 and not $35; the figure is still the one the card tap
+  // produces, which is what this check is about. (The T154 ruling moved no price; the time model moved this one, by $5, and golden_change_T182_time_model.md lists it.)
+  check('and prices it $20 / $40 / $50 by answer -- the same figure the card tap produces (the T154 ruling moved no price; the T182 time model moved the 2-3 bulb band by $5)', JSON.stringify(priced) === JSON.stringify([20, 40, 50]), 'priced: ' + priced.join(', '));
 }
 check('the card path is never more permissive than the original card-tap rule (restated from raw SSOT fields, since its source copy was deleted in T155)', rows.every(r => !r.cls || r.legacy));
 // (no population floor here: since T154 NO catalog service self-quotes on the route -- every chain has a real question or a price-moving quantity. The self-quote half of the comparison

@@ -46,7 +46,9 @@ const RULES = {
   nlp_default_fallback: [{ path: ['category'], kind: 'value', t: 'cat' }, { path: ['service_type'], kind: 'value', t: 'act' }],
   global_rules: [{ path: ['intake_defaults', 'group_defaults'], kind: 'keys', t: 'grp' }, { path: ['intake_defaults', 'group_defaults', '*', '[]'], kind: 'value', t: 'q' },
     { path: ['intake_defaults', 'category_defaults'], kind: 'keys', t: 'cat' }, { path: ['intake_defaults', 'category_defaults', '*', '[]'], kind: 'value', t: 'q' },
-    { path: ['force_modules_by_variability_DEPRECATED', '*', '[]'], kind: 'value', t: 'q' }],
+    { path: ['force_modules_by_variability_DEPRECATED', '*', '[]'], kind: 'value', t: 'q' },
+    // T182: the formulas whose minutes the flat-rate time model prices; named by id in the source, by the legacy formula name in the file the page reads
+    { path: ['pricing_engines', 'flat_rate', 'time_pricing', 'priced_formulas', '[]'], kind: 'value', t: 'fml' }],
   ui_config: [{ path: ['step2_types', '[]'], kind: 'value', t: 'act' }],
   formulas: [{ path: ['[]', 'patch_modifier_ref'], kind: 'value', t: 'mod' }, { path: ['[]', 'texture_modifier_ref'], kind: 'value', t: 'mod' }, { path: ['[]', 'grout_modifier_ref'], kind: 'value', t: 'mod' },
     { path: ['[]', 'water_damage_modifier_ref'], kind: 'value', t: 'mod' }, { path: ['[]', 'high_ceiling_modifier_ref'], kind: 'value', t: 'mod' }, { path: ['[]', 'disposal_modifier_ref'], kind: 'value', t: 'mod' },

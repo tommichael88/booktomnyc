@@ -66,6 +66,7 @@ for (const s of DB.services) for (const st of s.intake_chain) {
 }
 check(`every banded count question moves the price or the time (${banded} banded steps; a question that charges nothing is not a question)`, inert.length === 0 && banded >= 15, { expected: '0 inert, >= 15 banded', got: { banded, inert } });
 // C2. price never falls as the count rises; the open-ended top band is overflow-wired and behaves as configured
+const TP = DB.global_rules.pricing_engines.flat_rate.time_pricing; // the SSOT's flat-rate time price (T182)
 const OF = 'item_count_overflow_formula', CFG = DB.pricing_formulas[OF].anchor_and_overflow_ref_by_service, MODS = DB.global_rules.modifiers;
 const UNWIRED_OPEN_ENDED = new Set(['router_configuration']); // "16+ devices": tiers of devices, not units; the cliff is acknowledged (PENDING_DECISIONS #98) -- this list may only shrink
 const inversions = [], openUnwired = [], overflowBad = []; let overflowChecked = 0;
@@ -83,7 +84,11 @@ for (const s of DB.services) for (const st of s.intake_chain) {
         const priced = b.modifier_ref ? bands.find(x => x.modifier_ref === b.modifier_ref) : null, lead = priced ? parseInt((priced.label.match(/\d+/) || [])[0], 10) : NaN;
         if (!b.modifier_ref || lead !== cfg.anchor) overflowBad.push(`${s.id}: anchor ${cfg.anchor} but the flat price is for ${lead} ("${priced && priced.label}")`);
         if (atAnchor !== flat) overflowBad.push(`${s.id}: at the anchor (${cfg.anchor}) the price moved from $${flat} to $${atAnchor}`);
-        if (Math.abs((over - flat) - 3 * rate.fee) > 1) overflowBad.push(`${s.id}: 3 units beyond the anchor added $${over - flat}, the rate says $${3 * rate.fee}`); } }
+        // T182 (#229, #234): on a flat-rate service the units beyond the anchor add the rate's MINUTES, priced at the SSOT's time rate and rounded (the band's own minutes round together with them); a service the
+        // time model does not price (an archetype or hourly service) still adds the rate's fee. The expectation is restated here from the SSOT's numbers, not asked of the engine.
+        const timed = s.financial_engine && s.financial_engine.type === 'flat_rate' && TP && (rate.minutes > 0), P = m => Math.round(m * TP.rate_per_hour / 60 / TP.round_to) * TP.round_to, bandMin = (MODS[b.modifier_ref] || {}).minutes || 0;
+        const want = timed ? P(bandMin + 3 * rate.minutes) - P(bandMin) : 3 * rate.fee;
+        if (Math.abs((over - flat) - want) > 1) overflowBad.push(`${s.id}: 3 units beyond the anchor added $${over - flat}, the ${timed ? 'time model' : 'rate'} says $${want}`); } }
 check('PRICE NEVER FALLS as the count rises across a banded count question (the open-ended band is never cheaper than the band below it)', inversions.length === 0, { expected: 0, got: inversions });
 check('every open-ended top band ("... or more") is wired to the overflow formula, so the price keeps rising beyond it (the "9 or 400 cost the same" cliff)', openUnwired.length === 0, { expected: 0, got: openUnwired });
 check(`the overflow behaves as configured on all ${overflowChecked} overflow bands: flat at and below the anchor, the configured rate for every unit beyond it`, overflowBad.length === 0 && overflowChecked >= 14, { expected: '0 bad, >= 14 checked', got: { overflowChecked, overflowBad } });

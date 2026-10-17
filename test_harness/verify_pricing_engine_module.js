@@ -107,7 +107,7 @@ const { checkParity, printReport } = require('./check_module_parity.js');
 const parityResult = checkParity({
     modulePath: enginePath,
     functionNames: ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 
-        'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+        'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
         'computeUnifiedQuote', 'sqTagLabel', 'mathFurnitureAssembly',
         // v9.6: added per Project Charter §5A's now-explicit parity
         // requirement -- confirmed this function already existed and

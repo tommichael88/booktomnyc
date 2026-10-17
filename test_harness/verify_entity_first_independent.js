@@ -60,6 +60,7 @@ function washerSource() {
   f.registries.behavioral_classes = REAL.registries.behavioral_classes.filter(c => c.id === 'cls.major_appliance').map(c => Object.assign(lib.clone(c), { member_group_ids: ['grp.fixture_washers'], typical_actions: ['act.repair'] }));
   f.shared_questions = []; f.shared_uncertainty_classes = [];
   const gr = f.policy.global_rules; gr.intake_defaults.group_defaults = {}; gr.intake_defaults.category_defaults = {};
+  gr.pricing_engines.flat_rate.time_pricing.priced_formulas = []; // T182: the committed policy names the catalog's overflow formula as time-priced; the washer fixture owns no formula (registries.pricing_formulas is empty), so the reference would dangle
   for (const k of Object.keys(gr.force_modules_by_variability_DEPRECATED)) if (Array.isArray(gr.force_modules_by_variability_DEPRECATED[k])) gr.force_modules_by_variability_DEPRECATED[k] = [];
   f.policy.ui_config.step2_types = ['act.repair'];
   f.policy.complexity_axes.single_use_consumable_material_ids = []; f.policy.complexity_axes.assembly_family_service_ids = []; // the washer owns no catalog material and is no assembly service; the three axes it declares are the real washer_repair's (R-COMPLEX-AXES)

@@ -48,7 +48,7 @@ check('rule 0 checks requires_furniture_selection -> legacy_flow', rules[0].if.r
 check('rule 1 checks is_other_adhoc_service -> legacy_flow', rules[1].if.is_other_adhoc_service === true && rules[1].then.ui_template === 'legacy_flow');
 
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'mathFurnitureAssembly', '_resolveIntakeChain', '_isModVisible',
     'resolveGroupFromIntent', 'collectBookingContext_catalog', 'makeBookingContext',

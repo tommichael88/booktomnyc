@@ -66,7 +66,7 @@ const findFn = engineAwareFindFn(_cherryPickFn);
 
 const PRICING_FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'computeQuoteFromState'];
 const sandbox = { DB, window: { DB }, console };
@@ -95,18 +95,31 @@ const baseAnswers = {
     disposal_request: 'Yes, please haul it away', urgency: 'Urgent - today or tomorrow',
 };
 const REAL_KEYS = ['wall_type', 'dmg_size', 'mounting_height', 'disposal_request', 'urgency'];
+// T182 (#229, #234): wall_hole_or_crack_repair is a flat-rate service, so its answers add TIME and the time prices the job (global_rules.pricing_engines.flat_rate.time_pricing: $70 an hour, rounded to $5);
+// a per-visit answer (disposal, urgency) keeps its fee. The expectations are derived from the SSOT with that rule, so they follow the data, and they are still the property this test is about: the
+// answers of a quote whose band carries a formula_override are NOT dropped. (They were $245 / $245 + 4 x $70 / $245 + 7 x $70 when each answer carried a fee of its own.)
+const TP = DB.global_rules.pricing_engines.flat_rate.time_pricing;
+const priceTime = m => Math.round(m * TP.rate_per_hour / 60 / TP.round_to) * TP.round_to;
+const modOf = (moduleKey, label) => { const step = wallSvc.intake_chain.find(t => t.module === moduleKey); const rs = (step && step.params && step.params.client_response) || DB.intake_modules[moduleKey].client_response; return DB.global_rules.modifiers[rs.find(r => r.label === label).modifier_ref]; };
+const answerMods = REAL_KEYS.map(k => modOf(k, baseAnswers[k]));
+const perUnitMin = answerMods.filter(m => m.scope !== 'per_visit').reduce((a, m) => a + (m.minutes || 0), 0), perVisitFee = answerMods.filter(m => m.scope === 'per_visit').reduce((a, m) => a + (m.fee || 0), 0);
+const bandMod = label => DB.global_rules.modifiers[countBands.find(b => b.label === label).modifier_ref];
+const ovf = DB.pricing_formulas.item_count_overflow_formula.anchor_and_overflow_ref_by_service[wallSvc.id], rateMod = DB.global_rules.modifiers[ovf.overflow_rate_ref];
+const expect1 = wallBase + priceTime(perUnitMin) + perVisitFee;
+const expectTop = wallBase + priceTime(perUnitMin + bandMod(topBand).minutes) + perVisitFee;
+const expectTop8 = wallBase + priceTime(perUnitMin + bandMod(topBand).minutes + rateMod.minutes * (8 - ovf.anchor)) + perVisitFee;
 const noFormula = quoteFor(wallSvc, { ...baseAnswers, item_count_template: oneWall });
-check('"1 wall" (no formula_override) applies all 5 real modifiers: $245', noFormula.laborCalc === 245);
+check(`"1 wall" (no formula_override) applies all 5 real answers: $${expect1} (base $${wallBase} + ${perUnitMin} minutes of the three per-unit answers + $${perVisitFee} of per-visit fees)`, noFormula.laborCalc === expect1, 'got ' + noFormula.laborCalc);
 check('"1 wall": all 5 real fee entries present', REAL_KEYS.every(k => noFormula.feeBreakdown.some(f => f.moduleKey === k)));
 
 const withTop = quoteFor(wallSvc, { ...baseAnswers, item_count_template: topBand });
-check(`the top band (HAS formula_override) ALSO applies all 5 real modifiers, plus its own flat 5-wall price (+4 x $${wallBase}): $${245 + 4 * wallBase} (a heavy job priced $70 before the original fix: a real $175 undercharge)`,
-    withTop.laborCalc === 245 + 4 * wallBase);
+check(`the top band (HAS formula_override) ALSO applies all 5 real answers, plus its own flat band's time: $${expectTop} (a heavy job priced $70 before the original fix: a real $175 undercharge)`,
+    withTop.laborCalc === expectTop, 'got ' + withTop.laborCalc);
 check('the top band: all 5 real fee entries still present, not suppressed', REAL_KEYS.every(k => withTop.feeBreakdown.some(f => f.moduleKey === k)));
 
 const withTopAndCount = quoteFor(wallSvc, { ...baseAnswers, item_count_template: topBand, __exact_count: 8 });
-check(`with a real exact count (8 walls): the 5 real answers AND the overflow combine -- one wall's price plus 7 x $${wallBase}`,
-    withTopAndCount.laborCalc === 245 + 7 * wallBase);
+check(`with a real exact count (8 walls): the 5 real answers AND the overflow combine -- the band's time plus ${8 - ovf.anchor} x the per-wall overflow time: $${expectTop8}`,
+    withTopAndCount.laborCalc === expectTop8, 'got ' + withTopAndCount.laborCalc);
 
 console.log('\n=== Regression guard: the double-counting risk this fix could have introduced, but did not (tile_repair_formula consumes several answers, not just one) ===');
 const tileDynDef = DB.dynamic_services['minor_home_repairs+minor_home_repairs_ceilings+Repair']; // unrelated control, real entry

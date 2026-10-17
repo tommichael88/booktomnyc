@@ -53,7 +53,7 @@ check('schema validates both new condition_map nodes', !!SCHEMA.properties?.work
 check('booking_context schema includes uncoveredServiceTypes', !!SCHEMA.$defs?.booking_context?.properties?.uncoveredServiceTypes);
 
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
-    'applyLiveConfidenceEscalation', 'deriveComplexityTier', 'applyPricingFormula',
+    'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
     'resolveServiceBadge', 'computeUnifiedQuote', 'computeArchetypeQuote', 'mathFurnitureAssembly', '_resolveIntakeChain', '_isModVisible',
     'resolveGroupFromIntent', 'collectBookingContext_otherTile', 'makeBookingContext',
