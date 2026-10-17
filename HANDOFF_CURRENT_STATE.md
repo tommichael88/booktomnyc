@@ -12,7 +12,7 @@ Written for a fresh Claude session. It records what is true of the repository **
 - **Two things left as they were, on purpose (#237 d, e):** `meta.version` stays 9.6.0 (`$source.carry_version` identifies the carry); the root `btnyc_schema.json` is a stale unretired copy (the page reads `schema/btnyc_schema.json`).
 - **Terminology.** In what I write, "chip" means only a smart-tag chip; client answers are "responses" or "answers" (your 23:34 NY ruling; the Charter amendment is yours to apply, and you said you will include it in the revised edition).
 - **You moved files on 2026-10-17 (00:19 to 00:25 NY):** `deprecated/qr2`, `deprecated/contact.html` and `deprecated/checkboxchevronbookhere.js` hold what were root files; six icons are in `images/` with a `2` in the name. Nothing the live pages load by name was among them (checked: `index.html` loads its images from an external host). `.github/codeql/codeql-config.yml` still names the old script path.
-- **The gate baseline** for the next run is `archive/suite_T180_8n.tsv` until T181 (2/n) records the run on this tree.
+- **The gate baseline** for the next run is `archive/suite_T181.tsv` (golden master `archive/golden_master_T180_8n.json`, unchanged: 2,988 points, 0 differ). T181 (2/n) records the run: 166 pass, 71 fail (the known red set), 0 regressions after eight fixes to tests my change had broken. **Known flake (#238):** `verify_file_integrity.js` can fail if it runs after `verify_innerhtml_audit.js` or `verify_purity_audit.py`; re-run it alone on a clean tree.
 
 ## 0e. T180 (8/n) update (2026-10-17, after your 23:34 NY message): read this first; it supersedes §0d's gate-baseline line
 
