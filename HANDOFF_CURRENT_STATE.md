@@ -10,7 +10,7 @@ Written for a fresh Claude session. It records what is true of the repository **
 - **Regulated trades (#230).** Ruled in principle: no job that needs a permit or a licensed trade is quoted; a placeholder (later a referral) and an alternative are shown instead. Which of 20 candidate services is yours to name; the R3 mechanism is a runtime slice that does not exist yet.
 - **Comparing versions of `btnyc.json`.** `archive/BTNYC_JSON_VERSIONS.md`; `node test_harness/tools/catalog_diff.js list | diff <A> <B>`. The history before 2026-10-08 was lost in a container reset; the older catalogs are in `legacy/catalogs/`.
 - **Branches (#233).** All 23 contained tips re-verified on a full clone; `t166-ssot-audit` is safe to delete (its files are in `main`, its audit evidence byte-identical). They are still on GitHub: deleting is yours (steps in the closing reply and `legacy/README.md`).
-- **The gate baseline** for the next run is `archive/suite_T180_6n.tsv` (and its golden master `archive/golden_master_T180_8n.json`, 2,988 points); T180 (9/n) records the run on this tree.
+- **The gate baseline** for the next run is `archive/suite_T180_8n.tsv` (and its golden master `archive/golden_master_T180_8n.json`, 2,988 points); T180 (9/n) records the run on this tree. **Pre-commit step added:** after any edit to `qr.html`, run `python3 test_harness/extract_engine.py` (it regenerates `test_harness/_extracted_engine.js`; `verify_extractor_index_matches_parser.js` is red if it is stale).
 
 ## 0d. T180 (6/n) update (2026-10-16, after your 19:21, 19:24 and 19:53 NY messages): read this first
 

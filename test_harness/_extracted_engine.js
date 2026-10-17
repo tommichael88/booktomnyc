@@ -269,7 +269,7 @@ function resolveConfidence(evidence, DB) {
             };
         }
 
-function deriveComplexityTier(totalMinutes, tagOverrideTier, exactTier) {
+function deriveComplexityTier(totalMinutes, answerOverrideTier, exactTier) {
             const tiers = DB.global_rules?.complexity_tiers || {};
             let durationTier = 'routine';
             for (const [key, def] of Object.entries(tiers)) {
@@ -282,7 +282,7 @@ function deriveComplexityTier(totalMinutes, tagOverrideTier, exactTier) {
             }
             let result = durationTier;
             if (exactTier && (TIER_RANK[exactTier] || 0) > (TIER_RANK[result] || 0)) result = exactTier;
-            if (tagOverrideTier && (TIER_RANK[tagOverrideTier] || 0) > (TIER_RANK[result] || 0)) result = tagOverrideTier;
+            if (answerOverrideTier && (TIER_RANK[answerOverrideTier] || 0) > (TIER_RANK[result] || 0)) result = answerOverrideTier;
             return result;
         }
 
@@ -1235,23 +1235,15 @@ function computeUnifiedQuote(ctx) {
             // See verify_qty_tier_double_compounding_fix.js for the full,
             // catalog-wide before/after verification.
 
-            // v9.2: tag-level AND answer-level overrides both feed the same
-            // ratchet — take whichever of the two is higher-ranked, never
-            // downgrade. A heavy item detected via NLP tag should escalate
-            // exactly as much as the same fact confirmed via an intake
-            // question answer.
-            let tagOverrideTier = answerOverrideTier,
-                tagOverrideRank = TIER_RANK[answerOverrideTier] || 0;
-            for (const tid of activeTagIds) {
-                const tagDef = smartTags[tid];
-                const override = tagDef?.escalate_complexity;
-                if (override && (TIER_RANK[override] || 0) > tagOverrideRank) {
-                    tagOverrideTier = override;
-                    tagOverrideRank = TIER_RANK[override];
-                }
-            }
+            // T180 (8/n) -- Operator ruling 2026-10-16 23:34 NY, P-INVARIANT-CHIPSNOTFEES (T135): a chip (a #smart_tag shown under the text
+            // box) is NEVER a pricing input. This ratchet used to take the worst `escalate_complexity` among the active tags (v9.2: "a heavy
+            // item detected via NLP tag should escalate exactly as much as the same fact confirmed via an answer"). That made a chip raise the
+            // hourly rate in its own right, which is the thing the Charter forbids. The tier now comes from the ANSWERS' tier alone
+            // (answerOverrideTier). A fact the NLP detected still reaches the price the proper way: the tag's own `answers` map is synthesized
+            // into real answers upstream, and those answers carry the fee / minutes / tier. `escalate_complexity` on a tag is still read by
+            // applyLiveConfidenceEscalation for the confidence bar (a bar, not a price). See verify_chips_not_fees.js.
             const exactTier = svc?.operational_metrics?.complexity_tier || null;
-            const complexityTier = deriveComplexityTier(totalMin, tagOverrideTier, exactTier);
+            const complexityTier = deriveComplexityTier(totalMin, answerOverrideTier, exactTier);
             const tierRate = DB.global_rules?.complexity_tiers?.[complexityTier]?.hourly_rate || FALLBACKS.tier_rate;
             const effectiveHourlyRate = (formulaResult && formulaResult.overrideHourlyRate != null) ? formulaResult.overrideHourlyRate : tierRate;
 
