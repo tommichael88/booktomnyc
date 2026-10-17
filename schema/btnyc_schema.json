@@ -36,6 +36,7 @@
       "type": "string",
       "description": "v9.1: canonical published URL of this data file (GitHub Pages)."
     },
+    "$source": {"$ref": "#/$defs/source_provenance"},
     "meta": {
       "type": "object",
       "required": [
@@ -95,6 +96,31 @@
           ]
         }
       }
+    },
+    "entities": {
+      "description": "Charter: the entity registry (generated from the source; see $source).",
+      "type": "array",
+      "items": {"$ref": "#/$defs/entity"}
+    },
+    "shared_uncertainty_classes": {
+      "description": "Uncertainty classes of questions asked across entities.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/uncertainty_class"}
+    },
+    "contexts": {
+      "description": "The circumstances a shared question describes (entity_scope {context}).",
+      "type": "array",
+      "items": {"$ref": "#/$defs/context_ref"}
+    },
+    "actions": {
+      "description": "Charter: the action registry (service_types holds each action's data, keyed by label).",
+      "type": "array",
+      "items": {"$ref": "#/$defs/action_ref"}
+    },
+    "modifiers": {
+      "description": "Charter: the modifier registry, including domain conditions that carry no fee row.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/modifier_ref"}
     },
     "global_rules": {
       "type": "object",
@@ -440,7 +466,8 @@
             "texture_modifier_ref": {
               "type": "string",
               "description": "v9.4: authoritative reference into global_rules.modifiers."
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the formula's stable typed id."}
           },
           "required": [
             "base_minutes",
@@ -479,7 +506,8 @@
                   }
                 }
               }
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the formula's stable typed id."}
           },
           "required": [
             "base_minutes",
@@ -530,7 +558,8 @@
             "visit_minimum": {
               "type": "number",
               "description": "The least this service ever quotes, in dollars (a non-negative number; the checker has no 'minimum' keyword, so the test holds the sign)."
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the formula's stable typed id."}
           },
           "required": ["swap", "new_holes", "tiers", "visit_minimum"]
         },
@@ -568,7 +597,8 @@
                 "sliding_door_hours",
                 "interior_item_hours"
               ]
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the formula's stable typed id."}
           },
           "required": [
             "price_per_hour",
@@ -625,7 +655,8 @@
             },
             "disposal_minutes": {
               "type": "integer"
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the formula's stable typed id."}
           },
           "required": [
             "base_minutes",
@@ -717,7 +748,8 @@
             },
             "button_class_with_mat": {
               "type": "string"
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the record's stable typed id."}
           },
           "required": [
             "ui_badge_label",
@@ -1205,7 +1237,8 @@
                 "type": "string"
               },
               "description": "T166: words that infer this tag from the text alone (inferTagsFromContext), matched as whole words. Distinct from `synonyms`, which detectTagsNLP matches. Was two regular expressions written into the function (#high_ceiling, #emergency); PENDING_DECISIONS #163."
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the record's stable typed id."}
           },
           "required": [
             "synonyms",
@@ -1285,7 +1318,8 @@
             "items": {
               "type": "string"
             }
-          }
+          },
+          "charter_id": {"type": "string", "description": "Charter: the typed id; `id` stays the bare id the page reads."}
         }
       }
     },
@@ -1333,7 +1367,8 @@
           "typical_location": {
             "type": "string",
             "description": "v9.5: optional. When a group's items are almost always found in one room (e.g. a stove is always in the kitchen), this lets the SmartQuote guided builder skip its generic 'Where in the home?' step instead of asking a question with an obvious, self-evident answer. Must match one of BLD_LOCATIONS' real `value` strings in qr.html (e.g. 'kitchen', 'bathroom') -- left unset for genuinely ambiguous groups (e.g. furniture, wall-mounted items, which could be in any room)."
-          }
+          },
+          "charter_id": {"type": "string", "description": "Charter: the typed id; `id` stays the bare id the page reads."}
         }
       }
     },
@@ -1622,7 +1657,20 @@
             "type": "array",
             "items": { "type": "string" },
             "description": "T118 (PENDING_DECISIONS.md #25): service IDs of other, real services this one is commonly confused with, most often via catalog navigation rather than free text (where NLP intent-matching already disambiguates better). Surfaced as a direct cross-link on the curated intake card so a customer who landed on the wrong one can switch without re-navigating the whole catalog. A targeted mitigation for confirmed, real confusion between two specific services -- not a general recommendation/upsell mechanism."
-          }
+          },
+          "charter_id": {"type": "string"},
+          "entity_id": {"type": "string"},
+          "action_id": {"type": "string"},
+          "modifier_ids": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "complexity_profile": {"$ref": "#/$defs/complexity_profile"},
+          "uncertainty_profile": {"$ref": "#/$defs/uncertainty_profile"},
+          "confidence_policy": {"$ref": "#/$defs/confidence_policy"},
+          "confidence_gate": {"$ref": "#/$defs/confidence_gate"},
+          "recovery_affordances": {"$ref": "#/$defs/recovery_affordances"},
+          "decomposition": {"type": "object"}
         }
       }
     },
@@ -1761,7 +1809,18 @@
                 "type": "string"
               },
               "description": "v9.5: same real mechanism as services[].remote_deep_dive_modules (see that field's description) -- included here so the 24 real 'Diagnostic' dynamic_services entries can eventually carry their own, correctly-authored deep-dive question sets. Deliberately unauthored on all of them today -- a genuinely real, per-category (appliances/plumbing/tech) content-authoring task, not a mechanism gap."
-            }
+            },
+            "charter_id": {"type": "string"},
+            "entity_id": {"type": "string"},
+            "action_id": {"type": "string"},
+            "modifier_ids": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "uncertainty_profile": {"$ref": "#/$defs/uncertainty_profile"},
+            "confidence_policy": {"$ref": "#/$defs/confidence_policy"},
+            "confidence_gate": {"$ref": "#/$defs/confidence_gate"},
+            "recovery_affordances": {"$ref": "#/$defs/recovery_affordances"}
           },
           "required": [
             "financial_engine",
@@ -1843,7 +1902,13 @@
                       "type": "string"
                     },
                     "description": "v9.5: list of negation_library.nlp_location_words values for which THIS specific answer is the strongly likely/default one (e.g. a 'front door' implies solid-core; a 'bedroom'/'hallway' door implies hollow-core). Genuinely ambiguous locations are simply omitted from every answer's location_hints for this module (e.g. a 'guest bedroom' vs 'bathroom' both plausibly mean a toilet -- neither should claim it confidently). When S._location matches exactly one answer's location_hints, that answer is pre-selected (still changeable by the customer, never silently applied without being shown). This generalizes beyond doors: any intake question whose correct answer correlates strongly with WHERE the job is should use this, since the location chip otherwise sits unused as filler/notes despite carrying real, derivable intent."
-                  }
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Charter: the answer's stable id, unique within its question."
+                  },
+                  "affects": {"$ref": "#/$defs/affects"},
+                  "evidence": {"type": "string"}
                 },
                 "required": [
                   "label"
@@ -1909,6 +1974,19 @@
             },
             "_note": {
               "type": "string"
+            },
+            "id": {"type": "string", "description": "Charter: the question's stable id, q.<module key>."},
+            "entity_scope": {"$ref": "#/$defs/entity_scope"},
+            "depends_on": {
+              "description": "Charter spelling is [{question_id, option_id}]; the legacy {module key: option label} is still accepted until every consumer has moved (stage 1 of the carry rollout).",
+              "oneOf": [
+                {"$ref": "#/$defs/depends_on_pairs"},
+                {
+                  "type": "object",
+                  "additionalProperties": {"type": "string"},
+                  "description": "Legacy spelling: {module key: option label}."
+                }
+              ]
             }
           },
           "required": [
@@ -1955,7 +2033,8 @@
             },
             "description": {
               "type": "string"
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the record's stable typed id."}
           }
         }
       },
@@ -1998,7 +2077,8 @@
           },
           "sku": {
             "type": "string"
-          }
+          },
+          "id": {"type": "string", "description": "Charter: the record's stable typed id."}
         }
       }
     },
@@ -2289,7 +2369,8 @@
           },
           "default_checkout_state": {
             "type": "string"
-          }
+          },
+          "id": {"type": "string", "description": "Charter: the record's stable typed id."}
         }
       }
     },
@@ -2432,13 +2513,22 @@
                   },
                   "tags": {
                     "type": "array"
-                  }
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Charter: the answer's stable id, unique within its question."
+                  },
+                  "affects": {"$ref": "#/$defs/affects"},
+                  "evidence": {"type": "string"}
                 },
                 "required": [
                   "label"
                 ]
               }
-            }
+            },
+            "id": {"type": "string", "description": "Charter: the question's stable id, q.<module key>."},
+            "entity_scope": {"$ref": "#/$defs/entity_scope"},
+            "depends_on": {"$ref": "#/$defs/depends_on_pairs"}
           }
         }
       },
@@ -2539,6 +2629,346 @@
           "description": "Set when entry='other_tile'. The list of service_types not yet covered by a named service for this group (carried from the tile's own uncovered_service_types). Consumed by workflow.intake_bypass_rules: when this array has exactly one entry, the action/type-selection step is unambiguous and can be skipped."
         }
       }
+    },
+    "option_ref": {
+      "description": "Charter: a dependency or a retirement names an answer by the pair {question_id, option_id}, never by a label.",
+      "type": "object",
+      "properties": {
+        "question_id": {"type": "string"},
+        "option_id": {"type": "string"}
+      },
+      "required": ["question_id", "option_id"],
+      "additionalProperties": false
+    },
+    "depends_on_pairs": {
+      "description": "Charter: the answers a question is shown after, as [{question_id, option_id}] pairs; [] when it is shown unconditionally. Generated from ssot/btnyc_source.json by carry_charter.js.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/option_ref"}
+    },
+    "entity_scope": {
+      "description": "Charter: what a question is about. An array of entity ids, or {context: ctx.<id>} for a question asked across entities that describes the job's circumstances.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1
+        },
+        {
+          "type": "object",
+          "properties": {
+            "context": {"type": "string"}
+          },
+          "required": ["context"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "affects": {
+      "description": "Charter: what choosing this answer changes. A closed vocabulary; an answer that changes nothing says so with [].",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "complexity",
+          "price",
+          "minutes",
+          "branch",
+          "tags",
+          "checkout_state",
+          "quantity",
+          "materials",
+          "prep"
+        ]
+      }
+    },
+    "retirement": {
+      "description": "Charter: the answers that retire an uncertainty class. option_ids lists them; any_value is true for a class retired by any answer to the question.",
+      "type": "object",
+      "properties": {
+        "question_id": {"type": "string"},
+        "option_ids": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1
+        },
+        "any_value": {"type": "boolean"}
+      },
+      "required": ["question_id"],
+      "additionalProperties": false
+    },
+    "uncertainty_class": {
+      "description": "Charter: one thing a service can still be unsure about, and which answers retire it.",
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "retired_by": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/retirement"},
+          "minItems": 1
+        },
+        "default_weight": {"type": "number"},
+        "weight_basis": {
+          "type": "string",
+          "enum": ["seeded_from_confidence_gain", "unauthored"]
+        }
+      },
+      "required": ["id", "label", "retired_by", "weight_basis"],
+      "additionalProperties": false
+    },
+    "uncertainty_profile": {
+      "description": "Charter: the uncertainty classes a service carries, with the weight of each (points of the 100 a quote starts short of).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "class_id": {"type": "string"},
+          "weight": {"type": "number"}
+        },
+        "required": ["class_id", "weight"],
+        "additionalProperties": false
+      }
+    },
+    "confidence_policy": {
+      "description": "Charter: where a service's scope confidence unlocks an exact price, a range, or a diagnostic. Scale is explicit: 0-1, never mixed with 0-100.",
+      "type": "object",
+      "properties": {
+        "exact_at": {"type": "number"},
+        "range_at": {"type": "number"},
+        "diagnostic_below": {"type": "number"},
+        "scale": {"const": "0-1"},
+        "policy_sources": {
+          "type": "object",
+          "properties": {
+            "exact_at": {
+              "type": "string",
+              "enum": ["service_override", "archetype_default"]
+            },
+            "range_at": {
+              "type": "string",
+              "enum": ["service_override", "archetype_default"]
+            },
+            "diagnostic_below": {
+              "type": "string",
+              "enum": ["service_override", "archetype_default"]
+            }
+          },
+          "required": ["exact_at", "range_at", "diagnostic_below"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["exact_at", "range_at", "diagnostic_below", "scale", "policy_sources"],
+      "additionalProperties": false
+    },
+    "confidence_gate": {
+      "description": "How a service's confidence is computed: weighted over its uncertainty profile (basis says where the weights came from), or none (reason says why a service has no profile).",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["weighted_uncertainty", "none"]
+        },
+        "basis": {"type": "string"},
+        "reason": {"type": "string"}
+      },
+      "required": ["mode"],
+      "additionalProperties": false
+    },
+    "recovery_affordances": {
+      "description": "Charter: what the system offers when a quote cannot reach the threshold: ask what is still open, deep-dive questions, and the route (with its checkout state) when no path remains.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["current_open_uncertainty"]
+        },
+        "deep_dive_question_ids": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "when_no_path": {
+          "type": "object",
+          "properties": {
+            "route": {"type": "string"},
+            "checkout_state_id": {"type": "string"}
+          },
+          "required": ["route", "checkout_state_id"],
+          "additionalProperties": false
+        },
+        "deep_dive_declared": {"type": "boolean"}
+      },
+      "required": ["source", "deep_dive_question_ids", "when_no_path"],
+      "additionalProperties": false
+    },
+    "complexity_profile": {
+      "description": "Charter R-COMPLEX-AXES: the three orthogonal properties every service declares (tier, risk_tier, batch_risk_compounds); none is derived from another.",
+      "type": "object",
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": ["routine", "skilled", "specialized"]
+        },
+        "risk_tier": {
+          "type": "string",
+          "enum": ["R0", "R1", "R2"]
+        },
+        "batch_risk_compounds": {"type": "boolean"},
+        "risk_basis": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "batch_risk_basis": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "assembly_class": {"type": "string"}
+      },
+      "required": ["tier", "risk_tier", "batch_risk_compounds"],
+      "additionalProperties": false
+    },
+    "consumer": {
+      "description": "A module that reads a carried member (a target by the Layer Map unless status says otherwise).",
+      "type": "object",
+      "properties": {
+        "module": {"type": "string"},
+        "reads": {"type": "string"},
+        "status": {"type": "string"}
+      },
+      "required": ["module", "reads"]
+    },
+    "source_provenance": {
+      "description": "Charter: the artifact carries a provenance reference to the source it was generated from, what is carried where, and what reads it.",
+      "type": "object",
+      "properties": {
+        "path": {"type": "string"},
+        "sha256": {"type": "string"},
+        "source_schema_version": {"type": "string"},
+        "carry_version": {"type": "string"},
+        "form": {"const": "legacy_shape_with_charter_carry"},
+        "note": {"type": "string"},
+        "id_homes": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
+        "carried": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "consumers": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/consumer"},
+                "minItems": 1
+              }
+            },
+            "required": ["consumers"],
+            "additionalProperties": false
+          }
+        },
+        "consumer_status": {"type": "string"}
+      },
+      "required": [
+        "path",
+        "sha256",
+        "source_schema_version",
+        "carry_version",
+        "form",
+        "id_homes",
+        "carried",
+        "consumer_status"
+      ],
+      "additionalProperties": false
+    },
+    "entity": {
+      "description": "Charter: the thing a customer names. The primary navigation axis of the source; here its identity, the ids of what it owns, and its uncertainty classes with the answers that retire them.",
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "kind": {
+          "type": "string",
+          "enum": ["component", "generic_category", "generic_group"]
+        },
+        "parent_id": {
+          "type": ["string", "null"]
+        },
+        "aliases": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "question_ids": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "service_ids": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "composition_ids": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "uncertainty_classes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/uncertainty_class"}
+        },
+        "decision": {"type": "string"}
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "parent_id",
+        "aliases",
+        "question_ids",
+        "service_ids",
+        "composition_ids",
+        "uncertainty_classes"
+      ],
+      "additionalProperties": false
+    },
+    "action_ref": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"}
+      },
+      "required": ["id", "label"],
+      "additionalProperties": false
+    },
+    "context_ref": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "description": {"type": "string"}
+      },
+      "required": ["id", "label", "description"],
+      "additionalProperties": false
+    },
+    "modifier_ref": {
+      "description": "Charter: a shared modifier (or a domain condition, role \"condition\"). `key` is its record in global_rules.modifiers where it carries a fee; affects says what it changes.",
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "key": {"type": "string"},
+        "affects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["price", "minutes"]
+          }
+        },
+        "role": {
+          "type": "string",
+          "enum": ["condition"]
+        },
+        "label": {"type": "string"},
+        "description": {"type": "string"},
+        "basis": {"type": "string"}
+      },
+      "required": ["id", "key", "affects"],
+      "additionalProperties": false
     }
   }
 }

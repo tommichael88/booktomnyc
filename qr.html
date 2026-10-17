@@ -2033,6 +2033,23 @@ body.modal-active{overflow:hidden}
             return svc.price || FALLBACKS.call_for_quote;
         }
 
+        // T181 (the Charter carry, ssot/TRANSITION_DUALSOURCE.md): a module's `depends_on` is the Charter's [{question_id, option_id}] pairs ("shown after THIS answer to THAT question"). Answers are stored by module key and
+        // option LABEL, and the readers (_isModVisible, orch_route_still_possible) compare them that way, so a resolved chain entry carries the same fact spelled {moduleKey: label}. The legacy spelling is passed
+        // through untouched, so the code and the data can ship in separate deploys (a cached old file and a new file give the same entry). A pair that names no real question or answer becomes a label nothing equals:
+        // the module stays hidden, exactly as a dangling label did, and verify_ssot_reference_integrity.js is where it is reported. Pure; the module list is passed in, never read from a global.
+        /** @param {any} dep @param {any} modules */
+        function _dependsOnAsLabels(dep, modules) {
+            if (!Array.isArray(dep)) return dep;
+            const out = /** @type {any} */ ({});
+            for (const p of dep) {
+                const key = p && typeof p.question_id === 'string' ? p.question_id.replace(/^q\./, '') : '';
+                const target = modules && modules[key];
+                const opt = ((target && target.client_response) || []).find(/** @param {any} o */ o => o && p && o.id === p.option_id);
+                out[key] = opt ? opt.label : '\u0000unresolved:' + (p && p.option_id);
+            }
+            return out;
+        }
+
         function _resolveIntakeChain(svc) {
             if (!SERVICE_DATA.intake_modules) return [];
             const resolved = /** @type {any[]} */ ([]);
@@ -2073,6 +2090,7 @@ body.modal-active{overflow:hidden}
                     then: thenMap || {},
                     ...mod
                 };
+                if (merged.depends_on) merged.depends_on = _dependsOnAsLabels(merged.depends_on, SERVICE_DATA.intake_modules);
                 if (params) {
                     if (params.question_override) {
                         // Preferred: the exact original authored question
@@ -4616,6 +4634,22 @@ body.modal-active{overflow:hidden}
             };
         }
 
+        // T181 (the Charter carry): the same translation _dependsOnAsLabels makes in the pricing module, kept here because this module is loaded and tested on its own. A module's `depends_on` is the Charter's
+        // [{question_id, option_id}] pairs; a composed chain entry carries it as {moduleKey: option label}, which is how answers are stored and compared. The legacy spelling passes through untouched.
+        // verify_charter_carry.js holds the two translations to the same result. Pure.
+        /** @param {any} dep @param {any} modules */
+        function orch_depends_on_as_labels(dep, modules) {
+            if (!Array.isArray(dep)) return dep;
+            const out = /** @type {any} */ ({});
+            for (const p of dep) {
+                const key = p && typeof p.question_id === 'string' ? p.question_id.replace(/^q\./, '') : '';
+                const target = modules && modules[key];
+                const opt = ((target && target.client_response) || []).find(/** @param {any} o */ o => o && p && o.id === p.option_id);
+                out[key] = opt ? opt.label : '\u0000unresolved:' + (p && p.option_id);
+            }
+            return out;
+        }
+
         function orch_compose_intake_chain(context, resolution, db) {
             const entity = resolution.entity;
             if (!entity) return [];
@@ -4667,6 +4701,7 @@ body.modal-active{overflow:hidden}
                         module: fKey,
                         then: {},
                         ...db.intake_modules[fKey],
+                        ...(db.intake_modules[fKey].depends_on ? { depends_on: orch_depends_on_as_labels(db.intake_modules[fKey].depends_on, db.intake_modules) } : {}),
                         _forced: true
                     });
                     existingKeys.add(fKey);
@@ -4912,6 +4947,7 @@ body.modal-active{overflow:hidden}
                     // renderer's own responses.length check silently (and correctly, given a bare stub) skips anything without them.
                     route.intakeChain = [...(route.intakeChain || []), {
                         ...DB.intake_modules[mk],
+                        ...(DB.intake_modules[mk].depends_on ? { depends_on: orch_depends_on_as_labels(DB.intake_modules[mk].depends_on, DB.intake_modules) } : {}),
                         moduleKey: mk,
                         then: {}
                     }];
