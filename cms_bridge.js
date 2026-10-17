@@ -60,7 +60,7 @@ const FUNCTION_NAMES = [
     'resolveServiceCheckoutStateKey',
     
     'applyLiveConfidenceEscalation',
-    'deriveComplexityTier',
+    'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars',
     'applyPricingFormula',
     'computeUnifiedQuote',
     'resolveCheckoutState',
