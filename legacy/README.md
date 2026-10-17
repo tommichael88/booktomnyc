@@ -98,9 +98,9 @@ The Flask/OpenAI scripts, the chat page and its conversation code, style and mes
 
 These are linked from live pages or used by the site, or were edited recently enough that I would not guess:
 
-- **Live addresses**: `ServiceAgreement.html` and `ServiceAgreement_markdown.MD`, `SOW.html`, `PrivacyPolicy.html`, `Privacy Policy.html`, `privacy`, `contact.html`, `cat.html`, `furniture-fixes-assembly.html`, `index.html`, `manifest.json`, `sw.js`. The repository's own pages and agreements link to `…/booktomnyc/ServiceAgreement`, `…/Privacy`, `…/SOW` and `…/cat.html`; moving them would break links in documents customers already hold.
-- **Served assets**: `new_services.json` (the service worker caches it), `combined_theme.css`, `css_extras_Privacy_Policy_inline_markdown_code.md`, `checkboxchevronbookhere.js` (the code-scanning config names this path), and the six `*-removebg-preview.png` icons.
-- **Recent**: `qr2` (edited 2026-07-03) and `state.js` (2026-07-02). Tell me if either is finished and I will move it here.
+- **Live addresses**: `ServiceAgreement.html` and `ServiceAgreement_markdown.MD`, `SOW.html`, `PrivacyPolicy.html`, `Privacy Policy.html`, `privacy`, the contact page, `cat.html`, `furniture-fixes-assembly.html`, `index.html`, `manifest.json`, `sw.js`. (the contact page was one of these; on 2026-10-17 you moved it to `deprecated/contact.html`, so it no longer answers at its old address.) The repository's own pages and agreements link to `…/booktomnyc/ServiceAgreement`, `…/Privacy`, `…/SOW` and `…/cat.html`; moving them would break links in documents customers already hold.
+- **Served assets**: `new_services.json` (the service worker caches it), `combined_theme.css`, `css_extras_Privacy_Policy_inline_markdown_code.md`, the chevron script (now `deprecated/checkboxchevronbookhere.js`, moved by you on 2026-10-17; the code-scanning config still names the old path), and the six `*-removebg-preview.png` icons (now `images/*-removebg-preview2.png`, renamed by you on 2026-10-17).
+- **Recent**: `qr2` (edited 2026-07-03; you moved it to `deprecated/qr2` on 2026-10-17) and `state.js` (2026-07-02). Tell me if `state.js` is finished and I will move it here.
 - **The system**: `qr.html`, `btnyc.json`, `btnyc_schema.json`, `cms_bridge.js`, `trace.js`, `run_vectors.js`, `innerhtml_audit.json`, the Charter, its prototype, the Layer Map, `TIMELINE.md`, `PENDING_DECISIONS.md` and the other records.
 
 ## Branches that are safe to delete

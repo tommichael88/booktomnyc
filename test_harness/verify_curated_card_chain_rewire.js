@@ -53,7 +53,7 @@ console.log('=== The live code genuinely calls the real orchestrator function, n
 check('sqBuildCuratedIntake calls orch_compose_intake_chain directly', /const allMods = orch_compose_intake_chain\(\{\}, \{ entity: svc \}, DB\);/.test(QR_HTML));
 check('the old, manual force-module injection loop is genuinely removed', !/SSOT: S\._forceModules \(set in sqPrepareFlow from/.test(QR_HTML));
 
-const code = [findFn('_resolveIntakeChain'), findFn('orch_compose_intake_chain')].join('\n\n');
+const code = [findFn('_dependsOnAsLabels'), findFn('_resolveIntakeChain'), findFn('orch_depends_on_as_labels'), findFn('orch_compose_intake_chain')].join('\n\n');
 const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
 sandbox.global = sandbox;
 vm.createContext(sandbox);

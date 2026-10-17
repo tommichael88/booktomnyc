@@ -56,7 +56,7 @@ const SERVICES = BASE_DB.services;
 const DYN = Object.entries(BASE_DB.dynamic_services || {});
 
 // ---- leg 1: the tag carries no money -------------------------------------------------------------------------------------------------------------------------------------------------
-const ALLOWED_TAG_FIELDS = new Set(['synonyms', 'answers', 'requires', 'display_group', 'mutually_exclusive', 'escalate_complexity', 'applicable_categories', 'is_logistic', 'ui_phrase', 'negation_phrase',
+const ALLOWED_TAG_FIELDS = new Set(['id' /* T181: the Charter's stable typed id (tag.<key>); identity, not a price */, 'synonyms', 'answers', 'requires', 'display_group', 'mutually_exclusive', 'escalate_complexity', 'applicable_categories', 'is_logistic', 'ui_phrase', 'negation_phrase',
   'applicable_group_ids', 'note', '_review_note', 'excluded_service_ids', 'is_default_for_group', 'context_hints', 'derived_from', '_note_scoping', 'display_name', 'label_short']);
 const MONEY_WORDS = /fee|price|cost|rate|minute|surcharge|modifier|dollar|amount|charge/i;
 function tagMoneyProblems(db) {

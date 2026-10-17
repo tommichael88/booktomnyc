@@ -44,7 +44,8 @@ function auditDerived(mods, registry) {
       if (spec.dropped.includes(label)) { if (got.has(label)) v.push(`${name}: "${label}" is declared dropped but present`); continue; }
       const target = spec.relabeled[label] || label, d = got.get(target);
       if (!d) { v.push(`${name}: generic answer "${label}" silently dropped (not declared)`); continue; }
-      if (!same(Object.assign({}, d, { label }), g)) v.push(`${name}: "${target}" differs from the generic answer in more than its label (effects must be identical)`);
+      // identity is not an effect: a derived answer has its own label and, since T181 (the Charter carry), its own stable id (the slug of its label)
+      if (!same(Object.assign({}, d, { label, id: g.id }), g)) v.push(`${name}: "${target}" differs from the generic answer in more than its label (effects must be identical)`);
     }
     const accounted = new Set([...genBy.keys(), ...Object.values(spec.relabeled)]);
     for (const [label, d] of got) {

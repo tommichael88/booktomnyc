@@ -2477,7 +2477,7 @@ const expectedModuleAPIs = {
   'orchestrator_engine.js': [
     'executeWorkflow', 'orch_apply_answer', 'orch_splice_remote_deep_dive', 'orch_resolve_entity', 'orch_apply_object_based_resolution',
     'orch_enrich_from_dynamic_service', 'orch_compute_variability_flags',
-    'orch_compose_intake_chain', 'orch_apply_location_hints',
+    'orch_compose_intake_chain', 'orch_depends_on_as_labels', 'orch_apply_location_hints',
     'orch_compute_confidence', 'orch_select_ui_template',
     'orch_merge_materials_estimate', 'orch_compute_quote',
     'orch_apply_intake_bypass_rules', 'readRoutePath', 'evaluateInvariant',

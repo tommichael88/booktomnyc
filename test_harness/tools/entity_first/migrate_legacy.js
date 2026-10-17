@@ -46,6 +46,7 @@ const CONTEXT_MIN_ENTITIES = 5;
 const titleCase = s => s.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 
 function migrate(L, opts = {}) {
+  L = require('./carry_charter.js').strip(L); // T181: the migration reads the PRE-CARRY legacy shape; the Charter members carry_charter.js writes are an output of the source, never an input to it
   const RR = opts.rules || recovered.load(); // { rules, sha256 }: the cited business rules the legacy file only implies (T177)
   const CX = opts.axes || complexityAxes.load(); // { axes, sha256 }: the three independent axes btnyc.json does not carry (T180, R-COMPLEX-AXES)
   const report = { decisions: [], unresolved: [], findings: [], counts: {}, ledger: [] };

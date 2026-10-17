@@ -43,7 +43,7 @@ function findFn(name) {
 const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
 sandbox.global = sandbox;
 vm.createContext(sandbox);
-vm.runInContext(['_resolveIntakeChain', 'orch_compose_intake_chain'].map(findFn).join('\n\n'), sandbox);
+vm.runInContext(['_dependsOnAsLabels', '_resolveIntakeChain', 'orch_depends_on_as_labels', 'orch_compose_intake_chain'].map(findFn).join('\n\n'), sandbox);
 
 let pass = 0, fail = 0;
 function check(desc, cond) {

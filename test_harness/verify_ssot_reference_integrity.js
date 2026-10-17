@@ -104,10 +104,18 @@ function walk(D) {
         }
     }));
     // T170 (#180): a module shown only after another answer (`depends_on`) names a real module and a real label of it
-    Object.entries(mods).forEach(([id, m]) => Object.entries(m.depends_on || {}).forEach(([dk, dv]) => {
-        if (!mods[dk]) dang('depends-on', `intake_modules[${id}].depends_on`, `module ${dk}`);
-        else if (!(mods[dk].client_response || []).some(x => x.label === dv)) dang('depends-on', `intake_modules[${id}].depends_on`, `${dk}: label "${dv}"`);
-    }));
+    // T181: `depends_on` is the Charter's [{question_id, option_id}] pairs (what btnyc.json carries now) or the legacy {module key: option label}; each is held to the same standard
+    Object.entries(mods).forEach(([id, m]) => {
+        if (Array.isArray(m.depends_on)) m.depends_on.forEach(p => {
+            const dk = typeof p.question_id === 'string' ? p.question_id.replace(/^q\./, '') : '';
+            if (!mods[dk]) dang('depends-on', `intake_modules[${id}].depends_on`, `question ${p.question_id}`);
+            else if (!(mods[dk].client_response || []).some(x => x.id === p.option_id)) dang('depends-on', `intake_modules[${id}].depends_on`, `${p.question_id}: option id "${p.option_id}"`);
+        });
+        else Object.entries(m.depends_on || {}).forEach(([dk, dv]) => {
+            if (!mods[dk]) dang('depends-on', `intake_modules[${id}].depends_on`, `module ${dk}`);
+            else if (!(mods[dk].client_response || []).some(x => x.label === dv)) dang('depends-on', `intake_modules[${id}].depends_on`, `${dk}: label "${dv}"`);
+        });
+    });
     // T170 (#180): the picker's authored vocabulary: a tile's tags are smart tags, a tile is one of the group's real symptoms, a known-need tile is a real service of the group
     Object.entries(D.routing_archetypes || {}).forEach(([gid, ra]) => {
         const real = new Set(ra.real_symptom_ids || []), grp = D.group.find(g => g.id === gid) || {};
@@ -185,7 +193,11 @@ if (base) {
         'a `then` branch naming a module that does not exist': d => { const s = d.services.find(x => x.intake_chain.some(c => Object.keys(c.then || {}).length)); const c = s.intake_chain.find(c => Object.keys(c.then || {}).length); c.then[Object.keys(c.then)[0]].push('no_such_module'); },
         'a route_to naming a service that does not exist': d => { Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to).route_to.service = 'no_such_service'; },
         'a route_to carrying an answer that is no label of its module': d => { Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to && Object.keys(o.route_to.answers || {}).length).route_to.answers[Object.keys(Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to && Object.keys(o.route_to.answers || {}).length).route_to.answers)[0]] = 'No such label'; },
-        'a depends_on naming a label its module does not have': d => { const m = Object.values(d.intake_modules).find(x => x.depends_on); m.depends_on[Object.keys(m.depends_on)[0]] = 'No such label'; },
+        // each plants its own depends_on, so it can fail whichever spelling the tree carries (T181: the tree carries the Charter's pairs; the legacy {module key: label} is still read)
+        'a depends_on naming a label its module does not have (legacy spelling)': d => { const [k0, k1] = Object.keys(d.intake_modules).filter(k => (d.intake_modules[k].client_response || []).length); d.intake_modules[k0].depends_on = { [k1]: 'No such label' }; },
+        'a depends_on naming a module that does not exist (legacy spelling)': d => { const k0 = Object.keys(d.intake_modules)[0]; d.intake_modules[k0].depends_on = { no_such_module: 'Anything' }; },
+        'a depends_on naming an option id its question does not have (pairs spelling)': d => { const [k0, k1] = Object.keys(d.intake_modules).filter(k => (d.intake_modules[k].client_response || []).length); d.intake_modules[k0].depends_on = [{ question_id: 'q.' + k1, option_id: 'no_such_option' }]; },
+        'a depends_on naming a question that does not exist (pairs spelling)': d => { const k0 = Object.keys(d.intake_modules)[0]; d.intake_modules[k0].depends_on = [{ question_id: 'q.no_such_question', option_id: 'x' }]; },
         'a symptom tile carrying a tag that does not exist': d => { Object.values(d.routing_archetypes).find(r => (r.symptom_tiles || []).length).symptom_tiles[0].tags = ['#no_such_tag']; },
         'a known-need tile naming a service the group does not offer': d => { Object.values(d.routing_archetypes).find(r => (r.known_need_tiles || []).length).known_need_tiles[0].service_id = 'no_such_service'; },
         'an unknown modifier_ref': d => { const m = Object.values(d.intake_modules).find(x => (x.client_response || []).some(o => o.modifier_ref)); m.client_response.find(o => o.modifier_ref).modifier_ref = 'no_such_modifier'; },

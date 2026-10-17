@@ -168,7 +168,9 @@ const LEGACY = [
 // up the chain) did nothing in the probe below because the probe never made it visible, so a question whose answers hand the job to another service looked like a question that changes nothing.
 const prereq = (s, key, seen = new Set()) => {
     if (seen.has(key)) return {}; seen.add(key);
-    const out = Object.assign({}, (DB.intake_modules[key] || {}).depends_on || {});
+    // T181: a module's depends_on is the Charter's pairs (or the legacy {module key: label}); this wants the label spelling, which is how answers are keyed
+    const dep = (DB.intake_modules[key] || {}).depends_on || {};
+    const out = Array.isArray(dep) ? Object.fromEntries(dep.map(p => { const k = p.question_id.replace(/^q\./, ''); const o = ((DB.intake_modules[k] || {}).client_response || []).find(x => x.id === p.option_id); return [k, o ? o.label : '\u0000unresolved:' + p.option_id]; })) : Object.assign({}, dep);
     for (const st of s.intake_chain) {
         const via = Object.entries(st.then || {}).find(([, ts]) => (ts || []).includes(key));
         if (via && mod(st) !== key) { Object.assign(out, prereq(s, mod(st), seen), { [mod(st)]: via[0] }); break; }

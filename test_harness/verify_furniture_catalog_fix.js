@@ -65,7 +65,8 @@ check('control case (a normal static-price service) is unaffected', /\$100/.test
 
 console.log('\n=== furnitureMap keying covers all 124 real catalog items, not just the 110 with an article field ===');
 const fc = DB.furniture_catalog;
-const oldKeyCoverage = fc.filter(f => f.article || f.code || f.id).length;
+// the historical defect is about the catalog as it was authored; since T181 each item also carries the Charter's typed id (`fur.<sku>`), which the old key approach would have matched, so the old approach is measured on the catalog without it
+const oldKeyCoverage = fc.filter(f => f.article || f.code || (f.id && !/^fur\./.test(f.id))).length;
 const newKeyCoverage = fc.filter(f => f.sku || f.article || f.code || f.id).length;
 check('old key approach (article||code||id) only covered a subset', oldKeyCoverage < fc.length);
 check('new key approach (sku||article||code||id) covers all 124 items', newKeyCoverage === fc.length);

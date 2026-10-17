@@ -366,6 +366,14 @@ const SUBTREE_ALLOWLIST_KEYS = ['workflow', 'confidence_tiers', 'global_rules.pr
     'global_rules.intake_defaults.category_defaults', 'global_rules.intake_defaults.group_defaults',
     'global_rules.intake_defaults.excluded_services'];
 
+// CHARTER CARRY (T181) -- NOT dead data. These are the members carry_charter.js writes from ssot/btnyc_source.json into this file so that the artifact the site loads has every field the Charter
+// requires (ids, entity_scope, affects, depends_on pairs, uncertainty_profile, confidence_policy, recovery_affordances, complexity_profile, the registries they point at). The page does not read them
+// yet: the runtime slices that consume them (resolver, composer, confidence and recovery engines, the complexity-axes reader) are Prompt 3 of the Charter plan, and each member's target consumer is
+// named in the file's own $source.carried. Until then they are CHECKED rather than consulted: the boot gate validates their shape (schema/btnyc_schema.json requires them), verify_charter_carry.js
+// reads every one and holds it to the source, and carry_charter.js --check fails on any edit. The list below is DERIVED from the carry tool's own table, so it can contain nothing the tool does not
+// write, and verify_charter_carry.js fails if a carried member is missing from btnyc.json: no other unconsulted field can hide in it.
+require('./tools/entity_first/carry_charter.js').consultationSubtrees().forEach(k => SUBTREE_ALLOWLIST_KEYS.push(k));
+
 for (const fp of new Set(filteredPaths)) {
     const consulted = isConsulted(fp);
     if (consulted) {

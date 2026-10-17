@@ -56,7 +56,7 @@ function findFn(name) {
 const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
 sandbox.global = sandbox;
 vm.createContext(sandbox);
-vm.runInContext(findFn('_resolveIntakeChain') + '\n' + findFn('_isModVisible'), sandbox);
+vm.runInContext(findFn('_dependsOnAsLabels') + '\n' + findFn('_resolveIntakeChain') + '\n' + findFn('_isModVisible'), sandbox);
 
 console.log('=== The four new/stub modules exist, have real content, and no duplicate labels ===');
 {

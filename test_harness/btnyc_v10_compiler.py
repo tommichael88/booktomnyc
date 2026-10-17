@@ -1156,12 +1156,24 @@ def _validate_option_refs(db: dict) -> List[str]:
                     elif lbl not in [o.get("label") for o in target.get("client_response", []) or []]:
                         errors.append(f"{at}.route_to.answers['{mk}'] '{lbl}' is not an option label of that module")
         # T170: a module shown only after another answer names a real module and a real label of it
-        for dk, dv in (mod.get("depends_on", {}) or {}).items():
-            dep = (db.get("intake_modules", {}) or {}).get(dk)
-            if dep is None:
-                errors.append(f"intake_modules['{mod_name}'].depends_on names module '{dk}', which does not exist")
-            elif dv not in [o.get("label") for o in dep.get("client_response", []) or []]:
-                errors.append(f"intake_modules['{mod_name}'].depends_on['{dk}'] '{dv}' is not an option label of that module")
+        # T181: `depends_on` is either spelling -- the Charter's [{question_id, option_id}] pairs (what btnyc.json carries now) or the legacy {module key: option label}
+        raw_dep = mod.get("depends_on", {}) or {}
+        if isinstance(raw_dep, list):
+            for pair in raw_dep:
+                qid = pair.get("question_id") if isinstance(pair, dict) else None
+                dk = qid[2:] if isinstance(qid, str) and qid.startswith("q.") else None
+                dep = (db.get("intake_modules", {}) or {}).get(dk) if dk else None
+                if dep is None:
+                    errors.append(f"intake_modules['{mod_name}'].depends_on names question '{qid}', which does not exist")
+                elif pair.get("option_id") not in [o.get("id") for o in dep.get("client_response", []) or []]:
+                    errors.append(f"intake_modules['{mod_name}'].depends_on['{qid}'] option '{pair.get('option_id')}' is not an option id of that question")
+        else:
+            for dk, dv in raw_dep.items():
+                dep = (db.get("intake_modules", {}) or {}).get(dk)
+                if dep is None:
+                    errors.append(f"intake_modules['{mod_name}'].depends_on names module '{dk}', which does not exist")
+                elif dv not in [o.get("label") for o in dep.get("client_response", []) or []]:
+                    errors.append(f"intake_modules['{mod_name}'].depends_on['{dk}'] '{dv}' is not an option label of that module")
     return errors
 
 

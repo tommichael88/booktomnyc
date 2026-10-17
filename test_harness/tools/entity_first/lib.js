@@ -94,7 +94,9 @@ function diffAll(a, b, p = '$', out = [], limit = 200) {
 }
 const clone = v => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
-function authoredLegacy(db) { const o = {}; for (const [k, v] of Object.entries(db)) if (!COMPILER_KEYS.includes(k)) o[k] = v; return o; }
+// The authored sections of btnyc.json in the PRE-CARRY legacy shape: the compiler-owned keys dropped, and the Charter members carry_charter.js writes (T181) taken off again, so a tool that compares
+// the file with the projection of the source, or feeds it to the migration or the compiler, sees what it always saw. Idempotent: a file with no carry comes back unchanged.
+function authoredLegacy(db) { const o = require('./carry_charter.js').strip(db); for (const k of COMPILER_KEYS) delete o[k]; return o; }
 
 // The runtime's own chain resolution (qr.html _resolveIntakeChain, without the module lookup): the order a chain is asked in, and the branch map each resolved module carries.
 // Used as the equivalence the chain projection is held to. A module named twice keeps its first position; a later `then` is kept only if the first has none (T170 / #180).

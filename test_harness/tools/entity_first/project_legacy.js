@@ -263,7 +263,8 @@ function main() {
     r.undeclared.slice(0, 15).forEach(d => console.log('  ', d.path, '\n      legacy:', String(JSON.stringify(d.a)).slice(0, 220), '\n      source:', String(JSON.stringify(d.b)).slice(0, 220)));
     return 1;
   }
-  fs.writeFileSync(args[out + 1], lib.toText(project(src))); console.log('wrote', args[out + 1]); return 0;
+  // T181: the file that is written is the projection WITH the Charter carry (the runtime schema requires it); --check above compares the projection alone, with the carry taken off the file
+  fs.writeFileSync(args[out + 1], require('./carry_charter.js').carry(lib.toText(project(src)), src, fs.readFileSync(lib.PATHS.source, 'utf8')).text); console.log('wrote', args[out + 1]); return 0;
 }
 if (require.main === module) process.exit(main());
 module.exports = { project, check, chainView, viewChains };

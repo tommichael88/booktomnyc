@@ -23,8 +23,10 @@ function compile(inputPath, seed) {
 function run(src, legacy) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ef-roundtrip-'));
   try {
+    // T181: the compiler validates its input against schema/btnyc_schema.json, which now REQUIRES the Charter members. The projection alone is the pre-carry shape, so the carry (also a function of the source
+    // alone) is applied to it, exactly as it is to the live file; lib.authoredLegacy strips it again for every comparison below.
     const proj = pl.project(src);
-    const input = path.join(dir, 'projected.json'); fs.writeFileSync(input, lib.toText(proj));
+    const input = path.join(dir, 'projected.json'); fs.writeFileSync(input, require('./carry_charter.js').carry(lib.toText(proj), src, lib.toText(src)).text);
     const a = compile(input, 1), b = compile(input, 2);
     if (a.error) return { ok: false, why: 'the compiler did not run on the projected source', detail: a.error.slice(0, 1500) };
     if (b.error) return { ok: false, why: 'the compiler did not run on the projected source (second seed)', detail: b.error.slice(0, 1500) };

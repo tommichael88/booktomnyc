@@ -51,7 +51,7 @@ function findFn(name) {
     return null;
 }
 
-const code = [findFn('_resolveIntakeChain'), findFn('orch_compose_intake_chain')].join('\n\n');
+const code = [findFn('_dependsOnAsLabels'), findFn('_resolveIntakeChain'), findFn('orch_depends_on_as_labels'), findFn('orch_compose_intake_chain')].join('\n\n');
 const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
 sandbox.global = sandbox;
 vm.createContext(sandbox);
