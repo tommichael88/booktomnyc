@@ -104,8 +104,12 @@ console.log('\n=== Tags detected from free-text flow into route.activeTags ===')
     check('route.activeTags includes all three injected tags', (route.activeTags||[]).length >= 3);
 }
 
-console.log('\n=== Tag-based complexity escalation (escalate_complexity) affects the route quote ===');
+console.log('\n=== A chip (a #smart_tag) never changes the PRICE of the route quote (P-INVARIANT-CHIPSNOTFEES) ===');
 {
+    // T180 (8/n), Operator ruling 2026-10-16 23:34 NY: smart tags "SHOULD NEVER be used to increase pricing". This block used to assert the
+    // opposite (#fragile_item's escalate_complexity raised the hourly rate). A tag still flows into route.activeTags (it labels the request and
+    // raises the confidence bar); what it may not do is move the money. The full proof is verify_chips_not_fees.js; this keeps the route-level
+    // statement next to the route-level plumbing.
     const svc = DB.services.find(s => s.id === 'shelf_mounting_standard_buy_the_hour');
     const ctxBase = sandbox.collectBookingContext_catalog(svc, 'wall_mounting');
     const routeBase = sandbox.executeWorkflow(ctxBase, DB);
@@ -118,17 +122,12 @@ console.log('\n=== Tag-based complexity escalation (escalate_complexity) affects
     });
     const routeTagged = sandbox.executeWorkflow(ctxTagged, DB);
     check('route.activeTags includes injected #fragile_item', (routeTagged.activeTags||[]).includes('#fragile_item'));
-    // NOTE: shelf_mounting_standard_buy_the_hour is already 'skilled' tier in the
-    // current SSOT (v9.4) -- #fragile_item's escalate_complexity:'skilled' has no
-    // headroom against an already-skilled service, so price is correctly unchanged
-    // here. The mechanism itself is verified directly below against a synthetic
-    // 'routine'-tier context where escalation has real headroom to show.
     check('quote does not error and returns a valid laborEstimate with the tag active',
-        typeof routeTagged.quote.laborEstimate === 'number' && routeTagged.quote.laborEstimate >= routeBase.quote.laborEstimate);
+        typeof routeTagged.quote.laborEstimate === 'number');
+    check('the tag does not change the labor estimate of the route quote', routeTagged.quote.laborEstimate === routeBase.quote.laborEstimate);
 
-    // Direct mechanism test: escalate_complexity genuinely raises price when there IS
-    // headroom AND the service's pricing type is time-based (flat_rate services
-    // correctly ignore complexity tier in their price -- flat means flat by design).
+    // Direct mechanism test on a time-based service with headroom (routine -> skilled): the tag that USED to escalate the tier must now leave
+    // the price exactly where it was.
     const mockSvc = {
         ...svc,
         financial_engine: { type: 'hourly', base_price: 0, checkout_state: 'standard_flat_rate' },
@@ -136,9 +135,9 @@ console.log('\n=== Tag-based complexity escalation (escalate_complexity) affects
         default_estimates: { total_minutes: { min: 20, max: 30 } }
     };
     const routineQuote = sandbox.computeUnifiedQuote({ svc: mockSvc, dynDef: null, activeTagIds: [], answers: {}, qty: 1 });
-    const escalatedQuote = sandbox.computeUnifiedQuote({ svc: mockSvc, dynDef: null, activeTagIds: ['#fragile_item'], answers: {}, qty: 1 });
-    check('#fragile_item escalate_complexity genuinely raises price when the base tier has headroom (routine -> skilled)',
-        escalatedQuote.laborEstimate > routineQuote.laborEstimate);
+    const taggedQuote = sandbox.computeUnifiedQuote({ svc: mockSvc, dynDef: null, activeTagIds: ['#fragile_item'], answers: {}, qty: 1 });
+    check('#fragile_item (escalate_complexity: skilled) does NOT raise the price when the base tier has headroom',
+        taggedQuote.laborEstimate === routineQuote.laborEstimate);
 }
 
 console.log('\n=== inherentTagIds separate from detTagIds (false banner prevention) ===');

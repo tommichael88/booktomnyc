@@ -16,7 +16,8 @@
  *   1. THE ARITHMETIC EXISTS ONCE   The escalation's own terms (`minimum_quote_confidence_delta`, `maximum_followup_questions_delta`) are read in exactly one function of the assembled
  *                                   page. A third copy that reads any tag field at all is red here, because it has to read these two to do the work.
  *   2. WHO READS A TAG'S TIER       `escalate_complexity` is read by exactly the functions filed in READERS (a ratchet: a new reader is red, a filed one that is gone is red; the list
- *                                   only shrinks). It has two today, for two purposes (the confidence bar, and the pricing tier); the shared selection loop is PENDING_DECISIONS #149.
+ *                                   only shrinks). It has ONE today, the confidence bar. (It had two until T180 8/n: the pricing tier read it too, which let a chip set the hourly
+ *                                   rate; P-INVARIANT-CHIPSNOTFEES forbids that, so that reader was deleted and PENDING_DECISIONS #149 closed.)
  *   3. NO READ OF A FIELD NO TAG HAS  Nothing reads `<x>.effects.complexity_override`. (`complexity_override` itself is live and is read: it is the field on an intake ANSWER, 327 of them,
  *                                   which the pricing path ratchets on. Only the nested tag/answer `effects` shape is retired, v9.6.) The SSOT carries no `effects.complexity_override`
  *                                   anywhere, so nothing is authored into a field that nothing reads.
@@ -75,7 +76,9 @@ const RETIRED_NESTED = 'complexity_override';                          // read t
 // Every function that reads a tag's tier, and why (leg 2). A ratchet: it can shrink, not grow.
 const READERS = {
     applyLiveConfidenceEscalation: 'the confidence bar and the follow-up question cap',
-    computeUnifiedQuote: 'the pricing tier: the same worst-tier-among-active-tags loop, seeded with the answers\' tier (PENDING_DECISIONS #149)',
+    // T180 (8/n): computeUnifiedQuote is NOT filed any more. Its worst-tier-among-active-tags loop set the hourly rate from a chip, which
+    // P-INVARIANT-CHIPSNOTFEES forbids (Operator ruling 2026-10-16 23:34 NY; PENDING_DECISIONS #149 is closed by the deletion). If it comes
+    // back this ratchet is red, and so is verify_chips_not_fees.js.
 };
 
 // ---- the scanner ------------------------------------------------------------------------------------------------------------------------------------------------------------
