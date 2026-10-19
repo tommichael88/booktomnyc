@@ -740,7 +740,7 @@ function _traceExport(compact = true) {
     const pricingEntries = window._traceLog.filter(e => e.layer === 'pricing_engine');
     const last = pricingEntries[pricingEntries.length - 1];
 
-    // T137-style summary: the last pricing engine's decision-relevant fields.
+    // ✅ KEEPS YOUR CRITICAL PRICING METRICS INTACT
     const summary = last ? {
         finalPrice:         last.data.laborEstimate,
         dispatchFee:        last.data.dispatchFee,
@@ -787,6 +787,9 @@ function _traceExport(compact = true) {
         }
     } catch (e) { /* best-effort */ }
 
+    // Read fresh runtime conditions for the Markdown analyzer
+    const currentObservedState = _readObservableState(true);
+
     const payload = {
         meta: {
             entryPath:         window._traceEntryPath || 'unknown',
@@ -798,17 +801,19 @@ function _traceExport(compact = true) {
             stateChangeCount:  stateChanges.length,
         },
         input:             window._traceInput,
-        summary,
+        summary, // ✅ Original metrics data preserved
         annotations,
         stateChanges,
-        observedState:     _readObservableState(true),
+        observedState:     currentObservedState,
         lastVisibleScreen: lastDomSnapshot,
         narrative:         _traceNarrative(window._traceLog),
+        
+        // ✨ NEW FIELD: Stores the clean Markdown issue report safely alongside your logs!
+        issueReportMarkdown: _buildAutomatedIssueSummary(window._traceLog, currentObservedState),
+        
         trace:             window._traceLog,
     };
 
-    // compact === true  → single line, no indentation, nothing dropped.
-    // compact === false → 2-space pretty print.
     return compact ? JSON.stringify(payload) : JSON.stringify(payload, null, 2);
 }
 
@@ -1080,6 +1085,7 @@ function _renderTraceOverlay(forceInit) {
         };
         controls.appendChild(flagToggle);
 
+                // Button 1: Keeps your original, non-truncated single-line JSON payload intact
         const copyBtn = document.createElement('button');
         copyBtn.type = 'button';
         copyBtn.textContent = 'Copy JSON';
@@ -1087,13 +1093,29 @@ function _renderTraceOverlay(forceInit) {
             'background:#2563eb;color:#fff;border:none;border-radius:4px;'
             + 'padding:4px 8px;cursor:pointer;font-size:11px;';
         copyBtn.onclick = () => {
-            // Compact by default — single line, nothing truncated.
-            const json = _traceExport();
+            const json = _traceExport(true);
             if (navigator.clipboard) navigator.clipboard.writeText(json);
-            copyBtn.textContent = 'Copied!';
+            copyBtn.textContent = 'Copied JSON!';
             setTimeout(() => { copyBtn.textContent = 'Copy JSON'; }, 1500);
         };
         controls.appendChild(copyBtn);
+
+        // Button 2: Generates and copies ONLY the raw human-scannable markdown issue text
+        const copyMdBtn = document.createElement('button');
+        copyMdBtn.type = 'button';
+        copyMdBtn.textContent = 'Copy Markdown Issue';
+        copyMdBtn.style.cssText =
+            'background:#059669;color:#fff;border:none;border-radius:4px;'
+            + 'padding:4px 8px;cursor:pointer;font-size:11px;';
+        copyMdBtn.onclick = () => {
+            const currentObservedState = _readObservableState(true);
+            const markdownSummary = _buildAutomatedIssueSummary(window._traceLog, currentObservedState);
+            if (navigator.clipboard) navigator.clipboard.writeText(markdownSummary);
+            copyMdBtn.textContent = 'Copied Markdown!';
+            setTimeout(() => { copyMdBtn.textContent = 'Copy Markdown Issue'; }, 1500);
+        };
+        controls.appendChild(copyMdBtn);
+
 
         const clearBtn = document.createElement('button');
         clearBtn.type = 'button';
