@@ -367,7 +367,6 @@ body.modal-active{overflow:hidden}
 .service-tile.service-tile-other:hover{border-color:#1e3a8a;background:#1e3a8a14}
 .sq-context-banner{background:linear-gradient(135deg,#8a061514,#de00000a);border:1px solid #de000033;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#5a0010;display:flex;align-items:flex-start;gap:8px}
 .sq-context-banner i{color:#de0000;margin-top:1px;flex-shrink:0}
-.focused-mode .focused-mode-inner #smartQuoteEngine {display: none;}
 #smartQuoteEngine{width:100%;display:flex;flex-direction:column;gap:0;margin-top:14px}
 #sqStepFlow{display:flex;flex-direction:column;gap:10px}
 #smartQuoteEngine .scard{background:var(--glass-bg,#ffffffe0);backdrop-filter:var(--glass-blur,blur(14px));-webkit-backdrop-filter:var(--glass-blur,blur(14px));border:var(--glass-border,.5px solid #c0c0c0f2);border-radius:var(--radius-md,15px);overflow:hidden;transition:var(--transition);box-shadow:0 2px 12px #0000000f}
@@ -605,7 +604,8 @@ body.modal-active{overflow:hidden}
 .login-client-button:hover::before{left:100%}
 .login-client-button:hover{background:linear-gradient(135deg,#454545 0,#8a0615 40%,#de0000 100%);transform:translateY(-3px);box-shadow:0 8px 25px #de000066}
 .focused-mode #category-card{display:none!important}
-.focused-mode #smartQuoteEngine,.focused-mode-inner #smartQuoteEngine {display: none !important;}
+/* T186 (#22): in the focused overlay the text bar is hidden unless the one "Other" exception has asked for it (setFocusedTextBarAllowed). Only the bar: the engine around it also holds the step flow, the builder and the quote, which the overlay shows. */
+.focused-mode:not(.sq-text-bar-allowed) #sqTextBar{display:none!important}
 @keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
@@ -7139,10 +7139,8 @@ body.modal-active{overflow:hidden}
             card.appendChild(inner);
         }
 
-        function enterFocusedMode(hideTextBar = false) {
-            if (typeof _traceFn === 'function') _traceFn('enterFocusedMode', {
-                hideTextBar
-            });
+        function enterFocusedMode() {
+            if (typeof _traceFn === 'function') _traceFn('enterFocusedMode');
             const card = document.querySelector('.main-card-schedule-service');
             if (!card) return;
             card.classList.add('focused-mode');
@@ -7164,49 +7162,33 @@ body.modal-active{overflow:hidden}
             // the card is present, explicitly force it visible
             // (not just skip the redundant hide) to correctly win
             // against the CSS rule too.
-            // v9.6 FIX: 'sqTextBar' was previously swept into this
-            // same loop, unconditionally force-hidden alongside
-            // serviceRequestSummary -- as a side effect of fixing
-            // THAT element's visibility, not its own deliberate
-            // design decision. Per direct correction, removed: the
-            // SmartQuote text bar should remain visible under the
-            // tile grid throughout category/group browsing, not
-            // just on the pre-navigation home state.
-            // T125 FIX: the v9.6 removal above was too broad in the
-            // OTHER direction -- confirmed directly, not assumed:
-            // sqTextBar should be hidden specifically when a
-            // category tile is visually tapped (this function's
-            // only caller that represents that exact action is
-            // showGroupsForCategory, which now explicitly passes
-            // hideTextBar=true), and should remain visible for
-            // every other real entry path into focused mode --
-            // "Other tile" entry (prefillSmartQuoteFromOtherTile,
-            // named for exactly this case), a resolved/matched
-            // service (showIntakeQuestions,
-            // prefillSmartQuoteFromService), the free-text
-            // affirmation flow (renderTagAffirmationFromRoute), and
-            // the guided builder (sqPrepareFlow) -- none of which
-            // pass hideTextBar, so all default to false (visible),
-            // matching "if a service isn't matched" and every path
-            // other than a literal category-tile tap.
             // T152: the cart panel is hidden while the focused overlay is up. Route cards live in their OWN host (#routeCardHost), so there is no
             // "unless it holds the affirmation card" exception any more.
             ['serviceRequestSummary'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.setProperty('display', 'none', 'important');
             });
-            const textBarEl = document.getElementById('sqTextBar');
-            if (textBarEl) {
-                if (hideTextBar) textBarEl.style.setProperty('display', 'none', 'important');
-                else textBarEl.style.removeProperty('display');
-            }
+            // T186 (#22; the operator's rule, 2026-10-19: the text bar "should ONLY be visible outside of focused-mode and never during the Grid navigation path except when
+            // Other Tile is tapped"). ONE rule for every way into the overlay: the bar is hidden, and a stylesheet rule (.focused-mode:not(.sq-text-bar-allowed) #sqTextBar)
+            // holds it so no caller has to remember. T125 had made this a per-caller choice (only the category tile hid it); every other caller, showSubGroups among them,
+            // therefore showed it beside the group grid (the #22 trace: focusedMode true, sqTextBar 931x221, serviceContainer grid). The one exception is asked for by name
+            // (setFocusedTextBarAllowed) and is withdrawn by every new view.
+            setFocusedTextBarAllowed(false);
+        }
+
+        /** The SmartQuote text bar in the focused overlay: hidden for every view, allowed only for the "Other" service (prefillSmartQuoteFromService). @param {boolean} allowed */
+        function setFocusedTextBarAllowed(allowed) {
+            const card = document.querySelector('.main-card-schedule-service');
+            if (card) card.classList.toggle('sq-text-bar-allowed', !!allowed);
+            const bar = document.getElementById('sqTextBar');
+            if (bar) bar.style.removeProperty('display'); // an old inline hide/show from an earlier view must not outlive the rule
         }
 
         function exitFocusedMode() {
             if (typeof _traceFn === 'function') _traceFn('exitFocusedMode');
             const card = document.querySelector('.main-card-schedule-service');
             if (!card) return;
-            card.classList.remove('focused-mode');
+            card.classList.remove('focused-mode', 'sq-text-bar-allowed');
             const inner = card.querySelector('.focused-mode-inner');
             if (inner) {
                 Array.from(inner.children).forEach(c => card.insertBefore(c, inner));
@@ -8116,7 +8098,8 @@ body.modal-active{overflow:hidden}
             if (!fromBack) Breadcrumbs.push({
                 type: 'categories'
             });
-            if (!fromBack) enterFocusedMode(true); // 👈 enter full‑screen glass mode; hide the text bar specifically for this, the real category-tile-tap entry point
+            if (!fromBack) enterFocusedMode(); // 👈 enter full‑screen glass mode (the text bar is hidden by it, T186)
+            else setFocusedTextBarAllowed(false); // a Back into the grid never carries the Other exception with it
 
             const groups = (DB.group || []).filter(g => g.category_id === category_id && !(g.parent_group || g.parent_id));
             const container = DOM.serviceContainer;
@@ -8595,6 +8578,7 @@ body.modal-active{overflow:hidden}
                 fromBack
             });
             if (!fromBack) enterFocusedMode();
+            else setFocusedTextBarAllowed(false); // a Back into the grid never carries the Other exception with it
             const container = DOM.serviceContainer;
             container.replaceChildren();
             container.className = 'group-grid'; // grid layout -- matches showGroupsForCategory
@@ -11218,10 +11202,9 @@ function addToCart(entry) {
                 return;
             }
             if (prof.isOther) {
-                // Show text bar for "Other" services so user can describe freely
-                const bar = document.getElementById('sqTextBar');
-                if (bar) bar.style.display = 'block';
+                // The one view in the focused overlay that keeps the text bar (T186, #22): an "Other" service, where the visitor describes the job freely.
                 showIntakeQuestions(svc, category_id);
+                setFocusedTextBarAllowed(true); // after the call: showIntakeQuestions enters the overlay, which withdraws the exception
                 return;
             }
 

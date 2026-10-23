@@ -1,4 +1,4 @@
-# T183 — Review of the amended Charter (the edition attached 2026-10-22 20:36 NY)
+# T183 — Review of the amended Charter (the edition attached 2026-10-22 20:36 NY; see the "Update (T185)" note at the end for the re-amended edition)
 
 **Edition reviewed:** `PROJECT_CHARTER.html`, 733,234 bytes, sha256 `a56379db3c7290ee…`; byte for byte the Project's copy (`PROJECT_CHARTER.html`, saved 2026-10-23 00:34 UTC) and now the repository's.
 **Compared with:** (A) the edition installed in T182 (1/n), `8f30b1e2…`, 477,345 bytes, 47,304 visible words; (B) the intermediate edition you pushed to `main` on 2026-10-17 20:11 NY (`72d88c86…`, 506,542 bytes); (C) the attachment, 77,753 visible words (+64%).
@@ -62,3 +62,13 @@ File names (`TIMELINE.md`, `PENDING_DECISIONS.md`, `COMPONENT_LAYER_MAP.md`, `bt
 - **The 16 tests that read the Charter, run against A, B and C:** identical results except (a) `verify_complexity_axes.js`, which read the old spelling of the R-COMPLEX-AXES declaration (`risk_tier:`, `batch_risk_compounds:`) and threw; it now accepts the new spelling (`risk classification:`, `batch-risk flag:`), still fails on a missing or different enumeration, and is 51 of 51; (b) the counts in `verify_charter_rules.js` and `verify_charter_rule_index_v10.js` (the problems listed in section 5; v10 goes 23 → 21 failures because the anchors now resolve). The five tests that were already red are red with the same counts.
 - **Prices:** the golden master on the merged tree, 0 of 2,988 points differ from `archive/golden_master_T182.json`.
 - **Data checks:** `report.js`, `publish.js`, `project_legacy.js`, `carry_charter.js` (`--check`), `validate_source.js` and `verify_charter_carry.js` pass.
+
+
+## Update (T185, 2026-10-23, after the re-amended edition of 2026-10-22 22:00 NY)
+
+This review describes the edition attached on 2026-10-22 20:36 NY (sha256 `a56379db…`). You re-amended the Charter and attached the new edition (`0a28f572`, sha256 `8a6f5f41…`, 742,868 bytes), now installed unedited as `f73589ca`. What changed for this review:
+
+- **Section 4 / #242 (the eleven rewritten commitments).** All three loosenings are retained verbatim, and the "no fixed gateway count" generalisation now reaches about ten further places. #242 is resolved by the edition.
+- **Section 5 / #241 (defects of the edition).** Fixed in the new edition: the three heading-only Rules (`R-COMPLEX-AXES`, `R-SYSTEM-CMS`, `R-SYSTEM-SCRIPT-SCOPE-IS-REAL`) are defined; the four Rules in the Principles table and the `G-GOVERN` Rules in the Rules table are in their own tables, without duplicate rows; "Playbook" 4 → 0; the 76 template Harm lines and 115 boilerplate sentences are gone; `R-SYSTEM-HOSTS` carries one block. `verify_charter_rules.js`: 27 → 11 problems.
+- **Still open (five):** `R-CLIENT-PRESENTATION-ONLY` is defined but not in the directory; one sentence in Document History repeats itself; three references are written as definitions (`G-INVARIANT-DETECTOR` twice, `R-INVARIANT-PROVENANCE`); the Harm lines are fifteen category templates (seven written for one rule), 26 Rules lost a specific hand-written harm line and several now carry another rule's harm; seven of my tests' `@enforces` lines name a Principle.
+- **Sections 1 to 3 and 6** (what is preserved, strengthened, made neutral; effect on the repository) stand: nothing that governs was dropped between the two editions, and no test, price or label changed. The current record is `PENDING_DECISIONS.md` #241 and #242, and `TIMELINE.md` T185 (1/n).

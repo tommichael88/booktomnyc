@@ -12025,3 +12025,43 @@ Governing message: yours, 2026-10-22 21:19 NY ("can you fix it so its compliant 
 **The next gate's baseline** is `archive/suite_T184.tsv`, golden master `archive/golden_master_T182.json`.
 
 **Files modified:** `modules/trace.js`, `test_harness/verify_trace_export.js` (new), `test_harness/MASTER_TEST_SUITE.json`, `archive/suite_T184.tsv`, `archive/suite_T184_gate.txt`, `PENDING_DECISIONS.md` (#243 resolved, the T184 decisions table), `TIMELINE.md`, `HANDOFF_CURRENT_STATE.md`, `test_harness/FILE_MANIFEST.json` and `.sha256`.
+
+
+## T185 (1/n) — the re-amended Charter is installed byte for byte, checked for drift, and #241 and #242 are updated against it
+
+Governing message: yours, 2026-10-22 22:00 NY ("Ive had the charter amended again, it is now in project files and attached here to ensure no drift occurs in response to the #241 an #242 I believe it is now addressed").
+
+**Ledger (R-GOVERN-TRANSITION).**
+
+- **Rationale.** T183 reviewed the first amended edition and filed its defects (#241) and its three loosened commitments (#242). You re-amended the Charter in response and attached it. The repository must carry the edition you hold, and the review must be redone against it so no record keeps describing defects that were fixed or missing ones that were not.
+- **Installed.** `PROJECT_CHARTER.html` is the attachment `0a28f572` byte for byte (sha256 `8a6f5f41…`, 742,868 bytes), committed as `f73589ca`; I edited nothing in it.
+- **Drift check (definition by definition, 136 definitions; whole-document 8-gram comparison for lost text).** *Fixed:* the three heading-only Rules are defined; the Principles/Rules table mismatches and duplicate rows are gone; "Playbook" 4 → 0; the 76 template Harm lines and 115 boilerplate sentences are gone; "Reconsider when" lines are 118 distinct; `R-SYSTEM-HOSTS` is clean. `verify_charter_rules.js`: 27 → 11 problems. *Not fixed or newly lost:* `R-CLIENT-PRESENTATION-ONLY` is still missing from the directory; one repeated-phrase sentence remains in Document History; three references are written as definitions; the Harm lines are now fifteen category templates (seven written for one rule), and 26 Rules lost a specific hand-written harm line, several now carrying another rule's harm. Detail in #241.
+- **#242** is resolved by the edition: the three loosened commitments are retained verbatim and the "no fixed gateway count" wording is extended to about ten more places.
+- **Gate** on `f73589ca` alone (clean detached worktree, `--jobs 4`, against `archive/suite_T184.tsv`; `archive/suite_T185.tsv`, `archive/suite_T185_gate.txt`): **239 tests: 168 pass, 71 fail, 2 environment gaps; 0 pass→fail, 0 red→worse, 0 red→no count, 0 fail→pass; `verify_charter_rule_index_v10.js` 22 → 21 failing assertions.** Every Charter-reading test keeps its baseline exit code.
+- **Not changed.** The Charter's text, any price, label, schema or data field.
+- **Expected cost.** None to a customer. The operator's remaining Charter items are in #241 (five).
+- **Reversal.** Restore `PROJECT_CHARTER.html` from `51d937f2`.
+
+**Files modified:** `PROJECT_CHARTER.html`, `archive/suite_T185.tsv`, `archive/suite_T185_gate.txt`, `archive/T183_charter_review.md` (an "Update (T185)" note), `PENDING_DECISIONS.md` (#241 narrowed, #242 resolved, the T185 decisions table), `TIMELINE.md`, `HANDOFF_CURRENT_STATE.md`, `test_harness/FILE_MANIFEST.json` and `.sha256`.
+
+
+## T186 — GitHub issue #22: the text bar no longer shows in the focused overlay, and the step flow, builder and Other-tile screens show again
+
+Governing message: yours, 2026-10-22 22:00 NY ("There is also an \"issue\" now in the repo I created for you to checkout"); the rule is the one the issue quotes from your annotation.
+
+**Ledger (R-GOVERN-TRANSITION).**
+
+- **Rationale.** Issue #22 (filed 2026-10-19 from the trace tool): after a group tile the SmartQuote text bar was drawn beside the group grid in the focused overlay (`focusedMode: true`, `sqTextBar` 931x221, `serviceContainer` grid), against the rule that it "should ONLY be visible outside of focused-mode and never during the Grid navigation path except when Other Tile is tapped".
+- **Reproduced.** In headless Chrome on `81a05448` (the page as filed): home → category → group → bar visible beside the grid, same breadcrumbs as the trace. Cause: T125 made hiding the bar a per-caller choice (`enterFocusedMode(true)` for the category tile only); `showSubGroups`, the symptom picker, the intake panel and others call it bare, which removed the hide.
+- **What `cc3641f9` did.** Your commit of 2026-10-19 01:50 NY (after the trace) added two stylesheet rules hiding `#smartQuoteEngine` in focused mode. The bar sits in that engine, so it hid; so did the step flow, the guided builder and the quote. Measured on `main` before this change: a service tile (minor home repairs → washer → a component), the Other tile, and the garbage-disposal service in plumbing each opened an overlay with nothing in it. No test looked at the step flow in a browser, so the gate stayed green.
+- **Change (`qr.html`).** The two engine rules are replaced by one: `.focused-mode:not(.sq-text-bar-allowed) #sqTextBar {display:none!important}`. `enterFocusedMode()` takes no argument and calls `setFocusedTextBarAllowed(false)`; the one exception, the free-text "Other" service view (`prefillSmartQuoteFromService`, `#adhoc`/`#manual_review`; dormant, no catalog service has either tag), asks for the bar by name after entering the overlay; `showGroupsForCategory` and `showSubGroups` withdraw it on a Back. `exitFocusedMode` removes the class. `QR_BUILD_VERSION` is `T186`.
+- **Evidence.** `verify_focused_mode_textbar_scope.js`, rewritten for a real browser (T125's jsdom test read inline styles and encoded the opposite rule): 38 checks at desktop and phone width; five mutants caught; red on `main` before this change and on `81a05448`. Probe results, fixed page: bar hidden at every grid level (category, group, sub-group, service grid), step flow drawn after a service tile and after the Other tile, bar back after leaving.
+- **Two rows of the issue are not defects:** `sqStepFlow: "none"` and the "locked" step-3 card at that point are correct (`State.currentStep` is the booking step bar, not the SmartQuote step).
+- **Filed, not fixed:** #245 (Escape or `Breadcrumbs.goBack()` from the Other tile's builder leaves the builder and step flow drawn beside the grid; same on the page as filed).
+- **Not changed.** Any price, label, schema or data field; `qrqrqr.html`; the root `nlp_engine.js`.
+- **Expected cost.** The text bar is no longer visible in the overlay's grid levels (as you specified). The step flow, builder and Other-tile screens are visible again (they were not on `main`).
+- **Reversal.** `git revert` of T186 restores both engine rules and the per-caller form (the bar hides, the step flow is lost).
+
+**The next gate's baseline** is `archive/suite_T186.tsv`, golden master `archive/golden_master_T182.json`.
+
+**Files modified:** `qr.html`, `modules/nlp_engine.js` (`QR_BUILD_VERSION`), `test_harness/verify_focused_mode_textbar_scope.js`, `archive/suite_T186.tsv`, `archive/suite_T186_gate.txt`, `PENDING_DECISIONS.md` (#244, #245, the T186 decisions table), `TIMELINE.md`, `HANDOFF_CURRENT_STATE.md`, `test_harness/FILE_MANIFEST.json` and `.sha256`.
