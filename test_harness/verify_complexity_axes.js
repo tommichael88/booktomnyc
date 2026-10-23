@@ -51,8 +51,9 @@ const CHARTER_TEXT = (() => { const raw = fs.readFileSync(path.join(ROOT, 'PROJE
 const enumOf = re => { const m = re.exec(CHARTER_TEXT); return m ? m[1].split('|').map(x => x.trim()).filter(Boolean) : null; };
 const CHARTER = {
   tiers: enumOf(/\btier:\s*((?:routine|skilled|specialized|project)(?:\s*\|\s*(?:routine|skilled|specialized|project))+)/),
-  risk: enumOf(/\brisk_tier:\s*((?:R\d)(?:\s*\|\s*R\d)+)/),
-  flag: enumOf(/\bbatch_risk_compounds:\s*((?:true|false)(?:\s*\|\s*(?:true|false))+)/),
+  // T183: the amended Charter writes the same declaration as "risk classification: R0 | R1 | R2 | R3" and "batch-risk flag: true | false"; the earlier edition wrote the field names. Either spelling is the Charter's enumeration.
+  risk: enumOf(/\b(?:risk_tier|risk classification):\s*((?:R\d)(?:\s*\|\s*R\d)+)/),
+  flag: enumOf(/\b(?:batch_risk_compounds|batch-risk flag):\s*((?:true|false)(?:\s*\|\s*(?:true|false))+)/),
 };
 check('the Charter\'s R-COMPLEX-AXES declares the skill tiers routine | skilled | specialized | project', Array.isArray(CHARTER.tiers) && CHARTER.tiers.join('|') === 'routine|skilled|specialized|project', JSON.stringify(CHARTER.tiers));
 check('...the risk tiers R0 | R1 | R2 | R3, and the batch flag true | false', Array.isArray(CHARTER.risk) && CHARTER.risk.join('|') === 'R0|R1|R2|R3' && Array.isArray(CHARTER.flag) && CHARTER.flag.join('|') === 'true|false', JSON.stringify([CHARTER.risk, CHARTER.flag]));
