@@ -73,6 +73,7 @@ function washerSource() {
   Object.assign(svc, { id: 'svc.washer_repair', entity_id: 'ent.washer', action_id: 'act.repair', modifier_ids: [] });
   svc.complexity_profile = { tier: svc.pricing.operational_metrics.complexity_tier, risk_tier: 'R2', batch_risk_compounds: false, risk_basis: ['active_water', 'active_electrical'], batch_risk_basis: [] }; // the three axes, set by hand like every other identity of the washer (R-COMPLEX-AXES)
   svc.presentation.ui_taxonomy.category_id = 'cat.fixture_home'; svc.presentation.ui_taxonomy.group_id = 'grp.fixture_washers'; svc.presentation.ui_taxonomy.display_name = 'Washer Repair';
+  svc.presentation.ui_taxonomy.naming = { object: 'Washer', actions: ['repair'], name: 'Washer Repair' }; svc.presentation.verb_natural = 'repaired'; // the scope the name is composed from (T188, Charter "Naming From Scope"): [Washer] + [Repair], set by hand like every other part of the washer
   svc.pricing.required_material_ids = []; svc.pricing.optional_material_ids = []; svc.tags = { default_tag_ids: [], suggested_tag_ids: [] };
   svc.intake = { steps: [{ question_id: 'q.washer_type', depends_on: [] }, { question_id: 'q.washer_symptom', depends_on: [] }, { question_id: 'q.washer_leak_source', depends_on: [{ question_id: 'q.washer_symptom', option_id: 'sym.leaking' }] }] };
   svc.uncertainty_profile = [{ class_id: 'u.washer_type', weight: 20 }, { class_id: 'u.symptom', weight: 40 }, { class_id: 'u.leak_source', weight: 30 }];

@@ -212,13 +212,13 @@ async function runScenarios() {
       const tiles = document.querySelectorAll('.service-tile');
       for (const tile of tiles) {
         const h4 = tile.querySelector('h4');
-        if (h4 && h4.textContent.includes('Furniture Assembly Flat-Pack')) {
+        if (h4 && h4.textContent.includes('Flat-Pack Furniture Assembly')) {
           return tile;
         }
       }
       return null;
     });
-    if (!serviceTile) throw new Error('Furniture Assembly Flat-Pack service not found');
+    if (!serviceTile) throw new Error('Flat-Pack Furniture Assembly service not found');
     await page.evaluate(el => el.click(), serviceTile);
 
     await waitForExist(page, '#furniture-step-content .group-tile', { timeout: 10000 });

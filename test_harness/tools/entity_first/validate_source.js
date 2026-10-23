@@ -16,6 +16,7 @@
  *   V-DEP-DANGLING / V-DEP-OPTION / V-DEP-NOTINCHAIN / V-DEP-SELF / V-DEP-CYCLE / V-DEP-SHAPE   depends_on
  *   V-COMPLEX-*       the three axes every service declares (R-COMPLEX-AXES, R-COMPLEX-COMPOUNDS, P-COMPLEX-FURNITURE): PROFILE (a missing or illegal axis), TIER (the skill tier is declared twice and the two disagree), RISK (the risk tier is not the highest hazard it names),
  *                     BATCH (the flag is not what its signals say), ASSEMBLY (the assembly class), VOCAB (the vocabulary they are written in)
+ *   V-NAME-*          a curated service's name composed from the scope it authors (T188; service_naming.js): VOCAB, MISSING, PARTS, CHARS, CASE, STUTTER, STALE, UNIQUE, MODIFIER, ENTITY, TAIL, EXCEPTION
  *   V-UNC-*           uncertainty classes, profiles and retirement       V-CONF-*   confidence policy and gate       V-OPT-*   option effects     V-COMP-*   unsafe-to-compose services
  * Declared gaps are not errors and not hidden: they are returned as `residuals` and counted in the coverage report.
  */
@@ -741,6 +742,9 @@ function validate(src, opts = {}) {
     // a dynamic service inherits the axes of the group it resolves into (P-COMPLEX-DYNAMIC); no group declares axes, so a default composition carries only its skill tier. Declared, counted, not hidden.
     for (const c of compositions.values()) res('composition_axes_undeclared', c.id, `${c.id}: a dynamic service inherits its group's axes (P-COMPLEX-DYNAMIC), and no group declares a risk tier or batch-risk flag yet; only the skill tier is declared`);
   }
+
+  // ---- service naming (T188; Charter "Naming From Scope"): a service's name is composed from the scope it authors, not typed. service_naming.js owns the rules; V-NAME-<CODE> are its findings.
+  for (const f of require('./service_naming.js').findingsFromSource(src)) err('V-NAME-' + f.code, f.path, f.msg);
 
   // ---- coverage facts the report reads --------------------------------------------------------------------------------------------------------------------------------------------------------------
   for (const q of allQuestions) { if (Array.isArray(q.entity_scope) === false && q.entity_scope && q.entity_scope.context === 'ctx.unreferenced') res('question_asked_by_nothing', q.id, `${q.id} is authored but no chain, deep-dive question, default list or action asks it; its entity scope is an Operator decision`); }

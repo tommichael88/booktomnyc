@@ -261,6 +261,21 @@ mut('an unmapped verb listed twice', ['V-VOC-ACTION-DUP'], s => { const av = s.v
 mut('an infinitive that is none of the forms the engine matches', ['V-VOC-ACTION-FORMS'], s => { s.vocabulary.action_vocabulary.actions[0].infinitive_for_adlib = 'zzzz'; });
 mut('an action entry with no forms', ['V-VOC-ACTION-FORMS'], s => { s.vocabulary.action_vocabulary.actions[0].all_forms = []; });
 mut('an action vocabulary naming an action that does not exist', ['V-REF-DANGLING'], s => { s.vocabulary.action_vocabulary.actions[0].action_id = 'act.no_such_action'; });
+// a service's name is composed from the scope it authors (T188, Charter "Naming From Scope"); each rule of that composition has a mutant
+const naming = (s, id) => servicesOf(s).find(x => x.id === 'svc.' + id).presentation.ui_taxonomy.naming;
+mut('naming: a service whose title is not the name its scope composes', ['V-NAME-STALE'], s => { servicesOf(s)[0].presentation.ui_taxonomy.display_name = 'Something Else Entirely'; });
+mut('naming: a service whose verb is not its action\'s past participle', ['V-NAME-STALE'], s => { servicesOf(s)[0].presentation.verb_natural = 'zzzed'; });
+mut('naming: a service with no scope to compose a name from', ['V-NAME-MISSING'], s => { delete servicesOf(s)[0].presentation.ui_taxonomy.naming; });
+mut('naming: an unknown action and an unknown key', ['V-NAME-PARTS'], s => { const n = naming(s, 'dishwasher_repair'); n.actions = ['fix']; n.colour = 'red'; });
+mut('naming: a parenthetical in the object', ['V-NAME-CHARS'], s => { naming(s, 'dishwasher_repair').object = 'Dishwasher (Standard)'; });
+mut('naming: a lowercase noun', ['V-NAME-CASE'], s => { naming(s, 'dishwasher_repair').object = 'dishwasher'; });
+mut('naming: an object that ends in its own action noun', ['V-NAME-STUTTER'], s => { naming(s, 'dishwasher_repair').object = 'Dishwasher Repair'; });
+mut('naming: two services with one scope', ['V-NAME-UNIQUE'], s => { naming(s, 'dryer_repair').object = naming(s, 'dishwasher_repair').object; });
+mut('naming: a condition the name does not carry', ['V-NAME-MODIFIER'], s => { delete naming(s, 'flatscreen_mounting_with_hidden_cables').qualifier; });
+mut('naming: a name that shares nothing with its entity', ['V-NAME-ENTITY'], s => { naming(s, 'dishwasher_repair').object = 'Banana'; });
+mut('naming: a tail on a service that is not priced by the hour', ['V-NAME-TAIL'], s => { naming(s, 'angle_stop_replacement').tail = 'buy_the_hour'; });
+mut('naming: an exception with no reason', ['V-NAME-EXCEPTION'], s => { naming(s, 'dishwasher_repair').exception = { display_name: 'Dishwasher Rescue' }; });
+mut('naming: an action with no past participle in the vocabulary', ['V-NAME-VOCAB'], s => { delete s.policy.ui_config.service_naming.actions.repair.past; });
 // the schema also fails, and a schema check that cannot run is a finding
 mut('schema: an unknown property on a service', ['V-SCHEMA'], s => { servicesOf(s)[0].component_id = 'ent.computer'; }, { via: 'full' });
 mut('schema: a compiler-owned key in the authored source', ['V-SCHEMA'], s => { s.compiled = { service_index: {} }; }, { via: 'full' });
@@ -292,7 +307,7 @@ check('no mutant made the validator throw', crashed === 0, String(crashed));
 // ---- 3. completeness: every code the validator emits has a mutant -------------------------------------------------------------------------------------------------------
 console.log('\nCompleteness');
 const text = fs.readFileSync(path.join(EF, 'validate_source.js'), 'utf8');
-const emitted = [...new Set([...text.matchAll(/err\('(V-[A-Z-]+)'/g)].map(m => m[1]))].sort();
+const emitted = [...new Set([...text.matchAll(/err\('(V-[A-Z-]+)'/g)].flatMap(m => m[1] === 'V-NAME-' ? require(path.join(EF, 'service_naming.js')).CODES.map(c => 'V-NAME-' + c) : [m[1]]))].sort();   // V-NAME-<CODE> is built from the naming module's own code list
 check(`the validator emits ${emitted.length} rule codes and each has a mutant (${emitted.filter(c => !seen.has(c)).join(', ') || 'none uncovered'})`, emitted.length >= 10 && emitted.every(c => seen.has(c)));
 check('no mutant expects a code the validator does not emit', [...seen].every(c => emitted.includes(c)), [...seen].filter(c => !emitted.includes(c)).join(', '));
 
@@ -343,7 +358,7 @@ const baseSem = V.validate(lib.clone(SRC)); const resKinds = r => r.residuals.re
 console.log('\nLabels are not keys; order is not meaning');
 { const s = lib.clone(SRC); const q = questionsOf(s).find(x => x.options && x.options.length > 2); q.options.forEach((o, i) => { o.label = 'Renamed answer ' + (i + 1); });
   const r = V.validate(s); check('renaming every option label of a question leaves the source valid (a label is display text)', r.ok, JSON.stringify(r.errors.slice(0, 2))); }
-{ const s = lib.clone(SRC); servicesOf(s)[0].presentation.ui_taxonomy.display_name = 'Something Else Entirely'; const r = V.validate(s); check('renaming a service display name leaves the source valid', r.ok); }
+{ const s = lib.clone(SRC); const u = servicesOf(s)[0].presentation; u.ui_taxonomy.naming.exception = { display_name: 'Something Else Entirely', reason: 'a label is display text: the customer calls it this' }; require(path.join(EF, 'service_naming.js')).deriveSource(s); const r = V.validate(s); check('renaming a service display name (by its scope\'s exception, then deriving) leaves the source valid', r.ok && u.ui_taxonomy.display_name === 'Something Else Entirely', JSON.stringify(r.errors.slice(0, 2))); }
 { const s = lib.clone(SRC); s.entities.reverse(); const r = V.validate(s); check('reversing the entity order leaves the source valid (order is not meaning)', r.ok, JSON.stringify(r.errors.slice(0, 2))); }
 { const s = lib.clone(SRC); s.registries.tags.reverse(); s.registries.modifiers.reverse(); const r = V.validate(s); check('reversing the tag and modifier registries leaves the source valid', r.ok, JSON.stringify(r.errors.slice(0, 2))); }
 

@@ -7674,11 +7674,17 @@ body.modal-active{overflow:hidden}
          * @param {any} entity @returns {string}
          */
         function affirmJobPhrase(entity) {
-            const fromName = entity?.ui_taxonomy?.display_name;
-            const raw = fromName || String(entity?.id || '').replace(/[_-]+/g, ' ');
-            const name = String(raw).replace(/[\p{Extended_Pictographic}\uFE0F]\S*/gu, ' ').replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+            // T188: a curated service authors its name (ui_taxonomy.naming.name: the scope, without the title's extras); anything else (a dynamic composition, a bare id) has only words to clean.
+            const authored = entity?.ui_taxonomy?.naming?.name;
+            const raw = authored || entity?.ui_taxonomy?.display_name || String(entity?.id || '').replace(/[_-]+/g, ' ');
+            const name = String(raw).replace(/[\p{Extended_Pictographic}\uFE0F]\S*/gu, ' ').replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
             if (!name) return 'your job';
-            return (/^[aeiou]/.test(name) ? 'an ' : 'a ') + name + ' job';
+            // spoken lowercase, but an acronym stays one (GFCI, LED, USB, PAX) and a single capital before a hyphen stays one (P-trap)
+            const spoken = name.split(' ').map(w => /^[A-Z0-9]{2,}$/.test(w) ? w : /^[A-Z]-/.test(w) ? w[0] + w.slice(1).toLowerCase() : w.toLowerCase()).join(' ');
+            const first = name.split(' ')[0];
+            // "an" before a vowel sound: a vowel letter, or an acronym whose first letter is NAMED with one ("an LED", "an HVAC", "an SSD"); "a" before PAX, USB, GFCI
+            const an = /^[A-Z0-9]{2,}$/.test(first) ? /^[AEFHILMNORSX]/.test(first) : /^[aeiou]/i.test(first);
+            return (an ? 'an ' : 'a ') + spoken + ' job';
         }
 
         function renderTagAffirmationFromRoute(route) {
@@ -11622,13 +11628,18 @@ function addToCart(entry) {
             // SSOT: verb_natural on the service (set by Python script) or service_types fallback
             const _stDef = DB?.service_types?.[S.stype] || {};
             const _ctx = (S._objectNoun || S.intent?.label || '').toLowerCase();
+            // T188: a curated service authors its scope (ui_taxonomy.naming: the customer's noun and its actions) and its verb is its first action's past participle, so the sentence READS them.
+            // Only a request that resolved to no curated service (free text, a dynamic composition) has nothing authored and still has its words read for a verb.
+            const _nm = S._svc?.ui_taxonomy?.naming || null;
             let verb = S._svc?.verb_natural || _stDef.verb_natural || 'installed';
-            if (_ctx.includes('adjustment')) verb = 'adjusted';
+            if (_nm) { /* authored: nothing to guess */ }
+            else if (_ctx.includes('adjustment')) verb = 'adjusted';
             else if (_ctx.includes('replacement') || _ctx.includes('replace')) verb = 'replaced';
             else if (_ctx.includes('repair') && S.stype !== 'Repair') verb = 'repaired';
             else if (_ctx.includes('assembl')) verb = 'assembled';
             else if (_ctx.includes('config') || _ctx.includes('setup')) verb = 'configured';
             const verbOpts = ['installed', 'repaired', 'replaced', 'assembled', 'adjusted', 'set up', 'assessed'];
+            if (!verbOpts.includes(verb)) verbOpts.push(verb); // an authored verb the list does not have ("mounted", "cleared") is still the one shown as chosen
 
             // ── Object noun ───────────────────────────────────────────────
             const rawKw = (S.intent?.key || '').toLowerCase();
@@ -11652,7 +11663,9 @@ function addToCart(entry) {
             // names during this fix).
             const _actionSuffixes = /\s+(Adjustment|Replacement|Repair|Installation|Install|Assembly|Configuration|Setup|Diagnostic)$/i;
             const _cleanedLbl = lbl.replace(_actionSuffixes, '').trim();
+            // T188: for a curated service the noun is the customer's noun it authors (naming.object: "Faucet", not "Faucet Repair (Drip)"), not the title with a suffix stripped.
             let noun = S._objectNoun ||
+                (_nm && _nm.object) ||
                 (lbl.toLowerCase() !== rawKw && _cleanedLbl.length > 2 ? _cleanedLbl : null) ||
                 'item';
 

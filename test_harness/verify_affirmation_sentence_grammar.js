@@ -72,7 +72,7 @@ async function run(puppeteer, chromePath, html) {
     console.log('\n=== 3. mutants ===');
     const mutants = [
         ['the placeholder is back', h => h.replace("if (!name) return 'your job';", "if (!name) return 'a this job job';"), r => r.phrases[5] !== 'your job'],
-        ['the article is always "a"', h => h.replace("(/^[aeiou]/.test(name) ? 'an ' : 'a ')", "'a '"), r => r.phrases[1] !== 'an electrical outlet install job'],
+        ['the article is always "a"', h => h.replace("(an ? 'an ' : 'a ')", "'a '"), r => r.phrases[1] !== 'an electrical outlet install job'],
         ['the parenthetical is kept', h => h.replace(".replace(/\\s*\\([^)]*\\)/g, ' ')", ""), r => r.phrases[2] !== 'a flatscreen mounting job'],
     ];
     for (const [name, mutate, caught] of mutants) {
