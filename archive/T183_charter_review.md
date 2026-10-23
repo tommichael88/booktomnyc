@@ -1,4 +1,4 @@
-# T183 — Review of the amended Charter (the edition attached 2026-10-22 20:36 NY; see the "Update (T185)" note at the end for the re-amended edition)
+# T183 — Review of the amended Charter (the edition attached 2026-10-22 20:36 NY; see the "Update (T185)" and "Update (T188)" notes at the end for the re-amended editions)
 
 **Edition reviewed:** `PROJECT_CHARTER.html`, 733,234 bytes, sha256 `a56379db3c7290ee…`; byte for byte the Project's copy (`PROJECT_CHARTER.html`, saved 2026-10-23 00:34 UTC) and now the repository's.
 **Compared with:** (A) the edition installed in T182 (1/n), `8f30b1e2…`, 477,345 bytes, 47,304 visible words; (B) the intermediate edition you pushed to `main` on 2026-10-17 20:11 NY (`72d88c86…`, 506,542 bytes); (C) the attachment, 77,753 visible words (+64%).
@@ -72,3 +72,13 @@ This review describes the edition attached on 2026-10-22 20:36 NY (sha256 `a5637
 - **Section 5 / #241 (defects of the edition).** Fixed in the new edition: the three heading-only Rules (`R-COMPLEX-AXES`, `R-SYSTEM-CMS`, `R-SYSTEM-SCRIPT-SCOPE-IS-REAL`) are defined; the four Rules in the Principles table and the `G-GOVERN` Rules in the Rules table are in their own tables, without duplicate rows; "Playbook" 4 → 0; the 76 template Harm lines and 115 boilerplate sentences are gone; `R-SYSTEM-HOSTS` carries one block. `verify_charter_rules.js`: 27 → 11 problems.
 - **Still open (five):** `R-CLIENT-PRESENTATION-ONLY` is defined but not in the directory; one sentence in Document History repeats itself; three references are written as definitions (`G-INVARIANT-DETECTOR` twice, `R-INVARIANT-PROVENANCE`); the Harm lines are fifteen category templates (seven written for one rule), 26 Rules lost a specific hand-written harm line and several now carry another rule's harm; seven of my tests' `@enforces` lines name a Principle.
 - **Sections 1 to 3 and 6** (what is preserved, strengthened, made neutral; effect on the repository) stand: nothing that governs was dropped between the two editions, and no test, price or label changed. The current record is `PENDING_DECISIONS.md` #241 and #242, and `TIMELINE.md` T185 (1/n).
+
+
+## Update (T188, 2026-10-23, after the revision of 2026-10-22 23:05 NY)
+
+You revised the Charter again to address the open items of #241 (attachment `612891ec`, sha256 `b7ba1098…`, 720,626 bytes), now installed unedited as `04ed8c37`. Measured against the edition before it (136 definitions to 136; a whole-document 8-gram comparison for lost text, 117 paragraphs, all accounted for):
+
+- **Fixed:** `R-CLIENT-PRESENTATION-ONLY` is in the directory (136 rows); the repeated Document History sentence is gone; the 116 templated "Harm prevented ... The specific commitment at risk is:" lines are replaced by lines written for their rules (118 paragraphs before and after, none dropped), including the rules that had carried another rule's harm (`R-WHITEFLAG-FORKB`, `R-INVARIANT-REDTEST`, `R-SYSTEM-DEPLOYORDER`).
+- **Mine, done:** my tests' `@enforces <Principle>` tags are now prose lines; `verify_charter_rules.js` reports 3 problems (27 → 11 → 3).
+- **Still open (one):** `G-INVARIANT-DETECTOR` (twice) and `R-INVARIANT-PROVENANCE` are written as definitions but are references. It blocks nothing.
+- **Sections 1 to 3 and 6** still stand: nothing that governs was dropped, and no test, price or label changed. The current record is `PENDING_DECISIONS.md` #241 and `TIMELINE.md` T188 (1/n).

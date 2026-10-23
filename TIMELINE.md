@@ -12066,3 +12066,35 @@ Governing message: yours, 2026-10-22 22:00 NY ("There is also an \"issue\" now i
 **The next gate's baseline** is `archive/suite_T186.tsv`, golden master `archive/golden_master_T182.json`.
 
 **Files modified:** `qr.html`, `modules/nlp_engine.js` (`QR_BUILD_VERSION`), `test_harness/verify_focused_mode_textbar_scope.js`, `archive/suite_T186.tsv`, `archive/suite_T186_gate.txt`, `PENDING_DECISIONS.md` (#244, #245, the T186 decisions table), `TIMELINE.md`, `HANDOFF_CURRENT_STATE.md`, `test_harness/FILE_MANIFEST.json` and `.sha256`.
+
+## T187 — the words a visitor wrote survive Back and the catalog; a Clear control; Undo for Clear All and removals; Start over; the confirmation sentence is English
+
+Governing messages: yours, 2026-10-22 22:46 NY ("It should be hidden not placed beside it ... What if they want to remove the content or selecting something else we shouldnt retain or add unnecessary friction or impacting their ability to go back and amend whta they wrote ... just get it done, its okay") and 22:59 NY ("there needs to be a clear option or button as persisted states make undoing things very annoying").
+
+**Ledger (R-GOVERN-TRANSITION).**
+
+- **Rationale.** T186 hides the text bar in the focused overlay (your rule). That raised the question what happens to what the visitor typed when the bar is hidden. Measured on `a5bdd02b` in headless Chrome: Back from the step flow or the builder, and a catalog tap after typing, each lost or ignored the words (`restoreCategoryView()` and `Breadcrumbs.goBack()` cleared the bar through `sqRestart()`); Escape from the Other tile's builder left the builder and step flow drawn beside the grid (#245). The Cart's "Clear All" asked with a browser `confirm`, and removing a line could not be undone, although the cart persists in `sessionStorage`.
+- **Change (`qr.html`).** (1) `sqRestart(opts)` / `sqResetView(opts)` take `keepDraft`: leaving a SmartQuote view for a grid, Back from the step flow, builder or Other-tile screens, and the catalog collision all call it, so the words stay and the preview and action button read them again (only when there are words). (2) A "Clear" control sits in the bar's title row and shows only when the bar has words; it empties the bar, re-reads it, and returns focus. (3) Choosing "No" at the confirmation puts the caret at the end of the words so the visitor amends rather than retypes. (4) `Breadcrumbs.goBack()` from a service detail closes the SmartQuote views when they are open and keeps the overlay (#245). (5) `toast(msg, type, action)` can carry an Undo; removing a cart line and "Clear All" (no `confirm` any more) show it for eight seconds and restore the cart snapshot. (6) "Start over" is the first control in the step flow. (7) `affirmJobPhrase(entity)` builds the job phrase of the confirmation card: "a/an ... job", without the catalog's parentheticals and emoji, "your job" when nothing resolved (the card used to read "a this job job"). `QR_BUILD_VERSION` is `T187`.
+- **Evidence.** Three new real-Chrome tests with source mutants, each red before the change (`QR_HTML` pointed at the previous page): `verify_draft_survives_navigation.js` (29 checks, 6 mutants), `verify_clear_and_undo.js` (16, 5), `verify_affirmation_sentence_grammar.js` (13, 3); `verify_focused_mode_textbar_scope.js` stays 38 of 38.
+- **Gate** (`72b13f8c`, clean detached worktree, `--jobs 4`, against `archive/suite_T186.tsv`; `archive/suite_T187.tsv`, `archive/suite_T187_gate.txt`): **242 tests: 169 pass, 73 fail, 2 environment gaps; 2 pass→fail, 0 red→worse, 0 red→no count, 1 fail→pass, 3 new tests.** The two pass→fail: `verify_qr_build_version_freshness.js` (the TIMELINE entry for `T187` did not exist yet; it passes with this entry) and `verify_step3_card_host_disjoint.js`, which was a real interaction, not a record: the test drives 69 services one after another without a restart, and the builder's own sentence from one row now stays in the bar (by design) and is analysed instead of opening the builder in the next. Fixed in two places: the test clears the bar between rows with the page's own Clear control (a customer starting a new job does the same; the stale-card checks still run on an unrestarted page), and `sqResetView` re-reads the kept words only when there are any (it had changed the empty bar's button label from "Build it step by step" to "Describe your job step by step"). 17 of 17 after both. The fail→pass is `verify_doc_nostale.js`.
+- **Not changed.** Any price, label, schema or data field; the cart's storage; `qrqrqr.html`.
+- **Expected cost.** The visitor keeps what they wrote when they go Back; they empty it with Clear (one tap). An old builder sentence is still in the bar until cleared. The browser `confirm` on Clear All is gone; Undo replaces it.
+- **Reversal.** `git revert` of T187 restores the previous behaviour.
+
+**Files modified:** `qr.html`, `modules/nlp_engine.js` (`QR_BUILD_VERSION`), `test_harness/verify_draft_survives_navigation.js`, `test_harness/verify_clear_and_undo.js`, `test_harness/verify_affirmation_sentence_grammar.js`, `test_harness/verify_step3_card_host_disjoint.js`, `test_harness/MASTER_TEST_SUITE.json`, `archive/suite_T187.tsv`, `archive/suite_T187_gate.txt`, `PENDING_DECISIONS.md`, `TIMELINE.md`, `HANDOFF_CURRENT_STATE.md`, `test_harness/FILE_MANIFEST.json` and `.sha256`.
+
+
+## T188 (1/n) — the revised Charter is installed byte for byte, checked for drift, and #241 is updated against it
+
+Governing message: yours, 2026-10-22 23:05 NY ("Revision attache here"; attachment `612891ec`).
+
+**Ledger (R-GOVERN-TRANSITION).**
+
+- **Rationale.** You amended the Charter again to address my #241 findings. Installed as `04ed8c37`: sha256 `b7ba1098…`, 720,626 bytes, identical to the attachment; I edited nothing in it.
+- **Checked against the edition it replaces (`0a28f572`).** Definitions 136 → 136; directory rows 135 → 136 (`R-CLIENT-PRESENTATION-ONLY` added). A whole-document 8-gram comparison reports 117 paragraphs absent from the new edition: 116 are the templated "Harm prevented — ... The specific commitment at risk is:" lines, each replaced by a harm line written for its rule (118 "Harm prevented" paragraphs before and after; none dropped), and one is the repeated "derived runtime artifact" sentence. Nothing governing was removed.
+- **Measured.** `verify_charter_rules.js` 11 → 10 problems; `verify_charter_rule_index_v10.js` 21 → 19 failing assertions.
+- **#241 now:** items 1 (directory), 2 (repeated sentence) and 4 (harm lines) are fixed in the edition; item 3 (three references written as definitions: `G-INVARIANT-DETECTOR` twice, `R-INVARIANT-PROVENANCE`) remains in the Charter; item 5 (my tests' `@enforces <Principle>` tags) is repository-side and is mine (done in T188 (2/n)).
+- **Not changed.** The Charter's text, any price, label, schema or data field.
+- **Reversal.** Restore `PROJECT_CHARTER.html` from `72b13f8c`.
+
+**Files modified:** `PROJECT_CHARTER.html`, `PENDING_DECISIONS.md` (#241, the T188 decisions table), `TIMELINE.md`, `HANDOFF_CURRENT_STATE.md`.

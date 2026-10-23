@@ -5,7 +5,7 @@
  * @enforces R-CLIENT-CONVERGE
  * @enforces R-INVARIANT-CANONICAL
  * @enforces R-INTAKE-WIREREMOVE
- * @enforces P-WHITEFLAG-PRICED
+ * Principle served (not enforced by definition; the Rules above are what this test enforces): P-WHITEFLAG-PRICED
  *
  * THE SHAPE (R-GOVERN-TRANSITION / R-SYSTEM-SHAPE: "a shape that forces a workaround is the defect"): the catalog could say "this answer adds $X" or "this answer opens question Y" and could not say
  * "this answer means the job is a different service". So "my laptop only works while plugged in" -- a battery, a $125 part replacement -- could only ever end on the diagnostic that asked the question, and

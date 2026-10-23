@@ -2,7 +2,7 @@
 /**
  * verify_chips_not_fees.js -- a chip (a #smart_tag shown under the text box) is NEVER a pricing input (T180 8/n).
  *
- * @enforces P-INVARIANT-CHIPSNOTFEES
+ * Principle served (a Principle is not enforced by definition, and no Rule carries it yet): P-INVARIANT-CHIPSNOTFEES
  *
  * THE RULE (Charter, T135: "No chip carries a fee ... Fees live on answers; the pricing engine reads answers, not chips") AND THE OPERATOR'S RULING, 2026-10-16 23:34 NY: "by 'chips' I assumed it was understood
  * to be the #smart_tags that appear in the adlib under the text input box ... those SHOULD NEVER be used to increase pricing. The client responses are 'responses' or 'answers'."

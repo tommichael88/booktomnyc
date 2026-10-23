@@ -87,6 +87,10 @@ async function drive(puppeteer, chrome, file, limit) {
             for (const svc of cardServices) {
                 const row = { id: svc.id };
                 try {
+                    // Each row is a customer starting a job. T187 keeps the words a customer wrote when they go Back (they may want to amend them), so the previous row's builder
+                    // sentence would be this row's draft and "Build it step by step" would analyse it instead of opening the builder. A customer starts a new job with the bar's own
+                    // Clear control; the row does the same. (Nothing else is reset: the stale-card and stale-skeleton checks below still run on a page that was never restarted.)
+                    if (typeof window.sqClearDraft === 'function') window.sqClearDraft();
                     // 1. the customer taps the service's tile (its own click handler runs)
                     const tile = createServiceCardElement(svc, svc.ui_taxonomy?.category_id || 'other');
                     document.body.appendChild(tile); tile.click(); tile.remove();

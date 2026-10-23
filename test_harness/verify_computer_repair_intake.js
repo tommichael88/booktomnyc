@@ -2,10 +2,8 @@
 /**
  * verify_computer_repair_intake.js -- Tech Trouble > Computer Repair asks the customer only what they have not already told us, and asks it well.
  *
- * @enforces P-CLIENT-NAVFACT
- * @enforces P-INTAKE-INFER
+ * Principles served (a Principle is not enforced by definition; the Rules below are what this test enforces): P-CLIENT-NAVFACT, P-INTAKE-INFER, P-WHITEFLAG-PRICED
  * @enforces R-INTAKE-WIREREMOVE
- * @enforces P-WHITEFLAG-PRICED
  * @enforces R-SYSTEM-PICKER-AGREE
  *
  * THE DEFECT (operator, 2026-10-11 04:57 NY, PENDING_DECISIONS #180): "in this flow I see we ask currently Computer Repair > then grid with symptoms like Won't power on > we then open the sqintake

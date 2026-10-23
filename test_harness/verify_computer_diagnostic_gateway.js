@@ -3,10 +3,7 @@
  * verify_computer_diagnostic_gateway.js -- #201 / #205: the Computer Diagnostic is the registered diagnostic (a gateway fee credited toward the repair, not a labor estimate), it offers the
  * Fork in the Road only when its own questions can no longer name the part, and the Fork's first path asks something new.
  *
- * @enforces P-WHITEFLAG-PRICED
- * @enforces P-WHITEFLAG-DIAG
- * @enforces P-WHITEFLAG-PRECISE
- * @enforces P-INTAKE-INFER
+ * Principles served (a Principle is not enforced by definition; the Rules below are what this test enforces): P-WHITEFLAG-PRICED, P-WHITEFLAG-DIAG, P-WHITEFLAG-PRECISE, P-INTAKE-INFER
  * @enforces R-INTAKE-WIREREMOVE
  *
  * THE DEFECT (PENDING_DECISIONS #201, your 01:49 NY: "was the diagnostic meant to be a higher fee, or a gateway fee that credits back against the repair?"): `computer_diagnostic` was an ordinary

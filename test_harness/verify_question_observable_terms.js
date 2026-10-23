@@ -2,7 +2,7 @@
 /**
  * verify_question_observable_terms.js -- a question asks about the job in things the customer can SEE or DO, its answers do not overlap, and none of them is just a measurement.
  *
- * @enforces P-INTAKE-QTEST
+ * Principle served (not enforced by definition; the Rule below is what this test enforces): P-INTAKE-QTEST
  * @enforces R-INTAKE-WIREREMOVE
  *
  * THE CLASS. The Charter names no defect class for it (a proposed name, `DEFECT-UNOBSERVABLE-QUESTION`, is in PENDING_DECISIONS #179 for you to name or not; this file protects the rule it breaks and carries no `@detects` until the Charter has the class).
