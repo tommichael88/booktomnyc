@@ -527,6 +527,10 @@ body.modal-active{overflow:hidden}
 #sqTextBar textarea:focus{border-color:var(--clr-red,#de0000);box-shadow:0 0 0 2px #de00001f}
 #sqTextBar button{background:linear-gradient(135deg,var(--clr-red-dark,#8a0615),var(--clr-red,#de0000));color:#fff;border:0;border-radius:10px;padding:0 18px;font-weight:700;cursor:pointer;min-height:52px;font-size:.88rem;transition:var(--transition);white-space:nowrap;touch-action:manipulation}
 #sqTextBar button:hover{transform:translateY(-1px);box-shadow:0 4px 12px #de000059}
+/* T187: one tap removes what was written; shown only while the box holds text (:placeholder-shown tracks the value, so a builder or a restart that sets it keeps the button right). */
+#sqTextBar button.sq-clear-btn{margin-left:auto;background:none;color:var(--clr-red-dark,#8a0615);border:0;box-shadow:none;padding:0 6px;min-height:36px;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+#sqTextBar button.sq-clear-btn:hover{transform:none;box-shadow:none;text-decoration:underline}
+#sqTextBar:has(#sqDescIn:placeholder-shown) .sq-clear-btn{display:none}
 .sq-inline-row{display:flex;gap:8px;align-items:flex-end}
 #sqBuilder{background:var(--glass-bg,#ffffffeb);backdrop-filter:var(--glass-blur,blur(14px));-webkit-backdrop-filter:var(--glass-blur,blur(14px));border:var(--glass-border,.5px solid #c0c0c0f2);border-radius:var(--radius-md,15px);padding:16px;margin-top:14px;box-shadow:0 2px 16px #0000001a;display:none}
 #sqBuilder .sq-builder-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -846,7 +850,21 @@ body.modal-active{overflow:hidden}
                     };
                     showSubGroups(grp, prev.category_id, true);
                 } else if (prev.type === 'serviceDetail') {
-                    if (prev.category_id) showGroupsForCategory(prev.category_id, true);
+                    // T187 (#245): a Back from a SmartQuote view (the guided builder, the step flow, a route card) closes those views and ends that session; the words written stay in the
+                    // text bar. It used to redraw the grid with the builder and the step flow still on screen beside it.
+                    const sqViewOpen = ['sqBuilder', 'sqStepFlow', 'routeCardHost'].some(id => {
+                        const el = document.getElementById(id);
+                        return !!el && getComputedStyle(el).display !== 'none';
+                    });
+                    if (sqViewOpen && typeof sqRestart === 'function') {
+                        sqRestart({
+                            keepDraft: true
+                        }); // closes the views and leaves the overlay
+                        if (prev.category_id) {
+                            enterFocusedMode();
+                            showGroupsForCategory(prev.category_id, true);
+                        } else restoreCategoryView();
+                    } else if (prev.category_id) showGroupsForCategory(prev.category_id, true);
                     else restoreCategoryView();
                     if (DOM.intakeQuestionsContainer) DOM.intakeQuestionsContainer.style.display = 'none';
                     if (DOM.serviceContainer) DOM.serviceContainer.style.display = '';
@@ -7223,6 +7241,7 @@ body.modal-active{overflow:hidden}
   <div id="sqTextBar" class="sq-inline-bar" style="margin-top:14px;">
     <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--clr-red-dark);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
       <i class="ti ti-wand" style="font-size:15px;"></i> Instant Estimate — just start typing
+      <button id="sqClearBtn" class="sq-clear-btn" type="button" aria-label="Clear what I wrote" onclick="window.sqClearDraft()">Clear</button>
     </div>
     <!-- LIVE PREVIEW ROW - now above the text input -->
     <div id="sqLivePreview" class="sq-live-preview">
@@ -7270,6 +7289,7 @@ body.modal-active{overflow:hidden}
 
       <!-- Step 2: confirm service type (hidden until text analyzed or card tapped) -->
       <div id="sqStepFlow" style="display:none; flex-direction:column; gap:12px; margin-top:14px;">
+        <button id="sqStartOverBtn" type="button" onclick="sqRestart()" aria-label="Start over: clear this request" style="align-self:flex-end;background:none;border:0;color:var(--clr-red-dark,#8a0615);font-weight:700;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;min-height:36px;padding:0 6px;"><i class="ti ti-refresh"></i> Start over</button>
 
         <div class="scard active sq-stepflow" id="sqSc2">
           <div class="shead" onclick="sqOpenStep(2)">
@@ -7598,7 +7618,9 @@ body.modal-active{overflow:hidden}
             // showing the Catalog grid.
             const sqFlow = document.getElementById('sqStepFlow');
             if (sqFlow && sqFlow.style.display !== 'none' && typeof sqRestart === 'function') {
-                sqRestart();
+                sqRestart({
+                    keepDraft: true
+                });
             }
             if (DOM.categoriesGrid) DOM.categoriesGrid.style.display = 'grid';
             if (DOM.summaryMainContainer) DOM.summaryMainContainer.style.display = 'none';
@@ -7644,6 +7666,21 @@ body.modal-active{overflow:hidden}
         //    drop just that tag before affirming the rest). This version's
         //    chips are informational only; Yes/No affirms or rejects the
         //    complete set.
+        /**
+         * T187: the job as the confirmation sentence says it ("We understood: <this>"). Pure: reads the entity it is given and nothing else.
+         * It used to say "a this job job" when no entity was resolved (the placeholder was spliced into "a ... job"), "a electrical ..." for a vowel, and it carried a catalog
+         * name's parenthetical and its clock emoji into the sentence. Now: the entity's name without a parenthetical or an emoji word, with the right article; and, when nothing
+         * was resolved, "your job".
+         * @param {any} entity @returns {string}
+         */
+        function affirmJobPhrase(entity) {
+            const fromName = entity?.ui_taxonomy?.display_name;
+            const raw = fromName || String(entity?.id || '').replace(/[_-]+/g, ' ');
+            const name = String(raw).replace(/[\p{Extended_Pictographic}\uFE0F]\S*/gu, ' ').replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (!name) return 'your job';
+            return (/^[aeiou]/.test(name) ? 'an ' : 'a ') + name + ' job';
+        }
+
         function renderTagAffirmationFromRoute(route) {
             const container = document.getElementById('routeCardHost'); // T152: its own host, not the cart panel
             if (!container) return;
@@ -7659,8 +7696,7 @@ body.modal-active{overflow:hidden}
             }).join(' ');
 
             const entity = route.entity;
-            const displayName = entity?.ui_taxonomy?.display_name || entity?.id || 'this job';
-            const adlibText = `a ${escapeHtml(displayName.toLowerCase())} job`;
+            const adlibText = escapeHtml(affirmJobPhrase(entity));
 
             const laborEstimate = route.quote?.laborEstimate;
             const priceDisplay = (typeof laborEstimate === 'number' && laborEstimate > 0) ?
@@ -10039,17 +10075,20 @@ body.modal-active{overflow:hidden}
         // sqResetView -- RENDERER. Resets the SmartQuote view to its initial DOM state. Reads no session state
         // (S/BLD): the state reset itself is owned by the sqRestart handler (AppController).
         // Split out of the former sqRestart, DOM statements unchanged.
-        function sqResetView() {
+        function sqResetView(opts) {
             window._sqCuratedRender = null;
             const out = document.getElementById('sqQuoteOut');
             if (out) out.innerHTML = '';
             const desc = document.getElementById('sqDescIn');
-            if (desc) desc.value = '';
+            if (desc && !(opts && opts.keepDraft)) desc.value = ''; // T187: leaving a SmartQuote view for somewhere else keeps the words (the visitor may come back to amend them)
             // Reset the unified action button back to its default
             // (low-confidence) label/state, since the textarea is
             // also being cleared right above.
             const unifiedBtn = document.getElementById('sqUnifiedActionBtn');
             const unifiedLabel = document.getElementById('sqUnifiedActionLabel');
+            if (opts && opts.keepDraft && desc) desc.dispatchEvent(new Event('input', {
+                bubbles: true
+            })); // the kept words are read again below the reset: the preview and the action button follow them
             if (unifiedBtn) unifiedBtn.classList.remove('sq-unified-confident');
             if (unifiedLabel) unifiedLabel.textContent = 'Build it step by step';
             const overrideLink = document.getElementById('sqManualOverrideLink');
@@ -10101,6 +10140,17 @@ body.modal-active{overflow:hidden}
             exitFocusedMode?.();
         }
 
+
+        /** T187: remove what the visitor wrote, in one tap, and leave them in the box. The live preview and the action button follow through the box's own input event. */
+        function sqClearDraft() {
+            const ta = document.getElementById('sqDescIn');
+            if (!ta) return;
+            ta.value = '';
+            ta.dispatchEvent(new Event('input', {
+                bubbles: true
+            }));
+            ta.focus();
+        }
 
         function sqToggleBuilder() {
             const builder = document.getElementById('sqBuilder');
@@ -10260,7 +10310,8 @@ body.modal-active{overflow:hidden}
             if (el) el.className = 'scard active';
         }
 
-        function toast(msg, type = 'info') {
+        /** @param {string} msg @param {string} [type] @param {{label: string, onClick: () => void}} [action] T187: an optional one-tap action (Undo) that stays long enough to be used */
+        function toast(msg, type = 'info', action) {
             let container = q('#toast-container');
             if (!container) {
                 container = document.createElement('div');
@@ -10272,12 +10323,26 @@ body.modal-active{overflow:hidden}
             const el = document.createElement('div');
             el.style.cssText = `background:${bg};color:white;padding:12px 20px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);font-size:14px;max-width:300px;transition:opacity .3s,transform .3s;pointer-events:auto;`;
             el.textContent = msg;
-            container.appendChild(el);
-            setTimeout(() => {
+            const dismiss = () => {
                 el.style.opacity = '0';
                 el.style.transform = 'translateX(20px)';
                 setTimeout(() => el.remove(), 320);
-            }, 3000);
+            };
+            if (action && typeof action.onClick === 'function') {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'toast-action';
+                btn.textContent = action.label || 'Undo';
+                btn.style.cssText = 'margin-left:14px;background:none;border:0;color:#fff;font-weight:700;font-size:14px;text-decoration:underline;cursor:pointer;min-height:36px;padding:0 4px;';
+                btn.addEventListener('click', () => {
+                    btn.disabled = true;
+                    action.onClick();
+                    dismiss();
+                });
+                el.appendChild(btn);
+            }
+            container.appendChild(el);
+            setTimeout(dismiss, action ? 8000 : 3000);
         }
 
         // T157: a boot that fails must be SEEN. The category grid is static markup (visible even when `init` never ran) and the text bar is injected late in `init`, so a failure used to leave an
@@ -10969,7 +11034,9 @@ function resolveCartTransition(entry, currentCart) {
         function _sqRevertAutoSelect() {
             const saved = S._autoSelectedFrom;
             if (!saved) {
-                sqRestart();
+                sqRestart({
+                    keepDraft: true
+                }); // undoing an automatic choice is going back to amend what was written
                 return;
             }
 
@@ -11343,6 +11410,7 @@ function addToCart(entry) {
 
         function removeServiceFromCart(id) {
             const currentCart = window.__store.getState().cart.serviceRequest;
+            const at = currentCart.findIndex(s => s.id === id);
             const newCart = currentCart.filter(s => s.id !== id);
             window.__store.dispatch({
                 type: 'cart/SET',
@@ -11351,6 +11419,45 @@ function addToCart(entry) {
                 }
             });
             _recomputeInstanceLabels();
+            // T187: the cart is kept for the session, so taking something out has to be as easy to take back: one tap, in the same place it was.
+            if (at >= 0) {
+                const removed = currentCart[at];
+                toast((removed.name || 'Service') + ' removed', 'info', {
+                    label: 'Undo',
+                    onClick: () => restoreCartSnapshot(currentCart)
+                });
+            }
+        }
+
+        /** T187: put the cart back exactly as a snapshot of it was (Undo of a removal or of Clear All). @param {any[]} snapshot */
+        function restoreCartSnapshot(snapshot) {
+            window.__store.dispatch({
+                type: 'cart/SET',
+                payload: {
+                    serviceRequest: snapshot
+                }
+            });
+            _recomputeInstanceLabels();
+            renderCart();
+            updateCartOverlayIfOpen();
+        }
+
+        /** T187: Clear All: no blocking dialog; the cart is emptied at once and the toast carries Undo. */
+        function clearCartWithUndo() {
+            const snapshot = window.__store.getState().cart.serviceRequest;
+            if (!snapshot.length) return;
+            window.__store.dispatch({
+                type: 'cart/SET',
+                payload: {
+                    serviceRequest: []
+                }
+            });
+            renderCart();
+            restoreCategoryView();
+            toast('Cart cleared', 'info', {
+                label: 'Undo',
+                onClick: () => restoreCartSnapshot(snapshot)
+            });
         }
 
         function setStep(step) {
@@ -12209,21 +12316,8 @@ function addToCart(entry) {
             });
 
             // 3. Clear all, add more, book now (unchanged – they call renderCart etc.)
-            const clearAllBtn = document.querySelector('#clearAllServicesBtn');
-            if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
-                const currentCart = window.__store.getState().cart.serviceRequest;
-                if (currentCart.length && confirm('Remove all services?')) {
-                    window.__store.dispatch({
-                        type: 'cart/SET',
-                        payload: {
-                            serviceRequest: []
-                        }
-                    });
-                    renderCart();
-                    restoreCategoryView();
-                    toast('Cart cleared');
-                }
-            });
+            // T187: both Clear All buttons (the cart overlay's and the request summary's, which had no handler at all) clear at once and offer Undo; the blocking "Remove all services?" dialog is gone.
+            document.querySelectorAll('.clear-all-btn').forEach(btn => btn.addEventListener('click', clearCartWithUndo));
             const addMoreBtn = document.querySelector('#addMoreBtn');
             if (addMoreBtn) addMoreBtn.addEventListener('click', () => {
                 closeCartOverlay();
@@ -12405,8 +12499,10 @@ function addToCart(entry) {
                 if (sqEl) sqEl.style.display = 'block';
                 const textarea = document.getElementById('sqDescIn');
                 if (textarea) {
+                    // T187: the visitor came back to AMEND what they wrote: the caret goes to the end of it. (It used to select the whole text, so the first key typed erased it.)
                     textarea.focus();
-                    textarea.select();
+                    const end = textarea.value.length;
+                    textarea.setSelectionRange(end, end);
                 }
             };
 
@@ -12594,7 +12690,9 @@ function addToCart(entry) {
             renderCart();
         }
 
-        function sqRestart() {
+        function sqRestart(opts) {
+            // opts.keepDraft (T187): reset the session and close its views, but leave the words in the text bar. Used when the visitor LEAVES a SmartQuote view (Back, the catalog);
+            // an explicit Start Over, or a finished request, still clears the box.
             // Full reset — EVERY field either S or BLD can ever carry must be
             // listed here explicitly. This is the root fix for the cart-collision
             // bug: several fields (_confidenceStrategy, _escalatedBy, _forceModules,
@@ -12655,7 +12753,7 @@ function addToCart(entry) {
                 _allowedTypes: null
             };
             // Everything below touches only the DOM -- the view reset is a renderer (UIRenderer.sqResetView).
-            sqResetView();
+            sqResetView(opts);
         }
 
         function sqOpenBuilderPreseeded({
@@ -12871,6 +12969,7 @@ function addToCart(entry) {
                 // since T70; these 5 window assignments would otherwise throw
                 // ReferenceError now that the definitions are gone).
                 window.sqToggleBuilder = sqToggleBuilder;
+                window.sqClearDraft = sqClearDraft;
                 window.sqBuilderBack = sqBuilderBack;
                 window.sqPickType = sqPickType;
                 window.sqHandleStep2 = sqHandleStep2;
