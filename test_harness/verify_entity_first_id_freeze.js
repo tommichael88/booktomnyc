@@ -122,7 +122,7 @@ console.log('\nWriting the register can only append');
 
 // ---- 6. labels and order are not ids ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 console.log('\nLabels and order are not ids');
-{ const s = clone(SRC); questionsOf(s).forEach(q => (q.options || []).forEach((o, i) => { o.label = 'Renamed ' + i; })); servicesOf(s).forEach(x => { x.presentation.ui_taxonomy.display_name = 'Renamed ' + x.id; }); s.entities.forEach(e => { e.label = 'Renamed ' + e.id; });
+{ const s = clone(SRC); questionsOf(s).forEach(q => (q.options || []).forEach((o, i) => { o.label = 'Renamed ' + i; })); servicesOf(s).forEach(x => { const u = x.presentation.ui_taxonomy; u.display_name = 'Renamed ' + x.id; u.naming.exception = { display_name: u.display_name, reason: 'a title authored as an exception, so a rename is the supported kind (T188 (2/n): a title is composed from its scope, ssot/SERVICE_NAMING.md)' }; }); s.entities.forEach(e => { e.label = 'Renamed ' + e.id; });
   const r = verdict(REG, s); check('renaming every option label, service display name and entity label changes no registered id', !r.invalid && r.valid && r.problems.length === 0, codes(r.problems)); }
 { const s = clone(SRC); s.entities.reverse(); s.registries.tags.reverse(); s.registries.groups.reverse(); questionsOf(s).forEach(q => (q.options || []).reverse()); const r = verdict(REG, s);
   check('reversing the entities, tags, groups and every option list changes no registered id', !r.invalid && r.problems.length === 0, codes(r.problems)); }

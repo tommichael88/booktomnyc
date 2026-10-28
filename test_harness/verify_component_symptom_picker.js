@@ -393,11 +393,12 @@ function tap(t, w) {
         // skipped entirely -- the real, genuine 2-service choice shows
         // immediately after the group tap, not after an extra, pointless
         // tap on a tile with the same name as the group just tapped.
+        // T188 (2/n): a service's title is composed from the scope it authors (ssot/SERVICE_NAMING.md), so the test reads the title from the catalog instead of carrying a copy of it (a rename then cannot silently fail a choice that is still offered).
+        const titleShown = id => { const s = (w.DB.services || []).find(x => x.id === id); const shown = doc.getElementById('serviceContainer').textContent.replace(/\s+/g, ' ').toLowerCase(); return !!s && shown.includes(String(s.ui_taxonomy.display_name).replace(/\s+/g, ' ').toLowerCase()); };
         await show('electric_lighting_bulbs');
         const beforeBulbShow = w.S?.svc?.id || w.S?._svc?.id;
         check('Bulbs: the real 2-service choice shows immediately, no redundant "Bulb" tile tap first',
-            /led bulb upgrade/i.test(doc.getElementById('serviceContainer').textContent) &&
-            /high ceiling bulb replacement/i.test(doc.getElementById('serviceContainer').textContent));
+            titleShown('led_bulb_upgrade') && titleShown('high_ceiling_bulb_replacement'));
         check('Showing the real choice does NOT silently resolve either option (still a genuine, open choice)',
             (w.S?.svc?.id || w.S?._svc?.id) === beforeBulbShow);
 
@@ -527,6 +528,8 @@ function tap(t, w) {
 
     console.log('\n=== Wall Mounting cluster: category-complete round (substrate-first navigation, confirmed intentional) ===');
     {
+        // T188 (2/n): a service's title is composed from the scope it authors (ssot/SERVICE_NAMING.md), so the test reads the title from the catalog instead of carrying a copy of it (a rename then cannot silently fail a choice that is still offered).
+        const titleShown = id => { const s = (w.DB.services || []).find(x => x.id === id); const shown = doc.getElementById('serviceContainer').textContent.replace(/\s+/g, ' ').toLowerCase(); return !!s && shown.includes(String(s.ui_taxonomy.display_name).replace(/\s+/g, ' ').toLowerCase()); };
         async function show(gid) {
             const g = w.DB.group.find(x => x.id === gid);
             w.showSubGroups(g, 'wall_mounting');
@@ -617,8 +620,7 @@ function tap(t, w) {
         tap(findTile(doc, /^tv$/i), w);
         await wait(30);
         check('Tapping TV correctly shows BOTH real destinations as a genuine choice (no chosenAction to disambiguate them, correctly falls through to the service-card sub-picker)',
-            /flatscreen mounting \(standard\)/i.test(doc.getElementById('serviceContainer').textContent) &&
-            /flatscreen mounting with hidden cables/i.test(doc.getElementById('serviceContainer').textContent));
+            titleShown('flatscreen_mounting_standard') && titleShown('flatscreen_mounting_with_hidden_cables'));
         tap(findServiceTile(doc, /hidden cables/i), w);
         await wait(30);
         check('Tapping the specific "hidden cables" option resolves to the correct, specific service',

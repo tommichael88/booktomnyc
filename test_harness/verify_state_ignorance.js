@@ -159,7 +159,7 @@ async function walk(page, { onlyGroups } = {}) {
         const lab = s.querySelector('.ims-label'), chips = [...s.querySelectorAll('.ims-chip')], sel = chips.find(c => c.classList.contains('sel'));
         return { mod: lab.dataset.mod, answered: sel ? sel.dataset.label : null, options: chips.map(c => c.dataset.label) };
     });
-    const tidy = l => { const sv = (DB.services || []).find(x => clean((x.ui_taxonomy || {}).display_name) && l.length > clean(x.ui_taxonomy.display_name).length + 4 && l.includes(clean(x.ui_taxonomy.display_name))); return sv ? `service ${sv.id}` : l; };
+    const tidy = l => { const sv = (DB.services || []).filter(x => clean((x.ui_taxonomy || {}).display_name) && l.length > clean(x.ui_taxonomy.display_name).length + 4 && l.includes(clean(x.ui_taxonomy.display_name))).sort((a, b) => clean(b.ui_taxonomy.display_name).length - clean(a.ui_taxonomy.display_name).length)[0]; return sv ? `service ${sv.id}` : l; };   // the most specific title that the tile's text contains (T188 (2/n): "Flatscreen Mounting" is now the start of another service's title)
     const groupByName = (cat, label) => (DB.group || []).find(g => g.category_id === cat && clean(g.display_name) === label);
     for (const group of (DB.group || []).filter(g => !(g.parent_group || g.parent_id))) {         // the groups showGroupsForCategory lists; a child group is reached through its parent
         if (onlyGroups && !onlyGroups.includes(group.id)) continue;
@@ -291,6 +291,7 @@ async function findAll(page, opts = {}) {
     const baseline = JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8'));
     const known = new Map((baseline.instances || []).map(i => [i.key, i]));
     const fresh = list.filter(i => !known.has(keyOf(i))), stale = [...known.keys()].filter(k => !all.found.has(k));
+    if (fresh.length || stale.length) { fresh.forEach(i => console.log('      NEW   ' + keyOf(i))); stale.forEach(k => console.log('      STALE ' + k)); }   // the keys, so a baseline that only needs re-keying (a typed phrase that changed with a title) can be re-keyed by hand
     check('2.1 no NEW instance of the class: every question the customer sees is asked only for what the system does not already know', fresh.length === 0, { expected: 'none beyond the baseline', got: fresh.slice(0, 6).map(i => `${i.shape} ${i.where} ${i.question}`) });
     check('2.2 the baseline lists only instances that still exist (a fixed one is removed from it: the list only shrinks)', stale.length === 0, { expected: 'none', got: stale.slice(0, 6) });
     check('2.3 every baseline instance is filed: a ledger entry, a shape, and a note', (baseline.instances || []).every(i => /^#\d+$/.test(i.ledger || '') && Object.values(SHAPES).includes(i.shape) && clean(i.note).length > 20), { expected: 'ledger/shape/note on each', got: (baseline.instances || []).filter(i => !/^#\d+$/.test(i.ledger || '')).length + ' without a ledger entry' });

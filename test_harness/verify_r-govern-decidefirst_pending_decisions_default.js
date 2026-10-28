@@ -15,7 +15,7 @@
  * WHAT THIS CHECKS (the Partial half: the part a machine can see).
  *   Every OPEN entry in PENDING_DECISIONS.md that is not grandfathered carries a "Default if unanswered" line with real content after it.
  *     - An entry is a numbered heading (`### #N -- ...`) or a deferred item (`**D-<scope>-N -- ...**`).
- *     - It is OPEN when its heading carries the open marker (a heading that is part closed and part open is open); a deferred item is open
+ *     - It is OPEN when its heading carries an open marker (🟡 OPEN, or 🔧 SCHEDULED: open work with an owner, since T188) (a heading that is part closed and part open is open); a deferred item is open
  *       until its text says RESOLVED.
  *     - GRANDFATHERED: numbered entries up to #119 and the Phase A deferred items (D-C11-*, D-A2b-*, D-A4-*), which were filed before the Rule.
  *       They leave the grandfathered set by being closed; nothing may be added to it. Every entry filed after the Rule is held to it.
@@ -56,7 +56,8 @@ function parseLedger(text) {
             flush();
             const n = Number(m[1]);
             // Open when the heading says so. A heading that is partly closed and partly open (the follow-ups are open) is open.
-            cur = { id: '#' + n, kind: 'numbered', number: n, heading: line, lines: [], open: line.includes('🟡'), grandfathered: n <= LAST_GRANDFATHERED_NUMBER };
+            cur = { id: '#' + n, kind: 'numbered', number: n, heading: line, lines: [], open: line.includes('🟡') || line.includes('🔧'),   // 🔧 SCHEDULED is open work with an owner (T188): it carries a default like any other open entry
+                    grandfathered: n <= LAST_GRANDFATHERED_NUMBER };
         } else if ((m = /^\*\*(D-[A-Za-z0-9]+-\d+)\b/.exec(line))) {
             flush();
             cur = { id: m[1], kind: 'deferred', heading: line.slice(0, 120), lines: [line], open: true, grandfathered: GRANDFATHERED_DEFERRED_PREFIXES.some(p => m[1].startsWith(p)) };
@@ -107,6 +108,8 @@ console.log('=== 0. The linter can fail (non-vacuity) ===');
         ['a new deferred item with no default is flagged',              'Intro.\n\n**D-B1-1 -- a new deferred thing.** It needs a call.\n',                    p => p.length === 1 && /D-B1-1/.test(p[0])],
         ['a CLOSED entry with no default passes',                       '### #9005 — ✅ CLOSED, T999: done\nNothing open here.\n',                              p => p.length === 0],
         ['a half-closed, half-open heading with no default is flagged', '### #9006 — ✅ CLOSED (structure) / 🟡 OPEN (follow-ups), T999: x\nFollow-ups remain.\n', p => p.length === 1 && /#9006/.test(p[0])],
+        ['a scheduled (🔧) entry with no default is flagged',           '### #9007 — 🔧 SCHEDULED (mine; the default is in force), T999: x\nNo default was written.\n', p => p.length === 1 && /#9007/.test(p[0])],
+        ['a scheduled (🔧) entry with a default passes',                '### #9008 — 🔧 SCHEDULED (mine; the default is in force), T999: x\n**Default if unanswered:** unchanged, and the work is scheduled.\n', p => p.length === 0],
         ['a grandfathered open entry with no default passes',           '### #50 — 🟡 OPEN, T50: an old decision\nNo default was ever written.\n',              p => p.length === 0],
         ['a default belonging to the NEXT entry does not satisfy this one', newOpen(9007, 'No default here.') + '\n' + newOpen(9008, GOOD),                     p => p.length === 1 && /#9007/.test(p[0])],
         ['a resolved deferred item passes without a default',           '**D-B1-2 -- RESOLVED, T999: it was decided.** The operator ruled.\n',                 p => p.length === 0],
