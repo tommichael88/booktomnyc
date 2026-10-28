@@ -31,6 +31,24 @@
  *   - `TRACE_BUILD_VERSION` is T184; every export records it in `meta.traceBuildVersion`.
  *   - test_harness/verify_trace_export.js runs the export, the Markdown report, the narrative and the open overlay in a real DOM.
  *
+ * T185 (FLAGGED-ANNOTATION COMPLETENESS FIX):
+ *   - `_buildAutomatedIssueSummary` previously collapsed every flagged entry into a single
+ *     count line ("Review the N manually flagged logs..."). The JSON export and `_traceNarrative`
+ *     both carry the actual per-flag `id`, `layer`, `label`, `flaggedAt`, and — critically — the
+ *     user's `_flag.note` comment; the Markdown report dropped them. That made the "Copy Markdown
+ *     Issue" output a false claim: it said flags existed without showing what the user actually
+ *     wrote. A report that references annotations it does not include violates
+ *     R-SYSTEM-UNVERIFIABLE-CLAIM (a claim of verification/capture must name its evidence) and
+ *     P-GOVERN-GOODHART (the measure must reflect the actual population, not a count).
+ *   - Fix is presentation-only (#77 preserved): the report now emits a "🚩 Flagged Items &
+ *     Developer Notes" section listing every flagged entry in order, each with its comment when
+ *     present (single-line inline; multi-line as an indented blockquote), an explicit
+ *     "*(no comment provided)*" when the user flagged without typing one, and a compact
+ *     context line describing what the entry did. Read-only; nothing is mutated and nothing
+ *     can throw to the caller (helper wrapped in try/catch, same `_view()` guard at the export).
+ *   - The JSON payload shape, `meta.flaggedCount`, `annotations[].note`, `annotations[].
+ *     entrySnapshot`, and `_traceNarrative`'s flagged footer are all unchanged.
+ *
  * Charter position (T184): the Layer Map's "Observation / diagnostics" layer (a fifth layer; it is not assembled into the page). Under
  * R-SYSTEM-ONEPURPOSE its one job is to record and present what the page did: it holds no price, route or catalog logic and carries no copy of
  * the catalog (the export fingerprints `window.DB` with a hash only). The narrative and the Markdown report are presentations derived from the
@@ -104,7 +122,7 @@
  * - `btnycJsonHash` fingerprints `window.DB`, guarded for absence.
  */
 
-const TRACE_BUILD_VERSION = 'T184';
+const TRACE_BUILD_VERSION = 'T185';
 
 // ─── Persistent State ───────────────────────────────────────────────
 window._traceEnabled         = false;
@@ -376,6 +394,7 @@ function _diffObservableState(pre, post) {
         const visDiff = {};
         for (const id of _KEY_ELEMENTS) {
             if (pre.visibility[id] !== post.visibility[id]) {
+                visDiff[id] = { before: pre[id], after: post.visibility[id] };
                 visDiff[id] = { before: pre.visibility[id], after: post.visibility[id] };
             }
         }
@@ -737,12 +756,60 @@ function _renderMismatch(lines, mm) {
 }
 
 /**
- * Build a GitHub-issue-ready Markdown report from the trace log and the observed page state (T184).
+ * Describe a flagged entry's context in one compact line for the Markdown report.
+ *
+ * Presentation-only (#77): reads, never mutates; every accessor is optional-chained,
+ * every failure is swallowed so a partially populated entry can never throw to the
+ * caller of `_buildAutomatedIssueSummary`. Returns `null` when the entry has no
+ * compact context worth naming — the flag itself (id / layer / label / note) is
+ * still emitted by the caller regardless.
+ */
+function _describeFlaggedEntryContext(entry) {
+    try {
+        const d = entry.data || {};
+        if (entry.layer === 'session' && entry.label === 'state_change') {
+            const keys = Object.keys(d.changes || {});
+            return keys.length ? 'Changed fields: ' + keys.join(', ') : null;
+        }
+        if (entry.layer === 'session' && entry.label === 'entry_path_mismatch') {
+            const exp = d.expected || d.claimed || '?';
+            const bcs = d.foundBreadcrumbs || d.breadcrumbs || [];
+            const bcStr = Array.isArray(bcs)
+                ? bcs.map(b => (typeof b === 'string' ? b : (b && b.type) || '?')).join(' > ')
+                : String(bcs);
+            return 'Entry-path mismatch: claimed "' + exp + '" vs breadcrumbs [' + bcStr + ']';
+        }
+        if (entry.layer === 'user_interaction' && entry.label === 'click') {
+            const target = d.text || (d.tag ? d.tag + (d.id ? '#' + d.id : '') : 'element');
+            return 'Clicked: ' + target;
+        }
+        if (entry.layer === 'pricing_engine') {
+            return 'Price computed: $' + (d.laborEstimate ?? '?')
+                 + ' (tier ' + (d.complexityTier ?? '?') + ')';
+        }
+        if (entry.layer === 'dom_snapshot') {
+            return 'DOM snapshot: ' + (entry.label || 'render state');
+        }
+        if (entry.layer === 'fn_call') {
+            const argKeys = Object.keys(d).filter(k => k !== '_observable');
+            return argKeys.length ? 'Args: ' + argKeys.join(', ') : null;
+        }
+        return null;
+    } catch (_e) {
+        return null;
+    }
+}
+
+/**
+ * Build a GitHub-issue-ready Markdown report from the trace log and the observed page state (T184 / T185).
  *
  * Presentation only (#77): it reads the log and the state it is handed, mutates neither, is derived afresh
  * on every call and is read back by nothing. Every accessor is optional-chained so a partially populated
  * entry or state never throws. It is the second human-readable view of the log beside `_traceNarrative`;
  * the JSON log stays the data, so the report is carried in the export as `issueReportMarkdown`.
+ *
+ * T185: emits every flagged item and its comment (previously collapsed to a single count line).
+ * See the "🚩 Flagged Items & Developer Notes" section below.
  */
 function _buildAutomatedIssueSummary(traceArray, observedState) {
     if (!traceArray || !traceArray.length) return 'No data available to construct summary.';
@@ -763,6 +830,42 @@ function _buildAutomatedIssueSummary(traceArray, observedState) {
     lines.push('* Flagged Annotations: ' + flagged.length);
     lines.push('* Total Log Size: ' + traceArray.length + ' entries');
     lines.push('');
+
+    // 🚩 Flagged Items & Developer Notes (T185) — every flagged entry, every comment.
+    // Read-only over the log; a failure in formatting is not allowed to throw to the
+    // caller (each iteration is guarded by _describeFlaggedEntryContext, which itself
+    // is wrapped in try/catch, and the whole report is wrapped by _view() in the export).
+    if (flagged.length > 0) {
+        lines.push('### 🚩 Flagged Items & Developer Notes');
+        lines.push('');
+        lines.push('The following ' + flagged.length
+            + ' item(s) were flagged by the user. Every flag is listed below, '
+            + 'with its comment/annotation when one was written.');
+        lines.push('');
+        flagged.forEach((e, idx) => {
+            const note = (e._flag?.note || '').trim();
+            const flaggedAt = e._flag?.flaggedAt
+                ? new Date(e._flag.flaggedAt).toISOString()
+                : 'unknown';
+            lines.push('#### ' + (idx + 1) + '. Entry #' + e.id
+                + ' — `' + e.layer + '` / `' + e.label + '`');
+            lines.push('* **Flagged at:** ' + flaggedAt);
+            if (note) {
+                if (note.indexOf('\n') === -1) {
+                    lines.push('* **Comment:** ' + note);
+                } else {
+                    lines.push('* **Comment:**');
+                    lines.push('');
+                    lines.push('  > ' + note.replace(/\n/g, '\n  > '));
+                }
+            } else {
+                lines.push('* **Comment:** *(no comment provided)*');
+            }
+            const context = _describeFlaggedEntryContext(e);
+            if (context) lines.push('* **Context:** ' + context);
+            lines.push('');
+        });
+    }
 
     if (errors.length > 0 || mismatches.length > 0) {
         lines.push('### 🚨 Intercepted Exceptions & Mismatches');
@@ -827,7 +930,9 @@ function _buildAutomatedIssueSummary(traceArray, observedState) {
         lines.push('* [Flow Trapped] Component wizard container sqStepFlow is hidden (none) despite active state pointing to step ' + observedState.step + '. Reset layout conditions.');
     }
     if (flagged.length > 0) {
-        lines.push('* [Developer Intent] Review the ' + flagged.length + ' manually flagged logs where inline annotations were captured.');
+        lines.push('* [Developer Intent] Review the ' + flagged.length
+            + ' flagged item(s) listed above under **🚩 Flagged Items & Developer Notes**, '
+            + 'each with its inline comment/annotation.');
     }
     if (lines[lines.length - 1] === '### 📋 Actionable Resolution Roadmap') {
         lines.push('* No structural state mismatches detected automatically. Inspect the complete trace execution log cascade below.');
@@ -930,7 +1035,7 @@ function _traceExport(compact = true) {
         observedState:     currentObservedState,
         lastVisibleScreen: lastDomSnapshot,
         narrative:         narrative,
-        // The Markdown issue report (T184), carried beside the log it is derived from.
+        // The Markdown issue report (T184/T185), carried beside the log it is derived from.
         issueReportMarkdown: issueReportMarkdown,
         trace:             window._traceLog,
     };
