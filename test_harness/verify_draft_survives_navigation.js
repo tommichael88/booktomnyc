@@ -24,7 +24,8 @@ const fs = require('fs'), path = require('path'), { execSync } = require('child_
 const ROOT = process.env.QR_ROOT || path.resolve(__dirname, '..');
 const QR = process.env.QR_HTML || path.join(ROOT, 'qr.html');
 const PAGE = require('./_page.js');
-const RAW = fs.readFileSync(QR, 'utf8');
+// The document a browser would run (the stylesheet in place): the Clear-control rule this test mutates lives in styles/qr.css since the operator's split.
+const RAW = require('./_page.js').readPage(QR);
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { if (ok) { pass++; console.log('  ✓ ' + name); } else { fail++; console.log('  ✗ ' + name + (detail ? '\n      ' + detail : '')); } };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
