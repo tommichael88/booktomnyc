@@ -146,6 +146,7 @@ function migrate(L, opts = {}) {
     if (o.qty_value !== undefined) { out.qty_value = o.qty_value; aff.add('quantity'); }
     if (o.route_to) {
       out.route_to = { service_id: 'svc.' + o.route_to.service, answers: Object.entries(o.route_to.answers || {}).map(([mk, label]) => ({ question_id: 'q.' + mk, option_id: optionId('q.' + mk, label) })), because: o.route_to.because };
+      if (o.route_to.ask_first !== undefined) out.route_to.ask_first = 'q.' + o.route_to.ask_first;   // T189 (#184): the question asked before the move
       aff.add('branch');
     }
     if (o.mat_min !== undefined) out.mat_min = o.mat_min; if (o.mat_max !== undefined) out.mat_max = o.mat_max; if (o.mat_min !== undefined || o.mat_max !== undefined) aff.add('materials');

@@ -3441,7 +3441,8 @@
         const ROUTE_TO_MAX_HOPS = 3;
 
         // orch_find_route_tos -- LOGIC. The routing answers on a resolved route, in chain order: every visible module whose answer is an option carrying `route_to` ({service, answers, because}), minus
-        // the (module, answer) pairs the customer has declined ("Not right? Change my answer"). A hidden module's answer routes nothing: it is not a question the customer was asked.
+        // the (module, answer) pairs the customer has declined ("Not right? Change my answer"), and the routes that are HELD (orch_route_is_held: a route that names a question to ask first). A hidden module's
+        // answer routes nothing: it is not a question the customer was asked.
         /** @param {any} route @param {any} declined */
         function orch_find_route_tos(route, declined) {
             const skip = new Set(declined || []);
@@ -3454,9 +3455,67 @@
                 const o = (m.client_response || []).find(/** @param {any} x */ x => x.label === label);
                 if (!o || !o.route_to || typeof o.route_to !== 'object' || typeof o.route_to.service !== 'string') return;
                 if (skip.has(key + '|' + label)) return;
+                if (orch_route_is_held(o.route_to, route)) return;
                 hits.push({ moduleKey: key, label, question: m.question || '', routeTo: o.route_to });
             });
             return hits;
+        }
+
+        // orch_question_can_come_up -- LOGIC. Whether the module `key` of the composed chain is not yet answered and can still be asked, given the answers so far (T174, PENDING_DECISIONS #201, #184): its `depends_on` holds
+        // or is not yet decided, and it is a branch target only of a question whose answer names it, or whose answer is still open and which can itself come up. Read from the chain and the answers alone; it names no module.
+        // With `triggered`, a question that is a branch target comes up only when a parent answer NAMING it has been given (it is the next question to be asked); a parent that is itself still open does not count.
+        /** @param {any[]} intakeChain @param {any} answers @param {string} key @param {{triggered?: boolean}} [opts] */
+        function orch_question_can_come_up(intakeChain, answers, key, opts) {
+            const chain = intakeChain || [];
+            const given = answers || {};
+            const keyOf = /** @param {any} m */ m => m.moduleKey || m.module;
+            const isAnswered = /** @param {string} k */ k => given[k] !== undefined && given[k] !== null && given[k] !== '';
+            const parentsOf = /** @param {string} k */ k => chain.filter(/** @param {any} m */ m => keyOf(m) !== k && m.then && Object.values(m.then).some(/** @param {any} t */ t => Array.isArray(t) && t.includes(k)));
+            /** @param {any} m @param {Set<string>} path */
+            const canComeUp = (m, path) => {
+                const k = keyOf(m);
+                if (isAnswered(k) || path.has(k)) return false;
+                for (const [dk, dv] of Object.entries(m.depends_on || {})) {
+                    if (given[dk] !== undefined && given[dk] !== dv) return false;
+                }
+                const parents = parentsOf(k);
+                if (!parents.length) return true;
+                const here = new Set(path).add(k);
+                return parents.some(/** @param {any} p */ p => isAnswered(keyOf(p)) ? (p.then[given[keyOf(p)]] || []).includes(k) : (!(opts && opts.triggered) && canComeUp(p, here)));
+            };
+            const mod = chain.find(/** @param {any} m */ m => keyOf(m) === key);
+            return !!mod && canComeUp(mod, new Set());
+        }
+
+        // orch_route_is_held -- LOGIC. A route_to may name a question to ask FIRST (`ask_first`, a module key; T174, PENDING_DECISIONS #184): the move waits while that question can still be asked and is not answered, and
+        // does not happen when its answer is one whose own route_to names the service the job is already in (the answer says "the job is this service": a very thin laptop's memory or drive is often not
+        // replaceable, so the move to the part service is cancelled and the job stays at the diagnostic). Where the question can no longer come up (its depends_on fails for the answers given: a desktop is not asked
+        // about thin laptops), it holds nothing. An answer the customer gave to a question that is no longer on the screen holds nothing either. Read from the route; it names no module and no service.
+        /** @param {any} routeTo @param {any} route */
+        function orch_route_is_held(routeTo, route) {
+            const key = routeTo && routeTo.ask_first;
+            if (typeof key !== 'string' || !key) return false;
+            const given = (route && route.answers) || {};
+            const keyOf = /** @param {any} m */ m => m.moduleKey || m.module;
+            const shown = ((route && route.visibleChain) || []).find(/** @param {any} m */ m => keyOf(m) === key);
+            const label = given[key];
+            if (shown && label !== undefined && label !== null && label !== '') {
+                const o = (shown.client_response || []).find(/** @param {any} x */ x => x.label === label);
+                return !!(o && o.route_to && route.entity && o.route_to.service === route.entity.id);
+            }
+            return orch_question_can_come_up((route && route.intakeChain) || [], given, key);
+        }
+
+        // orch_guard_pending -- LOGIC. Whether this job is waiting on a question that exists so that a quote is not given for work that may not be possible (T189, PENDING_DECISIONS #184): a question some route_to elsewhere in the
+        // catalog names to ask first (`ask_first`), that is in this chain, has been triggered (the answer that opens it is given) and is not yet answered. A service that quotes a part swap holds its price while it is true
+        // ("a very thin laptop's memory may be soldered"): the customer is asked, and the price appears with the answer. Read from the catalog, the chain and the answers; it names no module and no service.
+        /** @param {any[]} intakeChain @param {any} answers @param {any} db */
+        function orch_guard_pending(intakeChain, answers, db) {
+            const guards = new Set();
+            for (const m of Object.values((db && db.intake_modules) || {})) for (const o of (m && /** @type {any} */ (m).client_response) || []) { const a = o && o.route_to && o.route_to.ask_first; if (typeof a === 'string') guards.add(a); }
+            if (!guards.size) return false;
+            const keyOf = /** @param {any} m */ m => m.moduleKey || m.module;
+            return (intakeChain || []).some(/** @param {any} m */ m => guards.has(keyOf(m)) && orch_question_can_come_up(intakeChain, answers, keyOf(m), { triggered: true }));
         }
 
         // orch_route_still_possible -- LOGIC. Whether the job can still be moved to another service by a question it has not yet been asked (T174, PENDING_DECISIONS #201): some module of the composed chain has an answer that carries
@@ -3466,24 +3525,9 @@
         /** @param {any[]} intakeChain @param {any} answers */
         function orch_route_still_possible(intakeChain, answers) {
             const chain = intakeChain || [];
-            const given = answers || {};
             const keyOf = /** @param {any} m */ m => m.moduleKey || m.module;
-            const isAnswered = /** @param {string} key */ key => given[key] !== undefined && given[key] !== null && given[key] !== '';
             const carriesRoute = /** @param {any} m */ m => (m.client_response || []).some(/** @param {any} o */ o => !!o && !!o.route_to && typeof o.route_to === 'object' && typeof o.route_to.service === 'string');
-            const parentsOf = /** @param {string} key */ key => chain.filter(/** @param {any} m */ m => keyOf(m) !== key && m.then && Object.values(m.then).some(/** @param {any} t */ t => Array.isArray(t) && t.includes(key)));
-            /** @param {any} m @param {Set<string>} path */
-            const canComeUp = (m, path) => {
-                const key = keyOf(m);
-                if (isAnswered(key) || path.has(key)) return false;
-                for (const [k, v] of Object.entries(m.depends_on || {})) {
-                    if (given[k] !== undefined && given[k] !== v) return false;
-                }
-                const parents = parentsOf(key);
-                if (!parents.length) return true;
-                const here = new Set(path).add(key);
-                return parents.some(/** @param {any} p */ p => isAnswered(keyOf(p)) ? (p.then[given[keyOf(p)]] || []).includes(key) : canComeUp(p, here));
-            };
-            return chain.some(/** @param {any} m */ m => carriesRoute(m) && canComeUp(m, new Set()));
+            return chain.some(/** @param {any} m */ m => carriesRoute(m) && orch_question_can_come_up(chain, answers, keyOf(m)));
         }
 
         // executeWorkflow -- LOGIC. THE gateway: every entry path (catalog tap, free text, other tile, an answered chip) resolves through this one function. It runs the workflow for the context's service and then,
@@ -3717,6 +3761,8 @@
                 // T174 (#201): whether a question this job has not yet been asked can still move it to another service. The Fork in the Road waits while it can (the diagnostic is the last resort), and is offered
                 // when the chain has nothing left that could name the part. A fact the renderers read; they decide nothing.
                 triagePending: orch_route_still_possible(intakeChain, answers),
+                // T189 (#184): the job waits on a question that guards the quote (see orch_guard_pending); the card holds the price until it is answered. A fact the renderer reads.
+                guardPending: orch_guard_pending(intakeChain, answers, db),
                 // v9.5: expose activeTagIds on the route so downstream
                 // renderers (renderCuratedCardFromRoute, renderSelfQuoteFromRoute)
                 // can pass the same tags to computeUnifiedQuote for live
@@ -7421,7 +7467,7 @@
             const terms = onsite ? (route.onsiteTerms || null) : null;
             // T174 (#201): a registered diagnostic whose questions can still name the part has no price to show yet, on either path: the Fork is not offered (route.triagePending) and the hourly estimate
             // behind the diagnostic is not a quote. The customer sees the questions and, as for any unfinished request, the line that asks them to answer.
-            const awaitingTriage = !!(q && q.divergenceEligible && route.triagePending && !divergencePath);
+            const awaitingTriage = !!(q && ((q.divergenceEligible && route.triagePending && !divergencePath) || route.guardPending));
             if (q && onsite) {
                 html += `<div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
                     <span>${escapeHtml(terms.label)}</span>

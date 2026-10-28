@@ -267,10 +267,16 @@ console.log('\n5. The runtime reads the Charter spelling of depends_on and shows
   check('the legacy spelling passes through both translators untouched (a cached old file and a new page agree)', JSON.stringify(sb._dependsOnAsLabels({ a: 'b' }, {})) === '{"a":"b"}' && JSON.stringify(sb.orch_depends_on_as_labels({ a: 'b' }, {})) === '{"a":"b"}' && sb._dependsOnAsLabels(undefined, {}) === undefined);
   const dang = sb._dependsOnAsLabels([{ question_id: 'q.computer_symptom', option_id: 'no_such_option' }], DB.intake_modules);
   check('a pair that names no real answer becomes a label nothing equals (the module stays hidden, never shown by accident)', Object.values(dang)[0].startsWith('\u0000unresolved:') && !DB.intake_modules.computer_symptom.client_response.some(o => o.label === Object.values(dang)[0]));
-  // the chain a customer sees: same visible modules, from the pairs and from the legacy spelling, over every answer to the two questions the six modules depend on
+  // the chain a customer sees: same visible modules, from the pairs and from the legacy spelling, over every answer to the questions the dependent modules depend on and are opened by
   const users = DB.services.filter(s => s.intake_chain.some(e => withDeps.some(([k]) => k === e.module))).map(s => s.id);
-  check('the service that asks the dependent questions is found (non-vacuity; today computer_diagnostic, the one chain that holds the six)', users.length >= 1 && users.includes('computer_diagnostic'), users.join());
-  const combos = []; for (const cs of [undefined, ...DB.intake_modules.computer_symptom.client_response.map(o => o.label)]) for (const dt of [undefined, ...DB.intake_modules.device_type.client_response.map(o => o.label)]) { const a = {}; if (cs) a.computer_symptom = cs; if (dt) a.device_type = dt; combos.push(a); }
+  check('the service that asks the dependent questions is found (non-vacuity; today computer_diagnostic, the one chain that holds them)', users.length >= 1 && users.includes('computer_diagnostic'), users.join());
+  // The grid is every answer to the two questions the modules depend on, AND to the questions that open a dependent module by a `then` branch (T189: `thin_laptop` depends on the device
+  // and is opened by three answers of two other questions; a grid over the first two alone never shows it, and "shown for some answers" would fail for a reason that is the grid's).
+  const diag = DB.services.find(s => s.id === 'computer_diagnostic');
+  const dimKeys = ['computer_symptom', 'device_type'];
+  for (const e of diag.intake_chain) if (e.then && Object.values(e.then).some(l => Array.isArray(l) && withDeps.some(([k]) => l.includes(k))) && !dimKeys.includes(e.module)) dimKeys.push(e.module);
+  let combos = [{}];
+  for (const key of dimKeys) combos = combos.flatMap(a => [a, ...DB.intake_modules[key].client_response.map(o => Object.assign({}, a, { [key]: o.label }))]);
   const visibleSets = (box, data) => { const svc = data.services.find(s => s.id === 'computer_diagnostic'), chain = box._resolveIntakeChain(svc); return combos.map(ans => chain.filter(m => box._isModVisible(m, ans, chain)).map(m => m.moduleKey).join()); };
   const fromPairs = visibleSets(sb, DB), fromLegacy = visibleSets(sbL, legacy);
   check(`over ${combos.length} answer combinations the visible questions are identical whether depends_on is the pairs or the legacy map`, JSON.stringify(fromPairs) === JSON.stringify(fromLegacy));

@@ -3,7 +3,7 @@
   "$id": "https://tommichael88.github.io/booktomnyc/btnyc.json",
   "$source": {
     "path": "ssot/btnyc_source.json",
-    "sha256": "8c054d1555d2b1c684e5298389e44aafa1b5befb889746f453569b0a529f8b2f",
+    "sha256": "10ea16878b1ab20484853f9b73120d0b90ba8fcca058457f0988f79826c3511b",
     "source_schema_version": "1.1.0",
     "carry_version": "1.0.0",
     "form": "legacy_shape_with_charter_carry",
@@ -540,7 +540,8 @@
         "q.laptop_power_signs",
         "q.slow_pattern",
         "q.startup_screen",
-        "q.tech_problem_type"
+        "q.tech_problem_type",
+        "q.thin_laptop"
       ],
       "service_ids": ["svc.computer_diagnostic", "svc.internal_hardware_replacement", "svc.virus_or_malware_removal"],
       "composition_ids": [
@@ -746,6 +747,18 @@
             }
           ],
           "default_weight": 20,
+          "weight_basis": "seeded_from_confidence_gain"
+        },
+        {
+          "id": "u.thin_laptop",
+          "label": "Is this a very thin laptop (under about an inch thick, like a MacBook Air or an ultrabook)?",
+          "retired_by": [
+            {
+              "question_id": "q.thin_laptop",
+              "option_ids": ["yes_its_very_thin", "no_its_thicker"]
+            }
+          ],
+          "default_weight": 10,
           "weight_basis": "seeded_from_confidence_gain"
         }
       ],
@@ -8598,11 +8611,22 @@
         },
         {
           "module": "startup_screen",
-          "then": {}
+          "then": {
+            "A message that the operating system or drive was not found": [
+              "thin_laptop"
+            ]
+          }
         },
         {
           "module": "slow_pattern",
-          "then": {}
+          "then": {
+            "It takes several minutes to start up (an older computer)": [
+              "thin_laptop"
+            ],
+            "Fine at first, then slow once I open many tabs or programs": [
+              "thin_laptop"
+            ]
+          }
         },
         {
           "module": "heat_signs",
@@ -8649,6 +8673,7 @@
         {"class_id": "u.laptop_charger_check", "weight": 20},
         {"class_id": "u.desktop_outlet_check", "weight": 20},
         {"class_id": "u.startup_screen", "weight": 20},
+        {"class_id": "u.thin_laptop", "weight": 10},
         {"class_id": "u.slow_pattern", "weight": 20},
         {"class_id": "u.heat_signs", "weight": 20},
         {"class_id": "u.battery_signs", "weight": 20}
@@ -10966,7 +10991,14 @@
       "intake_chain": [
         {
           "module": "computer_component",
-          "then": {}
+          "then": {
+            "RAM (memory)": [
+              "thin_laptop"
+            ],
+            "SSD (storage drive)": [
+              "thin_laptop"
+            ]
+          }
         },
         {
           "module": "device_type",
@@ -10998,6 +11030,7 @@
       },
       "uncertainty_profile": [
         {"class_id": "u.computer_component", "weight": 20},
+        {"class_id": "u.thin_laptop", "weight": 10},
         {"class_id": "u.device_type", "weight": 15},
         {"class_id": "u.customer_supplied_part", "weight": 10}
       ],
@@ -26855,14 +26888,14 @@
         {
           "id": "ram_memory",
           "label": "RAM (memory)",
-          "affects": ["complexity"],
+          "affects": ["branch", "complexity"],
           "tags": [],
           "complexity_override": "routine"
         },
         {
           "id": "ssd_storage_drive",
           "label": "SSD (storage drive)",
-          "affects": ["complexity"],
+          "affects": ["branch", "complexity"],
           "tags": [],
           "complexity_override": "routine"
         },
@@ -29445,7 +29478,8 @@
             "answers": {
               "computer_component": "SSD (storage drive)"
             },
-            "because": "A message that the operating system or drive was not found usually means the storage drive has failed, so a new drive is the likely fix."
+            "because": "A message that the operating system or drive was not found usually means the storage drive has failed, so a new drive is the likely fix.",
+            "ask_first": "thin_laptop"
           }
         },
         {
@@ -29506,7 +29540,8 @@
             "answers": {
               "computer_component": "SSD (storage drive)"
             },
-            "because": "An older computer that takes minutes to start up is usually held back by a worn-out storage drive, which a new drive fixes."
+            "because": "An older computer that takes minutes to start up is usually held back by a worn-out storage drive, which a new drive fixes.",
+            "ask_first": "thin_laptop"
           }
         },
         {
@@ -29518,7 +29553,8 @@
             "answers": {
               "computer_component": "RAM (memory)"
             },
-            "because": "A computer that slows down as you open more tabs and programs usually needs more memory (RAM)."
+            "because": "A computer that slows down as you open more tabs and programs usually needs more memory (RAM).",
+            "ask_first": "thin_laptop"
           }
         },
         {
@@ -29857,6 +29893,47 @@
       ],
       "entity_scope": ["ent.computer"],
       "depends_on": []
+    },
+    "thin_laptop": {
+      "id": "q.thin_laptop",
+      "question": "Is this a very thin laptop (under about an inch thick, like a MacBook Air or an ultrabook)?",
+      "type": "single",
+      "purpose": "routing",
+      "client_response": [
+        {
+          "id": "yes_its_very_thin",
+          "label": "Yes, it's very thin",
+          "affects": ["branch"],
+          "route_to": {
+            "service": "computer_diagnostic",
+            "answers": {},
+            "because": "On a very thin laptop the memory or storage is often built onto the board and cannot be swapped, so we start with a diagnostic to find out what can be done. No part price is promised until then."
+          }
+        },
+        {
+          "id": "no_its_thicker",
+          "label": "No, it's thicker",
+          "affects": []
+        },
+        {
+          "id": "im_not_sure",
+          "label": "I'm not sure",
+          "affects": ["branch"],
+          "route_to": {
+            "service": "computer_diagnostic",
+            "answers": {},
+            "because": "If you are not sure, we start with a diagnostic, so we never quote a part swap that your laptop cannot take."
+          },
+          "evidence": "unknown"
+        }
+      ],
+      "confidence_gain": 10,
+      "affects_price": false,
+      "depends_on": [
+        {"question_id": "q.device_type", "option_id": "laptop"}
+      ],
+      "_note": "T189 (PENDING_DECISIONS #184, PRIORITY; the Operator's ruling of 2026-10-12 03:38 NY: direction A with an observable wording): memory and storage are soldered on some thin laptops, so a RAM or SSD swap may not be possible. 'Is the RAM soldered?' fails the Wire-or-Remove test (the customer cannot answer it); form factor is a fact they can see. Asked only on a laptop, and only when a RAM or SSD part is the likely job (the routes that name them wait for it: route_to.ask_first). A 'Yes' (and 'I'm not sure') keeps the job at, or returns it to, the Computer Diagnostic: an existing priced path, no new price. 'No' lets the part service quote as before.",
+      "entity_scope": ["ent.computer"]
     }
   },
   "pricing_formulas": {
@@ -40817,11 +40894,22 @@
           },
           {
             "module": "startup_screen",
-            "then": {}
+            "then": {
+              "A message that the operating system or drive was not found": [
+                "thin_laptop"
+              ]
+            }
           },
           {
             "module": "slow_pattern",
-            "then": {}
+            "then": {
+              "It takes several minutes to start up (an older computer)": [
+                "thin_laptop"
+              ],
+              "Fine at first, then slow once I open many tabs or programs": [
+                "thin_laptop"
+              ]
+            }
           },
           {
             "module": "heat_signs",
@@ -42263,7 +42351,14 @@
         "intake_chain": [
           {
             "module": "computer_component",
-            "then": {}
+            "then": {
+              "RAM (memory)": [
+                "thin_laptop"
+              ],
+              "SSD (storage drive)": [
+                "thin_laptop"
+              ]
+            }
           },
           {
             "module": "device_type",
@@ -54131,6 +54226,17 @@
         "type": "single",
         "purpose": "diagnostic",
         "affects_price": true,
+        "confidence_gain": 10,
+        "option_count": 3,
+        "used_by": [],
+        "tag_setters": [],
+        "complexity_overrides": []
+      },
+      "thin_laptop": {
+        "classification": "unclassified",
+        "type": "single",
+        "purpose": "routing",
+        "affects_price": false,
         "confidence_gain": 10,
         "option_count": 3,
         "used_by": [],

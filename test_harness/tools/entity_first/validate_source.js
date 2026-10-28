@@ -200,6 +200,16 @@ function validate(src, opts = {}) {
     });
     { const state = new Map(); const visit = (id, trail) => { if (state.get(id) === 2) return; if (state.get(id) === 1) { err('V-DEP-CYCLE', path + '.intake.steps', `${n.id}: step dependencies form a cycle: ${[...trail, id].join(' -> ')}`); return; } state.set(id, 1); for (const p of parents.get(id) || []) visit(p, [...trail, id]); state.set(id, 2); };
       for (const id of parents.keys()) visit(id, []); }
+    // A route_to may name a question to ask FIRST (T189, PENDING_DECISIONS #184). That is only coherent if the question can come up in every chain that holds the routing answer, and is not the routing question itself.
+    for (const st of steps) {
+      const q = questions.get(st.question_id); if (!q || !Array.isArray(q.options) || !decl.q.get(q.id)) continue;
+      q.options.forEach((opt, oi) => {
+        const af = opt && opt.route_to && opt.route_to.ask_first; if (af === undefined) return;
+        const p = `${decl.q.get(q.id).path}.options[${oi}].route_to.ask_first`;
+        if (af === q.id) err('V-ROUTE-ASKFIRST', p, `${q.id}/${opt.id} asks itself first`);
+        else if (typeof af === 'string' && questions.has(af) && !inChain.has(af)) err('V-ROUTE-ASKFIRST', p, `${q.id}/${opt.id} asks ${af} first, but ${af} is not a step of ${n.id}, which holds the routing answer: the move could never be held for it`);
+      });
+    }
     o.inChain = inChain;
   }
 
@@ -333,6 +343,7 @@ function validate(src, opts = {}) {
       if (has('formula_id')) need(op + '.formula_id', o.formula_id, 'fml');
       if (has('route_to')) {
         const r = o.route_to; need(op + '.route_to.service_id', r.service_id, 'svc');
+        if (r.ask_first !== undefined) need(op + '.route_to.ask_first', r.ask_first, 'q');
         if (!Array.isArray(r.answers)) err('V-REF-LABEL', op + '.route_to.answers', 'route_to.answers is an array of {question_id, option_id}');
         else r.answers.forEach((a, j) => { if (!lib.isObj(a) || typeof a.question_id !== 'string' || typeof a.option_id !== 'string') { err('V-REF-LABEL', `${op}.route_to.answers[${j}]`, 'an answer is {question_id, option_id}, never {module: label}'); return; } if (need(`${op}.route_to.answers[${j}].question_id`, a.question_id, 'q') && !optionById(a.question_id, a.option_id)) err('V-DEP-OPTION', `${op}.route_to.answers[${j}].option_id`, `${a.option_id} is not an option of ${a.question_id}`); });
       }

@@ -1155,6 +1155,10 @@ def _validate_option_refs(db: dict) -> List[str]:
                         errors.append(f"{at}.route_to.answers names module '{mk}', which does not exist")
                     elif lbl not in [o.get("label") for o in target.get("client_response", []) or []]:
                         errors.append(f"{at}.route_to.answers['{mk}'] '{lbl}' is not an option label of that module")
+                # T189 (PENDING_DECISIONS #184): `ask_first` names the question the customer is asked before this move happens -- a real module
+                af = rt.get("ask_first") if isinstance(rt, dict) else None
+                if af is not None and (not isinstance(af, str) or (db.get("intake_modules", {}) or {}).get(af) is None):
+                    errors.append(f"{at}.route_to.ask_first '{af}' is not an intake module")
         # T170: a module shown only after another answer names a real module and a real label of it
         # T181: `depends_on` is either spelling -- the Charter's [{question_id, option_id}] pairs (what btnyc.json carries now) or the legacy {module key: option label}
         raw_dep = mod.get("depends_on", {}) or {}

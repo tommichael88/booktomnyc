@@ -59,6 +59,8 @@ function routes(D) {
     Object.entries(D.intake_modules).forEach(([m, def]) => (def.client_response || []).forEach((o, i) => { if (o.route_to) out.push({ module: m, i, label: o.label, rt: o.route_to, purpose: def.purpose }); }));
     return out;
 }
+// a service asks a question when its chain lists it OR a branch of another question names it (a branch target is not listed on its own)
+const asks = (s, k) => (s.intake_chain || []).some(c => c.module === k || Object.values(c.then || {}).some(v => Array.isArray(v) && v.includes(k)));
 function audit(D) {
     const bad = [];
     const svcs = new Set(D.services.map(s => s.id));
@@ -78,6 +80,13 @@ function audit(D) {
         if (r.purpose !== 'routing') bad.push(`${at}: the question that routes is not marked purpose "routing"`);
         const owners = D.services.filter(s => (s.intake_chain || []).some(c => c.module === r.module)).map(s => s.id);
         if (owners.length && owners.every(id => id === r.rt.service)) bad.push(`${at}: routes to the only service that asks it`);
+        // T189 (#184): `ask_first` names a real question, a different one from the question that routes, and one that is asked in a service that also asks this one (else the move could never wait for it)
+        if (r.rt.ask_first !== undefined) {
+            const af = r.rt.ask_first;
+            if (typeof af !== 'string' || !D.intake_modules[af]) bad.push(`${at}: ask_first "${af}" is no intake module`);
+            else if (af === r.module) bad.push(`${at}: ask_first is the question that routes`);
+            else if (!D.services.some(s => asks(s, af) && asks(s, r.module))) bad.push(`${at}: ask_first "${af}" is asked by no service that also asks "${r.module}"`);
+        }
     }
     return bad;
 }
@@ -88,7 +97,16 @@ check('7.2 every route_to resolves: a real service, real modules and labels, a c
 S('block 1', () => { const d = clone(); const r = routes(d)[0]; if (r) d.intake_modules[r.module].client_response[r.i].route_to.service = 'no_such_service';
   check('7.3 (non-vacuity) a planted dangling target is seen', !!r && audit(d).length > bad.length, { expected: '+1', got: audit(d).length - bad.length });
   const d2 = clone(); const r2 = routes(d2)[0]; if (r2) d2.intake_modules[r2.module].client_response[r2.i].route_to.because = 'Uses the motherboard rail.';
-  check('7.4 (non-vacuity) planted bench jargon in "because" is seen', !!r2 && audit(d2).length > bad.length, { expected: '+1', got: audit(d2).length - bad.length }); });
+  check('7.4 (non-vacuity) planted bench jargon in "because" is seen', !!r2 && audit(d2).length > bad.length, { expected: '+1', got: audit(d2).length - bad.length });
+  // T189 (#184): the same for the question a move waits for
+  const askers = routes(DB).filter(x => x.rt.ask_first !== undefined);
+  check(`7.5 non-vacuity: the catalog authors ask_first (${askers.length})`, askers.length >= 1, { expected: '>= 1', got: askers.length });
+  const d3 = clone(), r3 = routes(d3).find(x => x.rt.ask_first !== undefined); if (r3) d3.intake_modules[r3.module].client_response[r3.i].route_to.ask_first = 'no_such_module';
+  check('7.6 (non-vacuity) a planted ask_first naming no module is seen', !!r3 && audit(d3).length > bad.length, { expected: '+1', got: audit(d3).length - bad.length });
+  const d4 = clone(), r4 = routes(d4).find(x => x.rt.ask_first !== undefined); if (r4) d4.intake_modules[r4.module].client_response[r4.i].route_to.ask_first = r4.module;
+  check('7.7 (non-vacuity) a planted ask_first naming the question that routes is seen', !!r4 && audit(d4).length > bad.length, { expected: '+1', got: audit(d4).length - bad.length });
+  const d5 = clone(), r5 = routes(d5).find(x => x.rt.ask_first !== undefined); const lone = Object.keys(d5.intake_modules).find(k => !d5.services.some(s => asks(s, k))); if (r5 && lone) d5.intake_modules[r5.module].client_response[r5.i].route_to.ask_first = lone;
+  check('7.8 (non-vacuity) a planted ask_first naming a question no service asks together with this one is seen', !!r5 && !!lone && audit(d5).length > bad.length, { expected: '+1', got: audit(d5).length - bad.length }); });
 
 // ---- 1. it hops --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const hopCtx = catalogCtx(DB, HOST, Object.assign({}, A0, { laptop_power_signs: batteryOpt && batteryOpt.label }));

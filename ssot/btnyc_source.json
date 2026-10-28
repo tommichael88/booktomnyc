@@ -12120,6 +12120,7 @@
               "id": "ram_memory",
               "label": "RAM (memory)",
               "affects": [
+                "branch",
                 "complexity"
               ],
               "tag_ids": [],
@@ -12129,6 +12130,7 @@
               "id": "ssd_storage_drive",
               "label": "SSD (storage drive)",
               "affects": [
+                "branch",
                 "complexity"
               ],
               "tag_ids": [],
@@ -12584,7 +12586,8 @@
                     "option_id": "ssd_storage_drive"
                   }
                 ],
-                "because": "An older computer that takes minutes to start up is usually held back by a worn-out storage drive, which a new drive fixes."
+                "because": "An older computer that takes minutes to start up is usually held back by a worn-out storage drive, which a new drive fixes.",
+                "ask_first": "q.thin_laptop"
               }
             },
             {
@@ -12601,7 +12604,8 @@
                     "option_id": "ram_memory"
                   }
                 ],
-                "because": "A computer that slows down as you open more tabs and programs usually needs more memory (RAM)."
+                "because": "A computer that slows down as you open more tabs and programs usually needs more memory (RAM).",
+                "ask_first": "q.thin_laptop"
               }
             },
             {
@@ -12644,7 +12648,8 @@
                     "option_id": "ssd_storage_drive"
                   }
                 ],
-                "because": "A message that the operating system or drive was not found usually means the storage drive has failed, so a new drive is the likely fix."
+                "because": "A message that the operating system or drive was not found usually means the storage drive has failed, so a new drive is the likely fix.",
+                "ask_first": "q.thin_laptop"
               }
             },
             {
@@ -12733,6 +12738,57 @@
           ],
           "runtime_compat": {
             "affects_price": true
+          }
+        },
+        {
+          "id": "q.thin_laptop",
+          "prompt": "Is this a very thin laptop (under about an inch thick, like a MacBook Air or an ultrabook)?",
+          "type": "single",
+          "purpose": "routing",
+          "entity_scope": [
+            "ent.computer"
+          ],
+          "depends_on": [
+            {
+              "question_id": "q.device_type",
+              "option_id": "laptop"
+            }
+          ],
+          "options": [
+            {
+              "id": "yes_its_very_thin",
+              "label": "Yes, it's very thin",
+              "affects": [
+                "branch"
+              ],
+              "route_to": {
+                "service_id": "svc.computer_diagnostic",
+                "answers": [],
+                "because": "On a very thin laptop the memory or storage is often built onto the board and cannot be swapped, so we start with a diagnostic to find out what can be done. No part price is promised until then."
+              }
+            },
+            {
+              "id": "no_its_thicker",
+              "label": "No, it's thicker",
+              "affects": []
+            },
+            {
+              "id": "im_not_sure",
+              "label": "I'm not sure",
+              "affects": [
+                "branch"
+              ],
+              "evidence": "unknown",
+              "route_to": {
+                "service_id": "svc.computer_diagnostic",
+                "answers": [],
+                "because": "If you are not sure, we start with a diagnostic, so we never quote a part swap that your laptop cannot take."
+              }
+            }
+          ],
+          "_note": "T189 (PENDING_DECISIONS #184, PRIORITY; the Operator's ruling of 2026-10-12 03:38 NY: direction A with an observable wording): memory and storage are soldered on some thin laptops, so a RAM or SSD swap may not be possible. 'Is the RAM soldered?' fails the Wire-or-Remove test (the customer cannot answer it); form factor is a fact they can see. Asked only on a laptop, and only when a RAM or SSD part is the likely job (the routes that name them wait for it: route_to.ask_first). A 'Yes' (and 'I'm not sure') keeps the job at, or returns it to, the Computer Diagnostic: an existing priced path, no new price. 'No' lets the part service quote as before.",
+          "runtime_compat": {
+            "affects_price": false
           }
         }
       ],
@@ -12948,6 +13004,21 @@
           ],
           "default_weight": 20,
           "weight_basis": "seeded_from_confidence_gain"
+        },
+        {
+          "id": "u.thin_laptop",
+          "label": "Is this a very thin laptop (under about an inch thick, like a MacBook Air or an ultrabook)?",
+          "retired_by": [
+            {
+              "question_id": "q.thin_laptop",
+              "option_ids": [
+                "yes_its_very_thin",
+                "no_its_thicker"
+              ]
+            }
+          ],
+          "default_weight": 10,
+          "weight_basis": "seeded_from_confidence_gain"
         }
       ],
       "services": [
@@ -13079,6 +13150,30 @@
                 "depends_on": []
               },
               {
+                "question_id": "q.thin_laptop",
+                "depends_on": [
+                  {
+                    "any_of": [
+                      {
+                        "question_id": "q.startup_screen",
+                        "option_id": "a_message_that_the_operating_system_or_drive_was_not_found"
+                      },
+                      {
+                        "question_id": "q.slow_pattern",
+                        "option_id": "it_takes_several_minutes_to_start_up_an_older_computer"
+                      },
+                      {
+                        "question_id": "q.slow_pattern",
+                        "option_id": "fine_at_first_then_slow_once_i_open_many_tabs_or_programs"
+                      }
+                    ]
+                  }
+                ],
+                "runtime_compat": {
+                  "legacy_chain_entry": "branch_target_only"
+                }
+              },
+              {
                 "question_id": "q.slow_pattern",
                 "depends_on": []
               },
@@ -13154,6 +13249,10 @@
             {
               "class_id": "u.startup_screen",
               "weight": 20
+            },
+            {
+              "class_id": "u.thin_laptop",
+              "weight": 10
             },
             {
               "class_id": "u.slow_pattern",
@@ -13257,6 +13356,26 @@
                 "depends_on": []
               },
               {
+                "question_id": "q.thin_laptop",
+                "depends_on": [
+                  {
+                    "any_of": [
+                      {
+                        "question_id": "q.computer_component",
+                        "option_id": "ram_memory"
+                      },
+                      {
+                        "question_id": "q.computer_component",
+                        "option_id": "ssd_storage_drive"
+                      }
+                    ]
+                  }
+                ],
+                "runtime_compat": {
+                  "legacy_chain_entry": "branch_target_only"
+                }
+              },
+              {
                 "question_id": "q.device_type",
                 "depends_on": []
               },
@@ -13302,6 +13421,10 @@
             {
               "class_id": "u.computer_component",
               "weight": 20
+            },
+            {
+              "class_id": "u.thin_laptop",
+              "weight": 10
             },
             {
               "class_id": "u.device_type",

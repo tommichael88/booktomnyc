@@ -1,7 +1,7 @@
 {
   "$source": {
     "path": "ssot/btnyc_source.json",
-    "sha256": "8c054d1555d2b1c684e5298389e44aafa1b5befb889746f453569b0a529f8b2f",
+    "sha256": "10ea16878b1ab20484853f9b73120d0b90ba8fcca058457f0988f79826c3511b",
     "source_schema_version": "1.1.0",
     "derivation_version": "1.2.0"
   },
@@ -10,17 +10,17 @@
     "version": "1.2.0",
     "source": "ssot/btnyc_source.json",
     "source_schema_version": "1.1.0",
-    "source_sha256": "8c054d1555d2b1c684e5298389e44aafa1b5befb889746f453569b0a529f8b2f",
+    "source_sha256": "10ea16878b1ab20484853f9b73120d0b90ba8fcca058457f0988f79826c3511b",
     "generated": "by test_harness/tools/entity_first/derive_graph.js; never edit by hand"
   },
   "counts": {
     "entities": 105,
-    "questions": 154,
-    "options_authored": 593,
-    "option_bridge_entries": 596,
+    "questions": 155,
+    "options_authored": 596,
+    "option_bridge_entries": 599,
     "services": 76,
     "default_compositions": 82,
-    "uncertainty_classes": 154,
+    "uncertainty_classes": 155,
     "composition_points": 137,
     "curated_only_points": 3,
     "alias_words": 367,
@@ -28,7 +28,7 @@
     "action_vocabulary_actions": 5,
     "unmapped_verbs": 2,
     "formulas_with_inputs": 7,
-    "price_influence_questions": 135,
+    "price_influence_questions": 136,
     "questions_that_price": 71
   },
   "entities": {
@@ -278,7 +278,8 @@
           "q.laptop_power_signs",
           "q.slow_pattern",
           "q.startup_screen",
-          "q.tech_problem_type"
+          "q.tech_problem_type",
+          "q.thin_laptop"
         ],
         "uncertainty_classes": [
           "u.battery_signs",
@@ -293,7 +294,8 @@
           "u.laptop_power_signs",
           "u.slow_pattern",
           "u.startup_screen",
-          "u.tech_problem_type"
+          "u.tech_problem_type",
+          "u.thin_laptop"
         ],
         "services": [
           "svc.computer_diagnostic",
@@ -4263,6 +4265,28 @@
       ],
       "numeric": false
     },
+    "q.thin_laptop": {
+      "owner": "ent.computer",
+      "scope": {
+        "kind": "entities",
+        "entity_ids": [
+          "ent.computer"
+        ]
+      },
+      "base": "q.thin_laptop",
+      "depends_on": [
+        {
+          "question_id": "q.device_type",
+          "option_id": "laptop"
+        }
+      ],
+      "option_ids": [
+        "yes_its_very_thin",
+        "no_its_thicker",
+        "im_not_sure"
+      ],
+      "numeric": false
+    },
     "q.tile_condition": {
       "owner": "ent.tile",
       "scope": {
@@ -5142,6 +5166,7 @@
     "q.computer_component#ram_memory": {
       "label": "RAM (memory)",
       "affects": [
+        "branch",
         "complexity"
       ],
       "unknown": false
@@ -5157,6 +5182,7 @@
     "q.computer_component#ssd_storage_drive": {
       "label": "SSD (storage drive)",
       "affects": [
+        "branch",
         "complexity"
       ],
       "unknown": false
@@ -8458,6 +8484,25 @@
       ],
       "unknown": false
     },
+    "q.thin_laptop#im_not_sure": {
+      "label": "I'm not sure",
+      "affects": [
+        "branch"
+      ],
+      "unknown": true
+    },
+    "q.thin_laptop#no_its_thicker": {
+      "label": "No, it's thicker",
+      "affects": [],
+      "unknown": false
+    },
+    "q.thin_laptop#yes_its_very_thin": {
+      "label": "Yes, it's very thin",
+      "affects": [
+        "branch"
+      ],
+      "unknown": false
+    },
     "q.tile_condition#cracked_or_chipped": {
       "label": "Cracked or chipped",
       "affects": [
@@ -10635,6 +10680,7 @@
         "q.laptop_charger_check",
         "q.desktop_outlet_check",
         "q.startup_screen",
+        "q.thin_laptop",
         "q.slow_pattern",
         "q.heat_signs",
         "q.battery_signs"
@@ -10677,6 +10723,24 @@
           "option_id": "nothing_at_all_no_lights_no_sound_no_fan",
           "to": "q.desktop_outlet_check",
           "gate": "all_of"
+        },
+        {
+          "from": "q.startup_screen",
+          "option_id": "a_message_that_the_operating_system_or_drive_was_not_found",
+          "to": "q.thin_laptop",
+          "gate": "any_of"
+        },
+        {
+          "from": "q.slow_pattern",
+          "option_id": "it_takes_several_minutes_to_start_up_an_older_computer",
+          "to": "q.thin_laptop",
+          "gate": "any_of"
+        },
+        {
+          "from": "q.slow_pattern",
+          "option_id": "fine_at_first_then_slow_once_i_open_many_tabs_or_programs",
+          "to": "q.thin_laptop",
+          "gate": "any_of"
         }
       ],
       "max_depth": 2
@@ -11004,6 +11068,7 @@
       "entity_id": "ent.computer",
       "ask_order": [
         "q.computer_component",
+        "q.thin_laptop",
         "q.device_type",
         "q.customer_supplied_part"
       ],
@@ -11012,8 +11077,21 @@
         "q.device_type",
         "q.customer_supplied_part"
       ],
-      "edges": [],
-      "max_depth": 0
+      "edges": [
+        {
+          "from": "q.computer_component",
+          "option_id": "ram_memory",
+          "to": "q.thin_laptop",
+          "gate": "any_of"
+        },
+        {
+          "from": "q.computer_component",
+          "option_id": "ssd_storage_drive",
+          "to": "q.thin_laptop",
+          "gate": "any_of"
+        }
+      ],
+      "max_depth": 1
     },
     "svc.leak_under_sink_repair": {
       "kind": "service",
@@ -15443,12 +15521,12 @@
         "range_at": 0,
         "diagnostic_below": 0
       },
-      "weight_total": 195,
+      "weight_total": 205,
       "classes": [
         {
           "class_id": "u.device_type",
           "weight": 15,
-          "share": 0.07692307692307693,
+          "share": 0.07317073170731707,
           "retired_by": [
             {
               "question_id": "q.device_type",
@@ -15464,7 +15542,7 @@
         {
           "class_id": "u.laptop_power_signs",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.laptop_power_signs",
@@ -15481,7 +15559,7 @@
         {
           "class_id": "u.desktop_power_signs",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.desktop_power_signs",
@@ -15498,7 +15576,7 @@
         {
           "class_id": "u.computer_symptom",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.computer_symptom",
@@ -15519,7 +15597,7 @@
         {
           "class_id": "u.laptop_charger_check",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.laptop_charger_check",
@@ -15535,7 +15613,7 @@
         {
           "class_id": "u.desktop_outlet_check",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.desktop_outlet_check",
@@ -15550,7 +15628,7 @@
         {
           "class_id": "u.startup_screen",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.startup_screen",
@@ -15565,9 +15643,24 @@
           "asked_at_step": 6
         },
         {
+          "class_id": "u.thin_laptop",
+          "weight": 10,
+          "share": 0.04878048780487805,
+          "retired_by": [
+            {
+              "question_id": "q.thin_laptop",
+              "option_ids": [
+                "yes_its_very_thin",
+                "no_its_thicker"
+              ]
+            }
+          ],
+          "asked_at_step": 7
+        },
+        {
           "class_id": "u.slow_pattern",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.slow_pattern",
@@ -15579,12 +15672,12 @@
               ]
             }
           ],
-          "asked_at_step": 7
+          "asked_at_step": 8
         },
         {
           "class_id": "u.heat_signs",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.heat_signs",
@@ -15595,12 +15688,12 @@
               ]
             }
           ],
-          "asked_at_step": 8
+          "asked_at_step": 9
         },
         {
           "class_id": "u.battery_signs",
           "weight": 20,
-          "share": 0.10256410256410256,
+          "share": 0.0975609756097561,
           "retired_by": [
             {
               "question_id": "q.battery_signs",
@@ -15611,7 +15704,7 @@
               ]
             }
           ],
-          "asked_at_step": 9
+          "asked_at_step": 10
         }
       ]
     },
@@ -16449,12 +16542,12 @@
         "range_at": 0.3,
         "diagnostic_below": 0.3
       },
-      "weight_total": 45,
+      "weight_total": 55,
       "classes": [
         {
           "class_id": "u.computer_component",
           "weight": 20,
-          "share": 0.4444444444444444,
+          "share": 0.36363636363636365,
           "retired_by": [
             {
               "question_id": "q.computer_component",
@@ -16471,9 +16564,24 @@
           "asked_at_step": 0
         },
         {
+          "class_id": "u.thin_laptop",
+          "weight": 10,
+          "share": 0.18181818181818182,
+          "retired_by": [
+            {
+              "question_id": "q.thin_laptop",
+              "option_ids": [
+                "yes_its_very_thin",
+                "no_its_thicker"
+              ]
+            }
+          ],
+          "asked_at_step": 1
+        },
+        {
           "class_id": "u.device_type",
           "weight": 15,
-          "share": 0.3333333333333333,
+          "share": 0.2727272727272727,
           "retired_by": [
             {
               "question_id": "q.device_type",
@@ -16484,12 +16592,12 @@
               ]
             }
           ],
-          "asked_at_step": 1
+          "asked_at_step": 2
         },
         {
           "class_id": "u.customer_supplied_part",
           "weight": 10,
-          "share": 0.2222222222222222,
+          "share": 0.18181818181818182,
           "retired_by": [
             {
               "question_id": "q.customer_supplied_part",
@@ -16499,7 +16607,7 @@
               ]
             }
           ],
-          "asked_at_step": 2
+          "asked_at_step": 3
         }
       ]
     },
@@ -18828,6 +18936,9 @@
     "q.thermostat_type": [
       "u.thermostat_type"
     ],
+    "q.thin_laptop": [
+      "u.thin_laptop"
+    ],
     "q.tile_condition": [
       "u.tile_condition"
     ],
@@ -20966,6 +21077,12 @@
           ]
         },
         {
+          "class_id": "u.thin_laptop",
+          "question_ids": [
+            "q.thin_laptop"
+          ]
+        },
+        {
           "class_id": "u.slow_pattern",
           "question_ids": [
             "q.slow_pattern"
@@ -21423,6 +21540,12 @@
           "class_id": "u.computer_component",
           "question_ids": [
             "q.computer_component"
+          ]
+        },
+        {
+          "class_id": "u.thin_laptop",
+          "question_ids": [
+            "q.thin_laptop"
           ]
         },
         {
@@ -28223,6 +28346,12 @@
       ],
       "legacy_claim": true
     },
+    "q.thin_laptop": {
+      "prices": false,
+      "changes_quote": true,
+      "price_option_ids": [],
+      "legacy_claim": false
+    },
     "q.tile_condition": {
       "prices": true,
       "changes_quote": true,
@@ -28914,6 +29043,10 @@
       ],
       "q.thermostat_type": [
         "svc.thermostat_replacement"
+      ],
+      "q.thin_laptop": [
+        "svc.computer_diagnostic",
+        "svc.internal_hardware_replacement"
       ],
       "q.tile_condition": [
         "svc.loose_tile_replacement"

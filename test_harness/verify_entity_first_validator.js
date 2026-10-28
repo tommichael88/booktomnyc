@@ -101,6 +101,14 @@ mut('any_of with no alternatives', ['V-DEP-SHAPE'], s => { const st = ownersOf(s
 mut('a question is a step twice in one chain', ['V-DEP-SHAPE'], s => { const o = ownersOf(s).find(x => x.intake.steps.length > 1); o.intake.steps.push(Object.assign({}, o.intake.steps[0])); });
 mut('dependency names an answer the question does not have', ['V-DEP-OPTION'], s => { const o = ownersOf(s).find(x => x.intake.steps.length > 1 && questionsOf(s).find(q => q.id === x.intake.steps[0].question_id && q.options)); o.intake.steps[1].depends_on = [{ question_id: o.intake.steps[0].question_id, option_id: 'not_an_answer' }]; });
 mut('retirement names an answer the question does not have', ['V-DEP-OPTION'], s => { const c = classesOf(s).find(x => x.retired_by.some(r => r.option_ids)); c.retired_by[0].option_ids = ['not_an_answer']; });
+// T189 (#184): `route_to.ask_first` is the question a move waits for
+const askOpt = s => need(questionsOf(s).flatMap(q => (q.options || []).map(o => ({ q, o }))).find(x => x.o.route_to && x.o.route_to.ask_first), 'a route that asks first');
+mut('route_to asks first a question that does not exist', ['V-REF-DANGLING'], s => { askOpt(s).o.route_to.ask_first = 'q.no_such_question'; });
+mut('route_to asks first the question that routes', ['V-ROUTE-ASKFIRST'], s => { const x = askOpt(s); x.o.route_to.ask_first = x.q.id; });
+mut('route_to asks first a question that is no step of the chain holding the routing answer', ['V-ROUTE-ASKFIRST'], s => {
+  const x = askOpt(s); const owners = ownersOf(s).filter(o => o.intake.steps.some(st => st.question_id === x.q.id));
+  const inAll = new Set(owners.flatMap(o => o.intake.steps.map(st => st.question_id)));
+  const other = questionsOf(s).find(q => !inAll.has(q.id) && q.id !== x.q.id); x.o.route_to.ask_first = need(other, 'a question outside the chain').id; });
 mut('route_to names an answer the question does not have', ['V-DEP-OPTION'], s => { const o = questionsOf(s).flatMap(q => q.options || []).find(x => x.route_to && x.route_to.answers.length); o.route_to.answers[0].option_id = 'not_an_answer'; });
 mut('step depends on a question outside its chain (the gate can never open)', ['V-DEP-NOTINCHAIN'], s => {
   const o = ownersOf(s).find(x => x.intake.steps.length > 1); const inChain = new Set(o.intake.steps.map(t => t.question_id));

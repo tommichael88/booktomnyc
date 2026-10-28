@@ -24,7 +24,7 @@
  *   4. NO QUESTION, NO BAR A service whose intake chain is empty has no question to raise its confidence, so its bar must be one the keyword evidence can reach (minimum_quote_confidence <=
  *                          base_confidence, no follow-up questions) and the free-text route must meet it. (The four appliance services were the first empty chains, T164.)
  *   5. NON-VACUITY         The fallback vocabulary recognises the Charter's own exemplars (the three honest "wired" fallbacks and the two dead ones); synthetic modules are shown flagged when inert and
- *                          not flagged when the fallback carries a modifier, an override, a tag or a branch; an empty-chain service with a bar above its base is shown flagged.
+ *                          not flagged when the fallback carries a modifier, an override, a tag, a branch or a route_to that really moves the job (T189); an empty-chain service with a bar above its base is shown flagged.
  *   6. (T169) THE QUESTION AND LABEL PASS  Section 6, PENDING_DECISIONS #167: four legs on what the customer READS (a duplicate question in one service, a brand/make/model question with no way
  *                          out, a dollar figure in a question or answer, a module with no `purpose`), each pure, each shown red on the catalog as it stood and able to fail on a planted one.
  *
@@ -150,6 +150,19 @@ function tupleOf(sb, DB, s, answers) {
     });
 }
 /**
+ * movesTheJob(DB, module, option, servicesThatAskIt) -- T189 (PENDING_DECISIONS #184). The Charter's test is "a fallback must move the job, or carry a modifier". An option's `route_to`
+ * hands the job to another service, and the engine applies it in the orchestrator (after executeWorkflow), so the tuple above cannot see it: a fallback that carries one has moved the job
+ * and is not flagged, if the move is real in the place it is asked. It is real when the target is a different service from at least one that asks the module, or when another route waits
+ * on this very question (`ask_first`: the answer decides whether that waiting move happens, which is what "Yes" and "I'm not sure" do at the diagnostic that is already the target).
+ * A `route_to` that names the service the job is already in, with nothing waiting on the question, moves nothing and does not exempt (shown by a probe in section 5).
+ */
+function movesTheJob(DB, mod, opt, services) {
+    const rt = opt && opt.route_to;
+    if (!rt || !rt.service) return false;
+    if ((services || []).some(id => id !== rt.service)) return true;
+    return Object.values(DB.intake_modules || {}).some(m => (m && m.client_response || []).some(o => o && o.route_to && o.route_to.ask_first === mod));
+}
+/**
  * deltaCheck(DB, only) -> { flagged: [{ module, fallback, equalTo:[labels], services:[ids] }], reached, calls }
  * `only` (optional) restricts the check to the named modules (the non-vacuity probes use it).
  */
@@ -169,6 +182,7 @@ function deltaCheck(DB, only) {
         const labels = list[0].opts.map(o => o.label);
         labels.forEach((fb, i) => {
             if (!FALLBACK_RE.test(fb) || list[0].opts[i].modifier_ref) return;
+            if (movesTheJob(DB, mod, list[0].opts[i], list.map(c => c.svc))) return;
             const same = labels.map((l, j) => j).filter(j => j !== i && !FALLBACK_RE.test(labels[j]) && list.every(c => c.opts[i] && c.opts[j] && c.tups[i] === c.tups[j] && tagKey(c.opts[i]) === tagKey(c.opts[j])));
             if (same.length) flagged.push({ module: mod, fallback: fb, equalTo: same.map(j => labels[j]), services: list.map(c => c.svc) });
         });
@@ -292,6 +306,14 @@ section('5. non-vacuity: the vocabulary, the check and the empty-chain leg are s
         DB.intake_modules.__followup = { question: 'Follow-up?', type: 'single', client_response: [{ label: 'X', tags: [] }, { label: 'Y', tags: [] }], purpose: 'pricing', confidence_gain: 0, affects_price: false };
         DB.services.find(s => s.id === svcId).intake_chain.push({ module: '__probe', then: { [o[2].label]: ['__followup'] } });
         return !flaggedModules(deltaCheck(DB, ['__probe'])).includes('__probe');
+    })());
+    // T189 (#184): a fallback that hands the job to another service has moved it (the move is applied after the tuple is taken)
+    const otherSvc = SSOT.services.find(s => s.id !== svcId && (s.intake_chain || []).length).id;
+    check('the same module is NOT flagged when the fallback hands the job to another service (route_to)', (() => { const o = opts(); o[2].route_to = { service: otherSvc, answers: {}, because: 'probe' }; return probe('route', o) === false; })());
+    check('... but IS flagged when its route_to names the service the job is already in and nothing waits on the question (it moves nothing)', (() => { const o = opts(); o[2].route_to = { service: svcId, answers: {}, because: 'probe' }; return probe('routeSame', o) === true; })());
+    check('... and is NOT flagged when that same-service route cancels a move that waits on this question (ask_first)', (() => {
+        const o = opts(); o[2].route_to = { service: svcId, answers: {}, because: 'probe' };
+        return probe('routeHeld', o, DB => { DB.intake_modules.__holder = { question: 'Holder?', type: 'single', client_response: [{ label: 'H', tags: [], route_to: { service: otherSvc, answers: {}, because: 'probe', ask_first: '__probe' } }], purpose: 'routing', confidence_gain: 0, affects_price: false }; }) === false;
     })());
     check('a module with only confident answers is never flagged (no fallback, nothing to compare)', probe('noFallback', [{ label: 'Option A', tags: [] }, { label: 'Option B', tags: [] }]) === false);
 

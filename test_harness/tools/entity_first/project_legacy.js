@@ -43,7 +43,7 @@ function project(src) {
     if (o.modifier_id !== undefined) l.modifier_ref = stripId('mod', o.modifier_id);
     if (o.checkout_state_id !== undefined) l.checkout_state_override = stripId('chk', o.checkout_state_id);
     if (o.qty_value !== undefined) l.qty_value = o.qty_value;
-    if (o.route_to) l.route_to = { service: stripId('svc', o.route_to.service_id), answers: pairsToLegacy(o.route_to.answers), because: o.route_to.because };
+    if (o.route_to) { l.route_to = { service: stripId('svc', o.route_to.service_id), answers: pairsToLegacy(o.route_to.answers), because: o.route_to.because }; if (o.route_to.ask_first !== undefined) l.route_to.ask_first = stripId('q', o.route_to.ask_first); }
     if (o.mat_min !== undefined) l.mat_min = o.mat_min; if (o.mat_max !== undefined) l.mat_max = o.mat_max;
     if (o.formula_id !== undefined) l.formula_override = stripId('fml', o.formula_id);
     if (o.location_hints !== undefined) l.location_hints = o.location_hints;

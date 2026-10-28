@@ -101,6 +101,8 @@ function walk(D) {
                 if (!mods[mk]) dang('route-to', at, `module ${mk}`);
                 else if (!(mods[mk].client_response || []).some(x => x.label === lbl)) dang('route-to', at, `${mk}: label "${lbl}"`);
             });
+            // T189 (#184): the question a move waits for is a real module
+            if (rt.ask_first !== undefined && (typeof rt.ask_first !== 'string' || !mods[rt.ask_first])) dang('route-to', at, `ask_first ${rt.ask_first}`);
         }
     }));
     // T170 (#180): a module shown only after another answer (`depends_on`) names a real module and a real label of it
@@ -192,6 +194,7 @@ if (base) {
         'a `then` key that is no option label': d => { const s = d.services.find(x => x.intake_chain.some(c => Object.keys(c.then || {}).length)); const c = s.intake_chain.find(c => Object.keys(c.then || {}).length); const k = Object.keys(c.then)[0]; c.then[k + '‑'] = c.then[k]; delete c.then[k]; },
         'a `then` branch naming a module that does not exist': d => { const s = d.services.find(x => x.intake_chain.some(c => Object.keys(c.then || {}).length)); const c = s.intake_chain.find(c => Object.keys(c.then || {}).length); c.then[Object.keys(c.then)[0]].push('no_such_module'); },
         'a route_to naming a service that does not exist': d => { Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to).route_to.service = 'no_such_service'; },
+        'a route_to whose ask_first is no intake module (T189)': d => { Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to && o.route_to.ask_first).route_to.ask_first = 'no_such_module'; },
         'a route_to carrying an answer that is no label of its module': d => { Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to && Object.keys(o.route_to.answers || {}).length).route_to.answers[Object.keys(Object.values(d.intake_modules).flatMap(m => m.client_response || []).find(o => o.route_to && Object.keys(o.route_to.answers || {}).length).route_to.answers)[0]] = 'No such label'; },
         // each plants its own depends_on, so it can fail whichever spelling the tree carries (T181: the tree carries the Charter's pairs; the legacy {module key: label} is still read)
         'a depends_on naming a label its module does not have (legacy spelling)': d => { const [k0, k1] = Object.keys(d.intake_modules).filter(k => (d.intake_modules[k].client_response || []).length); d.intake_modules[k0].depends_on = { [k1]: 'No such label' }; },
