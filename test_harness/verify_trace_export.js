@@ -202,7 +202,10 @@ async function probe(src) {
   const tableRows = mdLines.filter(l => l.startsWith('| '));
   check('the state table has a header, a divider and one row per observed property, every row three cells wide', tableRows.length >= 4 && tableRows[0].startsWith('| State Property') && tableRows.every(r => r.split(' | ').length === 3 || /^\| :---/.test(r)), tableRows.slice(0, 4));
   check('a hidden element is reported as hidden and a visible one as visible', md.includes('| visibility.sqStepFlow | "none" | Element is hidden or collapsed') && /\| visibility\.sqTextBar \| "[^"]*\/hid\/[^"]*" \| Element is hidden/.test(md) && md.includes('| visibility.cartOverlay | "absent" | Element is hidden or collapsed'), tableRows.filter(r => /sqStepFlow|sqTextBar/.test(r)));
-  check('the roadmap flags the layout conflict (focused mode with the text bar showing), the trapped step flow, and the flagged entries', md.includes('* [Layout Conflict]') && md.includes('* [Flow Trapped] Component wizard container sqStepFlow is hidden (none) despite active state pointing to step 3.') && md.includes('* [Developer Intent] Review the 1 manually flagged logs'), mdLines.slice(-6));
+  check('the roadmap flags the layout conflict (focused mode with the text bar showing), the trapped step flow, and the flagged entries', md.includes('* [Layout Conflict]') && md.includes('* [Flow Trapped] Component wizard container sqStepFlow is hidden (none) despite active state pointing to step 3.') && md.includes('* [Developer Intent] Review the 1 flagged item(s) listed above under **🚩 Flagged Items & Developer Notes**'), mdLines.slice(-6));
+  // T185 (the operator's change to modules/trace.js): the report lists every flagged entry with the comment the person wrote, not a count.
+  check('T185: the report has the section "### 🚩 Flagged Items & Developer Notes", and it names the flagged entry', mdLines.includes('### 🚩 Flagged Items & Developer Notes') && mdLines.some(l => /^#### 1\. Entry #\d+ — `[a-z_]+` \/ `[^`]+`$/.test(l)), mdLines.filter(l => /Flagged|^#### /.test(l)));
+  check('T185: the flagged entry\'s own comment is in the report, with when it was flagged', md.includes('* **Comment:** looks wrong') && md.includes('* **Flagged at:** 1970-01-01T00:00:00.001Z'), mdLines.filter(l => /Comment|Flagged at/.test(l)));
   check('an empty log is answered, not thrown at', real.emptyMd === 'No data available to construct summary.');
   check('a sparse log (entries with no data, no state) still produces a report', typeof real.sparseMd === 'string' && real.sparseMd.includes('### 🐛 Automated Issue Report Summary'), real.errors);
 
@@ -243,7 +246,7 @@ async function probe(src) {
   check('Copy JSON copies the single-line export', !!copied && !real.copiedJson.includes('\n') && Array.isArray(copied.trace) && copied.trace.length >= real.logLength);
   check('Copy Markdown Issue copies the report', typeof real.copiedMd === 'string' && real.copiedMd.startsWith('### 🐛 Automated Issue Report Summary') && real.copiedMd.includes('### 📋 Actionable Resolution Roadmap'));
 
-  console.log('\n=== 9. every claim above is shown able to fail: two mutants of the real file ===');
+  console.log('\n=== 9. every claim above is shown able to fail: mutants of the real file ===');
   {
     // the file before T184: the builder both buttons call was never defined
     const noBuilder = TRACE_SRC.replace('function _buildAutomatedIssueSummary(', 'function _buildAutomatedIssueSummary_REMOVED(');
@@ -265,6 +268,12 @@ async function probe(src) {
     check('(mutant setup) the replacement changed the file', stray !== TRACE_SRC);
     const m3 = await probe(stray);
     check('MUTANT "a stray line of prose in the file": the parse check fails', m3.parses === false);
+
+    // T185: the comment a person wrote is the point of the flag; a report that lists the flag but drops its comment is the defect T185 repaired
+    const noComment = TRACE_SRC.replace("lines.push('* **Comment:** ' + note);", "lines.push('* **Comment:** *(no comment provided)*');");
+    check('(mutant setup) the replacement changed the file', noComment !== TRACE_SRC);
+    const m4 = await probe(noComment);
+    check('MUTANT "a flag\'s comment is dropped from the report": the comment check fails', typeof m4.copiedMd === 'string' && m4.copiedMd.startsWith('### 🐛') && !m4.copiedMd.includes('* **Comment:** looks wrong'));
   }
 
   console.log('\n[trace export, narrative and Markdown issue report, T184] ' + pass + ' passed, ' + fail + ' failed (of ' + (pass + fail) + ' checks)');

@@ -82,3 +82,12 @@ You revised the Charter again to address the open items of #241 (attachment `612
 - **Mine, done:** my tests' `@enforces <Principle>` tags are now prose lines; `verify_charter_rules.js` reports 3 problems (27 → 11 → 3).
 - **Still open (one):** `G-INVARIANT-DETECTOR` (twice) and `R-INVARIANT-PROVENANCE` are written as definitions but are references. It blocks nothing.
 - **Sections 1 to 3 and 6** still stand: nothing that governs was dropped, and no test, price or label changed. The current record is `PENDING_DECISIONS.md` #241 and `TIMELINE.md` T188 (1/n).
+
+
+## Update (T189, 2026-10-28, after the "Reading & Reference Repair" edition)
+
+You attached a further edition (Project copy of 2026-10-28 22:28 UTC; sha256 `3c7ad6a7…`, 725,842 bytes), now installed unedited as `33a51468`. Measured against the edition before it (`b7ba1098…`):
+
+- **What changed:** the `<title>`; one style block (reading hierarchy, collapsible "Rule health", callouts); seven collapsible "Related historical Battles & lessons" blocks linking to nine Rule Directory entries; four inline glossary links; one added sentence under the constitutional diagnosis. A word-level comparison of the visible text (73,805 → 73,899 words) finds only these. 136 definitions and 136 directory rows before and after, the text of every definition identical; 0 broken internal links (563 → 581); the one script is byte-identical and parses.
+- **Still open:** #241 item 3 (`G-INVARIANT-DETECTOR` twice and `R-INVARIANT-PROVENANCE` written as definitions): unchanged. New and small: every link in the seven blocks is named "Rule Directory" (#241 item 6), and `P-CLIENT-THREE`'s statement runs its title into its body (#241 item 7; present in the previous edition).
+- **Sections 1 to 3 and 6** still stand: nothing that governs was dropped, and no test, price or label changed. The current record is `PENDING_DECISIONS.md` #241 and `TIMELINE.md` T189 (1/n).

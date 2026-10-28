@@ -198,7 +198,7 @@ async function run(puppeteer, chromePath, html) {
             const u = rq.url(), bare = u.split(/[?#]/)[0];
             if (bare === base) return rq.respond({ status: 200, contentType: 'text/html; charset=utf-8', body: html });
             const f = PAGE.localFileForUrl(u);
-            if (f) return rq.respond({ status: 200, contentType: f.endsWith('.js') ? 'application/javascript' : f.endsWith('.json') ? 'application/json' : 'text/plain', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
+            if (f) return rq.respond({ status: 200, contentType: PAGE.contentTypeOf(f), headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
             if (/^https?:/.test(u)) return rq.abort();
             rq.continue();
         });

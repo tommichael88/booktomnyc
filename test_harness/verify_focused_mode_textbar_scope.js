@@ -32,7 +32,8 @@ const fs = require('fs'), path = require('path'), { execSync } = require('child_
 const ROOT = process.env.QR_ROOT || path.resolve(__dirname, '..');
 const QR = process.env.QR_HTML || path.join(ROOT, 'qr.html');
 const PAGE = require('./_page.js');
-const RAW = fs.readFileSync(QR, 'utf8');
+// The document a browser would run (the stylesheet and the modules in place), not the bare qr.html text: the rule this test names lives in styles/qr.css since the operator's split.
+const RAW = PAGE.readPage(QR);
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { if (ok) { pass++; console.log('  ✓ ' + name); } else { fail++; console.log('  ✗ ' + name + (detail ? '\n      ' + detail : '')); } };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -62,7 +63,7 @@ async function scenario(puppeteer, chromePath, html, size) {
             const u = r.url(), bare = u.split(/[?#]/)[0];
             if (bare === base) return r.respond({ status: 200, contentType: 'text/html; charset=utf-8', body: html });
             const f = PAGE.localFileForUrl(u);
-            if (f) return r.respond({ status: 200, contentType: f.endsWith('.js') ? 'application/javascript' : f.endsWith('.json') ? 'application/json' : 'text/plain', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
+            if (f) return r.respond({ status: 200, contentType: PAGE.contentTypeOf(f), headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
             if (/^https?:/.test(u)) return r.abort();
             r.continue();
         });

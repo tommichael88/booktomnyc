@@ -128,7 +128,8 @@ const freeTextRouteOf = (w, text) => JSON.stringify(w.executeWorkflow(w.collectB
     const wait = ms => new Promise(r => setTimeout(r, ms));
     async function page({ tracerSrc, open }) {
       if (!HTML.includes(TAG)) throw new Error('anchor missing: the page no longer loads trace.js by that tag');
-      const html = HTML.replace(TAG, tracerSrc ? '<script>' + tracerSrc.replace(/<\/script>/g, '<\\/script>') + (open ? '\nwindow._traceEnabled = true;' : '') + '</script>' : '');
+      // A FUNCTION replacement: a string replacement reads `$'`, `$&` and `$1` in the inserted text as patterns, and the tracer's own source holds `'Price computed: $'` (T185), which would splice the rest of the page into the tracer.
+      const html = HTML.replace(TAG, () => tracerSrc ? '<script>' + tracerSrc.replace(/<\/script>/g, '<\\/script>') + (open ? '\nwindow._traceEnabled = true;' : '') + '</script>' : '');
       const dom = new JSDOM(html, {
         url: 'https://tommichael88.github.io/booktomnyc/qr.html', runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
         beforeParse(w) {

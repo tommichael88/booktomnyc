@@ -200,7 +200,7 @@ function judge(r) {
 // ---- mutants -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const MUTANTS = [
     { name: 'the `!important` back on .group-grid', expect: 'grid-hidden', sweep: false,
-      apply: s => s.replace(/(\.group-grid\{display:grid)(;)/, '$1!important$2') },
+      apply: s => s.replace(/(\.group-grid\{\s*display:grid)(;)/, '$1!important$2') },
     { name: 'the grid-hiding line removed from showIntakeQuestions', expect: 'grid-hidden', sweep: false,
       apply: s => s.replace(/(container\.style\.display = 'block';\s*\n)\s*if \(DOM\.serviceContainer\) DOM\.serviceContainer\.style\.display = 'none';\n(\s*if \(svc\.requires_furniture_selection\))/, '$1$2') },
     { name: "the restore path setting display 'block' (the grid layout replaced)", expect: 'grid-layout', sweep: false,
@@ -220,7 +220,8 @@ const MUTANTS = [
         bad('a browser is required', 'No Chrome/puppeteer found. This test FAILS rather than skipping: set CHROME_PATH (e.g. /opt/pw-browsers/chromium). Silent skipping would be a false statement of coverage (DEFECT-SILENT-SKIP).');
         console.log(`\n${pass} passed, ${fail} failed`); process.exit(1);
     }
-    const src = fs.readFileSync(QR, 'utf8');
+    // The mutants anchor in the document a browser would run (stylesheet and modules in place), not in qr.html's bare text: the rules they name live in styles/qr.css since the operator's split.
+    const src = PAGE.readPage(QR);
 
     // sections A-D on the real page at both widths
     console.log('A-D. the page as it is');

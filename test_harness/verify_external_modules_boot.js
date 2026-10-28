@@ -73,7 +73,7 @@ async function boot(puppeteer, chrome, missing, html) {
                 const f = PAGE.localFileForUrl(u);
                 if (f) {
                     if (isModule) out.requested[rel] = '200';
-                    const type = f.endsWith('.js') ? 'application/javascript' : f.endsWith('.json') ? 'application/json' : 'text/plain';
+                    const type = PAGE.contentTypeOf(f);
                     return r.respond({ status: 200, contentType: type, headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
                 }
                 return r.respond({ status: 404, contentType: 'text/plain', body: 'not in the repo' });

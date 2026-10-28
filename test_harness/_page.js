@@ -15,6 +15,14 @@
  *   A tag that names a file the repo does not have is an ERROR (never skipped, never guessed). A tag on any other host is left alone,
  *   and so is the tracer's (TRACER_PATHS below).
  *
+ * The same rule holds for the stylesheet (T189): the operator moved the page's inline <style> to styles/qr.css, loaded by
+ *
+ *     <link rel="stylesheet" href="https://tommichael88.github.io/booktomnyc/styles/qr.css">
+ *
+ * A test that reads qr.html alone, or opens it from disk, would see NO page styles at all (the deployed origin is not reachable from the test machine), and every
+ * check on a rule, a colour, a hidden element or a measured box would fail for a reason that is not the page's. assemble() therefore replaces such a <link>
+ * with an inline <style> holding the repo file, in the tag's position. A <link rel="stylesheet"> on any other host (the icon font) is left alone.
+ *
  * Every harness reader that needs "the page" (_qr_blocks.js, _engine.js, extract_modules.js, extract_engine.py via the CLI below, the browser tests' request
  * interceptor) goes through this file. Nothing else in the harness restates the URL-to-file rule.
  *
@@ -41,6 +49,9 @@ const FILES_ROOT = process.env.BTNYC_PAGE_ROOT ? path.resolve(process.env.BTNYC_
 const TRACER_PATHS = new Set(['modules/trace.js', 'trace.js']);
 
 const SCRIPT_SRC_RE = /<script\b([^>]*?)\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)')([^>]*)>\s*<\/script>/gi;
+// <link ... rel="stylesheet" ... href="..."> in either attribute order. Group 1 = the whole tag; the href is read from it by HREF_RE.
+const STYLE_LINK_RE = /<link\b[^>]*\brel\s*=\s*(?:"stylesheet"|'stylesheet')[^>]*>/gi;
+const HREF_RE = /\bhref\s*=\s*(?:"([^"]+)"|'([^']+)')/i;
 
 /** The repo-relative path a deployed URL stands for, or null when the URL is not under DEPLOY_BASE. Rejects anything that would leave the repo. */
 function repoPathOfUrl(url) {
@@ -62,9 +73,31 @@ function externalScripts(html) {
     return out;
 }
 
-/** The document a browser would run: each deployed external script replaced, in place, by an inline <script> holding the repo file's text. */
+/** Every <link rel="stylesheet"> in `html` as { tag, url, repoPath, index }. repoPath is null for a stylesheet on another host. */
+function externalStyles(html) {
+    const out = [];
+    STYLE_LINK_RE.lastIndex = 0;
+    let m;
+    while ((m = STYLE_LINK_RE.exec(html)) !== null) {
+        const h = HREF_RE.exec(m[0]);
+        const url = h ? (h[1] || h[2]) : null;
+        out.push({ tag: m[0], url, repoPath: url ? repoPathOfUrl(url) : null, index: m.index });
+    }
+    return out;
+}
+
+/** The document a browser would run: each deployed external script replaced, in place, by an inline <script> holding the repo file's text, and each deployed stylesheet by an inline <style>. */
 function assemble(html, filesRoot) {
     const root = filesRoot || FILES_ROOT;
+    html = html.replace(STYLE_LINK_RE, tag => {
+        const h = HREF_RE.exec(tag), url = h ? (h[1] || h[2]) : null, rel = url ? repoPathOfUrl(url) : null;
+        if (rel === null) return tag;
+        const file = path.join(root, rel);
+        if (!fs.existsSync(file)) throw new Error(`_page.js: qr.html loads the stylesheet ${url} but the repo has no ${rel} (looked in ${root})`);
+        const text = fs.readFileSync(file, 'utf8');
+        if (/<\/style/i.test(text)) throw new Error(`_page.js: ${rel} contains "</style", which cannot be inlined into a <style> block`);
+        return `<style>\n${text}\n</style>`;
+    });
     return html.replace(SCRIPT_SRC_RE, (tag, _a, dq, sq) => {
         const url = dq || sq, rel = repoPathOfUrl(url);
         if (rel === null || TRACER_PATHS.has(rel)) return tag;
@@ -79,6 +112,12 @@ function assemble(html, filesRoot) {
 /** Read qr.html (or `qrPath`) and assemble it. */
 function readPage(qrPath, filesRoot) {
     return assemble(fs.readFileSync(qrPath || QR_PATH, 'utf8'), filesRoot);
+}
+
+/** The Content-Type a static host sends for a repo file. A stylesheet served as text/plain is refused by a browser, so this is not optional. */
+function contentTypeOf(file) {
+    const f = String(file).toLowerCase();
+    return f.endsWith('.js') ? 'application/javascript' : f.endsWith('.json') ? 'application/json' : f.endsWith('.css') ? 'text/css' : f.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/plain';
 }
 
 /**
@@ -107,13 +146,14 @@ function documentResponse(url, filesRoot) {
     return { status: 200, contentType: 'text/html; charset=utf-8', body: readPage(file, filesRoot) };
 }
 
-module.exports = { DEPLOY_BASE, QR_PATH, REPO_ROOT, repoPathOfUrl, externalScripts, assemble, readPage, localFileForUrl, documentResponse };
+module.exports = { DEPLOY_BASE, QR_PATH, REPO_ROOT, repoPathOfUrl, externalScripts, externalStyles, assemble, readPage, contentTypeOf, localFileForUrl, documentResponse };
 
 if (require.main === module) {
     const args = process.argv.slice(2), list = args.includes('--list'), file = args.find(a => !a.startsWith('--'));
     const qr = file ? path.resolve(file) : QR_PATH;
     if (list) {
-        for (const s of externalScripts(fs.readFileSync(qr, 'utf8'))) {
+        const src = fs.readFileSync(qr, 'utf8');
+        for (const s of [...externalScripts(src), ...externalStyles(src)]) {
             console.log([s.url, s.repoPath || '(other host)', s.repoPath ? fs.existsSync(path.join(FILES_ROOT, s.repoPath)) : '-'].join('\t'));
         }
     } else {
