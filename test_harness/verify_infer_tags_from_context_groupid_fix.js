@@ -55,8 +55,8 @@ function findFnLocal(name) {
 const findFn = engineAwareFindFn(findFnLocal);
 
 console.log('=== inferTagsFromContext now genuinely accepts and passes a real groupId ===');
-check('the function signature now includes a groupId parameter', /function inferTagsFromContext\(text, cat, groupId\)/.test(QR_HTML));
-check('the live call site in collectBookingContext_freeText passes groupId as third argument', /inferTagsFromContext\(rawText, detCat, detGroup\)/.test(QR_HTML));
+check('the function signature now includes a groupId parameter', /function inferTagsFromContext\(text, cat, groupId(?:, serviceId)?\)/.test(QR_HTML));   // T192 (#195): a fourth, optional parameter names the service the words reached
+check('the live call site in collectBookingContext_freeText passes groupId as third argument', /inferTagsFromContext\(rawText, detCat, detGroup(?:, detService)?\)/.test(QR_HTML));   // T192 (#195): and the service, as a fourth
 
 // T166: the engine modules load whole (both functions are in them, so findFn returns the same wrapper twice: one copy is enough). The test's own `_BRICK_HINTS` global was never read:
 // the function declares its own (from DB.smart_tags['#brick_wall'].synonyms), which shadows it.

@@ -169,7 +169,7 @@
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T191';
+     const QR_BUILD_VERSION = 'T192';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -1775,7 +1775,9 @@
          return null;
      }
 
-     function inferTagsFromContext(text, cat, groupId) {
+     function inferTagsFromContext(text, cat, groupId, serviceId) {
+         // T192 (#195): a tag is in scope for the request, not only for the group (tagInScopeForRequest); a harness that loads this module without the page's scope test keeps the group test
+         const inScope = typeof tagInScopeForRequest === 'function' ? tagInScopeForRequest : (/** @type {any} */ t, /** @type {any} */ c, /** @type {any} */ g) => tagValidForCategory(t, c, g);
          // Infer tags from contextual hints in the text
          const lower = text.toLowerCase();
          const inferred = [];
@@ -1802,7 +1804,7 @@
          // mechanism ("fireplace" -> #brick_wall) silently broken
          // by an unrelated, later, correct fix elsewhere.
          for (const hint of _BRICK_HINTS) {
-             if (wordBoundaryIncludes(lower, String(hint).toLowerCase()) && tagValidForCategory('#brick_wall', cat, groupId)) {
+             if (wordBoundaryIncludes(lower, String(hint).toLowerCase()) && inScope('#brick_wall', cat, groupId, serviceId || null)) {
                  inferred.push({
                      tid: '#brick_wall',
                      source: 'context'
@@ -1817,7 +1819,7 @@
          for (const [tid, t] of Object.entries(DB.smart_tags || {})) {
              if (!Array.isArray(t.context_hints) || !t.context_hints.length) continue;
              if (inferred.some(x => x.tid === tid)) continue;
-             if (t.context_hints.some(h => typeof h === 'string' && wordBoundaryIncludes(lower, h.toLowerCase())) && tagValidForCategory(tid, cat, groupId)) {
+             if (t.context_hints.some(h => typeof h === 'string' && wordBoundaryIncludes(lower, h.toLowerCase())) && inScope(tid, cat, groupId, serviceId || null)) {
                  inferred.push({
                      tid,
                      source: 'context'
@@ -2304,6 +2306,16 @@
          if (!nlpIntent || !nlpIntent.recommendedSku || !(nlpIntent._matchConfidence >= autoSelectThreshold)) return resolvedGroupId || null;
          const svc = (db.services || []).find(/** @param {any} s */ s => s.id === nlpIntent.recommendedSku);
          return (svc && svc.ui_taxonomy && svc.ui_taxonomy.group_id) || resolvedGroupId || null;
+     }
+
+     // T192 (PENDING_DECISIONS #195; the typed fact): the service a request has reached when its TAGS are judged. A tag's group list (applicable_group_ids) says where the tag is offered as a chip; it is not
+     // evidence that a customer who typed the tag's words about a service that ASKS the tag's question did not say it. The service the words reached is the one `resolveTagScopeGroup` already reads
+     // when no group is named, under the same bar (the match clears the one that selects a named service). It is handed to the request-level scope test (tagInScopeForRequest), which leaves the group
+     // test (tagValidForCategory) as it was and lets the service's own question stand in for the group, with the category and the service's exclusions as authored. Owned here beside the group decision so no caller composes a second source (R-INVARIANT-CANONICAL).
+     /** @param {any} nlpIntent @param {any} autoSelectThreshold */
+     function resolveTagScopeService(nlpIntent, autoSelectThreshold) {
+         if (!nlpIntent || !nlpIntent.recommendedSku || !(nlpIntent._matchConfidence >= autoSelectThreshold)) return null;
+         return nlpIntent.recommendedSku;
      }
 
      function isServiceVerb(word, verbSet) {

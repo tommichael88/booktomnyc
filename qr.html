@@ -1762,6 +1762,31 @@
             return true;
         }
 
+        // tagAnswersAskedByService -- LOGIC. Whether a service asks a question a tag answers: the tag's authored `answers` ({module: label}) against the modules the service's chain asks,
+        // directly or as a branch (_resolveIntakeChain, the chain the engine composes from). The one definition of "this tag is about a thing this service asks" (T192, #195). Pure; false
+        // for no service, an unknown service or a tag that answers nothing.
+        function tagAnswersAskedByService(tag, serviceId) {
+            if (!serviceId || !tag || !tag.answers) return false;
+            const svc = ((typeof DB !== 'undefined' && DB.services) || []).find(s => s.id === serviceId);
+            if (!svc) return false;
+            const chain = typeof _resolveIntakeChain === 'function' ? _resolveIntakeChain(svc) : (svc.intake_chain || []).map(st => ({ moduleKey: st && st.module }));
+            const asked = new Set(chain.map(m => String(m.moduleKey).split('::')[0]));
+            return Object.keys(tag.answers).some(k => asked.has(k));
+        }
+
+        // tagInScopeForRequest -- LOGIC. Whether a tag the customer's WORDS earned is in scope for the request they made (T192, #195; the typed fact). The group list (applicable_group_ids) decides
+        // where a tag is OFFERED (tagValidForCategory, unchanged); it is not evidence that a customer who typed the tag's words about a service that ASKS the tag's question did not say it. So a tag
+        // is also in scope when the category matches (the coarse boundary, as before), the service the words reached asks the question the tag answers, and the tag is not authored as excluded
+        // for that service. The group path is exactly as it was; this only adds. Pure; false for no service.
+        function tagInScopeForRequest(tid, cat, groupId, serviceId) {
+            if (tagValidForCategory(tid, cat, groupId)) return true;
+            const tag = ((typeof DB !== 'undefined' && DB.smart_tags) || {})[tid];
+            if (!tag || !serviceId || !tagAnswersAskedByService(tag, serviceId)) return false;
+            const cats = tag.applicable_categories;
+            if (!(!cats || cats.length === 0 || cats.includes('all') || cats.includes(cat))) return false;
+            return !(tag.excluded_service_ids || []).includes(serviceId);
+        }
+
         function tagValidForCategory(tid, cat, groupId, serviceId = null) {
             // SSOT: reads applicable_categories + applicable_group_ids from btnyc.json
             //
@@ -5190,14 +5215,15 @@
             // The group the tags are judged in: the group resolver's answer (no NLP intent has ever carried a `_groupId`: T155 A2b, C-18), and where it names none, the group of the named
             // service the words reached -- one resolver owns that decision (T170, #180), so a tag scoped to a group is not dropped from a sentence already routed into it.
             const detGroup = resolveTagScopeGroup(selectedGroupId, nlpIntent, thresholds.auto_select_named_service);
+            const detService = resolveTagScopeService(nlpIntent, thresholds.auto_select_named_service);   // T192 (#195): the service a tag the customer typed may be about
             const nlpTagResult = (typeof detectTagsNLP === 'function') ?
                 detectTagsNLP(rawText) : {
                     found: [],
                     negated: []
                 };
             const detectedTagIds = nlpTagResult.found.filter(tid =>
-                typeof tagValidForCategory === 'function' ?
-                tagValidForCategory(tid, detCat, detGroup) :
+                typeof tagInScopeForRequest === 'function' ?
+                tagInScopeForRequest(tid, detCat, detGroup, detService) :
                 true
             );
             const negatedTagIds = nlpTagResult.negated.filter(tid => {
@@ -5232,7 +5258,7 @@
 
             // Contextual tags: "mantel" -> #brick_wall, "urgent" -> #emergency etc.
             if (typeof inferTagsFromContext === 'function') {
-                const ctxTags = inferTagsFromContext(rawText, detCat, detGroup);
+                const ctxTags = inferTagsFromContext(rawText, detCat, detGroup, detService);
                 ctxTags.forEach(({
                     tid
                 }) => {
@@ -5281,7 +5307,7 @@
             // NLP _ctxTags (from contextual_overrides) -- same path sqAnalyze uses
             if (nlpIntent?._ctxTags?.length) {
                 nlpIntent._ctxTags.forEach(tid => {
-                    if ((typeof tagValidForCategory !== 'function' || tagValidForCategory(tid, detCat, detGroup)) &&
+                    if ((typeof tagInScopeForRequest !== 'function' || tagInScopeForRequest(tid, detCat, detGroup, detService)) &&
                         !detectedTagIds.includes(tid) && !negatedTagIds.includes(tid))
                         detectedTagIds.push(tid);
                 });
