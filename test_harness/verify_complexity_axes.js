@@ -197,7 +197,8 @@ check('no runtime code reads risk_tier, batch_risk_compounds or complexity_profi
   check('R-COMPLEX-VOLUME: no service\'s skill tier changes while ONLY the quantity changes (DEFECT-AXIS-CONFLATION; loose_tile_replacement was skilled at 1 tile and specialized at 20 until T182)', moved.length === 0, moved.join(', '));
   // the detector can fail: put the derivation back (a tier named by the minutes' band, kept if higher than the declared one: the engine as it was) and the same sweep finds the service again
   const NEEDLE = 'const complexityTier = resolveSkillTier(exactTier, answerOverrideTier);';
-  const BACK = 'let _t = resolveSkillTier(exactTier, answerOverrideTier); for (const [k, d] of Object.entries(DB.global_rules.complexity_tiers)) { if (totalMin >= d.min_minutes && (d.max_minutes == null || totalMin <= d.max_minutes) && (TIER_RANK[k] || 0) > (TIER_RANK[_t] || 0)) _t = k; } const complexityTier = _t;';
+  // T193 (#240): the minute bands were deleted from the SSOT (the order of the tiers is their authored `rank`); the mutant carries the bands it needs, the values the SSOT held until T193
+  const BACK = 'let _t = resolveSkillTier(exactTier, answerOverrideTier); const _bands = { routine: [0, 45], skilled: [46, 90], specialized: [91, null] }; for (const [k, d] of Object.entries(_bands)) { if (totalMin >= d[0] && (d[1] == null || totalMin <= d[1]) && (TIER_RANK[k] || 0) > (TIER_RANK[_t] || 0)) _t = k; } const complexityTier = _t;';
   check('the mutant applies exactly once (the needle is in the engine exactly once)', real.split(NEEDLE).length === 2);
   const bad = sweep(boot(real.replace(NEEDLE, BACK)));
   check('counterfactual: with the minutes derivation put back, the same sweep finds loose_tile_replacement again (the detector sees the derivation, and only it)', JSON.stringify(bad.moved) === JSON.stringify(['loose_tile_replacement']), bad.moved.join(', ')); }

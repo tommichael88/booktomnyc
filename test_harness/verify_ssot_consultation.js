@@ -76,14 +76,11 @@ const SRC = SCRIPTS.join('\n');
 // here WITHOUT having actually traced the real code first, stop — that's
 // exactly the discipline this tool exists to enforce.
 // ─────────────────────────────────────────────────────────────────────────
-const TIER_BAND_NOTE = "T182 (PENDING_DECISIONS #229, #240): no longer consulted by the engine. The minute band of a skill tier used to NAME the tier a quote was priced at (deriveComplexityTier); R-COMPLEX-VOLUME forbids that (skill_tier := f(minutes)) and the Operator directed its removal, so the engine now prices the tier an entity declares and no code reads the band. Kept for now, deliberately and not as a gap: the schema requires min_minutes, and verify_no_duplicate_registries.js and verify_single_escalation_path.js read min_minutes as the SSOT's ORDER of the tiers (the order TIER_RANK must agree with). Deleting the bands (and giving the order a home of its own) touches the strict schema, the source and those two tests, so it is its own change, open as #240; the Charter says a retired artifact is deleted, and this is recorded as retired-not-yet-deleted.";
+const TIER_RANK_NOTE = "T193 (PENDING_DECISIONS #240, #154): the order of the skill tiers, authored. It replaces the minute bands (min_minutes / max_minutes), which T182 stopped the engine reading (R-COMPLEX-VOLUME: a tier is declared, never derived from minutes) and which were kept only because two tests read min_minutes as the SSOT's ORDER of the tiers; T193 deleted the bands and gave the order this home. The engine does not read it: TIER_RANK in qr.html is a literal copy of it, held equal to it by verify_no_duplicate_registries.js (the table's tiers, their order and each value) and read by verify_single_escalation_path.js. Deriving TIER_RANK from this field at boot would remove the copy; it would make a module-level constant depend on a boot step and is not done (#154, last paragraph). Allowed, not a gap.";
 const KNOWN_DEAD_OR_REDUNDANT = {
-    'global_rules.complexity_tiers.routine.min_minutes': TIER_BAND_NOTE,
-    'global_rules.complexity_tiers.routine.max_minutes': TIER_BAND_NOTE,
-    'global_rules.complexity_tiers.skilled.min_minutes': TIER_BAND_NOTE,
-    'global_rules.complexity_tiers.skilled.max_minutes': TIER_BAND_NOTE,
-    'global_rules.complexity_tiers.specialized.min_minutes': TIER_BAND_NOTE,
-    'global_rules.complexity_tiers.specialized.max_minutes': TIER_BAND_NOTE,
+    'global_rules.complexity_tiers.routine.rank': TIER_RANK_NOTE,
+    'global_rules.complexity_tiers.skilled.rank': TIER_RANK_NOTE,
+    'global_rules.complexity_tiers.specialized.rank': TIER_RANK_NOTE,
     'global_rules.force_modules_by_variability_DEPRECATED': 'T118: deliberately deprecated, not a gap. Renamed from force_modules_by_variability when universal force-injection was replaced by intake_defaults (per explicit operator brief). Kept under this new name specifically so no code reads it -- reversibility record only, per the brief\'s own "easier to reverse" guidance. Confirmed directly: zero references anywhere in qr.html under either name.',
     'global_rules.force_modules_by_variability_DEPRECATED.low': 'Sub-node of the deprecated key above -- see that entry.',
     'global_rules.force_modules_by_variability_DEPRECATED.medium': 'Sub-node of the deprecated key above -- see that entry.',

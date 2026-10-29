@@ -73,7 +73,9 @@ const _QTY_WORD_MAP = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,n
 const PIPELINE_FNS = ['initNlpSets', 'isServiceVerb', 'detectIntentNLP', 'extractObject', 'extractQty', 'extractSizeHint', 'extractLocation',
     'resolveGroupFromIntent', 'detectTagsNLP', 'inferTagsFromContext', 'computeNegatedGroupHints',
     'tagValidForCategory', 'makeBookingContext', 'collectBookingContext_freeText', 'resolveDynamicService'];
-const pipelineSandbox = { DB, window: { DB }, console };
+// T193: the page holds the loaded catalog twice, as DB and as SERVICE_DATA (the one `_resolveIntakeChain` reads); the request-level tag scope test (T192, tagInScopeForRequest) walks a
+// service's chain, so a sandbox that runs collectBookingContext_freeText needs both, as the page has them.
+const pipelineSandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
 pipelineSandbox.global = pipelineSandbox;
 vm.createContext(pipelineSandbox);
 vm.runInContext(HELPER_CONSTS + '\n' + PIPELINE_FNS.map(findFn).join('\n\n'), pipelineSandbox);

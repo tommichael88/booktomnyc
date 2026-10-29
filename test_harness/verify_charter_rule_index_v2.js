@@ -555,12 +555,12 @@ logHeader('2. Governance & Client Operations (R-GOVERN / R-CLIENT)');
   const missing = required.filter(t => !(t in tiers));
   const malformed = required.filter(t => {
     const def = tiers[t];
-    return !def || typeof def.hourly_rate !== 'number' || typeof def.min_minutes !== 'number';
+    return !def || typeof def.hourly_rate !== 'number' || typeof def.rank !== 'number';
   });
   assertRule(
     'G-GOVERN-PRECEDENCE',
     missing.length === 0 && malformed.length === 0,
-    'complexity_tiers contains routine/skilled/specialized with numeric rates and boundaries',
+    'complexity_tiers contains routine/skilled/specialized with numeric rates and a rank',
     `missing=[${missing.join(',')}] malformed=[${malformed.join(',')}]`
   );
 }

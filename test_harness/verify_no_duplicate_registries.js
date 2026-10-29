@@ -13,7 +13,7 @@
  *
  *   1. THE TIER TABLE EXISTS ONCE   Any object literal keyed by two or more of the SSOT's tier names (global_rules.complexity_tiers, read from the SSOT, not written here) and any array
  *                                   holding two or more of them is a rank table. There is exactly one in the assembled page: the top-level `const TIER_RANK = Object.freeze({...})`.
- *   2. IT AGREES WITH THE SSOT      TIER_RANK has exactly the SSOT's tiers, ranks them in the order of their `min_minutes`, and gives the lowest tier 0 (the code's `(RANK[x] || 0)`
+ *   2. IT AGREES WITH THE SSOT      TIER_RANK has exactly the SSOT's tiers, ranks them in the order of their authored `rank` (T193, #240: the order has a home of its own; the minute bands that used to stand for it are gone), and gives the lowest tier 0 (the code's `(RANK[x] || 0)`
  *                                   idiom is only right because the lowest tier is 0). On a real boot it is frozen and holds those values.
  *   3. NO CONSTANT IS COPIED        No two constant object/array literals of three or more entries are structurally equal anywhere in the page (objects compare irrespective of key
  *                                   order, arrays in order). The ones that exist today are FILED, each with the ledger entry that names it; a new copy is red, and a filed copy that has gone
@@ -171,10 +171,10 @@ const FILED = {
         const t = scan.tierRank[0] && readTierRank(scan.tierRank[0].init);
         check(`${TIER_TABLE} is Object.freeze of a literal table of numbers`, !!t && t.ok, t && t.why);
         if (t && t.ok) {
-            const ssotOrder = TIERS.slice().sort((a, b) => SSOT.global_rules.complexity_tiers[a].min_minutes - SSOT.global_rules.complexity_tiers[b].min_minutes);
+            const ssotOrder = TIERS.slice().sort((a, b) => SSOT.global_rules.complexity_tiers[a].rank - SSOT.global_rules.complexity_tiers[b].rank);
             check('it ranks exactly the SSOT\'s tiers (no more, no fewer)', fmt(Object.keys(t.table).sort()) === fmt(TIERS.slice().sort()), `table ${fmt(Object.keys(t.table))}, SSOT ${fmt(TIERS)}`);
             const byRank = Object.keys(t.table).sort((a, b) => t.table[a] - t.table[b]);
-            check('its order is the order of the SSOT\'s min_minutes (a higher tier is a higher rank)', fmt(byRank) === fmt(ssotOrder) && new Set(Object.values(t.table)).size === TIERS.length, `table order ${fmt(byRank)}, min_minutes order ${fmt(ssotOrder)}`);
+            check('its order is the order of the SSOT\'s authored rank (a higher tier is a higher rank), and each tier holds the SSOT\'s own number', fmt(byRank) === fmt(ssotOrder) && new Set(Object.values(t.table)).size === TIERS.length && TIERS.every(k => t.table[k] === SSOT.global_rules.complexity_tiers[k].rank), `table ${JSON.stringify(t.table)}, SSOT rank ${JSON.stringify(Object.fromEntries(TIERS.map(k => [k, SSOT.global_rules.complexity_tiers[k].rank])))}`);
             check('the lowest tier is 0 (the `(TIER_RANK[x] || 0)` idiom, and an unknown tier, both read as the lowest)', t.table[ssotOrder[0]] === 0, `${ssotOrder[0]} = ${t.table[ssotOrder[0]]}`);
         }
         const w = await boot();
@@ -223,7 +223,7 @@ const FILED = {
         check('leg 4 flags a function declared twice', redeclared(redecl.decls).length === 1 && redeclared(redecl.decls)[0].name === 'f', fmt(redeclared(redecl.decls)));
         const wrong = scanSource('const TIER_RANK = Object.freeze({ routine: 0, skilled: 2, specialized: 1 });', 1, 'probe');
         const wt = readTierRank(wrong.tierRank.init);
-        const ssotOrder = TIERS.slice().sort((a, b) => SSOT.global_rules.complexity_tiers[a].min_minutes - SSOT.global_rules.complexity_tiers[b].min_minutes);
+        const ssotOrder = TIERS.slice().sort((a, b) => SSOT.global_rules.complexity_tiers[a].rank - SSOT.global_rules.complexity_tiers[b].rank);
         const byRank = Object.keys(wt.table).sort((a, b) => wt.table[a] - wt.table[b]);
         check('leg 2 flags a TIER_RANK whose order disagrees with the SSOT', wt.ok && fmt(byRank) !== fmt(ssotOrder), fmt(byRank));
         const notFrozen = scanSource('const TIER_RANK = { routine: 0, skilled: 1, specialized: 2 };', 1, 'probe');

@@ -26,7 +26,7 @@
  *   5. THE RETIRED THING IS GONE    The assembled page holds no `_sqPrepareFlowLegacyEscalation` and no "PHASE_B_FOLLOWUP ... C-05" held note (the note that kept it, released by D).
  *   6. THE REAL BUILDER ESCALATES   Boot the real page and drive the real guided builder (sqPrepareFlow) over every single-action "Other" group with: no tag, each tag that declares
  *                                   `escalate_complexity`, all of them together, and one tag that declares none. The expectation is DERIVED from the SSOT in the file's own terms --
- *                                   worst tier among the active tags (ranked by the SSOT's complexity_tiers.min_minutes), bar = min(cap, bar without tags + that tier's delta), question cap likewise --
+ *                                   worst tier among the active tags (ranked by the SSOT's complexity_tiers.rank), bar = min(cap, bar without tags + that tier's delta), question cap likewise --
  *                                   so no number is frozen here and a recalibrated delta cannot turn it red.
  *
  * NON-VACUITY (the scanner and the behaviour are each shown able to fail; nothing here passes by finding nothing):
@@ -140,7 +140,7 @@ function ssotProblems(d) {
     }
     for (const ck of ['max_minimum_quote_confidence', 'max_followup_questions_absolute']) if (typeof esc[ck] !== 'number') bad.push(`confidence_escalation.${ck} is not a number`);
     const tiers = d.global_rules && d.global_rules.complexity_tiers;
-    if (!tiers || !Object.values(tiers).every(t => typeof t.min_minutes === 'number')) bad.push('global_rules.complexity_tiers does not give every tier a min_minutes to rank by');
+    if (!tiers || !Object.values(tiers).every(t => typeof t.rank === 'number')) bad.push('global_rules.complexity_tiers does not give every tier a rank to order by');
     return bad;
 }
 
@@ -165,7 +165,7 @@ async function boot(mutateHtml) {
 function builderProblems(w) {
     const DB = w.DB, S = () => w.eval('S');
     const esc = DB.global_rules.confidence_escalation, tiers = DB.global_rules.complexity_tiers;
-    const rank = t => (tiers[t] ? tiers[t].min_minutes : -1);                                    // the SSOT's own ordering of tiers
+    const rank = t => (tiers[t] ? tiers[t].rank : -1);                                    // the SSOT's own ordering of tiers
     const tagTier = id => (DB.smart_tags[id] && DB.smart_tags[id][TIER_FIELD]) || null;
     const escalators = Object.keys(DB.smart_tags).filter(id => tagTier(id));
     const neutral = Object.keys(DB.smart_tags).find(id => !tagTier(id));

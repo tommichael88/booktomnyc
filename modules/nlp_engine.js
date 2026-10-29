@@ -169,7 +169,7 @@
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T192';
+     const QR_BUILD_VERSION = 'T193';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -1804,7 +1804,7 @@
          // mechanism ("fireplace" -> #brick_wall) silently broken
          // by an unrelated, later, correct fix elsewhere.
          for (const hint of _BRICK_HINTS) {
-             if (wordBoundaryIncludes(lower, String(hint).toLowerCase()) && inScope('#brick_wall', cat, groupId, serviceId || null)) {
+             if (wordBoundaryIncludes(lower, String(hint).toLowerCase()) && inScope('#brick_wall', cat, groupId, serviceId)) {
                  inferred.push({
                      tid: '#brick_wall',
                      source: 'context'
@@ -1819,7 +1819,7 @@
          for (const [tid, t] of Object.entries(DB.smart_tags || {})) {
              if (!Array.isArray(t.context_hints) || !t.context_hints.length) continue;
              if (inferred.some(x => x.tid === tid)) continue;
-             if (t.context_hints.some(h => typeof h === 'string' && wordBoundaryIncludes(lower, h.toLowerCase())) && inScope(tid, cat, groupId, serviceId || null)) {
+             if (t.context_hints.some(h => typeof h === 'string' && wordBoundaryIncludes(lower, h.toLowerCase())) && inScope(tid, cat, groupId, serviceId)) {
                  inferred.push({
                      tid,
                      source: 'context'
