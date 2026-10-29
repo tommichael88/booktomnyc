@@ -203,6 +203,9 @@ function project(src) {
     const seed = { display_name: g.display_name, category_id: stripId('cat', g.category_id), routing_archetype: p.entry_mode, real_action_ids: p.action_ids.map(S.act.i).sort(),
       real_component_ids: p.component_entity_ids.map(e => 'comp.' + stripId('ent', e)).sort(), component_id_to_service_ids: {}, real_symptom_ids: [], symptom_id_to_service_ids: {}, real_gaps: clone(p.real_gaps) };
     for (const l of p.component_links) seed.component_id_to_service_ids['comp.' + stripId('ent', l.entity_id)] = l.service_ids.map(x => stripId('svc', x)).sort();
+    // T191 (#194): what tapping a component already rules out -- {comp: {module: [option labels]}}; absent for a group that authors none
+    const ruled = p.component_links.filter(l => Array.isArray(l.rules_out) && l.rules_out.length);
+    if (ruled.length) seed.component_id_to_ruled_out_answers = Object.fromEntries(ruled.map(l => ['comp.' + stripId('ent', l.entity_id), Object.fromEntries(l.rules_out.map(r => [stripId('q', r.question_id), r.option_ids.map(o => labelOf(r.question_id, o))]))]).sort((x, y) => (x[0] < y[0] ? -1 : 1)));
     if (p.symptoms) { seed.real_symptom_ids = p.symptoms.map(x => x.id).sort(); for (const x of p.symptoms) seed.symptom_id_to_service_ids[x.id] = x.service_ids.map(y => stripId('svc', y)).sort(); }
     if (p.symptom_question_id) seed.symptom_module = stripId('q', p.symptom_question_id);
     if (p.ask_action_first !== undefined) seed.ask_action_first = p.ask_action_first;

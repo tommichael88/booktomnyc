@@ -16,6 +16,13 @@
  *   4. THE PAGE       the real picker, tapped: the TV Flatscreen cards offer the two walls the path leaves and the context holds the groups walked; a service reached any other way (a typed request, a direct
  *                     open) carries no path and asks all three walls; the price of an answer is the price with or without the path.
  *   5. NON-VACUITY    a resolver that rules nothing out, a context that drops the path, and a path that is only the last group each turn the real-page check red.
+ *
+ * STAGE B (T191, #194; the tile carrier -- Brick or Concrete Mirror / Frame / Shelf, Cabinets & Drawers Cabinet door / Drawer / Hinge, Doors Deadbolt): a COMPONENT TILE authors what tapping it rules out
+ * (source: group.picker.component_links[].rules_out; btnyc.json: routing_archetypes[group].component_id_to_ruled_out_answers = {comp: {module: [option labels]}}). Only what is plainly incompatible is listed (a
+ * Mirror is not a "Single shelf"); an answer that could still be true stays, so a question that is still real stays.
+ *   6. THE TILE       resolveTileRuledOutAnswers and the chain step read the list; the real picker, tapped, offers what the tile leaves; a tile that authors nothing (Door lock, Door handle) and a service opened
+ *                     directly offer everything; the catalog's own lists are well-formed (a real component, a question its service asks, labels that exist, never every option).
+ *   7. NON-VACUITY    a picker that drops the list, and a context that drops it, each turn the real-tile check red.
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -132,6 +139,88 @@ function load(db, transform) {
         for (const [name, html] of [['a resolver that rules nothing out', m1], ['a context that drops the path', m2], ['a path that is only the last group', m3]]) {
             const p = await boot({ db: DB0, html }), r = await tapTv(p, 'Flatscreen MountingAverage');
             check(`5.x ${name}: the TV Flatscreen card offers all three walls again`, r.ok && JSON.stringify(r.walls) === JSON.stringify(WALLS), { got: r.walls });
+            p.w.close();
+        }
+    }
+    // ===== 6. the tile (stage B) ===========================================================================================================================================================
+    const MODS = DB0.intake_modules;
+    {
+        const items = MODS.wall_mount_items, rules = { wall_mount_items: ['Single shelf', 'Multiple shelves', 'No such option'] };
+        check('6.1 a tile\'s list drops the options the question has, ignores a label it has not, and says nothing about a question it does not list',
+            JSON.stringify(E.resolveTileRuledOutAnswers('wall_mount_items', items, rules)) === JSON.stringify(['Single shelf', 'Multiple shelves']) && E.resolveTileRuledOutAnswers('weight', MODS.weight, rules).length === 0 && E.resolveTileRuledOutAnswers('wall_mount_items', items, undefined).length === 0, { got: E.resolveTileRuledOutAnswers('wall_mount_items', items, rules) });
+        check('6.2 a tile never rules out every option', E.resolveTileRuledOutAnswers('wall_mount_items', items, { wall_mount_items: labels(items) }).length === 0);
+        const chain = chainOf('shelf_mortar_mounting_buy_the_hour');
+        const out = E.orch_apply_path_facts({ selectedCategoryId: 'wall_mounting', tileRulesOut: { wall_mount_items: ['Single shelf', 'Multiple shelves'] } }, chain, {}, DB0);
+        const q = out.chain.find(m => (m.moduleKey || m.module) === 'wall_mount_items');
+        check('6.3 the chain step offers what the tile leaves (three options: a real question) and answers nothing', JSON.stringify(labels(q)) === JSON.stringify(['Picture frames or art', 'Heavy mirror (over 50 lbs)', 'Mixed items (shelves, frames, etc.)']) && Object.keys(out.answers).length === 0, { got: labels(q) });
+        const two = E.orch_apply_path_facts({ selectedCategoryId: 'wall_mounting', tileRulesOut: { wall_mount_items: ['Single shelf', 'Multiple shelves', 'Picture frames or art', 'Heavy mirror (over 50 lbs)'] } }, chain, {}, DB0);
+        check('6.4 a tile that leaves one option answers the question (and the catalog\'s own module is untouched)', two.answers.wall_mount_items === 'Mixed items (shelves, frames, etc.)' && labels(MODS.wall_mount_items).length === 5, { got: two.answers });
+        const both = E.orch_apply_path_facts({ selectedCategoryId: 'wall_mounting', pathGroupIds: ['wall_mounting_brick_or_concrete'], tileRulesOut: { wall_mount_items: ['Single shelf'] } }, chainOf('flatscreen_mounting_standard'), {}, DB0);
+        check('6.5 the groups and the tile are unioned: a Brick or Concrete path and a tile list drop what each rules out', labels(both.chain.find(m => (m.moduleKey || m.module) === 'wall_type')).join() === 'Brick or concrete' && both.answers.wall_type === 'Brick or concrete');
+    }
+    async function routeTo(page, groupId, labs, mod) {
+        const { w, doc } = page, DB = w.DB;
+        const tap = el => el.dispatchEvent(new w.Event('click', { bubbles: true }));
+        const tiles = () => [...doc.getElementById('serviceContainer').querySelectorAll('.group-tile, .service-tile, .svc-tile')];
+        const nm = t => clean((t.querySelector('.tile-name') || t).textContent).replace(/^[^A-Za-z]+/, '');
+        const g = DB.group.find(x => x.id === groupId);
+        w.S._lastRoute = null;
+        w.showSubGroups(g, g.category_id); await wait(60);
+        for (const l of labs) { const t = tiles().find(x => nm(x) === l) || tiles().find(x => nm(x).startsWith(l)); if (!t) return { ok: false }; tap(t); await wait(150); }
+        const r = w.S._lastRoute, q = r && (r.visibleChain || []).find(m => (m.moduleKey || m.module) === mod);
+        return { ok: !!r, route: r, options: q ? labels(q) : null, tile: r && r.context && r.context.tileRulesOut };
+    }
+    const ROUTES = [
+        ['wall_mounting_brick_or_concrete', ['Mirror'], 'wall_mount_items', ['Picture frames or art', 'Heavy mirror (over 50 lbs)', 'Mixed items (shelves, frames, etc.)']],
+        ['wall_mounting_brick_or_concrete', ['Frame'], 'wall_mount_items', ['Picture frames or art', 'Mixed items (shelves, frames, etc.)']],
+        ['wall_mounting_brick_or_concrete', ['Shelf'], 'wall_mount_items', ['Single shelf', 'Multiple shelves', 'Mixed items (shelves, frames, etc.)']],
+        ['minor_home_repairs_cabinets_drawers', ['Cabinet door'], 'cabinet_issue', ['Hinge is loose or squeaky', 'Cabinet face or door is scratched or scuffed', 'Cabinet door won\'t stay closed', 'Other (describe in notes)']],
+        ['minor_home_repairs_cabinets_drawers', ['Drawer'], 'cabinet_issue', ['Drawer sticks or doesn\'t slide smoothly', 'Other (describe in notes)']],
+        ['minor_home_repairs_cabinets_drawers', ['Hinge'], 'cabinet_issue', ['Hinge is loose or squeaky', 'Cabinet door won\'t stay closed', 'Other (describe in notes)']],
+        ['minor_home_repairs_doors', ['Fix / Repair', 'Deadbolt'], 'hardware_type', ['Deadbolt lock', 'Keypad (electronic keyless entry)', 'Smart lock (WiFi/Bluetooth-enabled)']],
+        ['minor_home_repairs_doors', ['Install', 'Deadbolt'], 'hardware_type', ['Deadbolt lock', 'Keypad (electronic keyless entry)', 'Smart lock (WiFi/Bluetooth-enabled)']],
+    ];
+    for (const [g, labs, mod, want] of ROUTES) {
+        const r = await routeTo(real, g, labs, mod);
+        check(`6.6 ${g.replace(/^(wall_mounting|minor_home_repairs)_/, '')} > ${labs.join(' > ')}: ${mod} offers what the tile leaves`, r.ok && JSON.stringify(r.options) === JSON.stringify(want), { got: r.options });
+    }
+    {
+        const lock = await routeTo(real, 'minor_home_repairs_doors', ['Fix / Repair', 'Door lock'], 'hardware_type'), handle = await routeTo(real, 'minor_home_repairs_doors', ['Fix / Repair', 'Door handle'], 'hardware_type');
+        check('6.7 a tile that authors nothing (Door lock, Door handle) offers every hardware type', lock.ok && handle.ok && lock.options.length === 7 && handle.options.length === 7, { lock: lock.options && lock.options.length, handle: handle.options && handle.options.length });
+        const svc = real.DB.services.find(x => x.id === 'shelf_mortar_mounting_buy_the_hour');
+        real.w.S._lastRoute = null; real.w.prefillSmartQuoteFromService(svc, 'wall_mounting'); await wait(150);
+        const r = real.w.S._lastRoute, q = r && (r.visibleChain || []).find(m => (m.moduleKey || m.module) === 'wall_mount_items');
+        check('6.8 the same service opened directly (no tile tapped) offers all five items', r && Object.keys(r.context.tileRulesOut || {}).length === 0 && q && labels(q).length === 5, { got: q && labels(q) });
+        const priceOf = (rules, ans) => { const rr = real.w.executeWorkflow(Object.assign(real.w.makeBookingContext('catalog', { selectedServiceId: svc.id, selectedCategoryId: 'wall_mounting', selectedGroupId: svc.ui_taxonomy.group_id, answers: ans }), { tileRulesOut: rules }), real.w.DB); return rr.quote && [rr.quote.laborEstimate, rr.quote.dispatchFee]; };
+        const ans = { wall_mount_items: 'Heavy mirror (over 50 lbs)' };
+        check('6.9 the price of an answer is the price with or without the tile\'s list', JSON.stringify(priceOf({ wall_mount_items: ['Single shelf', 'Multiple shelves'] }, ans)) === JSON.stringify(priceOf({}, ans)) && priceOf({}, ans) !== null, { with: priceOf({ wall_mount_items: ['Single shelf', 'Multiple shelves'] }, ans), without: priceOf({}, ans) });
+    }
+    {   // the catalog's own lists are well-formed (the source validator holds the source; this holds what the page reads)
+        const bad = [];
+        for (const [gid, ra] of Object.entries(DB0.routing_archetypes)) for (const [comp, byMod] of Object.entries(ra.component_id_to_ruled_out_answers || {})) {
+            if (!(ra.real_component_ids || []).includes(comp)) bad.push(`${gid}: ${comp} is not a component of the group`);
+            const svcs = (ra.component_id_to_service_ids || {})[comp] || [];
+            for (const [mod, labs] of Object.entries(byMod)) {
+                const m = MODS[mod];
+                if (!m) { bad.push(`${gid}/${comp}: no module ${mod}`); continue; }
+                const have = labels(m);
+                for (const l of labs) if (!have.includes(l)) bad.push(`${gid}/${comp}/${mod}: "${l}" is not an option`);
+                if (new Set(labs).size >= have.length) bad.push(`${gid}/${comp}/${mod}: rules out every option`);
+                if (!svcs.some(sid => (DB0.services.find(x => x.id === sid).intake_chain || []).some(st => (st.module || st) === mod || Object.values(st.then || {}).flat().includes(mod)))) bad.push(`${gid}/${comp}/${mod}: no service of the component asks it`);
+            }
+        }
+        const total = Object.values(DB0.routing_archetypes).reduce((n, ra) => n + Object.keys(ra.component_id_to_ruled_out_answers || {}).length, 0);
+        check('6.10 every authored list is well-formed: a real component, a question its service asks, labels that exist, never every option (and there are seven)', bad.length === 0 && total === 7, { bad, total });
+    }
+
+    // ===== 7. each defect turns the tile check red =======================================================================================================================================
+    {
+        const t1 = mutate(/rulesOut: \(isComponentFirst && ra\.component_id_to_ruled_out_answers\) \? ra\.component_id_to_ruled_out_answers\[rawId\] : undefined/, 'rulesOut: undefined');
+        const t2 = mutate(/tileRulesOut: \(tapped && tapped\.rulesOut && typeof tapped\.rulesOut === 'object'\) \? JSON\.parse\(JSON\.stringify\(tapped\.rulesOut\)\) : \{\},/, 'tileRulesOut: {},');
+        check('7.0 the two planted copies differ from the page (each pattern matched)', t1 !== HTML && t2 !== HTML);
+        for (const [name, html] of [['a picker that drops the tile\'s list', t1], ['a context that drops the tile\'s list', t2]]) {
+            const p = await boot({ db: DB0, html }), r = await routeTo(p, 'wall_mounting_brick_or_concrete', ['Mirror'], 'wall_mount_items');
+            check(`7.x ${name}: the Mirror card offers all five items again`, r.ok && r.options.length === 5, { got: r.options });
             p.w.close();
         }
     }

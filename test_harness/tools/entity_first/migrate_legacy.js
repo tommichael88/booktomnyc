@@ -462,7 +462,9 @@ function migrate(L, opts = {}) {
     const picker = { entry_mode: ra.routing_archetype, component_entity_ids: (ra.real_component_ids || []).map(c => 'ent.' + c.slice(5)) };
     // the curated component -> service map is the picker's, verbatim: a service has ONE owning entity (service.entity_id), and which services the picker lists under which component is presentation curation that
     // ownership does not imply (symptom-routed services are owned by the component but not listed under it; a component can list a service another entity owns)
-    picker.component_links = Object.entries(ra.component_id_to_service_ids || {}).filter(([, ss]) => ss.length).map(([c, ss]) => ({ entity_id: 'ent.' + c.slice(5), service_ids: [...ss].sort().map(x => 'svc.' + x) })).sort((x, y) => (x.entity_id < y.entity_id ? -1 : 1));
+    picker.component_links = Object.entries(ra.component_id_to_service_ids || {}).filter(([, ss]) => ss.length).map(([c, ss]) => Object.assign({ entity_id: 'ent.' + c.slice(5), service_ids: [...ss].sort().map(x => 'svc.' + x) },
+      // T191 (#194): what tapping the component already rules out ({module: [labels]} in btnyc.json) is {question_id, option_ids} in the source
+      ra.component_id_to_ruled_out_answers && ra.component_id_to_ruled_out_answers[c] ? { rules_out: Object.entries(ra.component_id_to_ruled_out_answers[c]).map(([mod, labels]) => ({ question_id: 'q.' + mod, option_ids: labels.map(l => optionId('q.' + mod, l)) })) } : {})).sort((x, y) => (x.entity_id < y.entity_id ? -1 : 1));
     if (ra.symptom_module) picker.symptom_question_id = 'q.' + ra.symptom_module;
     if (ra.ask_action_first !== undefined) picker.ask_action_first = ra.ask_action_first;
     if (ra.symptom_prompt !== undefined) picker.symptom_prompt = ra.symptom_prompt;

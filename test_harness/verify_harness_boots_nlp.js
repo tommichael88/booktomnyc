@@ -32,7 +32,7 @@ const acorn = require('acorn');
 const HARNESS = __dirname;
 const BASELINE_PATH = path.join(HARNESS, 'tools', 'unbooted_nlp_baseline.json');
 const ENTRY = new Set(['detectTagsNLP', 'detectIntentNLP', 'understandRequest', 'collectBookingContext_freeText', 'inferTagsFromContext', 'extractObject']);
-const PAGE_RUNNERS = /puppeteer|jsdom|_jsdom_helpers/;
+const PAGE_RUNNERS = /puppeteer|jsdom|_jsdom_helpers|_catalog_walk/;   // T191: _catalog_walk.js is the shared jsdom boot of the real page (verify_state_ignorance.js, verify_path_facts_reach_chain.js, tools/path_card_diff.js)
 const SELF = path.basename(__filename);
 
 /** What a source text does: { entry: it names an NLP entry point (identifier or string), boot: it calls initNlpSets (identifier) or drives a real page (a module named puppeteer / jsdom) }. */

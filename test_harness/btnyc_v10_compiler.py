@@ -531,7 +531,8 @@ def compile_formula_index(db: dict) -> Dict[str, dict]:
 # T170 (PENDING_DECISIONS #180): the hand-authored picker vocabulary of a group's routing_archetypes entry. The compiler owns the entry (it is rebuilt every run) but not these: they are the customer's own
 # words for the group's symptoms and for the services a customer who knows what they need asks for, and the SSOT is the one place they are written. Carried through unchanged, or the next compile
 # would drop the picker back to humanised ids ("Wont power on"). Everything else in the entry is derived or preserved exactly as before.
-AUTHORED_ARCHETYPE_KEYS = ("ask_action_first", "symptom_prompt", "symptom_tiles", "known_need_prompt", "known_need_tiles", "symptom_module")
+# T191 (PENDING_DECISIONS #194): component_id_to_ruled_out_answers -- what tapping a component already rules out ({comp: {module: [option labels]}}); authored in the SSOT source (group.picker.component_links[].rules_out), carried here unchanged.
+AUTHORED_ARCHETYPE_KEYS = ("ask_action_first", "symptom_prompt", "symptom_tiles", "known_need_prompt", "known_need_tiles", "symptom_module", "component_id_to_ruled_out_answers")
 
 
 def symptom_tile_options(db: dict, module_key: str) -> List[dict]:

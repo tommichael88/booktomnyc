@@ -568,7 +568,16 @@ function validate(src, opts = {}) {
   typed(src.vocabulary.nlp_default_fallback, '$.vocabulary.nlp_default_fallback', ['category'], 'cat');
   typed(src.vocabulary.nlp_default_fallback, '$.vocabulary.nlp_default_fallback', ['service_type'], 'act');
   R.groups.forEach((g, i) => { const p = g.picker; if (!lib.isObj(p)) { err('V-SCHEMA', `$.registries.groups[${i}].picker`, 'a group has a picker'); return; } if (!ENTRY_MODES.includes(p.entry_mode)) err('V-SCHEMA', `$.registries.groups[${i}].picker.entry_mode`, `entry_mode is one of ${ENTRY_MODES.join(', ')}`);
-    for (const l of p.component_links || []) if (!(p.component_entity_ids || []).includes(l.entity_id)) err('V-REF-DANGLING', `$.registries.groups[${i}].picker.component_links`, `${l.entity_id} is linked but is not one of the group's listed components`); });
+    for (const l of p.component_links || []) if (!(p.component_entity_ids || []).includes(l.entity_id)) err('V-REF-DANGLING', `$.registries.groups[${i}].picker.component_links`, `${l.entity_id} is linked but is not one of the group's listed components`);
+    // T191 (#194): what a component tile rules out names options that exist, and never every option of the question (a question with none left is no question)
+    (p.component_links || []).forEach((l, li) => (Array.isArray(l.rules_out) ? l.rules_out : []).forEach((r, ri) => {
+      const rp = `$.registries.groups[${i}].picker.component_links[${li}].rules_out[${ri}]`;
+      if (!lib.isObj(r) || typeof r.question_id !== 'string' || !Array.isArray(r.option_ids)) return;
+      const missing = r.option_ids.filter(oid => !optionById(r.question_id, oid));
+      if (missing.length) { err('V-REF-DANGLING', rp + '.option_ids', `${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} not an option of ${r.question_id}`); return; }
+      const os = optionsOf(questions.get(r.question_id)) || [];
+      if (os.length && new Set(r.option_ids).size >= os.length) err('V-PICKER-RULES-ALL', rp, `${l.entity_id} rules out every option of ${r.question_id}`);
+    })); });
   // a category lists exactly the groups that name it
   for (const c of R.categories) for (const gid of c.group_ids || []) { const g = decl.grp.get(gid); if (g && g.node.category_id !== c.id) err('V-REF-DANGLING', '$.registries.categories', `${c.id} lists ${gid}, whose category_id is ${g.node.category_id}`); }
 

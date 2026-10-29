@@ -75,6 +75,11 @@ mut('a label where an id belongs', ['V-REF-LABEL'], s => { servicesOf(s)[0].acti
 mut('label-keyed dependency term', ['V-REF-LABEL'], s => { const st = need(ownersOf(s).flatMap(o => o.intake.steps).find(x => x.depends_on.length), 'a gated step'); st.depends_on = [{ module: 'device_type', label: 'Laptop' }]; });
 mut('route_to answer keyed by module and label', ['V-REF-LABEL'], s => { const o = need(questionsOf(s).flatMap(q => q.options || []).find(x => x.route_to), 'a routing option'); o.route_to.answers = [{ device_type: 'Laptop' }]; });
 mut('tag answers as a label-keyed object', ['V-REF-LABEL'], s => { const t = need(s.registries.tags.find(x => Array.isArray(x.answers) && x.answers.length), 'a tag with answers'); t.answers = { device_type: ['Laptop'] }; });
+// T191 (#194): what a component tile rules out names options that exist, and never every option of the question
+const ruleLink = s => need(s.registries.groups.flatMap(g => (g.picker.component_links || [])).find(l => Array.isArray(l.rules_out) && l.rules_out.length), 'a component link that rules out an answer');
+mut('a tile rules out an option its question does not have', ['V-REF-DANGLING'], s => { ruleLink(s).rules_out[0].option_ids = ['no_such_option_of_this_question']; });
+mut('a tile rules out an option of a question that does not exist', ['V-REF-DANGLING'], s => { ruleLink(s).rules_out[0].question_id = 'q.no_such_question'; });
+mut('a tile rules out every option of its question', ['V-PICKER-RULES-ALL'], s => { const r = ruleLink(s).rules_out[0]; r.option_ids = need(optsOf(s, need(questionsOf(s).find(q => q.id === r.question_id), 'the question')), 'its options').map(o => o.id); });
 // V-SCOPE-*
 mut('question without entity_scope', ['V-SCOPE-MISSING'], s => { delete questionsOf(s)[0].entity_scope; });
 mut('question with an empty entity_scope', ['V-SCOPE-MISSING'], s => { questionsOf(s)[0].entity_scope = []; });

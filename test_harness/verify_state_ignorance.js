@@ -75,7 +75,7 @@ const walk = catalogWalk.walk;
 
 // ---- the one judgement -----------------------------------------------------------------------------------------------------------------------------------------------------
 // leaf = { entry, entity, cat, ownGroup, pathGroups[], tile:{label, dropped}|null, tags[], answers{}, open:[{ mod, options:[label] }] }
-function makeJudge(DB, tagValid) {
+function makeJudge(DB, tagValid, humanize) {
     const TAGS = DB.smart_tags || {}, MODS = DB.intake_modules || {};
     const family = {};                                                                  // tag -> the tags it is exclusive with (its family), itself included
     for (const t of Object.keys(TAGS)) {
@@ -91,6 +91,14 @@ function makeJudge(DB, tagValid) {
         const a = words(label), b = words(option); if (!a.length || !b.length) return false;
         for (let i = 0; i + a.length <= b.length; i++) if (a.every((x, j) => b[i + j] === x)) return true;
         return false;
+    };
+    // T191 (#194): a component tile that AUTHORS what it rules out (routing_archetypes[group].component_id_to_ruled_out_answers) is judged by that list, read, not by matching its name to an answer; the name rule
+    // below stays only for a tile that authors nothing, which is how an un-authored picker is still found.
+    const authoredFor = (group, label) => {
+        const m = ((DB.routing_archetypes || {})[group] || {}).component_id_to_ruled_out_answers;
+        if (!m) return null;
+        const k = Object.keys(m).find(c => clean(humanize ? humanize(c) : c) === clean(label));
+        return k ? m[k] : null;
     };
     return function judge(leaf) {
         const out = [], svc = (DB.services || []).find(s => s.id === leaf.entity);
@@ -116,8 +124,11 @@ function makeJudge(DB, tagValid) {
                     if (offered.length && !offered.includes(t)) rule(o.label, src, `group ${g} offers ${offered.join(', ')} and not ${t}`);
                 }
             }
+            // (3a) a tile that authors what it rules out: those answers must not be offered (the engine applies the list, orch_apply_path_facts)
+            const authored = leaf.tile ? authoredFor((leaf.pathGroups || [])[0], leaf.tile.label) : null;
+            if (authored) { for (const lab of authored[q.mod] || []) rule(lab, 'path', `the tapped tile "${leaf.tile.label}" rules out "${lab}" (authored)`); }
             // (3) a tile whose tap changed nothing, and whose label names exactly one answer
-            if (leaf.tile && leaf.tile.dropped) {
+            else if (leaf.tile && leaf.tile.dropped) {
                 const named = opts.filter(o => names(leaf.tile.label, o.label));
                 if (named.length === 1) { for (const o of opts) if (o !== named[0]) rule(o.label, 'path', `the tapped tile "${leaf.tile.label}" names "${named[0].label}" and the tap changed nothing`); }
                 else if (named.length > 1) for (const sib of leaf.tile.siblings || []) for (const o of opts) if (!named.includes(o) && names(sib, o.label)) rule(o.label, 'path', `the tapped tile "${leaf.tile.label}" names ${named.map(n => `"${n.label}"`).join(' and ')}, and the tile "${sib}" beside it names "${o.label}", so the tap did not choose it`);
@@ -202,7 +213,7 @@ function revealed(page, leaf) {
 // ---- the instances today ---------------------------------------------------------------------------------------------------------------------------------------------------
 const keyOf = i => [i.shape, i.entry, i.where, i.entity, i.question].join(' | ');
 async function findAll(page, opts = {}) {
-    const judge = makeJudge(page.DB, (t, cat, g) => { try { return !!page.w.tagValidForCategory(t, cat, g); } catch (e) { return false; } });
+    const judge = makeJudge(page.DB, (t, cat, g) => { try { return !!page.w.tagValidForCategory(t, cat, g); } catch (e) { return false; } }, c => { try { return page.w.humanizeComponentSymptomId(c); } catch (e) { return c; } });
     const found = new Map(); let leaves = 0, typed = 0, corpusSize = 0;
     const dupCards = [];
     if (!opts.skipWalk) for (const l of await walk(page, opts)) {
@@ -255,17 +266,28 @@ async function findAll(page, opts = {}) {
     check('3.0 the planted engine is a real mutation: the page really holds orch_apply_path_facts, and the copy differs from it', /function orch_apply_path_facts\(context, chain, answers, db\) \{/.test(HTML) && noPathHtml !== HTML, { expected: 'present and replaced', got: { present: /function orch_apply_path_facts/.test(HTML), differs: noPathHtml !== HTML } });
     const noPathPage = await boot({ html: noPathHtml });
     const dryGroup = ['wall_mounting_drywall_or_plaster'];
-    const dryNoPath = await findAll(noPathPage, { skipTyping: true, onlyGroups: dryGroup });
+    const stageGroups = ['wall_mounting_drywall_or_plaster', 'wall_mounting_brick_or_concrete', 'minor_home_repairs_cabinets_drawers', 'minor_home_repairs_doors'];
+    const noPathAll = await findAll(noPathPage, { skipTyping: true, onlyGroups: stageGroups });                                // the page as it was: what the walk finds in the four groups #194 touches
+    const dryNoPath = { found: new Map([...noPathAll.found].filter(([, i]) => /Drywall or Plaster/.test(i.where))) };
+    const plantedNoFacts = (() => { const db = JSON.parse(JSON.stringify(DB0)); for (const ra of Object.values(db.routing_archetypes)) delete ra.component_id_to_ruled_out_answers; return db; })();
+    const noFactsAll = await findAll(await boot({ db: plantedNoFacts }), { skipTyping: true, onlyGroups: stageGroups });         // the catalog with no tile authoring: the name rule finds the tiles again
     const has = (shape, re, mod, ent) => list.some(i => i.shape === shape && re.test(i.where) && (!mod || i.question === mod) && (!ent || i.entity === ent));
     // T191 (#194): the operator's first named instance is FIXED. The path the customer walked (Drywall or Plaster) rules "Brick or concrete" out of the wall-type question, and the engine no longer offers it; the class still finds it
     // when the engine stops reading the path (the planted copy), which is what makes "none on the real page" a finding and not a blind spot.
     check('3.1 FIXED, #194: Drywall or Plaster > TV Flatscreen asks the wall type without Brick or concrete among the answers (the real page: no instance; the page that stops reading the path: the four #189 instances, the class finds them)',
         !list.some(i => i.question === 'wall_type' && /Drywall or Plaster/.test(i.where)) && ['Tv > service flatscreen_mounting_standard', 'Tv > service flatscreen_mounting_with_hidden_cables', 'TV Flatscreen > Monitor', 'Cables \\(shown after cable_install_item\\)'].every(t => [...dryNoPath.found.values()].some(i => i.shape === SHAPES.path && i.question === 'wall_type' && new RegExp(t).test(i.where))),
         { expected: 'none on the real page, four on the planted one', got: { real: list.filter(i => i.question === 'wall_type' && /Drywall or Plaster/.test(i.where)).length, planted: [...dryNoPath.found.values()].filter(i => i.question === 'wall_type').map(i => i.where) } });
-    check('3.2 NAMED: Brick or Concrete > Mirror asks what kind of item is being mounted, though the customer tapped Mirror', has(SHAPES.path, /Brick or Concrete > Mirror/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour'), { expected: 'REDUNDANT-TRAVERSAL on wall_mount_items', got: list.filter(i => i.question === 'wall_mount_items').map(i => i.shape + ' ' + i.where).slice(0, 4) });
+    // T191 (#194, stage B): the second named instance is FIXED. A Mirror tile authors what it rules out (Single shelf, Multiple shelves); the card no longer offers them. Found again on the page that does not apply the list,
+    // and on the catalog that authors none (the name rule), so "none on the real page" is a finding.
+    const foundIn = (r, shape, re, mod, ent) => [...r.found.values()].some(i => i.shape === shape && re.test(i.where) && (!mod || i.question === mod) && (!ent || i.entity === ent));
+    check('3.2 FIXED, #194: Brick or Concrete > Mirror no longer offers the shelves the tapped tile rules out (the real page: no instance; the page that does not apply the list, and the catalog that authors none: found)',
+        !has(SHAPES.path, /Brick or Concrete > Mirror/, 'wall_mount_items') && foundIn(noPathAll, SHAPES.path, /Brick or Concrete > Mirror/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour') && foundIn(noFactsAll, SHAPES.path, /Brick or Concrete > Mirror/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour'),
+        { expected: 'none real, found on both planted', got: { real: list.filter(i => i.question === 'wall_mount_items').map(i => i.where), noPath: [...noPathAll.found.values()].filter(i => i.question === 'wall_mount_items').map(i => i.where), noFacts: [...noFactsAll.found.values()].filter(i => i.question === 'wall_mount_items').map(i => i.where) } });
 
     check('3.3 NAMED: the same wall typed ("mount a tv on drywall", "... on brick wall") is asked again though the customer said it', has(SHAPES.said, /mount a tv on drywall/, 'wall_type', 'flatscreen_mounting_standard') && has(SHAPES.said, /mount a tv on brick wall/, 'wall_type', 'flatscreen_mounting_standard'), { expected: 'REASKED-QUESTION on both typed walls', got: list.filter(i => i.entry === 'typed' && i.question === 'wall_type').map(i => i.where).slice(0, 4) });
-    check('3.4 it is a CLASS detector: it finds instances in groups the operator did not name (Cabinets & Drawers, Doors, Furniture Assembly; the Appliances ones were found here and fixed by #199)', ['Cabinets & Drawers', 'Doors'].every(g => list.some(i => i.entry === 'catalog' && i.where.includes('> ' + g))) && list.some(i => i.entity === 'furniture_assembly_flat_pack'), { expected: 'one in each', got: [...new Set(list.map(i => i.where.split(' > ').slice(0, 2).join(' > ')))] });
+    check('3.4 it is a CLASS detector: it finds instances in groups the operator did not name (Cabinets & Drawers, Doors, Furniture Assembly; the Appliances ones were found here and fixed by #199, the Cabinets & Drawers and Doors ones by #194 stage B: found on the catalog that authors no tile facts)',
+        ['Cabinets & Drawers', 'Doors'].every(g => [...noFactsAll.found.values()].some(i => i.entry === 'catalog' && i.where.includes('> ' + g))) && list.some(i => i.entity === 'furniture_assembly_flat_pack') && !list.some(i => i.entry === 'catalog' && /> (Cabinets & Drawers|Doors)/.test(i.where)),
+        { expected: 'one in each on the planted catalog, none on the real one', got: { real: [...new Set(list.map(i => i.where.split(' > ').slice(0, 2).join(' > ')))], noFacts: [...new Set([...noFactsAll.found.values()].map(i => i.where.split(' > ').slice(0, 2).join(' > ')))] } });
     // T174 (#199): the Washer and Refrigerator instances of #192 (a symptom tile names the answer, the card asks the question again) are gone because a tile now IS the answer; the class still finds the rest
     check('3.9 FIXED, #199: no appliance card asks the symptom question a tapped symptom tile already answered (the eight #192 instances left the baseline)', !list.some(i => i.entry === 'catalog' && i.where.includes('> Appliances') && i.shape === SHAPES.path), { expected: 'none in Appliances', got: list.filter(i => i.where.includes('> Appliances')).map(i => i.where).slice(0, 4) });
     {   // the ratchet is live: take one instance out of the baseline and it is reported new; invent one and it is reported stale
@@ -275,8 +297,8 @@ async function findAll(page, opts = {}) {
     }
 
     // ===== 3b. the second pass: examples the operator gave that the first pass could not see (2026-10-11 14:35 NY) ===============================================================
-    check('3.6 NAMED, second pass: Brick or Concrete > Shelf (the tile names two answers, the tiles beside it name the others) is found; Drywall or Plaster > TV Flatscreen > Cables (the wall type is asked once the cable question is answered) is found on the page that does not read the path, and not on the real one (#194)',
-        has(SHAPES.path, /Brick or Concrete > Shelf$/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour') && !has(SHAPES.path, /TV Flatscreen > Cables \(shown after cable_install_item\)/, 'wall_type', 'cable_management')
+    check('3.6 NAMED, second pass: Brick or Concrete > Shelf (#194 stage B: the Shelf tile authors that it rules out the frames and the heavy mirror) is found only on the planted catalog and page; Drywall or Plaster > TV Flatscreen > Cables (the wall type is asked once the cable question is answered) is found on the page that does not read the path, and not on the real one (#194)',
+        !has(SHAPES.path, /Brick or Concrete > Shelf$/, 'wall_mount_items') && foundIn(noFactsAll, SHAPES.path, /Brick or Concrete > Shelf$/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour') && foundIn(noPathAll, SHAPES.path, /Brick or Concrete > Shelf$/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour') && !has(SHAPES.path, /TV Flatscreen > Cables \(shown after cable_install_item\)/, 'wall_type', 'cable_management')
             && [...dryNoPath.found.values()].some(i => /TV Flatscreen > Cables \(shown after cable_install_item\)/.test(i.where) && i.question === 'wall_type' && i.entity === 'cable_management'),
         { expected: 'Shelf on the real page; Cables only on the planted one', got: list.filter(i => /Shelf|Cables/.test(i.where)).map(i => i.where) });
     {   // the one-answer-deep read is what finds Cables: the walk of the same group without it finds none there
@@ -285,8 +307,9 @@ async function findAll(page, opts = {}) {
         check('3.7 the question shown LATER is found only by reading a card one answer deep (the first view of the Cables card asks no wall type)', cables(without).length === 0 && cables(withIt).length === 1, { expected: '0 without the reveal pass, 1 with it', got: { without: cables(without).length, with: cables(withIt).length } });
     }
 
-    check('3.8 the tile rule does not over-reach: "Door lock" and "Door handle" (tiles that name no answer, and a Deadbolt tile beside them naming "Deadbolt lock") rule out nothing, because a tile\'s name can be broader than the answers beside it',
-        !list.some(i => /Doors > .*> Door (lock|handle)/.test(i.where)) && list.some(i => /Doors > .*> Deadbolt/.test(i.where)), { expected: 'Deadbolt found, Door lock / Door handle not', got: list.filter(i => /Doors >/.test(i.where)).map(i => i.where) });
+    check('3.8 the tile rule does not over-reach: "Door lock" and "Door handle" (tiles that name no answer, and a Deadbolt tile beside them naming "Deadbolt lock") rule out nothing, because a tile\'s name can be broader than the answers beside it; the Deadbolt tile authors its list (#194 stage B), so it is found only where nothing authors it',
+        !list.some(i => /Doors > .*> (Door (lock|handle)|Deadbolt)/.test(i.where)) && ![...noFactsAll.found.values()].some(i => /Doors > .*> Door (lock|handle)/.test(i.where)) && [...noFactsAll.found.values()].some(i => /Doors > .*> Deadbolt/.test(i.where)) && [...noPathAll.found.values()].some(i => /Doors > .*> Deadbolt/.test(i.where)),
+        { expected: 'Deadbolt found on the planted copies only, Door lock / Door handle never', got: { real: list.filter(i => /Doors >/.test(i.where)).map(i => i.where), noFacts: [...noFactsAll.found.values()].filter(i => /Doors >/.test(i.where)).map(i => i.where) } });
 
     // ===== 4. each shape fails on a planted defect ==================================================================================================================================
     const mutants = [];

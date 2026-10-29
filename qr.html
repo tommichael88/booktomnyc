@@ -3269,6 +3269,16 @@
             return dropped.length < options.length ? dropped : [];
         }
 
+        // resolveTileRuledOutAnswers -- LOGIC. The options of one question that the COMPONENT TILE the customer tapped rules out (#194, T191): an authored list, per component, of answers that cannot be true of it (a Mirror is not a
+        // "Single shelf"). `rulesOut` is {moduleKey: [option labels]} from routing_archetypes[group].component_id_to_ruled_out_answers. Only labels the question really has count; an answer that could still be true is simply not
+        // listed, so it stays; it never rules out every option. Pure: returns the labels to drop, [] when the tile says nothing about this question.
+        function resolveTileRuledOutAnswers(moduleKey, mod, rulesOut) {
+            const options = (mod && Array.isArray(mod.client_response)) ? mod.client_response : [];
+            const listed = (rulesOut && Array.isArray(rulesOut[moduleKey])) ? rulesOut[moduleKey] : [];
+            const dropped = options.map(/** @type {any} */ o => o.label).filter(/** @type {any} */ l => listed.includes(l));
+            return dropped.length < options.length ? dropped : [];
+        }
+
         // resolveBuilderConditionAnswer -- LOGIC. The condition the customer chose in the guided builder, as the intake answer it IS (#204, T174). The builder offers the labels of a condition
         // module's own options as its condition chips (bldGetConditionChoices, lower-cased), and the dynamic service that prices the job asks that same module, so a chosen chip IS the
         // customer's answer to that question and prices as one: the option's modifier, its checkout state (a diagnostic answer is a diagnostic quote). Before this the choice reached the price
@@ -4383,18 +4393,21 @@
             return newAnswers;
         }
 
-        // orch_apply_path_facts -- LOGIC. What the path the customer WALKED already says about the questions the chain asks (#194, P-CLIENT-NAVFACT). context.pathGroupIds is set by the picker's own taps (a typed request walked nothing and
-        // carries none). Each question's options lose the ones the path rules out (resolvePathRuledOutAnswers), and a question with exactly one option left is answered by the path -- unless the customer already answered it.
+        // orch_apply_path_facts -- LOGIC. What the path the customer WALKED, and the component tile they tapped, already say about the questions the chain asks (#194, P-CLIENT-NAVFACT). context.pathGroupIds and context.tileRulesOut are
+        // set by the picker's own taps (a typed request walked nothing and carries neither). Each question's options lose the ones the groups rule out (resolvePathRuledOutAnswers) and the ones the tile rules out
+        // (resolveTileRuledOutAnswers), and a question with exactly one option left is answered by the path -- unless the customer already answered it.
         // Pure: returns {chain, answers} (a new chain whose changed modules are copies; the catalog's own modules are never written) and sets nothing.
         function orch_apply_path_facts(context, chain, answers, db) {
             const path = Array.isArray(context && context.pathGroupIds) ? context.pathGroupIds : [];
-            if (!path.length) return { chain, answers };
+            const tile = (context && context.tileRulesOut && typeof context.tileRulesOut === 'object') ? context.tileRulesOut : {};
+            if (!path.length && !Object.keys(tile).length) return { chain, answers };
             const cat = context.selectedCategoryId || null;
             const nextAnswers = Object.assign({}, answers);
             const nextChain = chain.map(mod => {
                 const key = mod.moduleKey || mod.module;
-                const dropped = resolvePathRuledOutAnswers(key, mod, path, cat, db);
-                if (!dropped.length) return mod;
+                const byTile = resolveTileRuledOutAnswers(key, mod, tile);
+                const dropped = [...new Set([...resolvePathRuledOutAnswers(key, mod, path, cat, db), ...byTile])];
+                if (!dropped.length || dropped.length >= (mod.client_response || []).length) return mod;
                 const kept = (mod.client_response || []).filter(o => !dropped.includes(o.label));
                 if (kept.length === 1 && !nextAnswers[key]) nextAnswers[key] = kept[0].label;
                 return Object.assign({}, mod, { client_response: kept });
@@ -5084,6 +5097,8 @@
                 answers: resolveTappedAnswers(svc, tapped, DB),
                 // The groups the customer walked to this tap (#194): the picker's own taps pass them, a service reached any other way walked none.
                 pathGroupIds: (tapped && Array.isArray(tapped.pathGroupIds)) ? tapped.pathGroupIds.slice() : [],
+                // What the component tile the customer tapped rules out ({moduleKey: [labels]}; #194, authored): empty for a service tap, a symptom tap, or a component that authors none.
+                tileRulesOut: (tapped && tapped.rulesOut && typeof tapped.rulesOut === 'object') ? JSON.parse(JSON.stringify(tapped.rulesOut)) : {},
             });
         }
 
@@ -5383,6 +5398,9 @@
                 _negationOverride: null,
                 uncoveredServiceTypes: null,
                 answers: {},
+                // #194: what the customer's navigation already said. Every gateway carries the same keys (R-CLIENT-CONVERGE); only a catalog tap fills them, a typed request or an Other tile walked nothing.
+                pathGroupIds: [],
+                tileRulesOut: {},
             }, overrides || {});
         }
 
@@ -7937,7 +7955,7 @@
                 declaredSymptoms.offered.map(/** @param {any} label */ label => ({ id: label, label, tagIds: [], answers: { [declaredSymptoms.moduleKey]: label }, serviceIds: declaredSymptoms.serviceIds })) :
                 authoredTiles ?
                 authoredTiles.map(/** @param {any} t */ t => ({ id: t.id, label: t.label, tagIds: Array.isArray(t.tags) ? t.tags : [], answers: undefined, serviceIds: mapping?.[t.id] || [] })) :
-                ids.map(/** @param {any} rawId */ rawId => ({ id: rawId, label: humanizeComponentSymptomId(rawId), tagIds: [], answers: undefined, serviceIds: mapping?.[rawId] || [] }));
+                ids.map(/** @param {any} rawId */ rawId => ({ id: rawId, label: humanizeComponentSymptomId(rawId), tagIds: [], answers: undefined, serviceIds: mapping?.[rawId] || [], rulesOut: (isComponentFirst && ra.component_id_to_ruled_out_answers) ? ra.component_id_to_ruled_out_answers[rawId] : undefined })); // #194: what this component's tap already rules out (authored: group.picker.component_links[].rules_out)
             const prompt = create('div', {
                 class: 'picker-prompt',
                 text: authoredTiles && ra.symptom_prompt ? ra.symptom_prompt : (isComponentFirst ? 'Which part?' : "What's happening?"),
@@ -7955,7 +7973,7 @@
                 tile.innerHTML = `<span class="tile-name">${escapeHtml(label)}</span>`;
                 // T179: the tile that was tapped, for the resolver. A declared-symptom tile is drawn from the module's option LABEL, not from an id the picker knows: it carries no evidence and the page decides it.
                 const evidence = declaredSymptoms ? undefined : { kind: isComponentFirst ? 'component' : 'symptom', id: entry.id };
-                const handler = () => resolveComponentSymptomTap(entry.serviceIds, group, category_id, chosenAction, { tagIds: entry.tagIds, answers: entry.answers }, evidence);
+                const handler = () => resolveComponentSymptomTap(entry.serviceIds, group, category_id, chosenAction, { tagIds: entry.tagIds, answers: entry.answers, rulesOut: entry.rulesOut }, evidence);
                 tile.addEventListener('click', handler);
                 tile.addEventListener('keydown', e => {
                     if (e.key === 'Enter' || e.key === ' ') {
