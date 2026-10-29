@@ -64,9 +64,12 @@ console.log('=== 27 real services genuinely inherit; 16 documented + 27 mismatch
     // deliberate, explicit override), so the real, current count is 28 --
     // catalog growth, not a regression in the inheritance mechanism.
     check('exactly 28 services genuinely inherit (fields removed, not just matching)', inherited.length === 28);
+    // T190 (#137 S2 / #197): an inheriting service may carry ONE documented cap of its own (T135+ PRICING_GUIDE B7: the cap is set to the service's authored chain depth so real questions are
+    // not truncated). slow_drain_clearing is the case (6, with `_note_question_cap`). The inheritance mechanism is unchanged; the check is that a cap present is a documented one.
     for (const s of inherited) {
         check(`${s.id}: minimum_quote_confidence genuinely absent (not just equal)`, !('minimum_quote_confidence' in s.confidence_strategy));
-        check(`${s.id}: maximum_followup_questions genuinely absent`, !('maximum_followup_questions' in s.confidence_strategy));
+        check(`${s.id}: maximum_followup_questions genuinely absent, or set with its documented reason (_note_question_cap)`,
+            !('maximum_followup_questions' in s.confidence_strategy) || !!s.confidence_strategy._note_question_cap);
     }
 
     const documented = ['dishwasher_repair', 'computer_diagnostic', 'faucet_repair_drip'];
@@ -169,11 +172,18 @@ console.log('\n=== Real bugs found DURING verification: three separate, parallel
         return '';
     }
     check('orch_compute_confidence now calls resolveBaseConfidenceStrategy (qr.html)',
-        /resolveBaseConfidenceStrategy\(entity, null\)/.test(extractFnBodyEarly(qrHtmlContent, 'orch_compute_confidence')));
-    check('sqBuildCuratedIntake\'s maxQs/minConf now call resolveBaseConfidenceStrategy (qr.html)',
-        /const confStrat = resolveBaseConfidenceStrategy\(svc, null\);/.test(require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'))));
-    check('sqPrepareFlow\'s baseStrategy now calls resolveBaseConfidenceStrategy, not an inline duplicate (qr.html)',
-        /const baseStrategy = resolveBaseConfidenceStrategy\(svcForStrategy, dynDefForStrategy\);/.test(require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'))));
+        /resolveBaseConfidenceStrategy\(resolution\.entity, null\)/.test(extractFnBodyEarly(qrHtmlContent, 'orch_compute_confidence')));   // T190: the entity arrives on the resolution (T159 item B)
+    // T190 (#137 S2): sqBuildCuratedIntake is retired and sqPrepareFlow keeps no strategy of its own (T159 item B: one confidence resolver; it takes the session's confidence from
+    // resolveSessionConfidence). The sites that read a confidence strategy now are these three, and each calls the one resolver; no site keeps an inline copy of its fallback chain.
+    for (const [fn, re] of [['computeUnifiedQuote', /resolveBaseConfidenceStrategy\(svc, dynDef\)/], ['resolveSessionConfidence', /resolveBaseConfidenceStrategy\(state\._svc \|\| null,/], ['orch_max_followup_questions', /resolveBaseConfidenceStrategy\(/]]) {
+        check(`${fn} calls resolveBaseConfidenceStrategy, not an inline duplicate (qr.html)`, re.test(extractFnBodyEarly(qrHtmlContent, fn)));
+    }
+    check('the legacy builder that held an inline copy is gone (sqBuildCuratedIntake)', !/function\s+sqBuildCuratedIntake\s*\(/.test(qrHtmlContent));
+    {
+        const prep = extractFnBodyEarly(qrHtmlContent, 'sqPrepareFlow');
+        check('sqPrepareFlow takes the session confidence from resolveSessionConfidence and reads no confidence_strategy itself',
+            /resolveSessionConfidence\(S\)/.test(prep) && !/confidence_strategy/.test(prep));
+    }
 
     function extractFnBody(text, name) {
         const m = text.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
@@ -185,7 +195,9 @@ console.log('\n=== Real bugs found DURING verification: three separate, parallel
         }
         return '';
     }
-    for (const [file, fn] of [['orchestrator_engine.js', 'orch_compute_confidence'], ['AppController.js', 'sqBuildCuratedIntake'], ['AppController.js', 'sqPrepareFlow']]) {
+    // T190: the generated orchestrator_engine.js copy is checked where it exists (a clean checkout has none; the page above is the source). The AppController.js builders are retired.
+    for (const [file, fn] of [['orchestrator_engine.js', 'orch_compute_confidence']]) {
+        if (!fs.existsSync(path.join(REPO_ROOT, file))) continue;
         const content = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
         const body = extractFnBody(content, fn);
         check(`${fn} in ${file} contains the fix (synced, not just fixed in qr.html)`, /resolveBaseConfidenceStrategy\(/.test(body));
@@ -206,8 +218,8 @@ console.log('\n=== A2b (PHASE_PLAN C-12 / C-13): the resolver supplies every dec
     const entities = [...DB.services.map(s => [s.id, s, null]), ...dyn.map(([k, d]) => ['dynamic:' + k, null, d]), ['(no entity: the generic fallback)', null, null]];
 
     const holes = [];
-    entities.forEach(([name, svc, dd]) => { const r = sb.resolveBaseConfidenceStrategy(svc, dd); FIELDS.forEach(f => { if (!r[f]) holes.push(`${name}.${f}=${JSON.stringify(r[f])}`); }); });
-    check(`the resolver's record carries all four decision fields (truthy) for every one of the ${entities.length} entities the catalog can produce (${DB.services.length} services, ${dyn.length} dynamic, the no-entity fallback)`, holes.length === 0 && entities.length > 100, holes.slice(0, 4).join('; '));
+    entities.forEach(([name, svc, dd]) => { const r = sb.resolveBaseConfidenceStrategy(svc, dd); FIELDS.forEach(f => { if (r[f] === undefined || r[f] === null) holes.push(`${name}.${f}=${JSON.stringify(r[f])}`); }); });
+    check(`the resolver's record carries all four decision fields (defined: a legitimate 0 is a value, T164 item G) for every one of the ${entities.length} entities the catalog can produce (${DB.services.length} services, ${dyn.length} dynamic, the no-entity fallback)`, holes.length === 0 && entities.length > 100, holes.slice(0, 4).join('; '));
 
     const tierMismatch = DB.services.filter(svc => sb.computeUnifiedQuote({ svc, activeTagIds: [], answers: {}, qty: 1 }).variabilityTier !== sb.resolveBaseConfidenceStrategy(svc, null)._variability_tier).map(s => s.id);
     check('computeUnifiedQuote reports exactly the tier the resolver names, for every service (no caller-side default stands between them)', tierMismatch.length === 0, tierMismatch.slice(0, 4).join(', '));

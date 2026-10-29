@@ -97,7 +97,8 @@ function run() { return new Promise((resolve) => setTimeout(() => resolve(dom.wi
         const mods = svc.intake_chain.map(s => s.module);
         check('no longer uses the generic, plumbing-oriented "location" module', !mods.includes('location'));
         check('no longer uses the generic, washing-machine-oriented "symptom" module', !mods.includes('symptom'));
-        check('uses tech_problem_type instead (already correct for sibling tech_trouble services)', mods.includes('tech_problem_type'));
+        // T190 (#137 S2): computer_diagnostic's chain was re-authored since (device_type, computer_symptom and the per-device questions); the guard is that it is computer-specific, not the generic pair.
+        check('uses computer-specific modules (device_type, computer_symptom) instead', mods.includes('device_type') && mods.includes('computer_symptom'));
 
         w.sqRestart();
         w.prefillSmartQuoteFromService(svc, 'tech_trouble');
@@ -106,36 +107,9 @@ function run() { return new Promise((resolve) => setTimeout(() => resolve(dom.wi
         check('no longer asks about spinning/draining/leaking (washing machine symptoms)', !/spin|drain|Leaking water/.test(questionText));
     }
 
-    console.log('\n=== Bug 3: sqBuildCuratedIntake\'s live price preview correctly reflects modifier_ref-based fees ===');
-    {
-        // T118: was under_cabinet_light_install (electric_lighting) --
-        // electric_lighting no longer includes urgency as a category
-        // default (explicit operator direction: keep only on categories
-        // with genuine emergency scenarios), and sqBuildCuratedIntake's
-        // own price/label rendering is chain-derived, not a raw
-        // computeUnifiedQuote call on arbitrary answers -- confirmed
-        // directly that a service outside urgency's real chain no longer
-        // shows either the price change or the impact label for it.
-        // faucet_repair_drip (plumbing_help) still genuinely gets urgency.
-        const svc = w.DB.services.find(s => s.id === 'faucet_repair_drip');
-        w.sqRestart();
-        w.prefillSmartQuoteFromService(svc, 'plumbing_help');
-        w.S.answers = { faucet_type: 'Two-handle (hot and cold separate)' };
-        w.sqBuildCuratedIntake(svc, 'plumbing_help');
-        const priceBefore = doc.querySelector('.sq-ic-hdr-foot .sq-ic-price')?.textContent || '';
-
-        w.S.answers.urgency = 'Urgent - today or tomorrow';
-        w.sqBuildCuratedIntake(svc, 'plumbing_help');
-        const priceAfter = doc.querySelector('.sq-ic-hdr-foot .sq-ic-price')?.textContent || '';
-
-        check('selecting "Urgent" genuinely changes the displayed live price', priceBefore !== priceAfter);
-        check('the displayed price increases by exactly the real $50 urgency fee',
-            /\$100/.test(priceAfter) && /\+\$50/.test(priceAfter));
-
-        const impactLabels = [...doc.querySelectorAll('.sq-ic-fee')].map(el => el.textContent);
-        check('the per-answer "+$X" impact label is shown for the urgency answer (was always blank before this fix)',
-            impactLabels.some(t => t.includes('50')));
-    }
+    // T190 (#137 S2): Bug 3 is retired with its subject. It guarded sqBuildCuratedIntake's own inline price preview (the builder is gone; the curated card is drawn from the orchestrator's route, and
+    // the 74/74 parity sweep and verify_confidence_convergence.js hold route and card together) and it asserted the $50 'Urgent' answer on faucet_repair_drip's chain. Urgency is not asked
+    // directly any more (q.urgency is _never_ask_directly, #45: the fee reaches the price through the #emergency tag), so no service's chain carries it.
 
     console.log(`\n[reported UI bugs batch 1 verification] ${pass} passed, ${fail} failed (of ${pass + fail} checks)\n`);
     process.exit(fail > 0 ? 1 : 0);

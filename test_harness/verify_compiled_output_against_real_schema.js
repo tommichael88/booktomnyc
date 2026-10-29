@@ -45,7 +45,7 @@ const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'compiled-'));
 const outputPath = path.join(tmpdir, "compiled.json");
 
 try {
-    execSync(`python3 "${path.join(REPO_ROOT, 'btnyc_v10_compiler.py')}" ` +
+    execSync(`python3 "${path.join(REPO_ROOT, 'test_harness', 'btnyc_v10_compiler.py')}" ` +
          `"${path.join(REPO_ROOT, 'btnyc.json')}" "${outputPath}"`, { stdio: 'pipe' });
     check("the real compiler runs to completion", true);
 } catch (error) {

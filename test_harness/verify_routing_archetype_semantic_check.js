@@ -35,7 +35,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-function findFn(name) {
+function _cherryPickFn(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return null;
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -45,6 +45,10 @@ function findFn(name) {
     }
     return null;
 }
+// T190 (#138 I2/I3): the engine modules are loaded whole (T136, test_harness/_engine.js), so a helper added next to a cherry-picked function can never go missing from this sandbox;
+// a function the modules do not declare still goes through this test's own extractor.
+const { engineAwareFindFn } = require('./_engine.js');
+const findFn = engineAwareFindFn(_cherryPickFn);
 
 function findConstSets() {
     const m = QR_HTML.match(/const COMPONENT_MODULE_NAMES = new Set\(\[[\s\S]*?\]\);\s*const SYMPTOM_MODULE_NAMES = new Set\(\[[\s\S]*?\]\);/);
@@ -67,7 +71,7 @@ const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveS
 let code = "const ORCH_QTY_MODS = new Set(['item_count', 'count', 'hybrid_qty', 'global_quantity']);\n";
 code += "const KNOWN_UI_TEMPLATES = new Set(['self_quote', 'curated_card', 'chip_grid', 'legacy_flow', 'force_dynamic_fallback']);\n";
 code += findConstSets() + "\n\n";
-code += FNS.map(findFn).filter(Boolean).join('\n\n');
+code += [...new Set(FNS.map(findFn).filter(Boolean))].join('\n\n');
 
 const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
 sandbox.global = sandbox;
@@ -79,7 +83,7 @@ const os = require('os');
 
 const tmpCompiledPath = path.join(os.tmpdir(), `v8_compiled_for_semantic_test_${Date.now()}.json`);
 execFileSync('python3', [
-    path.join(REPO_ROOT, 'btnyc_v10_compiler.py'),
+    path.join(REPO_ROOT, 'test_harness', 'btnyc_v10_compiler.py'),
     path.join(REPO_ROOT, 'btnyc.json'),
     tmpCompiledPath,
 ]);

@@ -49,10 +49,14 @@ function findFnLocal(name) {
 const findFn = engineAwareFindFn(findFnLocal);
 
 console.log('=== The real, structural fix: applySSOTRules is now wired into the main render path, not just the legacy builder ===');
-const syncIdx = QR_HTML.indexOf('const render = () => {\n                        syncTagSynthesizedAnswers(S);');
-const nearbyText = syncIdx >= 0 ? QR_HTML.slice(syncIdx, syncIdx + 1500) : '';
-check('the main curated-card render path now calls applySSOTRules right after syncTagSynthesizedAnswers',
-    syncIdx >= 0 && nearbyText.includes('applySSOTRules()'));
+// T190 (#137 S2 / #138): this pinned `const render = () => { syncTagSynthesizedAnswers(S); applySSOTRules() ...` in the legacy curated-card render, which no longer exists. T170 (#178) moved the call to the
+// one place the words become tags -- the free-text gateway -- and the guided builder keeps its own call (sqBuildStep3). The pin now reads that both gateways apply the SSOT tag rules.
+const gatewayIdx = QR_HTML.indexOf('const ruled = resolveTagRules({');
+const gatewayText = gatewayIdx >= 0 ? QR_HTML.slice(gatewayIdx, gatewayIdx + 1500) : '';
+check('the free-text gateway applies the SSOT tag rules where the words become tags (resolveTagRules over the detected tags, the result carried into the context)',
+    gatewayIdx >= 0 && /detTagIds:\s*detectedTagIds/.test(gatewayText) && /detectedTagIds:\s*ruled\.detTagIds/.test(gatewayText));
+check('the guided builder still applies them (sqBuildStep3 -> applySSOTRules)',
+    /function sqBuildStep3\(\)\s*\{[\s\S]{0,200}applySSOTRules\(\);/.test(QR_HTML));
 
 console.log('\n=== The real, underlying bug this closes, confirmed directly ===');
 const HELPER_CONSTS = `

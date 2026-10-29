@@ -45,7 +45,7 @@ import sys
 import tempfile
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COMPILER_PATH = os.path.join(REPO_ROOT, "btnyc_v10_compiler.py")
+COMPILER_PATH = os.path.join(REPO_ROOT, "test_harness", "btnyc_v10_compiler.py")
 CATALOG_PATH = os.path.join(REPO_ROOT, "btnyc.json")
 SCHEMA_PATH = os.path.join(REPO_ROOT, "schema", "btnyc_schema.json")
 
@@ -191,6 +191,9 @@ expected_categories = {
     "dynamic_service_keys",
     "archetypes",
     "workflow",
+    # T190 (#138 I2): the compiler's validator gained these two categories after the list was written; it reports all ten.
+    "chain_branches",
+    "option_references",
 }
 actual_categories = set((v.get("by_category") or {}).keys())
 missing_categories = expected_categories - actual_categories
@@ -409,7 +412,7 @@ check(f"100% agreement across all {len(all_entities)} real entities "
 # ---------------------------------------------------------------------------
 section("§11 Module-classification integrity (disjointness + critical cases)")
 try:
-    sys.path.insert(0, REPO_ROOT)
+    sys.path.insert(0, os.path.join(REPO_ROOT, "test_harness"))
     import btnyc_v10_compiler as cmp_mod  # noqa: E402
 
     check("COMPONENT_MODULES and SYMPTOM_MODULES are genuinely disjoint",

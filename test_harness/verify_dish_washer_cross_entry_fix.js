@@ -65,7 +65,7 @@ function check(label, cond) {
     else { fail++; console.log('  \u2717 ' + label); }
 }
 
-function findFn(name) {
+function _cherryPickFn(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return '';
     let depth = 0, start = m.index, j = m.index + m[0].length - 1;
@@ -75,6 +75,10 @@ function findFn(name) {
     }
     return '';
 }
+// T190 (#138 I3): the engine modules are loaded whole (T136, test_harness/_engine.js) so a helper added next to a cherry-picked function can never go missing from this sandbox;
+// a function the modules do not declare still goes through this test's own extractor.
+const { engineAwareFindFn } = require('./_engine.js');
+const findFn = engineAwareFindFn(_cherryPickFn);
 const sandbox = { DB, window: { DB }, console };
 sandbox.global = sandbox;
 vm.createContext(sandbox);

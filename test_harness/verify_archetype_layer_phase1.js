@@ -87,7 +87,7 @@ console.log('\n=== Zero real effect on pricing/routing -- the actual Phase 1 saf
 console.log('\n=== The compiler\'s informational mismatch check runs and produces real, explainable output ===');
 {
     const tmpOut = '/tmp/archetype_phase1_test_output.json';
-    execFileSync('python3', [path.join(REPO_ROOT, 'btnyc_v10_compiler.py'), path.join(REPO_ROOT, 'btnyc.json'), tmpOut]);
+    execFileSync('python3', [path.join(REPO_ROOT, 'test_harness', 'btnyc_v10_compiler.py'), path.join(REPO_ROOT, 'btnyc.json'), tmpOut]);
     const compiled = JSON.parse(fs.readFileSync(tmpOut, 'utf8'));
     const report = compiled._archetype_mismatch_report;
     check('the mismatch report exists in compiler output', typeof report === 'object');
@@ -98,7 +98,9 @@ console.log('\n=== The compiler\'s informational mismatch check runs and produce
     // growth since this test was written, not a regression. The actual
     // bar this check protects (complete coverage, checked on the next
     // line) still holds.
-    check('every real, named service was checked (74)', report.real_services_checked === 74);
+    // T190 (#138 I2): the count is read from the catalog the compiler was given (76 today), not a literal that goes stale with every service added.
+const catalogServiceCount = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8')).services.length;
+check(`every real, named service was checked (${catalogServiceCount})`, report.real_services_checked === catalogServiceCount);
     check('zero services have no archetype (complete coverage confirmed via the compiler too)', report.services_with_no_archetype.length === 0);
     check('a real, non-trivial number of both matches and mismatches exist (confirms this is genuine signal, not a rubber stamp)',
         report.real_routing_matches > 40 && report.real_routing_mismatches.length > 5);

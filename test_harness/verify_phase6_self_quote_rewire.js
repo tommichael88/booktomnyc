@@ -29,7 +29,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-function findFn(name) {
+function _cherryPickFn(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return null;
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -39,14 +39,22 @@ function findFn(name) {
     }
     return null;
 }
+// T190 (#138 I3): the engine modules are loaded whole (T136, test_harness/_engine.js) so a helper added next to a cherry-picked function can never go missing from this sandbox;
+// a function the modules do not declare still goes through this test's own extractor.
+const { engineAwareFindFn } = require('./_engine.js');
+const findFn = engineAwareFindFn(_cherryPickFn);
 
 console.log('=== prefillSmartQuoteFromService genuinely calls the real orchestrator for the self-quote branch ===');
-check('the live code calls collectBookingContext_catalog in the self-quote branch', /const _selfQuoteCtx = collectBookingContext_catalog\(svc, category_id\);/.test(QR_HTML));
+// T190 (#138 I3): the call also carries the tapped answers now (`tapped`, the card tap that brought the customer here); the branch is otherwise as pinned.
+check('the live code calls collectBookingContext_catalog in the self-quote branch', /const _selfQuoteCtx = collectBookingContext_catalog\(svc, category_id(?:, tapped)?\);/.test(QR_HTML));
 check('the live code calls executeWorkflow with the real context', /const _selfQuoteRoute = executeWorkflow\(_selfQuoteCtx, DB\);/.test(QR_HTML));
 check('the live code renders from the real ResolvedRoute via renderSelfQuoteFromRoute', /renderSelfQuoteFromRoute\(_selfQuoteRoute, svc\);/.test(QR_HTML));
-check('the curated-card branch is deliberately untouched (sqBuildCuratedIntake still called for that path)', /sqBuildCuratedIntake\(svc\); \/\/ <- confidence accumulation lives here/.test(QR_HTML));
+// T190 (#138 I3): this pinned the legacy curated-intake builder as "deliberately untouched". The builder is retired: the curated branch runs through the same orchestrator (74/74 parity sweep), so the
+// pin now reads that the branch reaches the orchestrator route and the builder is gone.
+check('the curated-card branch runs through the same orchestrator (executeWorkflow -> sqRenderCuratedCard), and the legacy builder is retired',
+    /const _curatedRoute = executeWorkflow\(_curatedCtx, DB\);\s*sqRenderCuratedCard\(_curatedRoute,/.test(QR_HTML) && !/sqBuildCuratedIntake\(svc\)/.test(QR_HTML));
 
-console.log('\n=== The real, live ResolvedRoute correctly resolves all 3 real self-quote services ===');
+console.log('\n=== The real, live ResolvedRoute correctly resolves every real self-quote service ===');
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
     'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
@@ -74,9 +82,14 @@ vm.runInContext(code, sandbox, { filename: 'phase6_self_quote' });
 // (hardware_type, per PENDING_DECISIONS.md #35's own resolution) and
 // correctly no longer self-quotes. angle_stop_replacement is now the
 // one remaining service with this exact shape.
+// T190 (#138 I3): re-measured against the catalog (a sweep of all 76 services: 71 curated_card, 4 self_quote, 1 legacy_flow). angle_stop_replacement gained a real chain (plumbing_fixture,
+// angle_stop_condition) and led_bulb_upgrade asks its bulb count (T154, #108): neither self-quotes. The four that do are the appliance installs T164 (item G) left with no questions;
+// each opens at $70 / 80 min (pinned in the T188 golden master).
 const EXPECTED_SELF_QUOTE = {
-    angle_stop_replacement: 60,
-    led_bulb_upgrade: 20,
+    microwave_setup: 70,
+    washer_install: 70,
+    dishwasher_install: 70,
+    refrigerator_install: 70,
 };
 for (const [sid, expectedLabor] of Object.entries(EXPECTED_SELF_QUOTE)) {
     const svc = DB.services.find(s => s.id === sid);
@@ -95,7 +108,8 @@ const knobSvc = DB.services.find(s => s.id === 'cabinet_knob_or_pull_install');
 const knobCtx = sandbox.collectBookingContext_catalog(knobSvc, knobSvc.ui_taxonomy.category_id);
 const knobRoute = sandbox.executeWorkflow(knobCtx, DB);
 check('cabinet_knob_or_pull_install -> curated_card (has real install_type question + tiered_per_unit archetype)', knobRoute.uiTemplate === 'curated_card');
-check('cabinet_knob_or_pull_install -> laborEstimate: $140 (tiered flat rate, swap tier)', knobRoute.quote?.laborEstimate === 140);
+// T190 (#138 I3): was $140 (tiered flat rate, swap tier); the service is hardware_install_formula now and opens at $95 (the #112 visit minimum, T156; pinned by the T188 golden master).
+check('cabinet_knob_or_pull_install -> laborEstimate: $95 (hardware_install_formula, install_type not yet answered)', knobRoute.quote?.laborEstimate === 95);
 
 console.log('\n=== renderSelfQuoteFromRoute is a real, new function sourcing price from the route, not recomputing it ===');
 const renderFn = findFn('renderSelfQuoteFromRoute');

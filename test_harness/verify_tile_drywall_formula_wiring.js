@@ -55,7 +55,9 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-function findFn(name) {
+// T190 (#138 I1): the engine modules are loaded whole (T136), so a helper added next to a cherry-picked function (resolveQuantityUnits) can never go missing from this sandbox.
+const { engineAwareFindFn } = require('./_engine.js');
+function _cherryPickFn(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return null;
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -65,6 +67,7 @@ function findFn(name) {
     }
     return null;
 }
+const findFn = engineAwareFindFn(_cherryPickFn);
 
 console.log('=== Bug fix 1: formula_override exists and is correctly wired ===');
 const surfaceTypeMod = DB.intake_modules.surface_type;
@@ -130,7 +133,7 @@ console.log('\n=== Hand-verified, real end-to-end pricing math for a tile job wi
         'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
         'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
         'resolveServiceBadge', 'computeUnifiedQuote'];
-    const code = FNS.map(findFn).join('\n\n');
+    const code = [...new Set(FNS.map(findFn))].join('\n\n');
     const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
     sandbox.global = sandbox;
     vm.createContext(sandbox);

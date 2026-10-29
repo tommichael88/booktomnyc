@@ -89,7 +89,11 @@ check('the real, correct replacement exists', /rule\.keywords\.some\(kw => objWo
 console.log('\n=== Site 6 (estimateLiveConfidence, the live-typing preview): fixed for consistency ===');
 check('the live-typing preview no longer uses a bare .includes(kw) substring check',
     !/if \(kw && kw !== 'other' && t\.includes\(kw\)\)/.test(QR_HTML));
-check('the real, correct word-boundary replacement exists', /liveConfWordBoundary\(t, kw\)/.test(QR_HTML));
+// T190 (#138 I1): estimateLiveConfidence itself no longer exists (the live preview runs the one intent matcher, detectIntentNLP; the name survives only in comments), so the
+// replacement this check once pinned (liveConfWordBoundary) is gone with it. What the fix guaranteed -- no bare substring keyword test on the typing path -- is now held by the
+// matcher the preview uses: the module-scope word-boundary helper exists, and the intent matcher calls it for the keyword test.
+check('the live-typing preview has no function of its own to hold a bare substring test (it runs the one matcher)', !/function\s+estimateLiveConfidence\s*\(/.test(QR_HTML));
+check('the one matcher keeps the word-boundary replacement', /const wordBoundaryIncludes = \(text, term\) => !!wordBoundaryMatch\(text, term\);/.test(QR_HTML) && /const kwMatched = !!\(kw && wordBoundaryIncludes\(lower, kw\)\);/.test(QR_HTML));
 {
     // Verify the exact word-boundary logic in isolation (the function's
     // other real dependencies, like ACTIONS, aren't needed to validate

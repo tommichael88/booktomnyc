@@ -48,7 +48,7 @@ check(`loose_tile_replacement's real materials cost (with markup) is genuinely n
     tileMaterialsCost > 0);
 
 console.log('\n=== Labor price and materials estimate stay genuinely separate (no silent folding, no double-count) ===');
-function findFn(name) {
+function _cherryPickFn(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return null;
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -58,6 +58,10 @@ function findFn(name) {
     }
     return null;
 }
+// T190 (#138 I3): the engine modules are loaded whole (T136, test_harness/_engine.js) so a helper added next to a cherry-picked function can never go missing from this sandbox;
+// a function the modules do not declare still goes through this test's own extractor.
+const { engineAwareFindFn } = require('./_engine.js');
+const findFn = engineAwareFindFn(_cherryPickFn);
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
     'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
     'buildCheckoutStateModel', 'sqTagLabel', 'tagValidForCategory', 'resolveEngineKey',
@@ -69,8 +73,11 @@ vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'base_materials_e2e' });
 
 const tileResult = sandbox.computeUnifiedQuote({ svc: tileSvc, dynDef: null, activeTagIds: [], answers: {}, qty: 1 });
-check('loose_tile_replacement laborEstimate reflects base_price only (no materials folded in)',
-    tileResult.laborEstimate === Math.round(tileSvc.financial_engine.base_price));
+// T190 (#138 I3): this once read `laborEstimate === base_price`. T135+ (#65) moved the service to hourly + tile_repair_formula: base_price (35) is the hourly anchor and one tile prices at the
+// established $85 floor (30 base minutes + 5 per tile, recorded in the service's own note). What the assertion guards -- materials are not folded into the labor figure -- is read against the
+// formula's own number: a materials figure folded in would move it off $85.
+check('loose_tile_replacement laborEstimate is the formula floor ($85), with no materials folded in',
+    tileResult.laborEstimate === 85);
 
 console.log('\n=== toilet_install: default_estimates.materials remains a real, distinct customer-facing display range ===');
 const toiletSvc = DB.services.find(s => s.id === 'toilet_install');

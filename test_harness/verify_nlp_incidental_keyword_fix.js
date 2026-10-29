@@ -27,7 +27,7 @@ const REPO_ROOT = path.dirname(__dirname);
 const QR_HTML = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 const DB = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'btnyc.json'), 'utf8'));
 
-function findFn(text, name) {
+function _cherryPickFn(text, name) {
     const m = text.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return '';
     let depth = 0, start = m.index;
@@ -37,6 +37,10 @@ function findFn(text, name) {
     }
     return '';
 }
+// T190 (#138 I3): the engine modules are loaded whole (T136, test_harness/_engine.js) so a helper added next to a cherry-picked function can never go missing from this sandbox;
+// a function the modules do not declare still goes through this test's own extractor.
+const { engineAwareFindFn } = require('./_engine.js');
+const findFn = engineAwareFindFn(_cherryPickFn);
 
 function loadSandbox(qrText, db) {
     const sandbox = { DB: db, SERVICE_DATA: db, window: { DB: db }, console };

@@ -1888,6 +1888,15 @@
                  group: 'electric_lighting_fans'
              },
              {
+                 // T190: "light bulb" holds the word "light", so the fixtures rule below took it
+                 // first and the dedicated Bulbs group below was never reached. Listed first so the
+                 // two-word phrase wins; a bare "bulb" is not listed here (it reaches the per-category
+                 // rule, as batch 2 left it), and a fixture/chandelier/pendant/sconce is untouched.
+                 keywords: ['light bulb'],
+                 cat: 'electric_lighting',
+                 group: 'electric_lighting_bulbs'
+             },
+             {
                  keywords: ['light', 'fixture', 'chandelier', 'pendant', 'sconce'],
                  cat: 'electric_lighting',
                  group: 'electric_lighting_light_fixtures'

@@ -38,7 +38,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-function findFn(name) {
+function _cherryPickFn(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) throw new Error(`Could not find function: ${name}`);
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -47,6 +47,10 @@ function findFn(name) {
         else if (QR_HTML[j] === '}') { depth--; if (depth === 0) return QR_HTML.slice(start, j + 1); }
     }
 }
+// T190 (#138 I3): the engine modules are loaded whole (T136, test_harness/_engine.js) so a helper added next to a cherry-picked function can never go missing from this sandbox;
+// a function the modules do not declare still goes through this test's own extractor.
+const { engineAwareFindFn } = require('./_engine.js');
+const findFn = engineAwareFindFn(_cherryPickFn);
 
 const FNS = ['syncTagSynthesizedAnswers', '_isModVisible',
     'resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
@@ -107,8 +111,11 @@ const namedNo = runNamedService('No');
 const namedYes = runNamedService('Yes (Requires membrane)');
 check('named service: membrane answer still correctly raises the price (unchanged, pre-existing behavior)',
     namedYes.laborCalc > namedNo.laborCalc);
-check('named service: the real $30 fee is sourced from "answer" (the generic mechanism), not "formula" -- confirms no double-counting was introduced',
-    namedYes.feeBreakdown.some(f => f.fee === 30 && f.source === 'answer'));
+// T190 (#138 I3): this read the fee as sourced from "answer" (the generic per-answer loop). T135+ (#65) moved loose_tile_replacement onto tile_repair_formula, whose own branch now carries the
+// waterproof_area modifier -- the service's own note records it ("handled by the formula's own equivalent branch ... confirmed still firing"). The guard it is for -- one $30 entry, not two --
+// is the next check; here the source is the formula, and the generic mechanism must NOT also add it.
+check('named service: the real $30 fee is sourced from "formula" (T135+: the tile formula carries the modifier), and no "answer" entry duplicates it',
+    namedYes.feeBreakdown.some(f => f.fee === 30 && f.source === 'formula') && !namedYes.feeBreakdown.some(f => f.fee === 30 && f.source === 'answer'));
 check('named service: exactly one membrane-related fee entry, not double-counted',
     namedYes.feeBreakdown.filter(f => f.fee === 30).length === 1);
 

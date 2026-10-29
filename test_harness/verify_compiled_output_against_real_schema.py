@@ -76,7 +76,7 @@ print("\n=== The real, current compiler's actual, live output genuinely validate
 with tempfile.TemporaryDirectory() as tmpdir:
     output_path = os.path.join(tmpdir, "compiled.json")
     result = subprocess.run(
-        ["python3", os.path.join(REPO_ROOT, "btnyc_v10_compiler.py"),
+        ["python3", os.path.join(REPO_ROOT, "test_harness", "btnyc_v10_compiler.py"),
          os.path.join(REPO_ROOT, "btnyc.json"), output_path],
         capture_output=True, text=True,
     )

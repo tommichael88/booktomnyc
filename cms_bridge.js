@@ -63,7 +63,7 @@ const FUNCTION_NAMES = [
     'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars',
     'applyPricingFormula',
     'computeUnifiedQuote',
-    'resolveCheckoutState',
+    'buildCheckoutStateModel',   // T189: was resolveCheckoutState; renamed at T150 (it builds the presentation model from an already-resolved key)
     'sqTagLabel',
     'tagValidForCategory',
     'resolveEngineKey',
@@ -105,9 +105,27 @@ const ARROW_CONST_NAMES = ['_SKIP_WORDS', '_SVC_VERBS', '_STOP_PREPS', '_CLAUSE_
 const PLAIN_CONST_NAMES = ['_QTY_WORD_MAP', '_DIMENSION_PATTERN'];
 
 function findPlainConst(src, constName) {
-    const pattern = new RegExp(`const\\s+${constName}\\s*=[^\\n]*;`);
+    const pattern = new RegExp(`const\\s+${constName}\\s*=`);
     const m = pattern.exec(src);
-    return m ? m[0] : null;
+    if (!m) return null;
+    // T189: the literal may span lines (_QTY_WORD_MAP is a multi-line object in modules/nlp_engine.js). Read to the end of the statement: the first ';' at depth 0
+    // outside strings, comments and regex literals' brackets is not attempted -- the constants named in PLAIN_CONST_NAMES are a regex literal and an object literal of
+    // words and numbers, so brace/bracket/paren depth plus quotes is enough, and an unterminated statement is an error, not a guess.
+    let i = m.index + m[0].length, depth = 0, q = null;
+    for (; i < src.length; i++) {
+        const c = src[i];
+        if (q) { if (c === '\\') i++; else if (c === q) q = null; continue; }
+        if (c === '"' || c === "'" || c === '`') { q = c; continue; }
+        if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== '\n') i++; continue; }
+        if (c === '/' && depth === 0 && /=\s*$/.test(src.slice(m.index, i))) { // a regex literal: skip to its closing '/' then its flags
+            i++; while (i < src.length && src[i] !== '/') { if (src[i] === '\\') i++; else if (src[i] === '[') { while (i < src.length && src[i] !== ']') { if (src[i] === '\\') i++; i++; } } i++; }
+            continue;
+        }
+        if (c === '{' || c === '[' || c === '(') depth++;
+        else if (c === '}' || c === ']' || c === ')') depth--;
+        else if (c === ';' && depth === 0) return src.slice(m.index, i + 1);
+    }
+    return null;
 }
 
 function findArrowConst(src, constName) {
@@ -157,72 +175,17 @@ function extractEngine(qrHtmlPath) {
     if (!fs.existsSync(qrHtmlPath)) {
         throw new Error(`qr.html not found at ${qrHtmlPath}`);
     }
-    // T158: the page as a browser runs it -- its external <script src> modules (modules/*.js) in place. The URL-to-file rule is stated once, in _page.js.
-    const html = require('./test_harness/_page.js').readPage(qrHtmlPath);
-
-    // Fix for bug #1 above: search EVERY <script>...</script> block, not
-    // just the first one. computeUnifiedQuote and most of the engine live
-    // in the second block; resolveDynamicService/resolveEngineKey/
-    // resolveServiceBadge live in the first. A future qr.html refactor that
-    // consolidates these into one script block (see CHANGELOG_v9.3.md's
-    // note on this exact split) won't break this — it'll just find
-    // everything in one block instead of two.
-    const scriptBlocks = [];
-    const scriptRe = /<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g;
-    let sm;
-    while ((sm = scriptRe.exec(html)) !== null) {
-        scriptBlocks.push(sm[1]);
-    }
-    if (scriptBlocks.length === 0) {
-        throw new Error('No <script> blocks found in qr.html');
-    }
-    const allScripts = scriptBlocks.join('\n');
-
-    const blocks = [];
-    const missing = [];
-
-    // v9.5: plain literal consts (regex/object literals) needed by extractQty.
-    for (const name of PLAIN_CONST_NAMES) {
-        const block = findPlainConst(allScripts, name);
-        if (block === null) {
-            missing.push(name);
-        } else {
-            blocks.push(block);
-        }
-    }
-
-    // v9.5: arrow-const accessor helpers (_SKIP_WORDS etc.) needed by the
-    // NLP analysis functions — extracted first so they're defined before
-    // any function below that calls them.
-    for (const name of ARROW_CONST_NAMES) {
-        const block = findArrowConst(allScripts, name);
-        if (block === null) {
-            missing.push(name);
-        } else {
-            blocks.push(block);
-        }
-    }
-
-    for (const fn of FUNCTION_NAMES) {
-        const block = findFunctionBlock(allScripts, fn);
-        if (block === null) {
-            missing.push(fn);
-        } else {
-            blocks.push(block);
-        }
-    }
-    if (missing.length) {
-        throw new Error(
-            `Could not find the following function(s)/const(s) in qr.html: ${missing.join(', ')}. ` +
-            `qr.html's structure may have changed — update FUNCTION_NAMES/ARROW_CONST_NAMES in cms_bridge.js, ` +
-            `or check whether these were renamed/removed (see qr.html's own CHANGELOG entries).`
-        );
-    }
-
-    const engineCode = blocks.join('\n\n') + `
-module.exports = { ${FUNCTION_NAMES.join(', ')} };
+    // T189 (PENDING_DECISIONS #138, I1): the three engine modules WHOLE, exactly as the page runs them, not a hand-kept list of functions found by name. The list went stale every
+    // time a helper was added or renamed (resolveCheckoutState became buildCheckoutStateModel at T150; _QTY_WORD_MAP became a multi-line literal; resolveQuantityUnits and
+    // wordBoundaryIncludes were never on it), and each time the bridge failed with "X is not defined" for a reason unrelated to the quote it was asked for. test_harness/_engine.js
+    // does this for forty tests (R-DEFECT-STALE-SANDBOX): it reads the assembled page (the external modules in place, _page.js), takes the pricing, NLP and orchestrator modules
+    // whole, and exports every top-level function onto the sandbox global. The bridge exports the same functions on module.exports, where its callers look.
+    const { engine } = require('./test_harness/_engine.js');
+    const e = engine(path.resolve(qrHtmlPath));
+    const names = [...e.names];
+    return e.wrapper + `
+;(function () { for (const n of ${JSON.stringify(names)}) { if (typeof globalThis[n] === 'function') module.exports[n] = globalThis[n]; } })();
 `;
-    return engineCode;
 }
 
 function loadEngineFromStandaloneModule(pricingEngineJsPath, config) {
@@ -434,9 +397,10 @@ function main() {
     sandbox.S._svc = svc || null;
     let checkoutState;
     try {
-        checkoutState = engine.resolveCheckoutState(quote.checkoutStateKey, quote.laborEstimate);
+        // T189: the page calls buildCheckoutStateModel(key, labor, service, timeSwitched) (qr.html, the quote panel); the bridge passes the same four.
+        checkoutState = engine.buildCheckoutStateModel(quote.checkoutStateKey, quote.laborEstimate, svc || null, quote.checkoutStateSource === 'added_time');
     } catch (err) {
-        console.error(`resolveCheckoutState threw: ${err.message}`);
+        console.error(`buildCheckoutStateModel threw: ${err.message}`);
         process.exit(1);
     }
 

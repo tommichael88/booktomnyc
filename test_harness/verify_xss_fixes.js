@@ -13,8 +13,7 @@
  * This test does two things:
  *   1. Confirms the escapeHtml() utility itself correctly neutralizes a set
  *      of real XSS payloads (tag injection, attribute breakout).
- *   2. Confirms the two fixed call sites (sqBuildCuratedIntake's
- *      builderDesc note, sqBuildAdlib's ctxBadge) actually USE escapeHtml()
+ *   2. Confirms the fixed call sites (ctxBadge; the legacy builderDesc site retired with the builder, T190) actually USE escapeHtml()
  *      — i.e. checks the real source text for the call, not just that the
  *      helper function works in isolation, since a helper existing
  *      unused doesn't fix anything.
@@ -31,12 +30,14 @@ function check(label, condition) {
 }
 
 // ── Part 1: escapeHtml() itself neutralizes real payloads ──────────────────
-function escapeHtml(str) {
-    if (str == null) return '';
-    return String(str).replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
-}
+// T190 (#137 S2): the test used to carry its own COPY of escapeHtml, so it could pass while the page's function was broken (DEFECT-STALE-COPY). It now runs the page's own function,
+// cut out of the assembled page the browser runs (a `const` arrow: from its declaration to the closing `};` at the same indent).
+const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
+const escapeHtml = (() => {
+    const m = qrHtml.match(/^([ \t]*)const escapeHtml = \(str\) => \{[\s\S]*?^\1\};/m);
+    if (!m) throw new Error("verify_xss_fixes: could not find the page's escapeHtml");
+    return new Function(m[0] + '\nreturn escapeHtml;')();
+})();
 
 const PAYLOADS = [
     '<img src=x onerror=alert(1)>',
@@ -60,56 +61,21 @@ for (const input of PAYLOADS) {
 
 // ── Part 2: the real fixed call sites actually call escapeHtml() ───────────
 console.log('\n=== Fixed call sites actually use escapeHtml() (not just helper-exists) ===');
-
-const qrHtml = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
-const appController = fs.readFileSync(path.join(REPO_ROOT, 'AppController.js'), 'utf8');
-const uiRenderer = fs.readFileSync(path.join(REPO_ROOT, 'UIRenderer.js'), 'utf8');
-
-check('qr.html: builderDesc (sqBuildCuratedIntake) calls escapeHtml(S.desc)',
-    /builderDesc\s*=.*escapeHtml\(S\.desc\)/.test(qrHtml));
+// T190 (#137 S2): builderDesc lived in the legacy curated-intake builder, retired (the curated card is drawn from the orchestrator's route). ctxBadge is the surviving site. The page is read
+// whole, so the check does not depend on the generated AppController.js / UIRenderer.js copies.
 check('qr.html: ctxBadge calls escapeHtml(text)',
-    /pp\.innerHTML\s*=.*escapeHtml\(text\)/.test(qrHtml));
-check('qr.html: buildPreview\'s esc() escapes the full 5-character set (&<>"\')',
-    /const esc\s*=\s*s\s*=>\s*s\.replace\(\/\[&<>"'\]\/g/.test(qrHtml));
-
-console.log('\n=== v9.5: escapeHtml() XSS protection (new architecture inlines icons, escapeHtml is the gate) ===');
-check('qr.html: escapeHtml is defined and handles the full XSS set',
-    /const escapeHtml\s*=/.test(qrHtml) && /&amp;.*&lt;.*&gt;/.test(qrHtml));
-check('qr.html: escapeHtml handles single-quote (attribute breakout)',
-    /&#39;/.test(qrHtml));
-{
-    function escapeHtmlLocal(str) {
-        if (str == null) return '';
-        return String(str).replace(/[&<>"']/g, c => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[c]));
-    }
-    // renderIcon is inlined in the new architecture; verify the escapeHtml function
-    // itself is correct (same behavior the old renderIcon delegated to)
-    check('renderIcon: legitimate tabler icon class is safe (no escaping needed for ti-*)', /ti ti-/.test(qrHtml));
-    check('renderIcon: malicious input would be escaped by escapeHtml', !/[<>]/.test(escapeHtmlLocal('<img src=x onerror=alert(1)>')));
-    check('renderIcon: attribute-breakout attempt cannot escape via escapeHtml',
-        !escapeHtmlLocal('ti " onmouseover="alert(1)').includes('" onmouseover="alert(1)"'));
-}
-
-check('AppController.js: builderDesc calls escapeHtml(S.desc)',
-    /builderDesc\s*=.*escapeHtml\(S\.desc\)/.test(appController));
-check('AppController.js: ctxBadge calls escapeHtml(text)',
-    /pp\.innerHTML\s*=.*escapeHtml\(text\)/.test(appController));
-
-check('UIRenderer.js: declares the shared escapeHtml() utility',
-    /const escapeHtml\s*=\s*\(str\)\s*=>/.test(uiRenderer));
-check('UIRenderer.js: escapeHtml() escapes the full 5-character set (&<>"\')',
-    /replace\(\/\[&<>"'\]\/g/.test(uiRenderer));
+    /pp\.innerHTML\s*=[\s\S]{0,260}escapeHtml\(text\)/.test(qrHtml));
+check('qr.html: escapeHtml is declared once, as the shared utility', (qrHtml.match(/^[ \t]*const escapeHtml\s*=\s*\(str\)\s*=>/gm) || []).length === 1);   // a declaration at the start of a line; one mention sits inside a comment
+check('escapeHtml escapes all five characters (& < > " \') and maps null/undefined to empty',
+    escapeHtml('&<>"\'') === '&amp;&lt;&gt;&quot;&#39;' && escapeHtml(null) === '' && escapeHtml(undefined) === '');
+check('escapeHtml encodes & exactly once per pass (no double-encoding inside one call)', escapeHtml('<') === '&lt;' && escapeHtml('&lt;') === '&amp;lt;');
 
 // ── Part 3: no OTHER unescaped interpolation of the known-risky fields ─────
-// (a coarse regression guard — if a future edit reintroduces e.g.
-// `+ S.desc +` or `${S._location}` directly inside an innerHTML-bound
-// template literal without escapeHtml(), this won't catch every possible
-// new instance, but it catches the exact two patterns already found once.)
-console.log('\n=== No raw (un-escaped) interpolation reintroduced at the fixed sites ===');
-check('qr.html: builderDesc ternary no longer assigns raw S.desc',
-    !/builderDesc\s*=\s*\([^)]*\)\s*\?\s*S\.desc\s*:/.test(qrHtml));
+// A coarse regression guard: every line of the page that assigns innerHTML and names one of the three user-typed fields (S.desc, S._location, S._sizeHint -- all NLP-extracted from the raw
+// SmartQuote textarea) must also call escapeHtml on that line. It cannot catch every possible new instance; it catches the pattern already found once.
+console.log('\n=== No raw (un-escaped) interpolation of the user-typed fields into innerHTML ===');
+const risky = qrHtml.split('\n').filter(l => /innerHTML\s*(\+?=)/.test(l) && /\bS\.(desc|_location|_sizeHint)\b/.test(l));
+check(`every innerHTML assignment that names S.desc / S._location / S._sizeHint escapes it (${risky.length} such line(s))`, risky.every(l => /escapeHtml\(/.test(l)));
 check('qr.html: ctxBadge no longer concatenates raw `text` without escapeHtml',
     !/pp\.innerHTML\s*=\s*\([^)]*\)\s*\+\s*text;/.test(qrHtml));
 

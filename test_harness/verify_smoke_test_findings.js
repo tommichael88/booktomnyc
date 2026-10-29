@@ -57,7 +57,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-function findFn(name) {
+function _cherryPickFn(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return null;
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -67,6 +67,10 @@ function findFn(name) {
     }
     return null;
 }
+// T190 (#138 I3): the engine modules are loaded whole (T136, test_harness/_engine.js) so a helper added next to a cherry-picked function can never go missing from this sandbox;
+// a function the modules do not declare still goes through this test's own extractor.
+const { engineAwareFindFn } = require('./_engine.js');
+const findFn = engineAwareFindFn(_cherryPickFn);
 const code = ['detectIntentNLP', 'extractQty', 'extractObject', 'wordBoundaryIncludes', 'isInflectionOnly', 'normStype']
     .map(findFn).join('\n\n');
 const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console, _QTY_WORD_MAP: {}, _DIMENSION_PATTERN: /\b\d+\s*-?\s*(?:foot|feet|ft|inch|inches|in|cm|centimeters?|meters?|yards?|lbs?|pounds?|kg)\b/gi };

@@ -66,7 +66,9 @@ function analyze(text) {
 console.log('=== The dangerous word-bag fallback is genuinely removed from the live code ===');
 check('the old, order-blind fallback is no longer real, executable code (only mentioned in an explanatory comment)',
     !/const kwParts = kwl\.split/.test(QR_HTML));
-check('the real, exact-substring-only check is in place', /const ctxMatched = ctxKws\.some\(kw => lower\.includes\(kw\.toLowerCase\(\)\)\);/.test(QR_HTML));
+// T190 (#138 I1): the exact-substring check this once pinned (lower.includes) became the module's word-boundary matcher (T166, wordBoundaryIncludes) -- strictly narrower, never an
+// order-blind word bag. Either form is the real, whole-phrase test; the behavioural cases below hold the order-sensitivity.
+check('the real, whole-phrase check is in place (word-boundary match of the authored phrase)', /const ctxMatched = ctxKws\.some\(kw => (?:wordBoundaryIncludes\(lower, kw\.toLowerCase\(\)\)|lower\.includes\(kw\.toLowerCase\(\)\))\);/.test(QR_HTML));
 
 console.log('\n=== The real, exact failing case from the analysis is fixed ===');
 {

@@ -50,7 +50,9 @@ function findFn(name) {
 }
 
 console.log('=== The live code genuinely calls the real orchestrator function, not a re-implementation ===');
-check('sqBuildCuratedIntake calls orch_compose_intake_chain directly', /const allMods = orch_compose_intake_chain\(\{\}, \{ entity: svc \}, DB\);/.test(QR_HTML));
+// T190 (#137 S2): sqBuildCuratedIntake is retired; the curated card is composed by the orchestrator, which calls the one chain composer (orch_compose_intake_chain) itself.
+check('the orchestrator composes the intake chain through orch_compose_intake_chain (the legacy builder, sqBuildCuratedIntake, is gone)',
+    /intakeChain = orch_compose_intake_chain\(context, resolution, db\);/.test(QR_HTML) && !/function sqBuildCuratedIntake\s*\(/.test(QR_HTML));
 check('the old, manual force-module injection loop is genuinely removed', !/SSOT: S\._forceModules \(set in sqPrepareFlow from/.test(QR_HTML));
 
 const code = [findFn('_dependsOnAsLabels'), findFn('_resolveIntakeChain'), findFn('orch_depends_on_as_labels'), findFn('orch_compose_intake_chain')].join('\n\n');

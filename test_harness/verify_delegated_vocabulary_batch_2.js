@@ -93,9 +93,13 @@ check('no real, dedicated painting service exists anywhere in the catalog (confi
 console.log('\n=== Real, pre-existing "bulb" group-routing inconsistency found and fixed ===');
 const QR_HTML = require('./_page.js').readPage(path.join(REPO_ROOT, 'qr.html'));
 check('the cross-category rule set no longer sends "bulb" to the less-precise light_fixtures group',
-    !/keywords: \['light','fixture','chandelier','pendant','sconce','bulb'\]/.test(QR_HTML));
+    !/keywords:\s*\['light',\s*'fixture',\s*'chandelier',\s*'pendant',\s*'sconce',\s*'bulb'\]/.test(QR_HTML));
 check('the per-category rule correctly still sends bulb to the dedicated electric_lighting_bulbs group',
-    /keywords: \['bulb','light bulb','lamp'\], group: 'electric_lighting_bulbs'/.test(QR_HTML));
+    /keywords:\s*\['bulb',\s*'light bulb',\s*'lamp'\],\s*group:\s*'electric_lighting_bulbs'/.test(QR_HTML));
+// T190: the phrase "light bulb" holds the word "light", so the fixtures rule took it before the Bulbs group was ever reached
+// (the check above, on the data alone, could not see that). The two-word phrase is listed ahead of the fixtures rule.
+check('"light bulb" is listed ahead of the fixtures rule in the cross-category set',
+    /keywords:\s*\['light bulb'\],\s*cat:\s*'electric_lighting',\s*group:\s*'electric_lighting_bulbs'[\s\S]{0,60}\},\s*\{[\s\S]{0,400}keywords:\s*\['light',\s*'fixture'/.test(QR_HTML));
 
 console.log(`\n[Delegated vocabulary batch 2 verification] ${pass} passed, ${fail} failed (of ${pass + fail} checks)\n`);
 process.exit(fail > 0 ? 1 : 0);

@@ -34,7 +34,7 @@ function check(label, condition) {
     else { fail++; console.log(`  ✗ ${label}`); }
 }
 
-function findFn(name) {
+function _cherryPickFn(name) {
     const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
     if (!m) return null;
     let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -44,6 +44,10 @@ function findFn(name) {
     }
     return null;
 }
+// T190 (#138 I3): the engine modules are loaded whole (T136, test_harness/_engine.js) so a helper added next to a cherry-picked function can never go missing from this sandbox;
+// a function the modules do not declare still goes through this test's own extractor.
+const { engineAwareFindFn } = require('./_engine.js');
+const findFn = engineAwareFindFn(_cherryPickFn);
 
 const FNS = ['resolveDynamicService', 'resolveBaseConfidenceStrategy', 'resolveServiceCheckoutStateKey', 
     'applyLiveConfidenceEscalation', 'resolveSkillTier', 'priceAddedTime', 'splitAddedTimeDollars', 'applyPricingFormula',
@@ -74,14 +78,19 @@ const toiletRoute = sandbox.executeWorkflow(toiletCtx, DB);
 check('toilet_install routes to curated_card (NOT chip_grid)', toiletRoute.uiTemplate === 'curated_card');
 check('toilet_install entity resolved correctly', toiletRoute.entity?.id === 'toilet_install');
 check('toilet_install intake chain includes its real named modules', toiletRoute.intakeChain.some(m => (m.moduleKey || m.module) === 'toilet_style_pref'));
-check('toilet_install intake chain includes urgency (plumbing_help\'s own category default -- access was removed catalog-wide, T118 operator-directed, since reachability isn\'t a meaningful, price-changing question for residential handyman work)', toiletRoute.intakeChain.some(m => (m.moduleKey || m.module) === 'urgency'));
+// T190 (#138 I3): the condition line of this check had been lost (the `check(` swallowed the next console.log as its second argument, so it could only fail). It documents two rulings: access was
+// removed catalog-wide (T118, operator-directed) and urgency was rescoped (#45), so neither is a category default any more. The chain is the service's own two modules, and no access question.
+check('toilet_install intake chain carries no access question (removed catalog-wide, T118) and no category-default urgency (rescoped, #45): exactly its own removal + toilet_style_pref',
+    toiletRoute.intakeChain.map(m => m.moduleKey || m.module).join(',') === 'removal,toilet_style_pref');
 
 console.log('\n=== Genuine self-quote / bypass cases still classify correctly after the matrix fix ===');
-// led_bulb_upgrade: genuinely bypass_intake + qty-only chain -> self_quote (unchanged)
+// led_bulb_upgrade: T154 (operator ruling on #108, 'LED yes') -- its three count bands each move price and time, so it is NOT a self-quote any more: it asks 'How many light bulbs need attention?'
+// and prices $20 / $35 / $50 by the answer (T190 #138 I3: this check read the earlier self_quote route).
 const ledSvc = DB.services.find(s => s.id === 'led_bulb_upgrade');
 const ledCtx = sandbox.collectBookingContext_catalog(ledSvc, ledSvc.ui_taxonomy.category_id);
 const ledRoute = sandbox.executeWorkflow(ledCtx, DB);
-check('led_bulb_upgrade -> self_quote (qty-only chain, bypass_intake, no real pricing question)', ledRoute.uiTemplate === 'self_quote');
+check('led_bulb_upgrade -> curated_card (a count chain whose bands move price, T154), opening on the smallest band: $20',
+    ledRoute.uiTemplate === 'curated_card' && ledRoute.quote?.laborEstimate === 20 && (ledRoute.intakeChain || []).map(m => m.moduleKey || m.module).join(',') === 'item_count_template::light bulbs');
 
 // cabinet_knob_or_pull_install: was self_quote (bypass_intake) before pricing_archetype:
 // tiered_per_unit and the real install_type question were authored. Now correctly routes
@@ -92,7 +101,8 @@ const knobSvc = DB.services.find(s => s.id === 'cabinet_knob_or_pull_install');
 const knobCtx = sandbox.collectBookingContext_catalog(knobSvc, knobSvc.ui_taxonomy.category_id);
 const knobRoute = sandbox.executeWorkflow(knobCtx, DB);
 check('cabinet_knob_or_pull_install -> curated_card (pricing_archetype:tiered_per_unit + real install_type question)', knobRoute.uiTemplate === 'curated_card');
-check('cabinet_knob_or_pull_install laborEstimate is $140 (tiered flat price, swap tier)', knobRoute.quote?.laborEstimate === 140);
+// T190 (#138 I3): was $140 (tiered_per_unit, swap tier). T135+ moved the service to hardware_install_formula; opening the card with nothing answered it prices at $95 (the #112 visit minimum, T156; pinned by the T188 golden master).
+check('cabinet_knob_or_pull_install laborEstimate is $95 (hardware_install_formula, install_type not yet answered)', knobRoute.quote?.laborEstimate === 95);
 const showerSvc = DB.services.find(s => s.id === 'shower_head_replacement');
 const showerCtx = sandbox.collectBookingContext_catalog(showerSvc, showerSvc.ui_taxonomy.category_id);
 const showerRoute = sandbox.executeWorkflow(showerCtx, DB);
