@@ -71,7 +71,11 @@ const services = ['cabinet_knob_or_pull_install', 'angle_stop_replacement', 'led
 // wired with a real question (hardware_type, per PENDING_DECISIONS.md
 // #35's own resolution) and correctly no longer self-quotes.
 // T154: led_bulb_upgrade is now false (operator ruling "LED yes": its quantity moves the price, so the route asks the bulb count instead of self-quoting)
-const expected = [false, true, false, false, false, false, false];
+const expected = [false, true, false, false, false, false, false];   // [1] is overridden below (T194)
+// T194 (#138 L1): angle_stop_replacement is the one entry here that was expected to self-quote because its chain was hybrid_qty only. The catalog has since given it real questions
+// ([plumbing_fixture, angle_stop_condition]; T119 / #35), and no service self-quotes now (#113), so it is `false` as the catalog has it. What the `true` guarded is the engine's rule, held on
+// the shape: a copy of the catalog with that service planted as hybrid_qty only still self-quotes.
+expected[1] = false;
 services.forEach((sid, i) => {
     const svc = DB.services.find(s => s.id === sid);
     const ctx = sandbox.collectBookingContext_catalog(svc, svc.ui_taxonomy.category_id);
@@ -79,6 +83,17 @@ services.forEach((sid, i) => {
     const isSelfQuote = route.uiTemplate === 'self_quote';
     check(`${sid} -> isSelfQuoting: ${expected[i]} (expected ${expected[i]})`, isSelfQuote === expected[i]);
 });
+{
+    const DBplanted = JSON.parse(JSON.stringify(DB));
+    const svcP = DBplanted.services.find(s => s.id === 'angle_stop_replacement');
+    svcP.intake_chain = [{ module: 'hybrid_qty', then: {} }];
+    const sbP = { DB: DBplanted, SERVICE_DATA: DBplanted, window: { DB: DBplanted }, console };
+    sbP.global = sbP;
+    vm.createContext(sbP);
+    for (const f of ['pricing_engine.js', 'orchestrator_engine.js']) vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, f), 'utf8'), sbP, { filename: f });
+    const rP = sbP.executeWorkflow(sbP.collectBookingContext_catalog(svcP, svcP.ui_taxonomy.category_id), DBplanted);
+    check('a service whose chain is hybrid_qty only (planted) -> isSelfQuoting: true (the rule the old angle_stop_replacement expectation guarded)', rP.uiTemplate === 'self_quote');
+}
 
 console.log(`\n[Self-quote bug fix verification] ${pass} passed, ${fail} failed (of ${pass+fail} checks)\n`);
 process.exit(fail > 0 ? 1 : 0);

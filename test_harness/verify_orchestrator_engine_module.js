@@ -70,10 +70,18 @@ console.log('\n=== Real, end-to-end test: the self-quote path (T26) ===');
     // and correctly no longer self-quotes either. angle_stop_replacement
     // is now the one remaining service with the original shape this
     // check verifies.
-    const svc = DB.services.find(s => s.id === 'angle_stop_replacement');
-    const ctx = sandbox.collectBookingContext_catalog(svc, svc.ui_taxonomy.category_id);
-    const route = sandbox.executeWorkflow(ctx, DB);
-    check('angle_stop_replacement correctly resolves to self_quote', route.uiTemplate === 'self_quote');
+    // T194 (#138 L1): angle_stop_replacement has real questions now ([plumbing_fixture, angle_stop_condition]; T119 / #35) and no catalog service is shaped "quantity only" (#113: none
+    // self-quotes). The engine's rule is held on the shape: a copy of the catalog with that service planted as hybrid_qty only, run through THIS module (loaded standalone, as above).
+    const DBplanted = JSON.parse(JSON.stringify(DB));
+    const svcP = DBplanted.services.find(s => s.id === 'angle_stop_replacement');
+    svcP.intake_chain = [{ module: 'hybrid_qty', then: {} }];
+    const sbP = { DB: DBplanted, SERVICE_DATA: DBplanted, window: { DB: DBplanted }, console };
+    sbP.global = sbP;
+    vm.createContext(sbP);
+    vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, 'pricing_engine.js'), 'utf8'), sbP, { filename: 'pricing_engine' });
+    vm.runInContext(fs.readFileSync(enginePath, 'utf8'), sbP, { filename: 'orchestrator_engine' });
+    const route = sbP.executeWorkflow(sbP.collectBookingContext_catalog(svcP, svcP.ui_taxonomy.category_id), DBplanted);
+    check('a service whose chain is hybrid_qty only (planted) correctly resolves to self_quote', route.uiTemplate === 'self_quote');
     check('the route is genuinely valid (passes RouteValidator)', route.valid !== false);
 }
 
@@ -109,16 +117,18 @@ const parityResult = checkParity({
         'orch_apply_intake_bypass_rules', 'readRoutePath', 'evaluateInvariant',
         'describeInvariantFailure', 'validateRoute', 'catastrophicFallbackRoute',
         'collectBookingContext_catalog', 'collectBookingContext_otherTile',
-        'collectBookingContext_freeText', 'makeBookingContext', '_resolveIntakeChain',
-        // v9.6: the bld* Guided Builder family, newly extracted here for
-        // the first time (PENDING_DECISIONS.md item #16) -- added
-        // directly to this list so it has real, automated drift
-        // protection from the moment it exists, not left to be
-        // remembered later the way syncTagSynthesizedAnswers was (T85).
-        'bldGetObjectChoices', 'bldGetSpecificChoices', 'bldGetConditionChoices', 'bldGroupToKeyword'],
+        'collectBookingContext_freeText', 'makeBookingContext'],
 });
 const parityOk = printReport(parityResult, 'orchestrator_engine.js');
 if (!parityOk) fail += parityResult.stale.length;
+
+// T194 (#138 L1): two names this list carried are not in this module, so they could never be "current" in it. `_resolveIntakeChain` is the pricing layer's (pricing_engine.js holds it, and the
+// chain is composed from there); it is checked against the page under that module's name. The bld* Guided Builder family (`bldGetObjectChoices`, `bldGetSpecificChoices`, `bldGetConditionChoices`,
+// `bldGroupToKeyword`, listed here in v9.6 as "newly extracted") exists only in the page: it was never given a module in this repository, so there is no second copy to drift from. If the family
+// is extracted, add its names to the list of the module that holds it.
+const parityIntake = checkParity({ modulePath: path.join(REPO_ROOT, 'pricing_engine.js'), functionNames: ['_resolveIntakeChain'] });
+const parityIntakeOk = printReport(parityIntake, 'pricing_engine.js');
+if (!parityIntakeOk) fail += parityIntake.stale.length;
 
 console.log(`\n[orchestrator_engine.js standalone module] ${pass} passed, ${fail} failed (of ${pass + fail} checks)\n`);
 process.exit(fail > 0 ? 1 : 0);
