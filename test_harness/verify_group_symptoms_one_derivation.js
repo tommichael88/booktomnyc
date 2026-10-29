@@ -242,7 +242,7 @@ function mutantHtml(label, fn) {
   { const h = mutantHtml('the picker ignores the declaration', src => src.replace("const declaredSymptoms = isSymptomFirst ? resolveGroupSymptoms(group.id, DB) : null;", 'const declaredSymptoms = null;'));
     const r = await pickerLeg(h, DB0, ['minor_home_repairs_appliances_dishwasher', 'minor_home_repairs_appliances_microwave']);
     check('  -> the tiles are the hand-kept ids again, and the check names both groups (' + r.tiles.length + ' of 2)', r.tiles.length === 2); }
-  { const h = mutantHtml('a tap drops its answer', src => src.replace('{ tagIds: entry.tagIds, answers: entry.answers }', '{ tagIds: entry.tagIds }'));
+  { const h = mutantHtml('a tap drops its answer', src => src.replace('{ tagIds: entry.tagIds, answers: entry.answers, rulesOut: entry.rulesOut }', '{ tagIds: entry.tagIds, rulesOut: entry.rulesOut }'));
     const r = await pickerLeg(h, DB0, ['minor_home_repairs_appliances_refrigerator']);
     check('  -> the card asks the question again, and the check names every tap (' + r.taps.length + ' of 6)', r.taps.length === 6); }
   { const h = mutantHtml('the builder ignores the declaration', src => src.replace('const declared = groupId ? resolveGroupSymptoms(groupId, DB) : null;', 'const declared = null;'));
