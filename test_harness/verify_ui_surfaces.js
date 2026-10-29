@@ -15,6 +15,8 @@ try { puppeteer = require('puppeteer'); } catch (e) {
 }
 const path = require('path');
 const fs = require('fs');
+// T190 (#138 I4): puppeteer 22 removed page.waitForTimeout; a plain timer does the same job.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const REPO_ROOT = path.dirname(__dirname);
 const HTML_PATH = path.join(REPO_ROOT, 'qr.html');
@@ -225,22 +227,27 @@ async function runScenarios() {
     check('Furniture selection UI opened', true);
 
     // Brand
-    const brandTiles = await page.$$('#furniture-step-content .group-tile');
-    if (brandTiles.length === 0) throw new Error('Brand tiles not found');
-    await brandTiles[0].click();
-    await waitForExist(page, '#furniture-step-content .group-tile');
+    // T190 (#138 I4): the tiles are chosen by what they say (IKEA, then Wardrobe), not by position (the first brand is "Generic" now), and a brand with a single furniture type goes straight to the search box,
+    // so the type step is taken only if it is offered.
+    const tileByText = async (re) => {
+      const tiles = await page.$$('#furniture-step-content .group-tile');
+      if (tiles.length === 0) throw new Error('No tiles offered');
+      for (const t of tiles) { if (re.test(await page.evaluate(el => el.textContent, t))) return t; }
+      return tiles[0];
+    };
+    await tileByText(/IKEA/i).then(t => t.click());
     check('Brand selection worked', true);
 
     // Type
-    const typeTiles = await page.$$('#furniture-step-content .group-tile');
-    if (typeTiles.length === 0) throw new Error('Type tiles not found');
-    await typeTiles[0].click();
+    await page.waitForFunction(() => document.querySelector('.furniture-search-input') || document.querySelector('#furniture-step-content .group-tile'), { timeout: 8000 });
+    if (!(await page.$('.furniture-search-input'))) { await tileByText(/Wardrobe/i).then(t => t.click()); }
     await waitForExist(page, '.furniture-search-input');
     check('Type selection worked', true);
 
     // Search and add
-    await page.type('.furniture-search-input', 'PAX');
-    await page.waitForTimeout(500);
+    // T190 (#138 I4): this service offers the Generic brand's Bed type ("Bed Frame"); "PAX" belongs to the PAX wardrobe service and finds nothing here.
+    await page.type('.furniture-search-input', 'Bed');
+    await sleep(500);
     await waitForExist(page, '.furniture-result-item');
     const addBtns = await page.$$('.furniture-result-item .furniture-add-btn');
     if (addBtns.length === 0) throw new Error('No add buttons found');
@@ -262,7 +269,8 @@ async function runScenarios() {
   // ─── SCENARIO 3: Guided Builder ──────────────────────────────────────
   await runScenario('Guided Builder', async (page, check) => {
     await resetHome(page);
-    await page.type('#sqDescIn', 'fix a broken drawer');
+    // T190 (#138 I4): typing "fix a broken drawer" is a confident request now (the affirmation card follows, scenario 4); the guided builder is what the one button opens when there is nothing typed yet
+    // ("Build it step by step").
     await click(page, '#sqUnifiedActionBtn');
     await waitFor(page, '#sqBuilder');
     check('Guided builder opened', true);
@@ -273,7 +281,7 @@ async function runScenarios() {
     await waitFor(page, '#sqBuilderPrompt:not(:empty)');
     const objectChips = await page.$$('#sqBuilderChips .sq-b-chip');
     await objectChips[0].click();
-    await page.waitForTimeout(300);
+    await sleep(300);
     const specificPrompt = await page.$('#sqBuilderPrompt:not(:empty)');
     if (specificPrompt) {
       const specChips = await page.$$('#sqBuilderChips .sq-b-chip');
@@ -302,11 +310,14 @@ async function runScenarios() {
     }
     if (!locClicked && locChips.length) await locChips[0].click();
 
-    await waitFor(page, '#sqBuilder', { hidden: true });
+    // T190 (#138 I4): `waitFor` asks for visible:true, which contradicts hidden:true on current puppeteer; the builder hides itself when its last chip is taken. The chips offered change with the catalog, so the
+    // description is checked for the shape the builder composes ("I need to fix my <object> because ... in my <place>"), not for a fixed object (the builder asks a group step before the object now, so the first chip of step two is not the object). The one button's label
+    // is "Describe your job step by step" while the overlay is up, so the second check is that the flow moved on to Scope & conditions.
+    await page.waitForSelector('#sqBuilder', { hidden: true, timeout: 5000 });
     const desc = await page.$eval('#sqDescIn', el => el.value);
-    check('Builder synthesised description', desc && desc.includes('fix') && desc.includes('drawer'));
-    const btnLabel = await page.$eval('#sqUnifiedActionLabel', el => el.textContent);
-    check('Unified button reflects confidence', btnLabel === 'Looks right — get an estimate');
+    check('Builder synthesised description', /^I need to fix my .+ because .+ in my .+/i.test(desc));
+    const scopeVisible = await page.evaluate(() => { const e = document.getElementById('sqSc3'); return !!e && e.offsetWidth > 0 && e.offsetHeight > 0; });
+    check('The flow moved on to Scope & conditions after the builder', scopeVisible);
   });
 
   // ─── SCENARIO 4: Affirmation Card ──────────────────────────────────────
@@ -328,7 +339,7 @@ async function runScenarios() {
         check('Fee breakdown chips appear', true);
         const originalPrice = await page.$eval('#sqQuoteOut .qprice', el => el.textContent);
         await feeChips[0].click();
-        await page.waitForTimeout(300);
+        await sleep(300);
         const newPrice = await page.$eval('#sqQuoteOut .qprice', el => el.textContent);
         check('Toggling a fee chip updates the price', newPrice !== originalPrice);
       } else {
@@ -342,53 +353,18 @@ async function runScenarios() {
   // ─── SCENARIO 5: Cart Operations ──────────────────────────────────────
   await runScenario('Cart Operations', async (page, check) => {
     await resetHome(page);
-    // Navigate to a simple service
-    await click(page, '[data-category-id="minor_home_repairs"]');
-    await waitFor(page, '.group-tile');
-    const groupTiles = await page.$$('.group-tile .tile-name');
-    let targetGroup = null;
-    for (const tile of groupTiles) {
-      const name = await page.evaluate(el => el.textContent, tile);
-      if (name.trim() === 'Appliances') {
-        targetGroup = tile;
-        break;
-      }
-    }
-    if (!targetGroup) throw new Error('Appliances group not found');
-    await targetGroup.click();
-    await waitFor(page, '.service-tile');
-    const serviceTiles = await page.$$('.service-tile');
-    if (serviceTiles.length === 0) throw new Error('No services found');
-    await serviceTiles[0].click();
-    // Wait for UI
-    try {
-      await waitForExist(page, '#sqStepFlow', { timeout: 5000 });
-      // Try to add to cart
-      const addBtn = await page.$('#sqQuoteOut .ctap');
-      if (addBtn) {
-        await addBtn.click();
-        await page.waitForFunction(
-          () => parseInt(document.getElementById('fabCartCount')?.textContent || '0') > 0,
-          { timeout: 5000 }
-        );
-        check('Add to cart works', true);
-      }
-    } catch (e) {
-      const estBtn = await page.$('#sqCurEstBtn');
-      if (estBtn) {
-        await estBtn.click();
-        await waitFor(page, '#sqQuoteOut');
-        const addBtn = await page.$('#sqQuoteOut .ctap');
-        if (addBtn) {
-          await addBtn.click();
-          await page.waitForFunction(
-            () => parseInt(document.getElementById('fabCartCount')?.textContent || '0') > 0,
-            { timeout: 5000 }
-          );
-          check('Add to cart via estimate works', true);
-        }
-      }
-    }
+    // T190 (#138 I4): the step flow now asks for the kind of appliance and the action before it offers a service (category > type > service > final), so a fixed click path to "the first service
+    // of Appliances" no longer lands on a priced card. The cart is exercised from the same place the customer meets it first: a typed request that self-quotes (a dishwasher install, $70, no questions).
+    await page.click('#sqDescIn');
+    await page.type('#sqDescIn', 'install a dishwasher', { delay: 3 });
+    await page.click('#sqUnifiedActionBtn');
+    await waitForExist(page, '#btn-self-quote-add', { timeout: 8000 });
+    await page.click('#btn-self-quote-add');
+    await page.waitForFunction(
+      () => parseInt(document.getElementById('fabCartCount')?.textContent || '0') > 0,
+      { timeout: 5000 }
+    );
+    check('Add to cart works', true);
 
     await click(page, '#cartFab');
     await waitFor(page, '#cartOverlay .cart-service-item');
@@ -397,15 +373,17 @@ async function runScenarios() {
 
     const removeBtn = await page.$('#cartOverlay .remove-service-btn');
     if (removeBtn) {
+      // T190 (#138 I4): the furniture scenario has already put an item in the cart (the scenarios share one page), so "removed" is one fewer item, not none.
+      const countBefore = items.length;
       await removeBtn.click();
       await page.waitForFunction(
-        () => document.querySelectorAll('#cartOverlay .cart-service-item').length === 0,
-        { timeout: 5000 }
+        (n) => document.querySelectorAll('#cartOverlay .cart-service-item').length === n - 1,
+        { timeout: 5000 }, countBefore
       );
       check('Remove from cart works', true);
     } else {
       await click(page, '#closeBt');
-      await page.waitForTimeout(300);
+      await sleep(300);
       const summaryRemove = await page.$('#serviceRequestList .remove-service-btn');
       if (summaryRemove) {
         await summaryRemove.click();

@@ -25,7 +25,8 @@ function findChrome() { const c = [process.env.CHROME_PATH, ...(() => { try { re
 const VIS = `(sel)=>{const e=typeof sel==='string'?document.querySelector(sel):sel; if(!e||!e.getClientRects().length||e.offsetHeight<=0) return false; const r=e.getBoundingClientRect(); const t=document.elementFromPoint(r.left+Math.min(r.width/2,40), r.top+Math.min(r.height/2,12)); return !!(t&&(e===t||e.contains(t)));}`;
 const REQUESTS = [  // realistic customer phrases, chosen to reach each template the route can produce
   { say: 'my dishwasher is leaking', expect: 'affirm' }, { say: 'mount a tv on the wall', expect: 'affirm' }, { say: 'toilet keeps running', expect: 'affirm' },
-  { say: 'urgent, need help with something in my house', expect: 'affirm' }, { say: 'replace 3 light bulbs', expect: 'selfquote' },
+  { say: 'urgent, need help with something in my house', expect: 'affirm' }, { say: 'install a dishwasher', expect: 'selfquote' }, { say: 'replace 3 light bulbs', expect: 'intake' },   // T190 (#138 I4): bulbs ask their count since T154, so the self-quote screen is reached by a service with no questions (the four appliance installs, $70)
+ 
   { say: 'hang a shelf', expect: 'intake' }, { say: 'install a ceiling fan', expect: 'intake' } ];
 
 async function journey(puppeteer, chromePath, htmlPath, dataPath) {
@@ -36,8 +37,8 @@ async function journey(puppeteer, chromePath, htmlPath, dataPath) {
     page.on('request', r => { const _d = require('./_page.js').documentResponse(r.url()); if (_d) return r.respond(_d); r.url().includes('btnyc.json') ? r.respond({ status: 200, contentType: 'application/json', body: data }) : r.continue(); });
     page.on('pageerror', e => out.errors.add(String(e.message).slice(0, 120)));
     await page.goto('file://' + htmlPath, { waitUntil: 'networkidle0', timeout: 60000 }); await page.waitForFunction(() => window.DB && window.DB.services, { timeout: 20000 });
-    out.structure = await page.evaluate(() => { const ids = ['routeCardHost', 'serviceContainer', 'intakeQuestionsContainer', 'summaryMainContainer'], els = ids.map(i => document.getElementById(i)); const nested = els.filter(Boolean).some(a => els.filter(Boolean).some(b => a !== b && a.contains(b)));
-      return { present: els.every(Boolean), nested, cartInOwnWrapper: !!document.querySelector('#summaryMainContainer #serviceRequestSummary'), cartListInPanel: !!document.querySelector('#serviceRequestSummary #serviceRequestList') }; });
+    out.structure = await page.evaluate(() => { const ids = ['routeCardHost', 'serviceContainer', 'intakeQuestionsContainer', 'serviceRequestSummary'], els = ids.map(i => document.getElementById(i)); const nested = els.filter(Boolean).some(a => els.filter(Boolean).some(b => a !== b && a.contains(b)));
+      return { present: els.every(Boolean), nested, cartInOwnWrapper: !!document.querySelector('.summaryMainContainer#serviceRequestSummary'), cartListInPanel: !!document.querySelector('#serviceRequestSummary #serviceRequestList') }; });
     await page.evaluate(() => { window.__persist = ['serviceRequestSummary', 'serviceRequestList', 'totalAmount'].map(i => document.getElementById(i)); });
     out.reached = [];
     for (const r of REQUESTS) {
@@ -60,7 +61,7 @@ async function journey(puppeteer, chromePath, htmlPath, dataPath) {
     out.persist = await page.evaluate(() => ['serviceRequestSummary', 'serviceRequestList', 'totalAmount'].map((id, i) => { const e = document.getElementById(id); return !!e && e === window.__persist[i] && e.isConnected; }));
     // CART: add from the self-quote card, see the visible count, then search again
     await page.evaluate(() => { try { sqRestart(); } catch (e) {} document.getElementById('sqDescIn').value = ''; });
-    await page.click('#sqDescIn'); await page.type('#sqDescIn', 'replace 3 light bulbs', { delay: 3 }); await page.click('#sqUnifiedActionBtn'); await new Promise(x => setTimeout(x, 1100));
+    await page.click('#sqDescIn'); await page.type('#sqDescIn', 'install a dishwasher', { delay: 3 }); await page.click('#sqUnifiedActionBtn'); await new Promise(x => setTimeout(x, 1100));
     if (await page.evaluate(`(${VIS})('#btn-self-quote-add')`)) {
       const before = await page.evaluate(() => (document.getElementById('fabCartCount') || {}).innerText || '0');
       await page.click('#btn-self-quote-add'); await new Promise(x => setTimeout(x, 900));
@@ -98,10 +99,14 @@ async function journey(puppeteer, chromePath, htmlPath, dataPath) {
   console.log('\n--- 6. mutants: each restored defect is caught ---');
   const src = require('./_page.js').readPage(HTML), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'journey-'));
   const run = async (name, mutate) => { const m = mutate(src); if (m === src) throw new Error('mutant anchor missing: ' + name); const f = path.join(tmp, name + '.html'); fs.writeFileSync(f, m); return journey(puppeteer, chromePath, f, DATA); };
-  const m1 = await run('renest', t => t.replace('<div class="summaryMainContainer" id="summaryMainContainer" style="display:none">', '<div class="summaryMainContainer" id="summaryMainContainer" style="display:none"><!--x--></div><div id="serviceContainer2"></div>').replace('<div id="intakeQuestionsContainer"></div>', '<div id="intakeQuestionsContainer"><div class="summaryMainContainer" style="display:none"><div id="serviceRequestSummary"><div id="serviceRequestList"></div><div id="totalAmount"></div></div></div></div>').replace(/<div id="serviceRequestSummary">\s*<div id="summary-header">/, '<div id="serviceRequestSummary_unused"><div id="summary-header">'));
-  check('MUTANT 1 (the cart panel is nested inside the intake container again, as in the original) is caught: cards vanish or the structure check fails', m1.structure.nested || m1.reached.some(r => r.shown === 'nothing') || !m1.structure.cartInOwnWrapper, JSON.stringify(m1.reached.map(r => r.shown)));
-  const m2 = await run('oldhost', t => t.replace("const container = document.getElementById('routeCardHost');   // T152: its own host, not the cart panel", "const container = document.getElementById('serviceRequestSummary');"));
-  check('MUTANT 2 (the card renderers write into the cart panel again) is caught: the card is not visible', m2.reached.some(r => r.shown === 'nothing' || (r.expect === 'affirm' && r.shown !== 'affirm')), JSON.stringify(m2.reached.map(r => r.shown)));
+  // T190 (#138 I4): the page no longer has a #summaryMainContainer wrapper (the cart panel is #serviceRequestSummary itself, class summaryMainContainer), so the original mutant's anchors are gone. The restored
+  // defect is the same one: the card host sits INSIDE the (hidden) cart panel, so cards render into a panel that is not on screen.
+  const m1 = await run('renest', t => t.replace('<div id="routeCardHost"></div>', '').replace('<div class="summaryMainContainer" id="serviceRequestSummary" style="display:none">', '<div class="summaryMainContainer" id="serviceRequestSummary" style="display:none"><div id="routeCardHost"></div>'));
+  check('MUTANT 1 (the card host is nested inside the hidden cart panel again) is caught: cards vanish or the structure check fails', m1.structure.nested || m1.reached.some(r => r.shown === 'nothing') || !m1.structure.cartInOwnWrapper, JSON.stringify(m1.reached.map(r => r.shown)));
+  const m2 = await run('oldhost', t => t.replace(/const container = document\.getElementById\('routeCardHost'\);\s*\/\/ T152: its own host, not the cart panel/g, "const container = document.getElementById('serviceRequestSummary');"));
+  // T190 (#138 I4): with the card renderers writing into the cart panel, the panel is now shown with the card in it (it was hidden when this test was written), so "nothing visible" no longer
+// happens; what does happen is that nothing clears the panel between requests, so a stale card from an earlier request stays on screen. The catch is any request whose visible screen is not the one requested.
+check('MUTANT 2 (the card renderers write into the cart panel again) is caught: a screen other than the requested one is visible (a stale card survives)', m2.reached.some(r => r.shown !== r.expect), JSON.stringify(m2.reached.map(r => r.shown)));
   console.log(`\n[customer journey visible] ${pass} passed, ${fail} failed (of ${pass + fail} checks)\n`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR', e.message); process.exit(2); });
