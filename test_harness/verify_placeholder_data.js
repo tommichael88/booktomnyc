@@ -27,7 +27,11 @@ console.log('=== Suspicious placeholder values in btnyc.json ===');
 
 // 1. Services with base_price = 0
 const zeroPriceServices = DB.services.filter(s => s.financial_engine?.base_price === 0);
-const expectedZero = ['dishwasher_repair', 'furniture_assembly_flat_pack', 'furniture_disassembly_for_moving', 'furniture_repair_hourly'];
+// T195 (#139 L3): a service whose checkout state is `diagnostic` (archetype diagnostic_open) has no flat price by design: it quotes the visit, and the repair is priced after the diagnosis. The test
+// listed one of them by name (dishwasher_repair); T174 (#201) made three more (the computer, the dryer, the stove). The expectation is held on the data, not a longer hand list: a zero base price
+// is expected where the checkout state is `diagnostic` AND the archetype says so, and nowhere else. The rest of the hand list is unchanged.
+const diagnosticZero = DB.services.filter(s => s.financial_engine?.checkout_state === 'diagnostic' && s.financial_engine?.pricing_archetype === 'diagnostic_open').map(s => s.id);
+const expectedZero = ['furniture_assembly_flat_pack', 'furniture_disassembly_for_moving', 'furniture_repair_hourly', ...diagnosticZero];
 const unexpectedZero = zeroPriceServices.filter(s => !expectedZero.includes(s.id) && !IGNORED_ZERO_PRICE_SERVICES.includes(s.id));
 if (unexpectedZero.length > 0) {
     console.log(`  Found unexpected zero-price services:`);
