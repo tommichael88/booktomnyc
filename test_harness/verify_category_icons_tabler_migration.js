@@ -35,7 +35,7 @@ console.log('=== Data: every category icon is now a real Tabler class string, no
     const expected = {
         minor_home_repairs: 'ti ti-home',
         furniture_fixes_assembly: 'ti ti-sofa',
-        wall_mounting: 'ti ti-wall',
+        wall_mounting: 'ti ti-library-photo',   // T193 (#137 S3): the operator confirmed this icon in T148 (PENDING_DECISIONS #60; the rationale is the category's `_icon_note`), not the first draft's 'ti ti-wall'
         electric_lighting: 'ti ti-plug',
         plumbing_help: 'ti ti-bath',
         tech_trouble: 'ti ti-device-laptop',

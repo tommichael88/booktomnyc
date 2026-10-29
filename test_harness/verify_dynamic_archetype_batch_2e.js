@@ -32,14 +32,17 @@ console.log('=== Setup removed from both named services, nothing else touched ==
     const cm = DB.services.find(s => s.id === 'cable_management');
     check('cable_management no longer has Setup in its intake_chain',
         !cm.intake_chain.some(s => s.module === 'Setup'));
-    check('cable_management: mounting_height and hybrid_qty are both still present (only Setup removed)',
-        JSON.stringify(cm.intake_chain.map(s => s.module)) === JSON.stringify(['mounting_height', 'hybrid_qty']));
+    // T193 (#137 S3): the exact chains this pinned ([mounting_height, hybrid_qty]; [wall_type, weight, global_quantity, mounting_height]) were later reworked on purpose (a "which item" question for
+    // cable work, the quantity questions retired from both, a mount-sourcing question for the TV mount). What this batch guarded is that removing Setup took nothing else with it: the questions it did
+    // not touch are still asked, and every module the chains name exists in the catalog.
+    check('cable_management: mounting_height is still asked (only Setup removed), and every module it names exists',
+        cm.intake_chain.map(s => s.module).includes('mounting_height') && cm.intake_chain.every(s => !!DB.intake_modules[s.module]));
 
     const fm = DB.services.find(s => s.id === 'flatscreen_mounting_standard');
     check('flatscreen_mounting_standard no longer has Setup in its intake_chain',
         !fm.intake_chain.some(s => s.module === 'Setup'));
-    check('flatscreen_mounting_standard: all 4 other real questions still present, in order',
-        JSON.stringify(fm.intake_chain.map(s => s.module)) === JSON.stringify(['wall_type', 'weight', 'global_quantity', 'mounting_height']));
+    check('flatscreen_mounting_standard: wall_type, weight and mounting_height are still asked, in that order, and every module it names exists',
+        (() => { const m = fm.intake_chain.map(s => s.module), at = ['wall_type', 'weight', 'mounting_height'].map(k => m.indexOf(k)); return at.every(i => i >= 0) && at[0] < at[1] && at[1] < at[2] && fm.intake_chain.every(s => !!DB.intake_modules[s.module]); })());
 }
 
 console.log('\n=== Setup remains correctly referenced where it genuinely belongs (real tech_trouble dynamic_services) ===');

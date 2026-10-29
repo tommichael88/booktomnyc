@@ -73,23 +73,14 @@ console.log('=== pricing_archetype is now populated on all 70 real services ==='
     // / 1 diagnostic_open. Catalog growth, not a regression: the new
     // services split sensibly across the existing archetypes rather than
     // landing in some unexpected fourth bucket.
-    check('all 74 services have a real pricing_archetype value', populated === 74);
-    const counts = {};
-    for (const s of DB.services) {
-        const a = s.financial_engine.pricing_archetype;
-        counts[a] = (counts[a] || 0) + 1;
-    }
-    check('exactly 1 service is diagnostic_open (dishwasher_repair, the only checkout_state=diagnostic service)',
-        counts.diagnostic_open === 1);
-    // T118 (operator-directed, real user trace, 2026-09-12):
-    // blinds_shades_curtains_buy_the_hour intentionally moved from
-    // hourly_timed to formula this session (a new, real, registered
-    // buy_the_hour_qty_gate_formula now drives its pricing) -- 12
-    // hourly_timed (was 13), 1 formula (was 0 among these 74; formula
-    // already existed as an archetype, just unused by any of the
-    // originally-hourly/flat_simple 74 until now).
-    check('exactly 60 services are flat_simple, exactly 12 are hourly_timed, exactly 1 is formula (the intentional buy_the_hour_qty_gate_formula move)',
-        counts.flat_simple === 60 && counts.hourly_timed === 12 && counts.formula === 1);
+    // T193 (#137 S3): the counts this pinned (74 services; 60 / 12 / 1; exactly one diagnostic) were catalog-size and catalog-instance facts; the catalog now has 76 services, 59 flat_simple, 9
+    // hourly_timed, 4 formula (blinds buy-the-hour, the knob / pull tiers, furniture repair by the hour, loose tile) and 4 diagnostic_open (T174 added the dryer, the stove and the computer). What the
+    // test protects is that coverage is complete and no service lands in an unknown bucket, and that "diagnostic_open" means exactly the services whose checkout state is diagnostic: held as data.
+    const ARCHETYPES = ['flat_simple', 'hourly_timed', 'formula', 'diagnostic_open'];
+    check(`all ${DB.services.length} services have a real pricing_archetype value, one of ${ARCHETYPES.join(' / ')}`, populated === DB.services.length && DB.services.every(s => ARCHETYPES.includes(s.financial_engine.pricing_archetype)));
+    const diagIds = DB.services.filter(s => s.financial_engine.pricing_archetype === 'diagnostic_open').map(s => s.id).sort();
+    const stateIds = DB.services.filter(s => s.financial_engine.checkout_state === 'diagnostic').map(s => s.id).sort();
+    check('the diagnostic_open services are exactly the checkout_state=diagnostic services (' + diagIds.join(', ') + ')', diagIds.length > 0 && JSON.stringify(diagIds) === JSON.stringify(stateIds));
 }
 
 console.log('\n=== THE CRITICAL CHECK: zero real price changes anywhere, catalog-wide ===');
@@ -117,8 +108,10 @@ console.log('\n=== The two corrected cases specifically: confirmed classified to
 {
     const cabinetKnob = DB.services.find(s => s.id === 'cabinet_knob_or_pull_install');
     const pax = DB.services.find(s => s.id === 'pax_wardrobe_assembly');
-    check('cabinet_knob_or_pull_install is hourly_timed (NOT tiered_per_unit -- confirmed the archetype path gives a wrong, higher price)',
-        cabinetKnob.financial_engine.pricing_archetype === 'hourly_timed');
+    // T193 (#137 S3): the knob / pull service was hourly_timed when this was written; T156 (#112) gave it its tiers, which are a registered formula, so it is `formula` now (and still not
+    // tiered_per_unit: the archetype path would give a wrong price). Its price at one knob is the $95 visit minimum (#112; #122 says so on the card).
+    check('cabinet_knob_or_pull_install is formula (its knob / pull tiers, #112), NOT tiered_per_unit -- the archetype path gives a wrong price',
+        cabinetKnob.financial_engine.pricing_archetype === 'formula');
     check('pax_wardrobe_assembly is hourly_timed (NOT formula -- confirmed the archetype path gives a wrong, lower price)',
         pax.financial_engine.pricing_archetype === 'hourly_timed');
     check('both real, corrected prices now match their own formula\'s documented, correct output (not the historical $43/$183 snapshot -- see v9.6 FIX note below)',
@@ -126,7 +119,7 @@ console.log('\n=== The two corrected cases specifically: confirmed classified to
             const sandbox = freshSandbox(DB);
             const qKnob = sandbox.computeUnifiedQuote({ svc: cabinetKnob, activeTagIds: [], answers: {}, qty: 1 });
             const qPax = sandbox.computeUnifiedQuote({ svc: pax, activeTagIds: [], answers: {}, qty: 1 });
-            return qKnob.laborEstimate === 140 && qPax.laborEstimate === 142;
+            return qKnob.laborEstimate === 95 && qPax.laborEstimate === 142;   // T193: the knob was $140 before its tiers (#112); one knob is the $95 visit minimum now. PAX is unchanged at $142
         })());
 }
 

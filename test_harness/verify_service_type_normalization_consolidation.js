@@ -59,7 +59,8 @@ console.log('=== The real, single, canonical definition exists at unconditional,
 check('window._normServiceType is defined exactly once, outside initNlpSets',
     (QR_HTML.match(/window\._normServiceType\s*=\s*\(stype\)\s*=>\s*\{/g) || []).length === 1);
 check('the canonical definition correctly handles BOTH the spaced and unspaced variant', (() => {
-    const m = QR_HTML.match(/window\._normServiceType = \(stype\) => \{[\s\S]*?\n\};/);
+    // T193 (#137 S3): the block is indented inside the page's script now, so its closing `};` is not at column 0.
+    const m = QR_HTML.match(/window\._normServiceType = \(stype\) => \{[\s\S]*?\n\s*\};/);
     if (!m) return false;
     const body = m[0];
     return body.includes(".replace('Install / Mount', 'Install')") && body.includes(".replace('Install/Mount', 'Install')");
@@ -82,7 +83,8 @@ console.log('\n=== Real, direct test: detectIntentNLP works correctly even when 
     // Simulate the EXACT real failure mode found while building this fix:
     // a bare object as window, with no _normServiceType at all.
     const vm = require('vm');
-    function findFn(name) {
+    // T193 (#137 S3): detectIntentNLP lives in modules/nlp_engine.js now (T136); the extractor looks in the engine modules first and then the page, as the other pipeline tests do (T190, #138 I3).
+    function _cherryPickFn(name) {
         const m = QR_HTML.match(new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{'));
         if (!m) return null;
         let depth = 0, start = m.index, i = m.index + m[0].length - 1;
@@ -92,6 +94,7 @@ console.log('\n=== Real, direct test: detectIntentNLP works correctly even when 
         }
         return null;
     }
+    const findFn = require('./_engine.js').engineAwareFindFn(_cherryPickFn);
     const sandbox = { DB: BTNYC, window: { DB: BTNYC }, console }; // genuinely bare window, no _normServiceType
     sandbox.global = sandbox;
     vm.createContext(sandbox);

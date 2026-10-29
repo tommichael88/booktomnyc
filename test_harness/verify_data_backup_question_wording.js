@@ -35,7 +35,9 @@ console.log('=== data_backup_or_transfer\'s own chain no longer includes the sha
     check('tech_problem_type ("Virus or pop-ups"/"Running slow") is gone from this service\'s chain', !modules.includes('tech_problem_type'));
     check('the rewritten tech_issue_source is still present', modules.includes('tech_issue_source'));
     check('the new, dedicated backup_source_device module is present', modules.includes('backup_source_device'));
-    check('hybrid_qty (the service\'s own real quantity question) is untouched', modules.includes('hybrid_qty'));
+    // T193 (#137 S3): this pinned `hybrid_qty` in the chain. The chain already lacked it at the earliest history the repository holds (`b7fff909`, the T156 baseline) and has been exactly these two
+    // modules since; the service is priced by its situation and device, not a count. What the pin guarded (the rewrite did not leave a module the catalog cannot resolve) is held here instead.
+    check('every module in the service\'s chain exists in the catalog (the rewrite left nothing dangling)', modules.length > 0 && modules.every(m => !!DB.intake_modules[m]));
 }
 
 console.log('\n=== tech_issue_source: rewritten into one coherent question, not a working-state/device-type mashup ===');
@@ -66,7 +68,9 @@ console.log('\n=== Regression: tech_problem_type itself is completely untouched 
     check('"Virus or pop-ups" is still there for the services that actually need it', mod.client_response.some(r => /virus/i.test(r.label)));
 
     const diag = DB.services.find(s => s.id === 'computer_diagnostic');
-    check('computer_diagnostic still uses tech_problem_type', diag.intake_chain.map(s => s.module).includes('tech_problem_type'));
+    // T193 (#137 S3): T174 (#201) gave Computer Diagnostic its own symptom-first chain (`computer_symptom` first); it no longer asks the shared `tech_problem_type`, which is what this block
+    // protects for the services that still need it. Pinned as it is now, so a return of the shared module to the diagnostic's chain is seen.
+    check('computer_diagnostic has its own symptom-first chain and does not use the shared tech_problem_type', diag.intake_chain.map(s => s.module).includes('computer_symptom') && !diag.intake_chain.map(s => s.module).includes('tech_problem_type'));
 
     const virus = DB.services.find(s => s.id === 'virus_or_malware_removal');
     check('virus_or_malware_removal still uses tech_problem_type', virus.intake_chain.map(s => s.module).includes('tech_problem_type'));

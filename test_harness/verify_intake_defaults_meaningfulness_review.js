@@ -49,8 +49,10 @@ console.log('=== pets_present: removed entirely, the module that failed the test
 console.log('\n=== urgency: kept, but scoped down to genuine emergency categories only ===');
 {
     const cd = DB.global_rules.intake_defaults.category_defaults;
-    check('plumbing_help still gets urgency (a genuine emergency category)', (cd.plumbing_help || []).includes('urgency'));
-    check('tech_trouble still gets urgency (a genuine emergency category)', (cd.tech_trouble || []).includes('urgency'));
+    // T193 (#137 S3; #121 default, "the catalog is right"): T118 kept urgency for these two as "genuine emergency categories"; the T135 operator override removed it from both, and the override is later and
+    // was the operator's. The module and its modifier still exist (checked below); only the category default is gone. Pinned as the catalog says, so a quiet return of it is seen.
+    check('plumbing_help does not get urgency as a category default (T135 operator override; was kept by T118)', !(cd.plumbing_help || []).includes('urgency'));
+    check('tech_trouble does not get urgency as a category default (T135 operator override; was kept by T118)', !(cd.tech_trouble || []).includes('urgency'));
     check('electric_lighting no longer gets urgency (removed, not a genuine-emergency category per explicit operator direction)',
         !(cd.electric_lighting || []).includes('urgency'));
     check('urgency itself still exists as a real module and modifier -- this was a scoping change, not a removal',
