@@ -3220,6 +3220,55 @@
             return out;
         }
 
+        // resolvePathGroupIds -- LOGIC. The groups a customer WALKED to reach `groupId` through the picker, root first, ending at `groupId` (#194, P-CLIENT-NAVFACT: what the navigation path declares is a fact). A child group is
+        // reached only through its parent, so the group's own `parent_group` chain IS the path; nothing is guessed from words. Called by the picker's own taps, never for a typed request (a typed request
+        // walked nothing). Pure: returns the ids, [] for a group the catalog does not hold.
+        function resolvePathGroupIds(groupId, db) {
+            const byId = new Map(((db && db.group) || []).map(/** @type {any} */ g => [g.id, g]));
+            /** @type {string[]} */ const out = [];
+            let cur = groupId;
+            while (cur && byId.has(cur) && !out.includes(cur)) {
+                out.unshift(cur);
+                const g = /** @type {any} */ (byId.get(cur));
+                cur = g.parent_group || g.parent_id || null;
+            }
+            return out;
+        }
+
+        // resolvePathRuledOutAnswers -- LOGIC. The options of one question that the groups the customer walked RULE OUT (#194, T191). A group declares its fact through the tags scoped to it (applicable_group_ids): where it offers
+        // some members of an exclusive family (smart_tags[].mutually_exclusive) and not others, the others cannot be true on this path -- "Drywall or Plaster" offers #drywall and #plaster_wall and not #brick_wall, so
+        // "Brick or concrete" is not an answer to "what kind of wall are we drilling into?". An option is linked to a tag by its own `tags` or by the tag's `answers`; tagValidForCategory is the one scoping test, the same
+        // the typed path uses. Never rules out every option (a question with no option left is no question: the options stay as authored). Pure: returns the labels to drop, [] when the path says nothing.
+        function resolvePathRuledOutAnswers(moduleKey, mod, pathGroupIds, categoryId, db) {
+            const options = (mod && Array.isArray(mod.client_response)) ? mod.client_response : [];
+            const groups = (pathGroupIds || []).filter(Boolean);
+            if (options.length < 2 || !groups.length) return [];
+            const tags = (db && db.smart_tags) || {};
+            const familyOf = /** @param {string} t */ t => {
+                const seen = new Set([t]), todo = [t];
+                while (todo.length) {
+                    const x = /** @type {string} */ (todo.pop());
+                    for (const y of ((tags[x] || {}).mutually_exclusive || [])) if (tags[y] && !seen.has(y)) { seen.add(y); todo.push(y); }
+                }
+                for (const x of Object.keys(tags)) if (!seen.has(x) && ((tags[x] || {}).mutually_exclusive || []).includes(t)) seen.add(x);
+                return seen;
+            };
+            /** @type {string[]} */ const dropped = [];
+            for (const o of options) {
+                const linked = new Set([...(o.tags || []), ...Object.keys(tags).filter(t => tags[t].answers && tags[t].answers[moduleKey] === o.label)]);
+                const ruledOut = [...linked].some(t => {
+                    const fam = familyOf(t);
+                    if (!tags[t] || fam.size < 2) return false;
+                    return groups.some(g => {
+                        const offered = [...fam].filter(x => tagValidForCategory(x, categoryId, g));
+                        return offered.length > 0 && !offered.includes(t);
+                    });
+                });
+                if (ruledOut) dropped.push(o.label);
+            }
+            return dropped.length < options.length ? dropped : [];
+        }
+
         // resolveBuilderConditionAnswer -- LOGIC. The condition the customer chose in the guided builder, as the intake answer it IS (#204, T174). The builder offers the labels of a condition
         // module's own options as its condition chips (bldGetConditionChoices, lower-cased), and the dynamic service that prices the job asks that same module, so a chosen chip IS the
         // customer's answer to that question and prices as one: the option's modifier, its checkout state (a diagnostic answer is a diagnostic quote). Before this the choice reached the price
@@ -3664,12 +3713,16 @@
                             };
                         }
                         break;
-                    case 'compose':
+                    case 'compose': {
                         intakeChain = orch_compose_intake_chain(context, resolution, db);
+                        const pathFacts = orch_apply_path_facts(context, intakeChain, answers, db); // #194: what the walked path rules out
+                        intakeChain = pathFacts.chain;
+                        answers = pathFacts.answers;
                         outputSummary = {
                             moduleCount: intakeChain.length
                         };
                         break;
+                    }
                     case 'merge':
                         if (step.id === 'compute_confidence') {
                             confidenceState = orch_compute_confidence(resolution, activeTagIds, context.nlpIntent?._matchConfidence, db, context.entry);
@@ -4328,6 +4381,25 @@
                 if (matches.length === 1) newAnswers[key] = matches[0].label;
             });
             return newAnswers;
+        }
+
+        // orch_apply_path_facts -- LOGIC. What the path the customer WALKED already says about the questions the chain asks (#194, P-CLIENT-NAVFACT). context.pathGroupIds is set by the picker's own taps (a typed request walked nothing and
+        // carries none). Each question's options lose the ones the path rules out (resolvePathRuledOutAnswers), and a question with exactly one option left is answered by the path -- unless the customer already answered it.
+        // Pure: returns {chain, answers} (a new chain whose changed modules are copies; the catalog's own modules are never written) and sets nothing.
+        function orch_apply_path_facts(context, chain, answers, db) {
+            const path = Array.isArray(context && context.pathGroupIds) ? context.pathGroupIds : [];
+            if (!path.length) return { chain, answers };
+            const cat = context.selectedCategoryId || null;
+            const nextAnswers = Object.assign({}, answers);
+            const nextChain = chain.map(mod => {
+                const key = mod.moduleKey || mod.module;
+                const dropped = resolvePathRuledOutAnswers(key, mod, path, cat, db);
+                if (!dropped.length) return mod;
+                const kept = (mod.client_response || []).filter(o => !dropped.includes(o.label));
+                if (kept.length === 1 && !nextAnswers[key]) nextAnswers[key] = kept[0].label;
+                return Object.assign({}, mod, { client_response: kept });
+            });
+            return { chain: nextChain, answers: nextAnswers };
         }
 
         // orch_compute_confidence -- LOGIC. The orchestrator's gateway to the one confidence function (R-CONF-ONEFORMULA): it resolves the entity's base strategy
@@ -5010,6 +5082,8 @@
                 manuallyToggledTagIds: (tapped && Array.isArray(tapped.tagIds)) ? tapped.tagIds.slice() : [],
                 // A symptom tile IS an option of the question the service asks (#199): the tap answers it, and the card does not ask it again (resolveTappedAnswers keeps only what this service really asks).
                 answers: resolveTappedAnswers(svc, tapped, DB),
+                // The groups the customer walked to this tap (#194): the picker's own taps pass them, a service reached any other way walked none.
+                pathGroupIds: (tapped && Array.isArray(tapped.pathGroupIds)) ? tapped.pathGroupIds.slice() : [],
             });
         }
 
@@ -6430,7 +6504,9 @@
             return card;
         }
 
-        function createServiceCardElement(svc, category_id) {
+        function createServiceCardElement(svc, category_id, group_id) {
+            // #194: a tile drawn by the picker inside a group is a tap that WALKED that group's path (resolvePathGroupIds); a tile drawn anywhere else (the all-services list) walked none.
+            const walked = group_id ? { pathGroupIds: resolvePathGroupIds(group_id, DB) } : undefined;
             const card = create('div', {
                 class: 'service-tile',
                 tabindex: '0',
@@ -6533,11 +6609,11 @@
             }));
             card.appendChild(iconEl);
             card.appendChild(info);
-            card.addEventListener('click', () => prefillSmartQuoteFromService(svc, category_id));
+            card.addEventListener('click', () => prefillSmartQuoteFromService(svc, category_id, walked));
             card.addEventListener('keydown', e => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    prefillSmartQuoteFromService(svc, category_id);
+                    prefillSmartQuoteFromService(svc, category_id, walked);
                 }
             });
             return card;
@@ -7025,7 +7101,7 @@
                     class: 'service-group-header',
                     text: `${key} (${grouped[key].length})`
                 }));
-                grouped[key].forEach(svc => container.appendChild(createServiceCardElement(svc, category_id)));
+                grouped[key].forEach(svc => container.appendChild(createServiceCardElement(svc, category_id, group_id)));
             });
             // Synthetic Other tiles — always last, own section, no header
             // count noise (the tiles themselves already say "[Group] Other").
@@ -7685,7 +7761,7 @@
             const verdict = decideComponentSymptomTap(serviceIds, group, chosenAction, evidence);
             const picked = verdict.serviceIds.map(id => (DB.services || []).find(s => s.id === id)).filter(Boolean);
             if (verdict.decision === 'service' && picked.length === 1) {
-                prefillSmartQuoteFromService(picked[0], category_id, tapped);
+                prefillSmartQuoteFromService(picked[0], category_id, Object.assign({}, tapped, { pathGroupIds: resolvePathGroupIds(group && group.id, DB) })); // #194: the path walked to this tile
                 return;
             }
             if (verdict.decision === 'choose' && picked.length) {
@@ -7792,7 +7868,7 @@
                             serviceId: matchingAction[0].id,
                             serviceType: matchingAction[0].service_type
                         });
-                        prefillSmartQuoteFromService(matchingAction[0], category_id);
+                        prefillSmartQuoteFromService(matchingAction[0], category_id, { pathGroupIds: resolvePathGroupIds(group && group.id, DB) }); // #194
                         return;
                     }
                 }
@@ -7936,7 +8012,7 @@
                     tile.tabIndex = 0;
                     tile.role = 'button';
                     tile.innerHTML = `<span class="tile-name">${escapeHtml(kn.label || svc.ui_taxonomy?.display_name || svc.id)}</span>`;
-                    const handler = () => prefillSmartQuoteFromService(svc, category_id);
+                    const handler = () => prefillSmartQuoteFromService(svc, category_id, { pathGroupIds: resolvePathGroupIds(group && group.id, DB) }); // #194
                     tile.addEventListener('click', handler);
                     tile.addEventListener('keydown', e => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -7969,7 +8045,7 @@
                     tile.tabIndex = 0;
                     tile.role = 'button';
                     tile.innerHTML = `<span class="tile-name">${escapeHtml(svc.ui_taxonomy?.display_name || svc.id)}</span>`;
-                    const handler = () => prefillSmartQuoteFromService(svc, category_id);
+                    const handler = () => prefillSmartQuoteFromService(svc, category_id, { pathGroupIds: resolvePathGroupIds(group && group.id, DB) }); // #194
                     tile.addEventListener('click', handler);
                     tile.addEventListener('keydown', e => {
                         if (e.key === 'Enter' || e.key === ' ') {

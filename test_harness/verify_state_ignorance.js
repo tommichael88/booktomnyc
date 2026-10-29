@@ -59,32 +59,19 @@
 'use strict';
 const fs = require('fs'), path = require('path');
 const ROOT = process.env.BTNYC_ROOT ? path.resolve(process.env.BTNYC_ROOT) : path.resolve(__dirname, '..');
-const { JSDOM } = require(path.join(__dirname, 'node_modules', 'jsdom'));
 const { check, finish } = require('./_shared.js');
+const { wait, clean } = require('./_catalog_walk.js');
 
 const HTML = require('./_page.js').readPage(path.join(ROOT, 'qr.html'), ROOT);
 const DB0 = JSON.parse(fs.readFileSync(path.join(ROOT, 'btnyc.json'), 'utf8'));
 const BASELINE_PATH = path.join(__dirname, 'fixtures', 'state_ignorance_baseline.json');
-const wait = ms => new Promise(r => setTimeout(r, ms));
 const SHAPES = { said: 'DEFECT-REASKED-QUESTION', path: 'DEFECT-REDUNDANT-TRAVERSAL', job: 'DEFECT-UNPRUNED-FLOW' };
 const PRIORITY = { said: 3, path: 2, job: 1 };
-const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
 
 // ---- the page --------------------------------------------------------------------------------------------------------------------------------------------------------------
-async function boot({ db = DB0, html = HTML } = {}) {
-    const errors = [];
-    const dom = new JSDOM(html, {
-        url: 'https://tommichael88.github.io/booktomnyc/qr.html', runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
-        beforeParse(w) {
-            w.fetch = async u => String(u).includes('btnyc.json') ? { ok: true, json: async () => JSON.parse(JSON.stringify(db)) } : { ok: false, status: 404 };
-            w.HTMLElement.prototype.scrollIntoView = function () {};
-            w.console.error = (...a) => errors.push(a.join(' ')); w.console.log = () => {}; w.console.warn = () => {};
-            w.addEventListener('error', e => errors.push(e.message));
-        },
-    });
-    await wait(3000);
-    return { w: dom.window, doc: dom.window.document, errors, DB: dom.window.DB };
-}
+const catalogWalk = require('./_catalog_walk.js');
+const boot = (o = {}) => catalogWalk.boot(Object.assign({ db: DB0, html: HTML }, o));
+const walk = catalogWalk.walk;
 
 // ---- the one judgement -----------------------------------------------------------------------------------------------------------------------------------------------------
 // leaf = { entry, entity, cat, ownGroup, pathGroups[], tile:{label, dropped}|null, tags[], answers{}, open:[{ mod, options:[label] }] }
@@ -135,63 +122,23 @@ function makeJudge(DB, tagValid) {
                 if (named.length === 1) { for (const o of opts) if (o !== named[0]) rule(o.label, 'path', `the tapped tile "${leaf.tile.label}" names "${named[0].label}" and the tap changed nothing`); }
                 else if (named.length > 1) for (const sib of leaf.tile.siblings || []) for (const o of opts) if (!named.includes(o) && names(sib, o.label)) rule(o.label, 'path', `the tapped tile "${leaf.tile.label}" names ${named.map(n => `"${n.label}"`).join(' and ')}, and the tile "${sib}" beside it names "${o.label}", so the tap did not choose it`);
             }
+            // T191 (#194): an option the engine no longer OFFERS is not an instance -- the class is a question that is SHOWN with an answer the system already ruled out. `q.options` is what the card showed
+            // (a catalog leaf, or a revealed question read from the chain the engine composed); a typed leaf carries none and is judged against the module's own options, as before.
+            if (Array.isArray(q.options) && q.options.length) { const shownLabels = new Set(q.options); for (const l of [...ruledOut.keys()]) if (!shownLabels.has(l)) ruledOut.delete(l); }
             if (!ruledOut.size) continue;
+            const offered = Array.isArray(q.options) && q.options.length ? opts.filter(o => q.options.includes(o.label)) : opts;
             const top = [...ruledOut.values()].reduce((a, b) => (PRIORITY[b.source] > PRIORITY[a.source] ? b : a));
             out.push({
                 shape: SHAPES[top.source], entry: leaf.entry, where: leaf.where, entity: leaf.entity, question: q.mod,
-                ruled_out: [...ruledOut.keys()], remaining: opts.map(o => o.label).filter(l => !ruledOut.has(l)),
-                determined: opts.length - ruledOut.size === 1, why: top.why,
+                ruled_out: [...ruledOut.keys()], remaining: offered.map(o => o.label).filter(l => !ruledOut.has(l)),
+                determined: offered.length - ruledOut.size === 1, why: top.why,
             });
         }
         return out;
     };
 }
 
-// ---- 1. the walk -----------------------------------------------------------------------------------------------------------------------------------------------------------
-async function walk(page, { onlyGroups } = {}) {
-    const { w, doc, DB } = page, leaves = [];
-    const tap = el => el.dispatchEvent(new w.Event('click', { bubbles: true }));
-    const cont = () => doc.getElementById('serviceContainer');
-    const tiles = () => [...(cont() ? cont().querySelectorAll('.group-tile, .service-tile, .svc-tile') : [])];
-    const nm = t => clean((t.querySelector('.tile-name') || t).textContent);
-    const host = () => doc.getElementById('sqCardHost');
-    const shown = () => [...(host() ? host().querySelectorAll('.intake-module-step') : [])].filter(s => s.querySelector('.ims-label[data-mod]')).map(s => {
-        const lab = s.querySelector('.ims-label'), chips = [...s.querySelectorAll('.ims-chip')], sel = chips.find(c => c.classList.contains('sel'));
-        return { mod: lab.dataset.mod, answered: sel ? sel.dataset.label : null, options: chips.map(c => c.dataset.label) };
-    });
-    const tidy = l => { const sv = (DB.services || []).filter(x => clean((x.ui_taxonomy || {}).display_name) && l.length > clean(x.ui_taxonomy.display_name).length + 4 && l.includes(clean(x.ui_taxonomy.display_name))).sort((a, b) => clean(b.ui_taxonomy.display_name).length - clean(a.ui_taxonomy.display_name).length)[0]; return sv ? `service ${sv.id}` : l; };   // the most specific title that the tile's text contains (T188 (2/n): "Flatscreen Mounting" is now the start of another service's title)
-    const groupByName = (cat, label) => (DB.group || []).find(g => g.category_id === cat && clean(g.display_name) === label);
-    for (const group of (DB.group || []).filter(g => !(g.parent_group || g.parent_id))) {         // the groups showGroupsForCategory lists; a child group is reached through its parent
-        if (onlyGroups && !onlyGroups.includes(group.id)) continue;
-        const cat = group.category_id;
-        const replay = async p => { w.S._lastRoute = null; w.showSubGroups(group, cat); await wait(25); const labs = []; for (const i of p) { const t = tiles()[i]; if (!t) return null; labs.push(nm(t)); tap(t); await wait(70); } return labs; };
-        const visit = async (p, depth) => {
-            const before = await replay(p); if (before === null) return;
-            const here = tiles().map(nm), sibs = [];
-            for (let i = 0; i < here.length; i++) {
-                const labs = await replay(p.concat([i])); if (labs === null) continue;
-                const r = w.S._lastRoute, after = tiles().map(nm);
-                if (r && r.entity) {
-                    const pathGroups = [group.id, ...labs.map(l => (groupByName(cat, l) || {}).id).filter(Boolean)];
-                    const snap = { entity: r.entity.id, answers: JSON.stringify(r.answers || {}), tags: JSON.stringify((r.activeTags || []).slice().sort()), svc: r.context && r.context.selectedServiceId, grp: r.context && r.context.selectedGroupId };
-                    sibs.push({ label: labs[labs.length - 1], snap: JSON.stringify(snap), idx: leaves.length });
-                    leaves.push({
-                        entry: 'catalog', where: `${((DB.category || []).find(c => c.id === cat) || {}).display_name || cat} > ${clean(group.display_name)} > ${labs.map(tidy).join(' > ')}`,
-                        entity: r.entity.id, cat, ownGroup: (DB.services.find(s => s.id === r.entity.id) || { ui_taxonomy: {} }).ui_taxonomy.group_id || (r.context && r.context.selectedGroupId) || null,
-                        pathGroups, tile: { label: labs[labs.length - 1], dropped: false }, tags: r.activeTags || [], answers: r.answers || {},
-                        open: shown().filter(q => !q.answered).map(q => ({ mod: q.mod, options: q.options })),
-                        mods: shown().map(q => q.mod),
-                        reveal: { ctx: JSON.parse(JSON.stringify(r.context || {})), answers: JSON.parse(JSON.stringify((r.context && r.context.answers) || {})) },
-                    });
-                } else if (JSON.stringify(after) !== JSON.stringify(here) && depth < 4) await visit(p.concat([i]), depth + 1);
-            }
-            // a tile "changed nothing" when a sibling with a different label opened the identical card
-            for (const a of sibs) if (sibs.some(b => b !== a && b.label !== a.label && b.snap === a.snap)) { leaves[a.idx].tile.dropped = true; leaves[a.idx].tile.siblings = [...new Set(sibs.filter(b => b !== a && b.label !== a.label && b.snap === a.snap).map(b => b.label))]; }
-        };
-        await visit([], 0);
-    }
-    return leaves;
-}
+// ---- 1. the walk (the page is booted and the picker is tapped by _catalog_walk.js: one walk, read here and by tools/path_card_diff.js) ----------------------------------------------------------------
 
 // ---- 2. the typing ---------------------------------------------------------------------------------------------------------------------------------------------------------
 function typedCorpus(DB) {
@@ -243,10 +190,13 @@ function revealed(page, leaf) {
         for (const o of optsOf(k).slice(0, 8)) {
             const r2 = run({ [k]: o });
             if (eid(r2) !== eid(base)) continue;
-            for (const m of keys(r2)) if (!bs.has(m) && !seen.has(m) && !(r2.answers || {})[m]) seen.set(m, { via: k, option: o });
+            for (const m of keys(r2)) if (!bs.has(m) && !seen.has(m) && !(r2.answers || {})[m]) {
+                const composed = (r2.visibleChain || []).find(x => (x.moduleKey || x.module) === m);                          // T191: the options the engine composed for this request (a path can have pruned some), not the module's own list
+                seen.set(m, { via: k, option: o, options: composed && Array.isArray(composed.client_response) ? composed.client_response.map(x => x.label) : optsOf(m) });
+            }
         }
     }
-    return [...seen].map(([m, v]) => Object.assign({}, leaf, { answers: Object.assign({}, leaf.answers, { [v.via]: v.option }), open: [{ mod: m, options: optsOf(m) }], where: `${leaf.where} (shown after ${v.via})` }));
+    return [...seen].map(([m, v]) => Object.assign({}, leaf, { answers: Object.assign({}, leaf.answers, { [v.via]: v.option }), open: [{ mod: m, options: v.options }], where: `${leaf.where} (shown after ${v.via})` }));
 }
 
 // ---- the instances today ---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -300,8 +250,18 @@ async function findAll(page, opts = {}) {
     check('2.4 every ledger entry the baseline points at exists in PENDING_DECISIONS.md (DEFECT-DANGLING-REFERENCE)', filed.every(l => new RegExp('^### ' + l + ' ', 'm').test(ledger)), { expected: 'all exist', got: filed.filter(l => !new RegExp('^### ' + l + ' ', 'm').test(ledger)) });
 
     // ===== 3. it finds the operator's named instances, by the class, not by a list =================================================================================================
+    // T191 (#194): the engine reads the path the customer walked (orch_apply_path_facts). The same page with that one function made a no-op is the page as it was: the planted copy the #189 checks below are held against.
+    const noPathHtml = HTML.replace(/function orch_apply_path_facts\(context, chain, answers, db\) \{/, m => m + '\n return { chain, answers };');
+    check('3.0 the planted engine is a real mutation: the page really holds orch_apply_path_facts, and the copy differs from it', /function orch_apply_path_facts\(context, chain, answers, db\) \{/.test(HTML) && noPathHtml !== HTML, { expected: 'present and replaced', got: { present: /function orch_apply_path_facts/.test(HTML), differs: noPathHtml !== HTML } });
+    const noPathPage = await boot({ html: noPathHtml });
+    const dryGroup = ['wall_mounting_drywall_or_plaster'];
+    const dryNoPath = await findAll(noPathPage, { skipTyping: true, onlyGroups: dryGroup });
     const has = (shape, re, mod, ent) => list.some(i => i.shape === shape && re.test(i.where) && (!mod || i.question === mod) && (!ent || i.entity === ent));
-    check('3.1 NAMED: Drywall or Plaster > TV Flatscreen > Tv asks the wall type, with Brick or concrete among the answers, though the customer chose Drywall or Plaster', has(SHAPES.path, /Drywall or Plaster > TV Flatscreen/, 'wall_type', 'flatscreen_mounting_standard'), { expected: 'REDUNDANT-TRAVERSAL on wall_type', got: list.filter(i => i.question === 'wall_type').map(i => i.shape + ' ' + i.where).slice(0, 4) });
+    // T191 (#194): the operator's first named instance is FIXED. The path the customer walked (Drywall or Plaster) rules "Brick or concrete" out of the wall-type question, and the engine no longer offers it; the class still finds it
+    // when the engine stops reading the path (the planted copy), which is what makes "none on the real page" a finding and not a blind spot.
+    check('3.1 FIXED, #194: Drywall or Plaster > TV Flatscreen asks the wall type without Brick or concrete among the answers (the real page: no instance; the page that stops reading the path: the four #189 instances, the class finds them)',
+        !list.some(i => i.question === 'wall_type' && /Drywall or Plaster/.test(i.where)) && ['Tv > service flatscreen_mounting_standard', 'Tv > service flatscreen_mounting_with_hidden_cables', 'TV Flatscreen > Monitor', 'Cables \\(shown after cable_install_item\\)'].every(t => [...dryNoPath.found.values()].some(i => i.shape === SHAPES.path && i.question === 'wall_type' && new RegExp(t).test(i.where))),
+        { expected: 'none on the real page, four on the planted one', got: { real: list.filter(i => i.question === 'wall_type' && /Drywall or Plaster/.test(i.where)).length, planted: [...dryNoPath.found.values()].filter(i => i.question === 'wall_type').map(i => i.where) } });
     check('3.2 NAMED: Brick or Concrete > Mirror asks what kind of item is being mounted, though the customer tapped Mirror', has(SHAPES.path, /Brick or Concrete > Mirror/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour'), { expected: 'REDUNDANT-TRAVERSAL on wall_mount_items', got: list.filter(i => i.question === 'wall_mount_items').map(i => i.shape + ' ' + i.where).slice(0, 4) });
 
     check('3.3 NAMED: the same wall typed ("mount a tv on drywall", "... on brick wall") is asked again though the customer said it', has(SHAPES.said, /mount a tv on drywall/, 'wall_type', 'flatscreen_mounting_standard') && has(SHAPES.said, /mount a tv on brick wall/, 'wall_type', 'flatscreen_mounting_standard'), { expected: 'REASKED-QUESTION on both typed walls', got: list.filter(i => i.entry === 'typed' && i.question === 'wall_type').map(i => i.where).slice(0, 4) });
@@ -315,11 +275,12 @@ async function findAll(page, opts = {}) {
     }
 
     // ===== 3b. the second pass: examples the operator gave that the first pass could not see (2026-10-11 14:35 NY) ===============================================================
-    check('3.6 NAMED, second pass: Brick or Concrete > Shelf (the tile names two answers, the tiles beside it name the others) and Drywall or Plaster > TV Flatscreen > Cables (the wall type is asked once the cable question is answered) are found',
-        has(SHAPES.path, /Brick or Concrete > Shelf$/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour') && has(SHAPES.path, /TV Flatscreen > Cables \(shown after cable_install_item\)/, 'wall_type', 'cable_management'),
-        { expected: 'both', got: list.filter(i => /Shelf|Cables/.test(i.where)).map(i => i.where) });
+    check('3.6 NAMED, second pass: Brick or Concrete > Shelf (the tile names two answers, the tiles beside it name the others) is found; Drywall or Plaster > TV Flatscreen > Cables (the wall type is asked once the cable question is answered) is found on the page that does not read the path, and not on the real one (#194)',
+        has(SHAPES.path, /Brick or Concrete > Shelf$/, 'wall_mount_items', 'shelf_mortar_mounting_buy_the_hour') && !has(SHAPES.path, /TV Flatscreen > Cables \(shown after cable_install_item\)/, 'wall_type', 'cable_management')
+            && [...dryNoPath.found.values()].some(i => /TV Flatscreen > Cables \(shown after cable_install_item\)/.test(i.where) && i.question === 'wall_type' && i.entity === 'cable_management'),
+        { expected: 'Shelf on the real page; Cables only on the planted one', got: list.filter(i => /Shelf|Cables/.test(i.where)).map(i => i.where) });
     {   // the one-answer-deep read is what finds Cables: the walk of the same group without it finds none there
-        const g = ['wall_mounting_drywall_or_plaster'], without = await findAll(page, { skipTyping: true, skipReveal: true, onlyGroups: g }), withIt = await findAll(page, { skipTyping: true, onlyGroups: g });
+        const g = dryGroup, without = await findAll(noPathPage, { skipTyping: true, skipReveal: true, onlyGroups: g }), withIt = dryNoPath;       // the page that does not read the path: it is the one that has the instance to find
         const cables = r => [...r.found.values()].filter(i => /> Cables/.test(i.where));
         check('3.7 the question shown LATER is found only by reading a card one answer deep (the first view of the Cables card asks no wall type)', cables(without).length === 0 && cables(withIt).length === 1, { expected: '0 without the reveal pass, 1 with it', got: { without: cables(without).length, with: cables(withIt).length } });
     }
@@ -339,10 +300,11 @@ async function findAll(page, opts = {}) {
     {   // REDUNDANT-TRAVERSAL -- a service in the Brick or Concrete group is given the wall-type question: the group the customer chose already said brick
         const db = JSON.parse(JSON.stringify(DB0)), s = db.services.find(x => x.id === 'shelf_mortar_mounting_buy_the_hour');
         s.intake_chain = [{ module: 'wall_type', then: {} }].concat(s.intake_chain);
-        const real = await findAll(page, { skipTyping: true, onlyGroups: ['wall_mounting_brick_or_concrete'] }), planted = await findAll(await boot({ db }), { skipTyping: true, onlyGroups: ['wall_mounting_brick_or_concrete'] });
+        const g = ['wall_mounting_brick_or_concrete'];
+        const real = await findAll(page, { skipTyping: true, onlyGroups: g }), planted = await findAll(await boot({ db, html: noPathHtml }), { skipTyping: true, onlyGroups: g }), withEngine = await findAll(await boot({ db }), { skipTyping: true, onlyGroups: g });
         const hit = [...planted.found.values()].find(i => i.question === 'wall_type');
-        mutants.push(['4.2 TRAVERSAL: a Brick or Concrete service that asks the wall type is found as a path fact with the answer determined (the real page asks it nowhere in that group)',
-            !!hit && hit.shape === SHAPES.path && hit.determined && ![...real.found.values()].some(i => i.question === 'wall_type'), { planted: hit && [hit.shape, hit.determined, hit.why], real: [...real.found.values()].map(i => i.question) }]);
+        mutants.push(['4.2 TRAVERSAL: a Brick or Concrete service that asks the wall type is found as a path fact with the answer determined when the engine does not read the path; the engine that does (#194) answers it from the path, and the real page asks it nowhere in that group',
+            !!hit && hit.shape === SHAPES.path && hit.determined && ![...withEngine.found.values()].some(i => i.question === 'wall_type') && ![...real.found.values()].some(i => i.question === 'wall_type'), { planted: hit && [hit.shape, hit.determined, hit.why], withEngine: [...withEngine.found.values()].map(i => i.question), real: [...real.found.values()].map(i => i.question) }]);
     }
     {   // UNPRUNED-FLOW -- typed, so no path was walked; the service itself lives in the Brick or Concrete group and still asks the wall type: the fact is the job's own
         const db = JSON.parse(JSON.stringify(DB0)), s = db.services.find(x => x.id === 'flatscreen_mounting_standard');
@@ -356,8 +318,8 @@ async function findAll(page, opts = {}) {
     {   // the reveal pass -- a service in the Brick or Concrete group names the wall type as the branch of one of its answers: nothing asks it when the card opens, and the class finds it once "Single shelf" is answered
         const db = JSON.parse(JSON.stringify(DB0)), s = db.services.find(x => x.id === 'shelf_mortar_mounting_buy_the_hour');
         s.intake_chain[0].then = { 'Single shelf': ['wall_type'] };
-        const g = ['wall_mounting_brick_or_concrete'], real = await findAll(page, { skipTyping: true, onlyGroups: g }), planted = await findAll(await boot({ db }), { skipTyping: true, onlyGroups: g });
-        const hit = [...planted.found.values()].find(i => i.question === 'wall_type'), noReveal = await findAll(await boot({ db }), { skipTyping: true, skipReveal: true, onlyGroups: g });
+        const g = ['wall_mounting_brick_or_concrete'], real = await findAll(page, { skipTyping: true, onlyGroups: g }), planted = await findAll(await boot({ db, html: noPathHtml }), { skipTyping: true, onlyGroups: g });
+        const hit = [...planted.found.values()].find(i => i.question === 'wall_type'), noReveal = await findAll(await boot({ db, html: noPathHtml }), { skipTyping: true, skipReveal: true, onlyGroups: g });
         mutants.push(['4.4 REVEAL: a wall-type question that opens only after an answer, in the Brick or Concrete group, is found by the one-answer-deep read (and not by the first view; the real page asks it nowhere in that group)',
             !!hit && hit.shape === SHAPES.path && /shown after wall_mount_items/.test(hit.where) && ![...noReveal.found.values()].some(i => i.question === 'wall_type') && ![...real.found.values()].some(i => i.question === 'wall_type'),
             { planted: hit && [hit.shape, hit.where], withoutReveal: [...noReveal.found.values()].map(i => i.question), real: [...real.found.values()].map(i => i.question) }]);
