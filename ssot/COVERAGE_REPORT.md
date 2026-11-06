@@ -58,7 +58,7 @@ These are validation-visible declarations in the source, not defaults. 251 resid
 | price_claim_indirect | 50 | questions claimed to affect price whose options change minutes, quantity, complexity, a branch, a checkout state or materials but never the price (#215). |
 | price_claim_unwired | 5 | questions claimed to affect price whose options change nothing about the quote (symptom and identification questions); PENDING_DECISIONS #96 (#215). |
 | price_effect_unclaimed | 2 | questions whose options price the quote but carry no legacy claim, so the badge would be missing (#215). |
-| nlp_object_unresolved | 4 | NLP objects that name no entity and have no default service (install, mount, other, outlet, leak: category-level words); none of their words reaches an entity (#216). |
+| nlp_object_unresolved | 4 | NLP objects that name no entity and have no default service (install, other, outlet, leak: category-level words); none of their words reaches an entity (#216). |
 | object_term_not_aliased | 8 | NLP synonyms left out of an entity's aliases because the word already names another entity (laptop, desktop, pendant, door handle, wall, plaster, ram, floor): the object is coarser than the entity the customer means (#216). |
 | verb_without_action | 2 | customer verbs with vocabulary but no action in the registry (remove, replace) (#216). |
 | action_without_vocabulary | 1 | actions no customer word maps to (act.mount; its words "mount" and "hang" are clusters under Install) (#216). |
