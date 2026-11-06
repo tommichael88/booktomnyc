@@ -107,12 +107,14 @@ console.log('\n=== The sweep\'s one real fix: oven, previously the same broken s
 {
     const result = sandbox.detectIntentNLP('fix my oven');
     check('"fix my oven" scores >= 70 (was 42.5 before this fix)', result._matchConfidence >= 70);
-    check('"fix my oven" scores exactly 85 (full weight)', result._matchConfidence === 85);
+    // T197 (#250): the repair phrases of the stove now carry an authored contextual override to its only service (stove_repair), which sets the confidence to 90; the keyword's own weight stays 85
+    check('"fix my oven" scores exactly 90 (full weight 85, raised to 90 by the stove repair-phrase override, T197)', result._matchConfidence === 90);
     // stove has no default_service_sku (confirmed directly against the SSOT) --
     // unlike computer, the correct expectation here is a null recommendedSku
     // routing through the dynamic minor_home_repairs/Repair path, not a named SKU.
-    check('"fix my oven" correctly has no named-SKU recommendation (stove has none; this is the real, existing SSOT shape, not a gap this fix should paper over)',
-        result.recommendedSku === null);
+    // through T196 the stove had no service reachable from words (this check held a null recommendation); T197 authors "fix my oven" -> stove_repair, its only service
+    check('"fix my oven" recommends stove_repair (T197: authored repair-phrase override; "install gas stove" and "price range for repairs" keep the dynamic fallback, verify_typed_service_names 2.1)',
+        result.recommendedSku === 'stove_repair');
     check('"fix my oven" still carries the real default_dynamic_category (minor_home_repairs)', result.category === 'minor_home_repairs' || result._groupId !== undefined || true);
 }
 
@@ -124,7 +126,7 @@ console.log('\n=== The rest of the brief\'s named sweep terms: confirmed to need
     // full_weight_synonyms would be an inert no-op, not a real fix, so none
     // of them were touched.
     const selfReferential = [
-        ['fridge', 90], ['washer', 90], ['dryer', 85], ['dishwasher', 90],
+        ['fridge', 90], ['washer', 90], ['dryer', 85], ['dishwasher', 90],   // dryer: the keyword weight; the phrase "fix my dryer" scores 90 since T197 (see scoreOf)
         ['microwave', 90], ['toilet', 90], ['faucet', 80],
         ['shower head', 75], ['thermostat', 80],
     ];
@@ -133,8 +135,9 @@ console.log('\n=== The rest of the brief\'s named sweep terms: confirmed to need
         check(`${term}: is genuinely its own top-level keyword (not merely a synonym elsewhere)`, !!entry);
         check(`${term}: its own confidence_weight (${entry?.confidence_weight}) matches what this test expected (${expectedWeight})`, entry?.confidence_weight === expectedWeight);
         const result = sandbox.detectIntentNLP('fix my ' + term);
-        check(`"fix my ${term}" already scores full weight (${expectedWeight}) via the keyword-match path, untouched by this session`,
-            result._matchConfidence === expectedWeight);
+        const scoreOf = term === 'dryer' ? 90 : expectedWeight;   // T197 (#250): "fix my dryer" matches the dryer repair-phrase override (-> dryer_repair, its only service), which sets 90
+        check(`"fix my ${term}" already scores full weight (${scoreOf}) via the keyword-match path${scoreOf !== expectedWeight ? ' (raised from the keyword\'s 85 by the T197 repair-phrase override)' : ', untouched by this session'}`,
+            result._matchConfidence === scoreOf);
         check(`${term} was correctly NOT added to its own full_weight_synonyms (nothing to promote)`,
             !(entry.full_weight_synonyms || []).includes(term));
     }
@@ -142,7 +145,7 @@ console.log('\n=== The rest of the brief\'s named sweep terms: confirmed to need
     // shape as the group above, listed separately since it's the home entry
     // for the one real fix (oven) rather than unrelated to this session.
     const stoveResult = sandbox.detectIntentNLP('fix my stove');
-    check('"fix my stove" (the keyword itself) already scored full weight (85) before and after this fix', stoveResult._matchConfidence === 85);
+    check('"fix my stove" (the keyword itself) scored full weight (85) through T196; 90 since T197 (the stove repair-phrase override reaches stove_repair)', stoveResult._matchConfidence === 90 && DB.intent_mappings.objects.find(e => e.keyword === 'stove').confidence_weight === 85);
 }
 
 console.log('\n=== T111 per-synonym audit: the OTHER synonyms under each swept entry (not just the keyword itself) ===');

@@ -47,8 +47,8 @@ const PHRASES = [
     ['mount a tv on drywall', 'flatscreen_mounting_standard', 'wall_type', 'Drywall (standard)'],
     ['mount a television on brick wall', 'flatscreen_mounting_standard', 'wall_type', 'Brick or concrete'],
     ['mount a television on drywall', 'flatscreen_mounting_standard', 'wall_type', 'Drywall (standard)'],
-    ['flatscreen mounting with hidden cables on brick wall', 'flatscreen_mounting_standard', 'wall_type', 'Brick or concrete'],
-    ['flatscreen mounting with hidden cables on drywall', 'flatscreen_mounting_standard', 'wall_type', 'Drywall (standard)'],
+    ['flatscreen mounting with hidden cables on brick wall', 'flatscreen_mounting_with_hidden_cables', 'wall_type', 'Brick or concrete'],
+    ['flatscreen mounting with hidden cables on drywall', 'flatscreen_mounting_with_hidden_cables', 'wall_type', 'Drywall (standard)'],
     ['flat-pack furniture assembly on pax wardrobe', 'furniture_assembly_flat_pack', 'assembly_complexity', 'Complex (e.g. PAX wardrobe, sectional sofa)'],
     ['blinds shades or curtains install buy-the-hour on brick wall', 'blinds_shades_curtains_buy_the_hour', 'wall_type', 'Brick or concrete'],
     ['blinds shades or curtains install buy-the-hour on drywall', 'blinds_shades_curtains_buy_the_hour', 'wall_type', 'Drywall (standard)'],
@@ -122,8 +122,12 @@ const PHRASES = [
         const lines = require('child_process').execFileSync('node', [path.join(__dirname, 'tools', 'typed_phrases.js')], { env: Object.assign({}, process.env, { QR_ROOT: ROOT }), maxBuffer: 1 << 24 }).toString().split('\n').filter(Boolean);
         const changed = [];
         for (const t of lines) { const a = typed(E, t).r, b = typed(groupOnly, t).r; if (JSON.stringify([a.entity && a.entity.id, a.answers]) !== JSON.stringify([b.entity && b.entity.id, b.answers])) changed.push(t); }
-        check(`5.2 over the catalog's own ${lines.length} typed phrases exactly the twelve instances change (a service that asks the tag's question), and nothing else`,
-            changed.length === 12 && PHRASES.every(p => changed.includes(p[0])), { count: changed.length, others: changed.filter(t => !PHRASES.some(p => p[0] === t)) });
+        // T197 (#250): the corpus is derived from the catalog's own vocabulary, which now holds the concealed-cable words of the TV mount (they reach flatscreen_mounting_with_hidden_cables, which asks the wall
+        // type). Eight phrases ("tv a hidden cable on brick wall" ...) are therefore added to the corpus and change in exactly the way the twelve do -- a service that asks the tag's question. Nothing else.
+        const others = changed.filter(t => !PHRASES.some(p => p[0] === t));
+        const hiddenCable = others.filter(t => /hidden cables?|hide.*cables?/.test(t) && /on (brick|drywall)/.test(t) && (typed(E, t).r.entity || {}).id === 'flatscreen_mounting_with_hidden_cables');
+        check(`5.2 over the catalog's own ${lines.length} typed phrases exactly the twelve instances change (a service that asks the tag's question), plus the eight concealed-cable phrases the T197 vocabulary adds to the corpus, and nothing else`,
+            changed.length === 20 && PHRASES.every(p => changed.includes(p[0])) && hiddenCable.length === 8 && others.length === 8, { count: changed.length, others });
     }
 
     // ===== 6. each defect turns a check red ====================================================================================================================================================

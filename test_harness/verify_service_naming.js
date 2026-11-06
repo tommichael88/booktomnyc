@@ -173,12 +173,16 @@ console.log('\n=== 3b. the words a customer typed before (the old titles) still 
         for (const f of ['pricing_engine.js', 'nlp_engine.js', 'orchestrator_engine.js']) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sb, { filename: f });
         sb.initNlpSets(); if (typeof sb.refreshNlpPreviewBindings === 'function') sb.refreshNlpPreviewBindings();
         const route = text => { const c = sb.collectBookingContext_freeText(text), r = sb.executeWorkflow(c, DB); return [(r.entity && r.entity.id) || r.entityType || null, r.uiTemplate, r.quote && r.quote.laborEstimate, r.quote && r.quote.totalMin, r.confidence && r.confidence.score, r.quantity && r.quantity.units, (r.activeTags || []).slice().sort().join(',')]; };
-        const moved = [];
+        // T197 (#250): four of these old titles were among the 18 published names that missed their own service when typed; the authored vocabulary now routes them to it, so their recorded points
+        // MOVE, by design and no other way: the entity becomes the service the title names, and nothing else may move (the other eleven are held point for point).
+        const MOVED_BY_T197 = ['stove_repair', 'furniture_repair_hourly', 'shelf_mortar_mounting_buy_the_hour', 'generic_mounting_service'];
+        const moved = [], movedIds = new Set(), notOwn = [];
         for (const [id, was] of Object.entries(WAS)) for (const [vn, text] of [['name', was.toLowerCase()], ['count', 'I need 3 ' + was.toLowerCase()]]) {
             const before = G['text|' + id + '|' + vn], now = route(text);
-            if (JSON.stringify(before) !== JSON.stringify(now)) moved.push(`${id}|${vn}: ${JSON.stringify(before)} -> ${JSON.stringify(now)}`);
+            if (JSON.stringify(before) !== JSON.stringify(now)) { if (MOVED_BY_T197.includes(id)) { movedIds.add(id); if (now[0] !== id) notOwn.push(`${id}|${vn} -> ${now[0]}`); } else moved.push(`${id}|${vn}: ${JSON.stringify(before)} -> ${JSON.stringify(now)}`); }
         }
-        check(`the ${Object.keys(WAS).length} old titles, typed alone and with a count (${Object.keys(WAS).length * 2} phrases), give the same entity, card, price, time, confidence, quantity and tags as before`, moved.length === 0, moved.slice(0, 3).join('\n      '));
+        check(`the ${Object.keys(WAS).length - MOVED_BY_T197.length} old titles that T197 did not touch, typed alone and with a count, give the same entity, card, price, time, confidence, quantity and tags as before`, moved.length === 0, moved.slice(0, 3).join('\n      '));
+        check('the four old titles T197 moved (Stove / Range Repair, Furniture Repair Hourly, Shelf Mortar Mounting, Wall Mounting (any item)) now reach the service the title names, and only those four moved', movedIds.size === 4 && MOVED_BY_T197.every(i => movedIds.has(i)) && notOwn.length === 0, { movedIds: [...movedIds], notOwn });
         check('...and the old titles are the titles that changed (the table is the whole change)', Object.keys(WAS).every(id => DB.services.find(s => s.id === id).ui_taxonomy.display_name !== WAS[id]) && Object.keys(WAS).length === 15);
     } catch (e) { check('the old titles could be typed on today\'s engine', false, String(e.stack || e).split('\n').slice(0, 3).join(' | ')); }
 }

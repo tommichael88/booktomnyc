@@ -653,19 +653,14 @@ function tap(t, w) {
         for (const [phrase, expected] of cases) {
             check(`${JSON.stringify(phrase)} -> ${expected}`, resolveFreeText(phrase) === expected);
         }
-        // Honest, confirmed, NOT-fixed gap: free text has no real coverage
-        // path to the masonry-specific shelf_mortar_mounting_buy_the_hour
-        // -- 'shelf'/'mirror'/'mount' all route to the standard-wall
-        // service regardless of wall material, and 'brick'/'concrete'
-        // route to the unrelated brick_or_concrete_crack_repair. Fixing
-        // this needs real AND-logic (object type AND wall material) the
-        // current contextual_overrides mechanism (OR-only within one
-        // entry, first-match-wins across entries) doesn't cleanly
-        // support without risky reordering across independently-scored
-        // keyword entries -- flagged honestly rather than forced. Catalog
-        // navigation (this round's actual scope) is unaffected.
-        check('Confirmed, NOT fixed: free text has no path to shelf_mortar_mounting_buy_the_hour (documented gap, not silently ignored)',
-            resolveFreeText('mount a shelf on my brick wall') !== 'shelf_mortar_mounting_buy_the_hour');
+        // This was an honest, confirmed, NOT-fixed gap (through T196): free text had no path to the masonry-specific shelf_mortar_mounting_buy_the_hour -- 'shelf'/'mirror'/'mount' all
+        // routed to the standard-wall service regardless of wall material, and 'brick'/'concrete' to the unrelated brick_or_concrete_crack_repair. T197 (#250) closed it in the authored
+        // vocabulary with no engine change: the objects shelf and mount carry a contextual override whose words are the masonry words (object AND wall material, within the existing
+        // first-match-wins mechanism, ordered so a TV on brick still reaches the TV mount). The check now holds the closed gap, and that the plain shelf is untouched.
+        check('T197 (#250): free text reaches shelf_mortar_mounting_buy_the_hour for a shelf on brick (was the documented gap)',
+            resolveFreeText('mount a shelf on my brick wall') === 'shelf_mortar_mounting_buy_the_hour');
+        check('...and a shelf on a plain wall still reaches the standard-wall service',
+            resolveFreeText('mount a shelf on my wall') !== 'shelf_mortar_mounting_buy_the_hour');
     }
 
     console.log('\n=== Every other, non-allowlisted real group remains completely unaffected ===');

@@ -190,7 +190,9 @@ setTimeout(() => {
         // honest note on this). This isolates and reliably tests the
         // routing/rendering mechanism itself, which is what T64 follow-up
         // actually built.
-        const ctx = w.collectBookingContext_freeText('hang a shelf on a brick wall');
+        // T197 (#250): the phrase is incidental (the override is set by hand below). It was 'hang a shelf on a brick wall'; a shelf on masonry now reaches its own service
+        // (shelf_mortar_mounting_buy_the_hour) by an authored contextual override, which leaves no sibling group to pivot to -- so the controlled input carries no masonry word.
+        const ctx = w.collectBookingContext_freeText('hang a shelf on a wall');
         ctx._negationOverride = { from: 'wall_mounting_brick_or_concrete', to: 'wall_mounting_frames_shelves', negatedTagIds: ['#brick_wall'] };
         ctx.selectedGroupId = 'wall_mounting_frames_shelves';
 

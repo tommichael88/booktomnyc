@@ -95,11 +95,13 @@ console.log('\nHand-audited sample: object -> entity, written from btnyc.json by
     ['wifi', 'ent.wifi_extender', 'default_service_entity'], ['door knob', 'ent.door_lock', 'default_service_entity'], ['door sweep', 'ent.door', 'default_service_entity'],
     ['grout', 'ent.tile', 'default_service_entity'], ['software', 'ent.os', 'default_service_entity'], ['speaker', 'ent.smart_speaker', 'default_service_entity'],
     ['switch', 'ent.smart_switch', 'default_service_entity'], ['wood panel', 'ent.wall_paneling', 'default_service_entity'],
-    ['install', null, 'unresolved'], ['mount', null, 'unresolved'], ['other', null, 'unresolved'], ['outlet', null, 'unresolved'], ['leak', null, 'unresolved'],
+    ['window hardware', 'ent.window_hardware', 'keyword_is_entity'], ['system restore', 'ent.os', 'default_service_entity'],   // T197 (#250): two objects the 76 names needed, read off the service each reaches
+    ['mount', 'ent.wall_mounted_object', 'default_service_entity'],   // T197 (#250): was unresolved; the generic mounting job now has its own service (Wall Mounting (any item)), done to a wall-mounted object
+    ['install', null, 'unresolved'], ['other', null, 'unresolved'], ['outlet', null, 'unresolved'], ['leak', null, 'unresolved'],
   ];
   const handFails = objs => HAND.filter(([kw, ent, basis]) => { const r = (objs.find(o => o.keyword === kw) || {}).resolves_to; return !(r && r.entity_id === ent && r.basis === basis); }).map(x => x[0]);
   for (const [kw, ent, basis] of HAND) { const r = (byKeyword.get(kw) || {}).resolves_to; check(`"${kw}" -> ${ent || 'no entity'} (${basis})`, !!r && r.entity_id === ent && r.basis === basis, JSON.stringify(r)); }
-  check('every object of the legacy file is present, once, in the source (81)', OBJ.length === SRC_OBJ.length && new Set(SRC_OBJ.map(o => o.keyword)).size === SRC_OBJ.length && OBJ.every(o => byKeyword.has(o.keyword)), `${OBJ.length} vs ${SRC_OBJ.length}`);
+  check('every object of the legacy file is present, once, in the source (83)', OBJ.length === SRC_OBJ.length && new Set(SRC_OBJ.map(o => o.keyword)).size === SRC_OBJ.length && OBJ.every(o => byKeyword.has(o.keyword)), `${OBJ.length} vs ${SRC_OBJ.length}`);
   { const wrong = lib.clone(SRC_OBJ); wrong.find(o => o.keyword === 'cabinet').resolves_to = { entity_id: 'ent.cabinet', basis: 'keyword_is_entity' }; wrong.find(o => o.keyword === 'leak').resolves_to = { entity_id: 'ent.pipe', basis: 'default_service_entity' };
     check('counterfactual: the hand table fails on objects routed by a guess ("cabinet" by its word, "leak" to a pipe)', handFails(SRC_OBJ).length === 0 && handFails(wrong).join() === 'cabinet,leak', handFails(wrong).join()); }
 }
