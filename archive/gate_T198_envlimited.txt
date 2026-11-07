@@ -1,0 +1,18 @@
+T198 gate, run in an ENVIRONMENT-LIMITED checkout (not a replacement baseline)
+
+The checkout this was run in had no `jsdom`, no `ajv-formats` and no network to install them. Under that
+limit the UNTOUCHED main tree (4c7f229, T197 + the T198 docs commit) is 234 tests: 191 pass, 43 fail, 2 environment
+gaps (archive/gate_T198_envlimited_main_4c7f229.tsv), against the recorded 228 / 6 / 2 of archive/suite_T197.tsv.
+Of the 37 extra failures, 35 stop on a missing module (jsdom, ajv-formats, puppeteer-core by path) and 2 fail
+identically on the untouched tree (verify_charter_carry.js: "per ajv"; verify_compiled_output_against_real_schema.js:
+"'ajv' and 'ajv-formats' are required"). The T198 tree (6 commits' worth of change, one new test) is 235 tests:
+192 pass, 43 fail, 2 environment gaps (archive/gate_T198_envlimited_t198_tree.tsv).
+
+Compared with the untouched tree, in the same environment (suite_snapshot.js --compare, --jobs 4 --timeout 700):
+  pass -> fail: none      red -> worse: none      red -> no count: none      fail -> pass: none
+  new test: verify_masonry_mount_identity.js (passes)      no test removed
+The first two gates on this change had pass-to-fail results (2, then 2 more); both sets were mine and are traced
+and fixed in TIMELINE.md (T198 gate triage, gate triage 2). This is the third gate.
+
+archive/suite_T197.tsv REMAINS the recorded baseline. These files are deliberately not named suite_T*.tsv: a baseline
+with 43 reds would hide a regression in a full environment. Re-run against suite_T197.tsv where jsdom and ajv-formats exist.
