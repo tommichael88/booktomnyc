@@ -169,7 +169,7 @@
      // test harness extracts this const from qr.html directly, and the freshness
      // guard (test_harness/verify_qr_build_version_freshness.js) reads it here.
      // Bump it by hand alongside every real qr.html edit.
-     const QR_BUILD_VERSION = 'T193';
+     const QR_BUILD_VERSION = 'T198';
 
      /*
       * ───────────────────── Historical _simpleHash comment ─────────────────────
@@ -1121,6 +1121,9 @@
                  // -> door_lock_or_handle_install) and "new" inside "renewed" and "knew" (-> prehung_interior_door_install, $150). Multi-word keywords match as phrases, as they did.
                  const ctxMatched = ctxKws.some(kw => wordBoundaryIncludes(lower, kw.toLowerCase()));
                  if (!ctxMatched) continue;
+                 // T198 (A1): an override may also say what ELSE the request must name (`requires_any`, authored, same matcher). "mount" + a masonry word names the shelf mortar service
+                 // only when an item that service mounts is also named; a masonry word alone says nothing about the item, and the unnamed item is the generic mounting service's job.
+                 if (Array.isArray(ctx.requires_any) && !ctx.requires_any.some(kw => typeof kw === 'string' && wordBoundaryIncludes(lower, kw.toLowerCase()))) continue;
                  // v9.6 FIX (real, pre-existing bug found while testing an
                  // unrelated cabinets change): this loop had no early exit,
                  // so a LATER, broader-matching override (e.g. "new door" as

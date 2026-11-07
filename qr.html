@@ -4223,8 +4223,10 @@
             // resolver only ever read the object's bare defaults.
             if (Array.isArray(objectMap.contextual_overrides)) {
                 const lowerDesc = (context.rawText || '').toLowerCase();
+                // T198 (A1): an override's `requires_any` (what else the request must name) is honoured here as in detectIntentNLP, with the one matcher that module owns.
                 const ctxMatch = objectMap.contextual_overrides.find(ov =>
-                    Array.isArray(ov.keywords) && ov.keywords.some(k => lowerDesc.includes(k.toLowerCase()))
+                    Array.isArray(ov.keywords) && ov.keywords.some(k => lowerDesc.includes(k.toLowerCase())) &&
+                    (!Array.isArray(ov.requires_any) || ov.requires_any.some(k => typeof k === 'string' && wordBoundaryIncludes(lowerDesc, k.toLowerCase())))
                 );
                 if (ctxMatch?.override_sku) {
                     resolved.default_service_sku = ctxMatch.override_sku;
