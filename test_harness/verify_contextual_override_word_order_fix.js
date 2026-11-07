@@ -90,12 +90,11 @@ for (const c of genuineCases) {
 
 console.log('\n=== "I need a new door installed" (trailing-verb word order) -- verified directly against the resolver, since cms_bridge.js\'s analyze mode never reaches this stage ===');
 {
-    const FNS = ['resolveDynamicService', 'orch_apply_object_based_resolution'];
-    const code = FNS.map(findFn).join('\n\n');
+    // T198 (A1): the resolver now asks overrideRequiresMet (owned by nlp_engine), which a by-name cherry-pick of qr.html cannot supply; the engine modules are loaded whole (_engine.js, T136).
     const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
     sandbox.global = sandbox;
     vm.createContext(sandbox);
-    vm.runInContext(code, sandbox, { filename: 'door_installed_check' });
+    vm.runInContext(require('./_engine.js').engine().wrapper, sandbox, { filename: 'door_installed_check' });
     const context = {
         nlpIntent: { category: 'minor_home_repairs', stype: 'Install', key: 'install', base: 70, resolver: 'object_based', recommendedSku: null, _matchConfidence: 75, _groupId: 'minor_home_repairs_doors' },
         extractedObject: 'door',
