@@ -126,8 +126,12 @@ const PHRASES = [
         // type). Eight phrases ("tv a hidden cable on brick wall" ...) are therefore added to the corpus and change in exactly the way the twelve do -- a service that asks the tag's question. Nothing else.
         const others = changed.filter(t => !PHRASES.some(p => p[0] === t));
         const hiddenCable = others.filter(t => /hidden cables?|hide.*cables?/.test(t) && /on (brick|drywall)/.test(t) && (typed(E, t).r.entity || {}).id === 'flatscreen_mounting_with_hidden_cables');
-        check(`5.2 over the catalog's own ${lines.length} typed phrases exactly the twelve instances change (a service that asks the tag's question), plus the eight concealed-cable phrases the T197 vocabulary adds to the corpus, and nothing else`,
-            changed.length === 20 && PHRASES.every(p => changed.includes(p[0])) && hiddenCable.length === 8 && others.length === 8, { count: changed.length, others });
+        // T198 (A1): the catalog's masonry override on `mount` now lists "cement" among its first two words, which are what the corpus builder reads, so three phrases ("mount a cement", "... on vaulted ceiling",
+        // "... on very high ceiling") join the corpus. Each reaches the generic mounting service, which asks the wall ("cement" is the typed wall fact: "Brick or concrete") and the mounting height: the same class
+        // as the twelve -- a service that asks the tag's question. Named by identity and by the answer, not by a looser count.
+        const masonryCorpus = others.filter(t => /^mount a cement( on (vaulted|very high) ceiling)?$/.test(t) && (typed(E, t).r.entity || {}).id === 'generic_mounting_service' && (typed(E, t).r.answers || {}).wall_type === 'Brick or concrete');
+        check(`5.2 over the catalog's own ${lines.length} typed phrases exactly the twelve instances change (a service that asks the tag's question), plus the eight concealed-cable phrases the T197 vocabulary adds to the corpus and the three masonry phrases T198 adds (the generic mounting service asks the wall), and nothing else`,
+            changed.length === 23 && PHRASES.every(p => changed.includes(p[0])) && hiddenCable.length === 8 && masonryCorpus.length === 3 && others.length === 11, { count: changed.length, others });
     }
 
     // ===== 6. each defect turns a check red ====================================================================================================================================================

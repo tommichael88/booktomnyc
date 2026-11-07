@@ -15,7 +15,7 @@
  *                    mortar service's hourly figure.
  *   3. NON-VACUITY   plant each part's removal in a copy of the catalog: no `requires_any` -> the generic request is a shelf job again; no masonry override -> a named shelf on brick leaves the mortar
  *                    service; no "mortar" override -> the word "mortar" leaves it.
- *   4. BOTH EVALUATORS  the two places that read a contextual override both read `requires_any`.
+ *   4. BOTH EVALUATORS  the two places that read a contextual override both ask the one helper that owns `requires_any` (overrideRequiresMet, nlp_engine).
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -81,9 +81,9 @@ check('3.2 without the masonry override: a named shelf on brick leaves the morta
 check('3.3 without the "mortar" override: the word "mortar" no longer reaches the mortar service',
     entityOf(without(db => { db.intent_mappings.objects.find(o => o.keyword === 'mount').contextual_overrides = mountOverrides(db).filter(c => (c.keywords || []).join() !== 'mortar'); }), 'mortar mounting') !== MORTAR);
 
-// ===== 4. both evaluators read `requires_any` ============================================================================================================================================
+// ===== 4. both evaluators ask the one helper, `overrideRequiresMet` ============================================================================================================================================
 const nlpSrc = fs.readFileSync(path.join(ROOT, 'modules', 'nlp_engine.js'), 'utf8'), pageSrc = require('./_page.js').readPage(path.join(ROOT, 'qr.html'), ROOT);
-check('4.1 detectIntentNLP (modules/nlp_engine.js) honours an override\'s requires_any', /ctx\.requires_any/.test(nlpSrc));
-check('4.2 the object-based re-check in qr.html honours it with the same matcher', /ov\.requires_any[\s\S]{0,200}wordBoundaryIncludes/.test(pageSrc));
+check('4.1 detectIntentNLP (modules/nlp_engine.js) asks overrideRequiresMet of each override it considers, and that helper reads requires_any', /overrideRequiresMet\(ctx, lower\)/.test(nlpSrc) && /function overrideRequiresMet[\s\S]{0,200}requires_any/.test(nlpSrc));
+check('4.2 the object-based re-check in qr.html asks the same helper (one owner of the rule)', /ctxMatch = objectMap\.contextual_overrides\.find[\s\S]{0,300}overrideRequiresMet\(ov, lowerDesc\)/.test(pageSrc));
 
 finish();

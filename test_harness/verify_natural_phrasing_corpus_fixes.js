@@ -62,12 +62,12 @@ console.log('\n=== Fix 3: the object-based resolver re-checks contextual_overrid
 check('the live legacy resolver re-checks contextual_overrides', /objectMap\.contextual_overrides\)\) \{[\s\S]{0,400}ctxMatch\?\.override_sku/.test(QR_HTML));
 check('the orchestrator port also re-checks contextual_overrides', /resolved\.default_service_sku = ctxMatch\.override_sku/.test(QR_HTML));
 {
-    const FNS = ['resolveDynamicService', 'orch_apply_object_based_resolution'];
-    const code = FNS.map(findFn).join('\n\n');
+    // T198 (A1): the resolver now asks overrideRequiresMet (owned by nlp_engine), which a two-function cherry-pick of qr.html cannot supply. The engine modules are loaded whole (_engine.js, T136),
+    // so the resolver runs with everything it calls; the assertion below is unchanged.
     const sandbox = { DB, SERVICE_DATA: DB, window: { DB }, console };
     sandbox.global = sandbox;
     vm.createContext(sandbox);
-    vm.runInContext(code, sandbox, { filename: 'resolver_check' });
+    vm.runInContext(require('./_engine.js').engine().wrapper, sandbox, { filename: 'resolver_check' });
     const context = {
         nlpIntent: { category: 'minor_home_repairs', stype: 'Install', key: 'install', base: 70, resolver: 'object_based', recommendedSku: null, _matchConfidence: 75, _groupId: 'minor_home_repairs_doors' },
         extractedObject: 'front door',

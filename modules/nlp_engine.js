@@ -834,6 +834,14 @@
      };
      const wordBoundaryIncludes = (text, term) => !!wordBoundaryMatch(text, term);
 
+     // T198 (A1): a contextual override may also say what ELSE the request must name (`requires_any`, authored, the matcher above). "mount" + a masonry word names the shelf mortar service
+     // only when an item that service mounts is also named; a masonry word alone says nothing about the item, and the unnamed item is the generic mounting service's job. One owner of the
+     // rule: detectIntentNLP and the orchestrator's object-based re-check both ask this.
+     /** @param {any} ov @param {string} lowerText */
+     function overrideRequiresMet(ov, lowerText) {
+         return !Array.isArray(ov.requires_any) || ov.requires_any.some(/** @param {any} k */ k => typeof k === 'string' && wordBoundaryIncludes(lowerText, k.toLowerCase()));
+     }
+
      function detectIntentNLP(text) {
          // T118 #30 FIX (PENDING_DECISIONS.md #30): real, user-captured
          // trace -- "I need a bed assembled. [...] produces irrelevant
@@ -1121,9 +1129,7 @@
                  // -> door_lock_or_handle_install) and "new" inside "renewed" and "knew" (-> prehung_interior_door_install, $150). Multi-word keywords match as phrases, as they did.
                  const ctxMatched = ctxKws.some(kw => wordBoundaryIncludes(lower, kw.toLowerCase()));
                  if (!ctxMatched) continue;
-                 // T198 (A1): an override may also say what ELSE the request must name (`requires_any`, authored, same matcher). "mount" + a masonry word names the shelf mortar service
-                 // only when an item that service mounts is also named; a masonry word alone says nothing about the item, and the unnamed item is the generic mounting service's job.
-                 if (Array.isArray(ctx.requires_any) && !ctx.requires_any.some(kw => typeof kw === 'string' && wordBoundaryIncludes(lower, kw.toLowerCase()))) continue;
+                 if (!overrideRequiresMet(ctx, lower)) continue;   // T198 (A1): the override's own `requires_any`, if it has one
                  // v9.6 FIX (real, pre-existing bug found while testing an
                  // unrelated cabinets change): this loop had no early exit,
                  // so a LATER, broader-matching override (e.g. "new door" as
