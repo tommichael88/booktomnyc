@@ -4587,7 +4587,11 @@
                 entry: context.entry,
                 matchConfidence: context.nlpIntent?._matchConfidence,
                 enrichment: resolution.enrichment || null,
-                formulaId: context.nlpIntent?.dynamic_rule || entity?.financial_engine?.formula_ref || entity?.pricing_engine || null,
+                // T198 (A2, #251): a curated service is priced by its OWN authored contract (financial_engine.formula_ref, else pricing_engine -- the same
+                // formula its catalog tile uses); the object's `dynamic_rule` is the formula of the dynamic fallback, and for a curated service it is only a last resort.
+                formulaId: resolution.entityType === 'service'
+                    ? (entity?.financial_engine?.formula_ref || entity?.pricing_engine || context.nlpIntent?.dynamic_rule || null)
+                    : (context.nlpIntent?.dynamic_rule || entity?.financial_engine?.formula_ref || entity?.pricing_engine || null),
                 ctxAdjFee: context.nlpIntent?._ctxFee || 0,
                 ctxAdjMin: context.nlpIntent?._ctxMin || 0,
             };

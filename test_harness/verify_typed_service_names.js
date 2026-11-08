@@ -36,8 +36,9 @@ const typed = (sb, text) => { const c = sb.collectBookingContext_freeText(text);
 const entityOf = (sb, text) => { const r = typed(sb, text); return (r.entity && r.entity.id) || 'dynamic'; };
 const chainKeys = r => (r.visibleChain || []).map(m => m.moduleKey || m.module).sort().join(',');
 
-// the quotes that differ from the tile for a reason other than a tag the name says: the object's pricing formula applied on top of the service's own price (#251)
-const KNOWN_FORMULA_ON_CURATED = ['cabinet_door_or_drawer_adjustment', 'furniture_disassembly_for_moving', 'wall_hole_or_crack_repair'];
+// the quotes that differ from the tile for a reason other than a tag the name says: the object's pricing formula applied on top of the service's own price (#251).
+// T198 (A2) closed it: a curated service is priced by its own contract, so the declared list is empty and stays empty.
+const KNOWN_FORMULA_ON_CURATED = [];
 
 // ===== 1. the names ==========================================================================================================================================================================
 const services = DB0.services;
@@ -59,7 +60,7 @@ for (const s of services) {
 check(`1.1 all ${services.length} published names, typed, reach their own service (the T195 measure was 58)`, missed.length === 0, { missed });
 check('1.2 the chain a typed name asks is the chain the service asks from its own tile', chainDiffers.length === 0, { chainDiffers });
 check('1.3 the typed quote is the tile quote, unless the name itself says something that prices (a tag\'s answer)', unexplained.length === 0, { unexplained });
-check('1.4 the object-formula-on-curated-service cases are the declared three and may only shrink (#251)', JSON.stringify(formulaOn.sort()) === JSON.stringify(KNOWN_FORMULA_ON_CURATED.slice().sort()), { formulaOn });
+check('1.4 no curated service is priced with its object\'s formula on top of its own price (#251 closed, T198: the declared list is empty)', JSON.stringify(formulaOn.sort()) === JSON.stringify(KNOWN_FORMULA_ON_CURATED.slice().sort()), { formulaOn });
 
 // ===== 2. near matches =======================================================================================================================================================================
 const NOT = [   // words beside a changed object that are NOT the job of the service next to them: they keep the fallback they had
@@ -95,5 +96,16 @@ check('3.3 without "door lock" as a full-weight synonym of the door knob: Door L
     entityOf(without(db => { const o = objOf(db, 'door knob'); o.full_weight_synonyms = (o.full_weight_synonyms || []).filter(x => x !== 'door lock'); }), NAMES.door_lock_or_handle_install) !== 'door_lock_or_handle_install');
 check('3.4 without the system-restore object: System Restore or Reset reaches no service',
     entityOf(without(db => { db.intent_mappings.objects = db.intent_mappings.objects.filter(o => o.keyword !== 'system restore'); }), NAMES.system_restore_or_reset) !== 'system_restore_or_reset');
+
+// ===== 5. pricing ownership (#251, T198 A2): a curated service is priced by its own contract; the object's formula belongs to the dynamic fallback ===================================================
+const labor = (sb, text) => { const r = typed(sb, text); return [(r.entity && r.entity.id) || 'dynamic', r.quote.laborEstimate, r.quote.totalMin].join('/'); };
+const noFormula = id => without(db => { delete db.pricing_formulas[id]; });
+check('5.1 a curated service reached through an object does not read that object\'s formula (deleting drywall_repair_formula moves nothing for Wall Hole or Crack Repair)',
+    labor(noFormula('drywall_repair_formula'), 'Wall Hole or Crack Repair') === labor(E, 'Wall Hole or Crack Repair'), { with: labor(E, 'Wall Hole or Crack Repair'), without: labor(noFormula('drywall_repair_formula'), 'Wall Hole or Crack Repair') });
+check('5.2 ...and the dynamic fallback of the same object still does (deleting tile_repair_formula moves "fix tile")',
+    labor(E, 'fix tile').startsWith('dynamic/') && labor(noFormula('tile_repair_formula'), 'fix tile') !== labor(E, 'fix tile'), { with: labor(E, 'fix tile'), without: labor(noFormula('tile_repair_formula'), 'fix tile') });
+check('5.3 a curated service whose OWN contract names the object formula keeps it (Loose Tile Replacement: deleting tile_repair_formula moves it)',
+    labor(noFormula('tile_repair_formula'), 'Loose Tile Replacement') !== labor(E, 'Loose Tile Replacement'), { with: labor(E, 'Loose Tile Replacement') });
+check('5.4 the orchestrator asks the service\'s own contract first (source)', /entityType === 'service'\s*\?\s*\(entity\?\.financial_engine\?\.formula_ref \|\| entity\?\.pricing_engine \|\| context\.nlpIntent\?\.dynamic_rule/.test(require('./_page.js').readPage(path.join(ROOT, 'qr.html'), ROOT)));
 
 finish();
