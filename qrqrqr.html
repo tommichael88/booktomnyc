@@ -9752,8 +9752,14 @@ body.modal-active{overflow:hidden}
         function sqBuilderUpdateSentence() {
             const el = document.getElementById('sqBuilderSentence');
             if (!el) return;
-            const w = (txt, cls = 'bw') => `<span class="${cls}">${txt}</span>`;
-            const s = (txt) => `<span class="bs">${txt}</span>`;
+            const escHtml = (txt) => String(txt == null ? '' : txt)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            const w = (txt, cls = 'bw') => `<span class="${cls}">${escHtml(txt)}</span>`;
+            const s = (txt) => `<span class="bs">${escHtml(txt)}</span>`;
             const placeholder = (n) => Array(n).fill(`<span class="bp"></span>`).join('');
 
             let parts = [w('I need to ')];
