@@ -12443,3 +12443,20 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **Disclosure.** The 37 extra failures are an environment effect measured here; they were not re-run in a full environment. Anything that depended on `jsdom` or `ajv` (DOM-structure tests, the Charter schema checks) has not been exercised against the T198 tree in this session. The real page was exercised (headless Chrome: ten phrases before and after, no page errors; `render_diff` 0 of 1,146 across all 76 services).
 
 **Files modified:** `HANDOFF_CURRENT_STATE.md`, `archive/gate_T198_envlimited.txt`, `archive/gate_T198_envlimited_main_4c7f229.tsv`, `archive/gate_T198_envlimited_t198_tree.tsv`, `test_harness/FILE_MANIFEST.json(.sha256)`, `TIMELINE.md`.
+
+
+## T198 (A2) — #251 closed: a curated service is priced by its own contract, not by the formula of the object that reached it
+
+**Defect (measured, T197).** Typing a curated service's name through `drywall`, `furniture` or `cabinet` priced the object's `dynamic_rule` formula on top of the service's own price: Wall Hole or Crack Repair $90 / 135 min typed against $70 / 80 min from its tile; Furniture Disassembly for Moving 93/80 against 54/50; Cabinet Door or Drawer Adjustment 35/75 against 35/45. The same service, two prices, by how it was reached.
+
+**Change.** One expression in the `orch` block of `qr.html` (`formulaId`): for a curated service, `financial_engine.formula_ref`, else `pricing_engine`, else the object's `dynamic_rule` (last resort); the dynamic fallback keeps `dynamic_rule` first. `extract_modules.js` run; `QR_BUILD_VERSION` stays `T198`. The catalog was read first: the services whose own contract names an object formula (`furniture_repair_hourly`, `loose_tile_replacement`, `pax_wardrobe_assembly`, `cabinet_knob_or_pull_install`) carry it as their `pricing_engine`, so they are unchanged.
+
+**Measured.** Wide typed corpus 446 of 7,399 phrases move, default 33 of 350; all in five services, each to its own tile quote: Cabinet Door or Drawer Adjustment 35/75 -> 35/45, Furniture Disassembly 93/80 -> 54/50, Wall Hole or Crack Repair 90/135 -> 70/80, Scratch or Water Ring Removal 45/95 -> 45/55, Cabinet Knob or Pull Install 35/30 -> 95/3 (rises $60 to the tile's own figure). No dynamic-fallback phrase moved. Golden master: 10 of 2,988 points differ, all `text|`, all those five services. `archive/formula_precedence_T198_A2.md`, `typed_corpus_{default,wide}_T198_A2_diff.txt`, `golden_master_T198_A2_diff.txt`.
+
+**Tests.** `verify_typed_service_names.js`: `KNOWN_FORMULA_ON_CURATED` is empty (1.4 now asserts none); section 5 adds counterfactuals (deleting `drywall_repair_formula` moves nothing for the curated Wall Hole service; deleting `tile_repair_formula` moves the dynamic "fix tile" and the curated Loose Tile Replacement that names it; the source order). On the pre-change `qr.html`, 1.3, 1.4, 5.1 and 5.4 fail. `PENDING_DECISIONS.md` #251 closed with the measurement; `purity_audit.json` regenerated (`orch_compute_quote` 59 -> 63 lines).
+
+**Gate.** Same environment as T198 A1 (no `jsdom`/`ajv-formats`), compared with the A1 tree's snapshot: 235 tests, 191 pass, 44 fail, 2 environment gaps; the one pass->fail was `verify_file_integrity.js` (manifest not yet re-stamped when the gate ran), cleared by the re-stamp in this commit; red->worse none; fail->pass none. The recorded baseline stays `archive/suite_T197.tsv`.
+
+**Found, not fixed.** `cabinet_knob_or_pull_install` quotes $95 / 3 min at quantity 1 from its own tile; every route now shows it. Pricing review, not bundled.
+
+**Files modified:** `qr.html`, `test_harness/verify_typed_service_names.js`, `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json(.sha256)`, `test_harness/purity_audit.json`, `PENDING_DECISIONS.md`, `HANDOFF_CURRENT_STATE.md`, `archive/formula_precedence_T198_A2.md`, `archive/typed_corpus_default_T198_A2_diff.txt`, `archive/typed_corpus_wide_T198_A2_diff.txt`, `archive/golden_master_T198_A2_diff.txt`, `TIMELINE.md`.
