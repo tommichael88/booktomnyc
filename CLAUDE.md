@@ -14,7 +14,7 @@ Read this file, then the five documents below in order, before editing.
 
 **Queue, one bounded customer-facing slice at a time, each its own commit:**
 1. The application suite runs on every push to `main` and on demand: `.github/workflows/application-suite.yml` (`npm ci`: jsdom, ajv-formats, puppeteer-core; Chrome; full history), compared with `archive/suite_T198.tsv`. The job prints the snapshot, and a dispatch input `only` runs a single test. Read that result before claiming a change is verified; GitHub Pages and CodeQL green say nothing about this suite. A tool-less local checkout cannot run the jsdom tests: use the workflow, do not edit tests to fit.
-2. Wall material is not the job (B1, T198): the `yields_to` surface objects; the install-verb variant ("install a towel bar on concrete wall") is the open remainder.
+2. Wall material is not the job (B1, T198): the `yields_to` surface objects; the install-verb variant ("install a towel bar on concrete wall") is done in E1 (gate pending).
 3. Done in T198 (D2+D3: #248 excluded_service_ids honoured on every path; resolved: gate run 42647321821, no pass->fail): Under-Sink Leak Repair no longer inferred `#emergency` and Slow Drain Clearing no longer "completely blocked" (C1). Cabinet Knob $95 / 3 min is the operator-ruled visit minimum (#112), working as designed. #252 resolved in D4 (gate run 42657553699, no pass->fail). Still open, in this order: #249; "clogged drain" inferring "completely blocked".
 
 ## Authority (the operator restated it on 2026-11-09)
