@@ -13,7 +13,7 @@ Read this file, then the five documents below in order, before editing.
 **Done and on `main`:** A1 (masonry mounting identity), A2 (#251, a curated service is priced by its own contract), B (`BRANCH_PRESERVATION_REVIEW_T198.md`; the five historical branches are preserved as `archive/precleanup/*` and `master`, `legacy-archive`, `fix/charter-compliance-qr` are never deleted without an explicit operator ruling), C (operator digest). Do not restart them. `NEXT_SESSION_BRIEF.md` is history now; this section is the live queue, and no other task document is created.
 
 **Queue, one bounded customer-facing slice at a time, each its own commit:**
-1. The application suite in a provisioned environment: `.github/workflows/application-suite.yml` runs it with `npm ci` (jsdom, ajv-formats, puppeteer-core) and Chrome. Read its result before claiming a baseline; if it is clean, record `archive/suite_T198.tsv` (or later) as the new baseline. GitHub Pages and CodeQL green say nothing about this suite.
+1. The application suite in a provisioned environment: `.github/workflows/application-suite.yml` runs it with `npm ci` (jsdom, ajv-formats, puppeteer-core) and Chrome. Read its result before claiming a baseline; if it is clean, record its snapshot in archive/ as the new baseline (named for the build, e.g. suite_T198). GitHub Pages and CodeQL green say nothing about this suite.
 2. Wall material is not the job (B1, T198): the `yields_to` surface objects; the install-verb variant ("install a towel bar on concrete wall") is the open remainder.
 3. Under-Sink Leak Repair inferred `#emergency`; Slow Drain Clearing inferred "completely blocked"; the Cabinet Knob or Pull Install $95 / 3 min quote; #248; #252; #249.
 

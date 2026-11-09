@@ -11,6 +11,11 @@ on:
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
+    inputs:
+      only:
+        description: "Run only the tests whose file name contains this text (quick check of a few tests); empty runs the whole suite"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -35,17 +40,19 @@ jobs:
           echo "CHROME_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
           "$CHROME_PATH" --version
       - name: Full suite, compared with the recorded baseline
-        run: >
-          node test_harness/tools/suite_snapshot.js
-          --out suite_ci.tsv
-          --compare archive/suite_T197.tsv
-          --jobs 4 --timeout 700 --fail-on-gap
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          args=(--out suite_ci.tsv --compare archive/suite_T197.tsv --jobs 4 --timeout 700 --fail-on-gap)
+          if [ -n "$ONLY" ]; then args+=(--only "$ONLY"); fi
+          node test_harness/tools/suite_snapshot.js "${args[@]}"
       - name: Output of every failing test
         if: failure()
         run: |
           awk -F'\t' '$2!=0 {print $1}' suite_ci.tsv | while read -r t; do
             echo "::group::$t"; (cd test_harness && timeout 700 node "$t" 2>&1 | tail -40); echo "::endgroup::"
           done
+          echo "::group::failure records (expected / got) of the reruns"; cat test_harness/RESULTS/failures.jsonl 2>/dev/null | cut -c1-1500 | tail -40; echo "::endgroup::"
       - name: Keep the snapshot
         if: always()
         uses: actions/upload-artifact@v4
