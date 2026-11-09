@@ -12475,3 +12475,16 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **Found, not fixed.** "Install a towel bar on concrete wall" (the install verb is not a mount word); see the archive note.
 
 **Files modified:** `modules/nlp_engine.js` (and the generated root `nlp_engine.js`), `btnyc.json`, `ssot/btnyc_source.json`, `ssot/derived/btnyc_graph.json`, `ssot/migration/last_migration.json`, `ssot/MIGRATION_REPORT.md`, `test_harness/verify_surface_yields_to_mounting.js`, `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json(.sha256)`, `CLAUDE.md`, `NEXT_SESSION_BRIEF.md`, `HANDOFF_CURRENT_STATE.md`, `.github/workflows/application-suite.yml`, `archive/surface_yields_T198_B1.md`, `archive/typed_corpus_{default,wide}_T198_B1_diff.txt`, `archive/golden_master_T198_B1_diff.txt`, `TIMELINE.md`.
+
+
+## T198 (C1) — a plain leak is not urgent and a slow drain is not "completely blocked": two inferences the customer's words did not support
+
+**Defects (reproduced, 2026-11-09).** "Under-Sink Leak Repair" carried `#emergency` and the answer "Urgent - today or tomorrow" and was quoted $125 (its tile $75) with nothing said about timing; "Slow Drain Clearing" carried `#clogged_drain` ("Standing water - completely blocked") and was quoted $105 (its tile $70). Causes, both authored vocabulary: "leak", "leaky", "leakage" in `#emergency`'s `context_hints`; "slow drain" in `#clogged_drain`'s synonyms (R-PRICE-PRECISION: an exact amount more precise than the evidence).
+
+**Change.** Those four words removed; no engine code. Carried by `ssot_patch.js`, `migrate_legacy.js --write`, `carry_charter.js --write`, `splice_compiled.py --write`, `publish.js`, `report.js --write`; `validate_source.js`, `project_legacy.js --check`, `carry_charter.js --check` pass. Urgent words (urgent, asap, today, emergency, flooding, same day, right now) and blocked words (clogged drain, water backing up, blocked pipe, unclog) still infer their tags.
+
+**Measured.** `archive/unsupported_inferences_T198_C1.md`: tile states 1,300/1,300 identical; default corpus 7 of 350 change, wide 188 of 7,399 (leak $125 -> $75 in 76, slow drain $105 -> $70 in 34, the $50 urgency charge off other phrases that said "leak"); golden master 5 of 2,988 differ, none in labor or minutes (no tag card for a plain leak or drain). New `verify_unsupported_inferences.js` (25 checks; red on the untouched catalog, 12 failures; planted old words turn it red). `fixtures/tag_detection_corpus.json`: "slow drain in the tub" now a must-not-find for `#clogged_drain` (its answer contradicted it), "leak under the kitchen sink" a must-not-find for `#emergency`.
+
+**Found, not fixed.** "clogged drain" still infers "completely blocked" (a tag-level answer cannot depend on which synonym fired).
+
+**Files modified:** `btnyc.json`, `ssot/btnyc_source.json`, `ssot/derived/btnyc_graph.json`, `ssot/migration/last_migration.json`, `ssot/MIGRATION_REPORT.md`, `test_harness/verify_unsupported_inferences.js`, `test_harness/fixtures/tag_detection_corpus.json`, `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json(.sha256)`, `HANDOFF_CURRENT_STATE.md`, `CLAUDE.md`, `archive/unsupported_inferences_T198_C1.md`, `archive/typed_corpus_{default,wide}_T198_C1_diff.txt`, `archive/golden_master_T198_C1_diff.txt`, `TIMELINE.md`.
