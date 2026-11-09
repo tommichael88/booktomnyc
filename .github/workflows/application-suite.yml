@@ -40,6 +40,12 @@ jobs:
           --out suite_ci.tsv
           --compare archive/suite_T197.tsv
           --jobs 4 --timeout 700 --fail-on-gap
+      - name: Output of every failing test
+        if: failure()
+        run: |
+          awk -F'\t' '$2!=0 {print $1}' suite_ci.tsv | while read -r t; do
+            echo "::group::$t"; (cd test_harness && timeout 700 node "$t" 2>&1 | tail -40); echo "::endgroup::"
+          done
       - name: Keep the snapshot
         if: always()
         uses: actions/upload-artifact@v4
