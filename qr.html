@@ -1318,6 +1318,16 @@
         // This is the ONE place the rule lives (R-INVARIANT-NOPATCH: a fix that exists on one entry path is a symptom fix): the state path
         // (computeQuoteFromState), the orchestrator (executeWorkflow) and the conditions the quote panel displays all call it, so no entry path
         // prices a requirement another does not.
+        // tagExcludesService / tagIdsForService -- LOGIC. The one reading of the authored `excluded_service_ids` (T198, #248): a tag authored as "never for this service" is out for that service on every
+        // path that holds tags (the group test, the typed scope test, the chips, the session's tag set, the orchestrator's). Pure; no service means nothing is excluded.
+        function tagExcludesService(tid, serviceId, DB) {
+            const ex = serviceId && DB && DB.smart_tags && DB.smart_tags[tid] && DB.smart_tags[tid].excluded_service_ids;
+            return !!(ex && ex.length > 0 && ex.includes(serviceId));
+        }
+        function tagIdsForService(tagIds, serviceId, DB) {
+            return (tagIds || []).filter(t => !tagExcludesService(t, serviceId, DB));
+        }
+
         function closeTagsOverRequires(tagIds, negatedTagIds, DB) {
             const negated = new Set(negatedTagIds || []);
             const base = [...new Set(tagIds || [])].filter(t => !negated.has(t));
@@ -1650,7 +1660,7 @@
             // as always-chargeable, never negatable the way detTagIds are.
             // The tags in force include what the SSOT's `requires` relations imply (closeTagsOverRequires), so a derived tag synthesizes its answer
             // too (a virus implies a computer: the device question is retired, not asked). The customer's explicit negations still win.
-            const active = closeTagsOverRequires([...(state.detTagIds || []), ...(state.manTagIds || []), ...(state.inherentTagIds || [])], state.negatedTagIds, DB);
+            const active = resolveSessionTagIds(state);   // T198 (#248): the one session tag set, so the answers a tag synthesizes follow the exclusion too
             // The rules above live in ONE pure function (synthesizeAnswersFromTags), shared with the orchestrator, so a tag is worth the same on every entry path
             // (R-CLIENT-CONVERGE). This adapter applies its result to the session state IN PLACE, because other code holds these two objects.
             const r = synthesizeAnswersFromTags(active, state.answers, state._tagSynthesizedModules, DB);
@@ -1780,7 +1790,7 @@
         // for that service. The group path is exactly as it was; this only adds. Pure; false for no service.
         function tagInScopeForRequest(tid, cat, groupId, serviceId) {
             // T198 (#248): a tag authored as never-for-this-service (excluded_service_ids) is out for the service the words reached, on every route into this test.
-            if (serviceId && tagValidForCategory(tid, cat, groupId, serviceId) !== tagValidForCategory(tid, cat, groupId)) return false;
+            if (tagExcludesService(tid, serviceId, DB)) return false;
             if (tagValidForCategory(tid, cat, groupId)) return true;
             const tag = ((typeof DB !== 'undefined' && DB.smart_tags) || {})[tid];
             if (!tag || !serviceId || !tagAnswersAskedByService(tag, serviceId)) return false;
@@ -1839,10 +1849,7 @@
             }
             // Most specific layer: a real, individually-verified exclusion
             // for this exact service, regardless of category/group match.
-            const excluded = tag.excluded_service_ids;
-            if (excluded && excluded.length > 0 && serviceId && excluded.includes(serviceId)) {
-                return false;
-            }
+            if (tagExcludesService(tid, serviceId, DB)) return false;
             return true;
         }
 
@@ -3067,7 +3074,9 @@
         // winning. With includeDetected = false, the CHARGEABLE set before the customer affirms what the words detected: chosen and inherent only (computeQuoteFromState's
         // gate). One definition for the quote (computeQuoteFromState) and for the confidence the guided builder stores (resolveSessionConfidence) (R-INVARIANT-SINGLEDEF).
         function resolveSessionTagIds(state, includeDetected = true) {
-            return closeTagsOverRequires([...(includeDetected ? (state.detTagIds || []) : []), ...(state.manTagIds || []), ...(state.inherentTagIds || [])], state.negatedTagIds, DB);
+            // T198 (#248): the service the session is for (a catalog tile's, or the one its key names) is the one that excludes a tag; a session with no service excludes none.
+            const sid = (state._svc && state._svc.id) || (state.intent?.key && (DB.services || []).some(s => s.id === state.intent.key) ? state.intent.key : null);
+            return closeTagsOverRequires(tagIdsForService([...(includeDetected ? (state.detTagIds || []) : []), ...(state.manTagIds || []), ...(state.inherentTagIds || [])], sid, DB), state.negatedTagIds, DB);
         }
 
         // resolveSessionConfidence -- LOGIC. The confidence of a session as it stands, from the session's own evidence: its entry, its match strength and keyword, its
@@ -3107,11 +3116,11 @@
         // (smart_tags[].mutually_exclusive): a tapped tag removes its siblings everywhere, a detected tag removes its siblings unless the customer tapped one; (3) a negation
         // dies when an exclusive sibling of the negated tag is active. Pure: it returns the four sets and writes no session; applySSOTRules stores them. Moved out of
         // applySSOTRules (glue) so a rule lives in the Logic layer (R-SYSTEM-LAYERS, R-INVARIANT-COMPLY: the T166 fix below touched it), text and order preserved except where noted.
-        function resolveTagRules({ category, groupId, curatedMode, detTagIds, manTagIds, userTagIds, negatedTagIds }) {
+        function resolveTagRules({ category, groupId, curatedMode, detTagIds, manTagIds, userTagIds, negatedTagIds, serviceId = null }) {
             const tags = DB.smart_tags || {};
             const cat = category || 'other';
             let det = (detTagIds || []).slice(), man = (manTagIds || []).slice(), usr = (userTagIds || []).slice(), neg = (negatedTagIds || []).slice();
-            const valid = Object.keys(tags).filter(tid => tagValidForCategory(tid, cat, groupId));
+            const valid = Object.keys(tags).filter(tid => tagValidForCategory(tid, cat, groupId, serviceId));
 
             // Default-for-group -- only for tags valid for this category
             const groups = new Set(valid.map(tid => tags[tid].display_group || 'Additional Adjustments'));
@@ -3125,7 +3134,7 @@
                 if (!hasSel) {
                     // Skip auto-default in curated mode (e.g. don't auto-select #drywall for door installs)
                     if (curatedMode) return;
-                    const def = gTids.find(tid => tags[tid].is_default_for_group && tagValidForCategory(tid, cat, groupId));
+                    const def = gTids.find(tid => tags[tid].is_default_for_group && tagValidForCategory(tid, cat, groupId, serviceId));
                     if (def && !neg.includes(def) && !man.includes(def))
                         man.push(def);
                 }
@@ -3700,7 +3709,7 @@
                 quote = null;
             // The tags in force for this request: detected + manually toggled, the SSOT's `requires` relations applied (closeTagsOverRequires --
             // the same single definition the state path uses), the customer's explicit negations winning.
-            const activeTagIds = closeTagsOverRequires(
+            let activeTagIds = closeTagsOverRequires(
                 [...(context.detectedTagIds || []), ...(context.manuallyToggledTagIds || [])],
                 context.negatedTagIds, db);
             // Tag-to-answer synthesis (operator brief section 2.8): the tags the customer chose or the NLP detected answer the questions their authored `answers`
@@ -3713,6 +3722,14 @@
                 switch (step.operation) {
                     case 'lookup':
                         resolution = orch_resolve_entity(context, db);
+                        // T198 (#248): the entity the request reached excludes the tags it authors as never-for-this-service, whichever route named them (the words, a tap, a catalog tile).
+                        if (resolution.entityType === 'service' && resolution.entity) {
+                            const kept = tagIdsForService(activeTagIds, resolution.entity.id, db);
+                            if (kept.length !== activeTagIds.length) {
+                                activeTagIds = closeTagsOverRequires(tagIdsForService([...(context.detectedTagIds || []), ...(context.manuallyToggledTagIds || [])], resolution.entity.id, db), context.negatedTagIds, db);
+                                answers = synthesizeAnswersFromTags(activeTagIds, Object.assign({}, context.answers || {}), {}, db).answers;
+                            }
+                        }
                         outputSummary = {
                             entityType: resolution.entityType,
                             entityId: resolution.entity?.id || null
@@ -5375,6 +5392,7 @@
                 category: detCat,
                 groupId: selectedGroupId,
                 curatedMode: !!selectedServiceId,
+                serviceId: selectedServiceId,
                 detTagIds: detectedTagIds,
                 manTagIds: [],
                 userTagIds: [],
@@ -10699,6 +10717,7 @@ function addToCart(entry) {
                 category: S.intent?.category,
                 groupId: S.intent?._groupId,
                 curatedMode: S._curatedMode,
+                serviceId: S._svc?.id || null,
                 detTagIds: S.detTagIds,
                 manTagIds: S.manTagIds,
                 userTagIds: S.userTagIds,
@@ -11591,7 +11610,7 @@ function addToCart(entry) {
 
             // Grouped chips from SSOT smart_tags
             const cat = S.intent?.category || 'other';
-            const valid = Object.keys(tags).filter(tid => tagValidForCategory(tid, cat, S.intent?._groupId));
+            const valid = Object.keys(tags).filter(tid => tagValidForCategory(tid, cat, S.intent?._groupId, S._svc?.id || null));
             const exist = new Set([...S.detTagIds, ...S.negatedTagIds, ...S.manTagIds]);
             const grouped = {};
             valid.forEach(tid => {
