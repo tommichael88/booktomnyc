@@ -915,6 +915,7 @@
              if (/^('?s|es|ed|ing)?$/.test(suffix)) return true;
              return kwl.endsWith('e') && /^(ed|ing)$/.test(suffix);
          };
+         const scoreByMapping = new Map();   // T198 (B1): every entry's own score, for the surface-yields step below
          for (const m of maps) {
              let score = 0;
              const kw = (m.keyword || '').toLowerCase(),
@@ -978,6 +979,7 @@
                      }
                  });
              score = Math.min(score, 100);
+             scoreByMapping.set(m, score);
              // v9.6: resolver-bearing entries (currently just
              // "install", handing off to the object-based
              // resolver) win when their OWN keyword explicitly
@@ -1099,6 +1101,20 @@
                      best = buildCandidate(m2, m2Score);
                      break crossEntrySpecificity;
                  }
+             }
+         }
+
+         // T198 (B1): an object that names only the SURFACE a job happens on (brick, concrete, drywall, plaster) carries `yields_to`: when the customer also said the
+         // action that object names ("hang", "mount") and no damage word (`unless_any`), the action's object wins and its own contextual overrides pick the service.
+         // A wall material alone is not a crack repair. Authored data decides which objects yield and to what; this step only reads it.
+         if (bestMapping && bestMapping.yields_to && typeof bestMapping.yields_to.object === 'string') {
+             const y = bestMapping.yields_to, target = maps.find(x => x !== bestMapping && (x.keyword || '').toLowerCase() === y.object.toLowerCase());
+             const damaged = (Array.isArray(y.unless_any) ? y.unless_any : []).some(/** @param {any} k */ k => typeof k === 'string' && wordBoundaryIncludes(lower, k.toLowerCase()));
+             const targetScore = target ? (scoreByMapping.get(target) || 0) : 0;
+             if (target && !damaged && targetScore > 0) {
+                 bestMapping = target;
+                 top = targetScore;
+                 best = buildCandidate(target, targetScore);
              }
          }
 

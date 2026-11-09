@@ -12460,3 +12460,18 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **Found, not fixed.** `cabinet_knob_or_pull_install` quotes $95 / 3 min at quantity 1 from its own tile; every route now shows it. Pricing review, not bundled.
 
 **Files modified:** `qr.html`, `test_harness/verify_typed_service_names.js`, `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json(.sha256)`, `test_harness/purity_audit.json`, `PENDING_DECISIONS.md`, `HANDOFF_CURRENT_STATE.md`, `archive/formula_precedence_T198_A2.md`, `archive/typed_corpus_default_T198_A2_diff.txt`, `archive/typed_corpus_wide_T198_A2_diff.txt`, `archive/golden_master_T198_A2_diff.txt`, `TIMELINE.md`.
+
+
+## T198 (B1) — a wall material is not the job: hanging a picture on brick, concrete, drywall, plaster or tile is a mounting job
+
+**Defect (reproduced, 2026-11-09).** "Hang a picture on brick wall", "Hang a heavy mirror on brick wall", "Mount something on concrete wall" all quoted Brick or Concrete Crack Repair ($95-140). "Hang a picture on drywall" was the drywall-repair dynamic fallback ($295 / 145), on plaster a Plaster Wall Repair, on tile the tile-repair fallback ($247). Cause, in the authored data: the surface objects default to a repair service and their score beat the mount object's weaker words.
+
+**Change.** Authored `yields_to` on `brick`, `concrete`, `drywall`, `plaster`, `tile`; one step in `detectIntentNLP` that reads it (a damage word keeps the surface object). No second router, no engine table; `qr.html` unchanged. Carried by `ssot_patch.js`, `migrate_legacy.js --write`, `carry_charter.js --write`, `publish.js`; `validate_source.js`, `project_legacy.js --check`, `carry_charter.js --check` pass.
+
+**Measured.** `archive/surface_yields_T198_B1.md` has the before/after table. Default typed corpus 6 of 350 change, wide 18 of 7,399 (all mounting phrases leaving a repair service), golden master 1 of 2,988 (`text|corpus|05`, the master's own heavy mirror on a brick wall: Crack Repair 70/80 -> Shelf Mortar Mounting 304/130). New `verify_surface_yields_to_mounting.js` (34 checks; red on the untouched tree; planted removals of `yields_to` and of the damage guard each turn their check).
+
+**Authority and process.** Under the operator's 2026-11-09 statement of the delegation (G-GOVERN-AUTONOMY et al.): `CLAUDE.md` handoff and authority sections rewritten (A1, A2, B, C done; model line: Sonnet 5.5 throughout); `NEXT_SESSION_BRIEF.md` marked history. `.github/workflows/application-suite.yml` added so the whole suite runs with `jsdom`, `ajv-formats` and Chrome. Issue #22 re-verified (`verify_focused_mode_textbar_scope.js` 38/38 in headless Chrome) and closed. The two approved remote branch deletions were refused by GitHub (HTTP 403 through the session proxy); both branches are untouched and preserved under `archive/precleanup/*`.
+
+**Found, not fixed.** "Install a towel bar on concrete wall" (the install verb is not a mount word); see the archive note.
+
+**Files modified:** `modules/nlp_engine.js` (and the generated root `nlp_engine.js`), `btnyc.json`, `ssot/btnyc_source.json`, `ssot/derived/btnyc_graph.json`, `ssot/migration/last_migration.json`, `ssot/MIGRATION_REPORT.md`, `test_harness/verify_surface_yields_to_mounting.js`, `test_harness/MASTER_TEST_SUITE.json`, `test_harness/FILE_MANIFEST.json(.sha256)`, `CLAUDE.md`, `NEXT_SESSION_BRIEF.md`, `HANDOFF_CURRENT_STATE.md`, `.github/workflows/application-suite.yml`, `archive/surface_yields_T198_B1.md`, `archive/typed_corpus_{default,wide}_T198_B1_diff.txt`, `archive/golden_master_T198_B1_diff.txt`, `TIMELINE.md`.

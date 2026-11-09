@@ -9,8 +9,18 @@ Read this file, then the five documents below in order, before editing.
 4. `PENDING_DECISIONS.md` — current engineering/content ledger. Standing delegation makes documented defaults active; decide and record within that delegation, and raise only facts genuinely reserved to the operator.
 5. `HANDOFF_CURRENT_STATE.md` — last recorded checkpoint, not live truth. Start with its newest update and verify dates, branch head, test baseline, and relevant behavior against the current repository.
 
-## Current fresh-session handoff (supersedes completed #250)
-**Read [NEXT_SESSION_BRIEF.md](NEXT_SESSION_BRIEF.md) and execute its first bounded product slice.** T197 closed #250 (76/76 exact published names route to their own service) at `5096ec1c`. Do not restart #250 or its SSOT migration. The live first investigation is the recorded masonry-mounting reroute in `archive/typed_corpus_default_T197_diff.txt`; then #251 if the first issue is verified and closed. The same brief separately directs a **preservation-first** audit of old branches and a small operator-approval digest from `PENDING_DECISIONS.md`. Do not make archive housekeeping a blocker for customer correctness.
+## Current handoff (2026-11-09; supersedes the T198 brief's Track A/B/C, which are done)
+**Done and on `main`:** A1 (masonry mounting identity), A2 (#251, a curated service is priced by its own contract), B (`BRANCH_PRESERVATION_REVIEW_T198.md`; the five historical branches are preserved as `archive/precleanup/*` and `master`, `legacy-archive`, `fix/charter-compliance-qr` are never deleted without an explicit operator ruling), C (operator digest). Do not restart them. `NEXT_SESSION_BRIEF.md` is history now; this section is the live queue, and no other task document is created.
+
+**Queue, one bounded customer-facing slice at a time, each its own commit:**
+1. The application suite in a provisioned environment: `.github/workflows/application-suite.yml` runs it with `npm ci` (jsdom, ajv-formats, puppeteer-core) and Chrome. Read its result before claiming a baseline; if it is clean, record `archive/suite_T198.tsv` (or later) as the new baseline. GitHub Pages and CodeQL green say nothing about this suite.
+2. Wall material is not the job (B1, T198): the `yields_to` surface objects; the install-verb variant ("install a towel bar on concrete wall") is the open remainder.
+3. Under-Sink Leak Repair inferred `#emergency`; Slow Drain Clearing inferred "completely blocked"; the Cabinet Knob or Pull Install $95 / 3 min quote; #248; #252; #249.
+
+## Authority (the operator restated it on 2026-11-09)
+`G-GOVERN-AUTONOMY`, `G-GOVERN-TRANSITION`, `G-GOVERN-PRECEDENCE`, `R-INVARIANT-DONE`, `R-CLIENT-PRESENTATION-ONLY` and `R-PRICE-PRECISION` already delegate ordinary engineering decisions to the agent: investigate, decide the correct behavior, make the smallest correction in the owning layer, verify the customer outcome, record the evidence, commit, move on. Do not ask the operator to approve implementation choices. Ask only for what the Charter reserves to the operator, a conflict with an explicit prior instruction, or a technician/regulatory fact; those stay identified in `PENDING_DECISIONS.md` and never block ordinary work. `PENDING_DECISIONS.md` is an evidence ledger, not an approval queue.
+
+**End every session with this summary** (and nothing longer): 1. what improved for the customer; 2. what was verified and what remains unverified; 3. which commit holds the change; 4. whether anything actually requires the operator's decision (if not, say exactly "No operator approval required."); 5. the next smallest worthwhile customer-facing improvement.
 
 ## The tree in one look
 - `qr.html` — deployed page; some engine/controller/rendering blocks remain inline and are their canonical source until explicitly changed. Check the current `COMPONENT_LAYER_MAP.md` before editing.
@@ -42,4 +52,4 @@ Report what the current code does, what the owning specification requires, what 
 Prefer one reproducible customer-facing failure and a bounded fix in its authoritative layer. State the before/after behavior first; identify the existing owner and a counterexample that would fail without the fix. Do not start a new migration, registry, refactor, or test-retirement sweep just to make unrelated progress indicators prettier. If structural change is genuinely necessary, use the already-authorized transition/governance path, with a measurable closure condition. Preserve price/routing diffs, document only evidence-backed findings in the existing ledgers, and stop when the customer outcome and applicable regression gates are demonstrated.
 
 ## Model
-Sonnet by default. `/model opus` for: the Charter, `ssot/` migration, `btnyc.json` authoring, and any change that alters a customer-facing price or label.
+Sonnet 5.5, for everything. Where a document or tool names another model for a task (the Charter, `ssot/` migration, `btnyc.json` authoring, a customer-facing price or label change), keep the care that instruction asks for and do the work with Sonnet 5.5; do not report it as a decision for the operator.

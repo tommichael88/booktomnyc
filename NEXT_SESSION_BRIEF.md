@@ -1,5 +1,7 @@
 # NEXT_SESSION_BRIEF.md — T198: customer correctness, preserved history, and owner-only decisions
 
+> **Status (2026-11-09): Tracks A1, A2, B and C are complete** (TIMELINE T198, T198 (A2); `BRANCH_PRESERVATION_REVIEW_T198.md`). The live queue and the authority statement are in `CLAUDE.md`. This brief is kept as history; do not re-run its tracks.
+
 **Approved working direction (2026-11-06):** one measurable customer defect at a time; preservation before branch cleanup; do not make the operator re-approve technical defaults. This brief is an instruction/handoff, **not** a new Charter or SSOT. The Charter, COMPONENT_LAYER_MAP.md, current code, and existing PENDING_DECISIONS.md remain governing. Do not silently override them.
 
 **Starting tree:** latest `main`, which was `5096ec1c` when this brief was written. Recheck the head; do not blindly trust these dates. T197 closed #250 (all 76 exact published service names now resolve to themselves). `archive/suite_T197.tsv` is the latest recorded suite baseline: 234 tests, 228 pass, 6 known fail, 2 environment gaps. The saved gate used `--timeout 700` because `verify_draft_survives_navigation.js` exceeds 300 seconds under parallel load. GitHub Pages and CodeQL being green **does not** mean this application suite ran in CI.
