@@ -1318,6 +1318,16 @@
         // This is the ONE place the rule lives (R-INVARIANT-NOPATCH: a fix that exists on one entry path is a symptom fix): the state path
         // (computeQuoteFromState), the orchestrator (executeWorkflow) and the conditions the quote panel displays all call it, so no entry path
         // prices a requirement another does not.
+        // orch_tags_for_service -- LOGIC. The tags in force for a request once the service it reached is known: the detected and tapped tags that service does not exclude (tagIdsForService),
+        // the SSOT's `requires` applied, the customer's negations winning; and, only when an exclusion dropped one, the answers re-derived from the tags that remain (T198, #248).
+        function orch_tags_for_service(context, serviceId, db) {
+            const named = [...(context.detectedTagIds || []), ...(context.manuallyToggledTagIds || [])];
+            const kept = tagIdsForService(named, serviceId, db);
+            const activeTagIds = closeTagsOverRequires(kept, context.negatedTagIds, db);
+            const dropped = kept.length !== named.length;
+            return { activeTagIds, dropped, answers: dropped ? synthesizeAnswersFromTags(activeTagIds, Object.assign({}, context.answers || {}), {}, db).answers : null };
+        }
+
         // tagExcludesService / tagIdsForService -- LOGIC. The one reading of the authored `excluded_service_ids` (T198, #248): a tag authored as "never for this service" is out for that service on every
         // path that holds tags (the group test, the typed scope test, the chips, the session's tag set, the orchestrator's). Pure; no service means nothing is excluded.
         function tagExcludesService(tid, serviceId, DB) {
@@ -1660,7 +1670,7 @@
             // as always-chargeable, never negatable the way detTagIds are.
             // The tags in force include what the SSOT's `requires` relations imply (closeTagsOverRequires), so a derived tag synthesizes its answer
             // too (a virus implies a computer: the device question is retired, not asked). The customer's explicit negations still win.
-            const active = resolveSessionTagIds(state);   // T198 (#248): the one session tag set, so the answers a tag synthesizes follow the exclusion too
+            const active = closeTagsOverRequires(tagIdsForService([...(state.detTagIds || []), ...(state.manTagIds || []), ...(state.inherentTagIds || [])], sessionServiceId(state), DB), state.negatedTagIds, DB);   // T198 (#248): the answers a tag synthesizes follow its service's exclusions too
             // The rules above live in ONE pure function (synthesizeAnswersFromTags), shared with the orchestrator, so a tag is worth the same on every entry path
             // (R-CLIENT-CONVERGE). This adapter applies its result to the session state IN PLACE, because other code holds these two objects.
             const r = synthesizeAnswersFromTags(active, state.answers, state._tagSynthesizedModules, DB);
@@ -1849,7 +1859,10 @@
             }
             // Most specific layer: a real, individually-verified exclusion
             // for this exact service, regardless of category/group match.
-            if (tagExcludesService(tid, serviceId, DB)) return false;
+            const excluded = tag.excluded_service_ids;
+            if (excluded && excluded.length > 0 && serviceId && excluded.includes(serviceId)) {
+                return false;
+            }
             return true;
         }
 
@@ -3073,10 +3086,14 @@
         // resolveSessionTagIds -- LOGIC. The tags in force for a session: detected, chosen and inherent, the SSOT's `requires` relations applied, the customer's negations
         // winning. With includeDetected = false, the CHARGEABLE set before the customer affirms what the words detected: chosen and inherent only (computeQuoteFromState's
         // gate). One definition for the quote (computeQuoteFromState) and for the confidence the guided builder stores (resolveSessionConfidence) (R-INVARIANT-SINGLEDEF).
+        // sessionServiceId -- LOGIC. The service a session is for (a catalog tile's, or the one its intent key names); null for a session with no service (T198, #248).
+        function sessionServiceId(state) {
+            return (state._svc && state._svc.id) || (state.intent?.key && (DB.services || []).some(s => s.id === state.intent.key) ? state.intent.key : null);
+        }
+
         function resolveSessionTagIds(state, includeDetected = true) {
             // T198 (#248): the service the session is for (a catalog tile's, or the one its key names) is the one that excludes a tag; a session with no service excludes none.
-            const sid = (state._svc && state._svc.id) || (state.intent?.key && (DB.services || []).some(s => s.id === state.intent.key) ? state.intent.key : null);
-            return closeTagsOverRequires(tagIdsForService([...(includeDetected ? (state.detTagIds || []) : []), ...(state.manTagIds || []), ...(state.inherentTagIds || [])], sid, DB), state.negatedTagIds, DB);
+            return closeTagsOverRequires(tagIdsForService([...(includeDetected ? (state.detTagIds || []) : []), ...(state.manTagIds || []), ...(state.inherentTagIds || [])], sessionServiceId(state), DB), state.negatedTagIds, DB);
         }
 
         // resolveSessionConfidence -- LOGIC. The confidence of a session as it stands, from the session's own evidence: its entry, its match strength and keyword, its
@@ -3724,11 +3741,9 @@
                         resolution = orch_resolve_entity(context, db);
                         // T198 (#248): the entity the request reached excludes the tags it authors as never-for-this-service, whichever route named them (the words, a tap, a catalog tile).
                         if (resolution.entityType === 'service' && resolution.entity) {
-                            const kept = tagIdsForService(activeTagIds, resolution.entity.id, db);
-                            if (kept.length !== activeTagIds.length) {
-                                activeTagIds = closeTagsOverRequires(tagIdsForService([...(context.detectedTagIds || []), ...(context.manuallyToggledTagIds || [])], resolution.entity.id, db), context.negatedTagIds, db);
-                                answers = synthesizeAnswersFromTags(activeTagIds, Object.assign({}, context.answers || {}), {}, db).answers;
-                            }
+                            const forEntity = orch_tags_for_service(context, resolution.entity.id, db);
+                            activeTagIds = forEntity.activeTagIds;
+                            if (forEntity.dropped) answers = forEntity.answers;
                         }
                         outputSummary = {
                             entityType: resolution.entityType,

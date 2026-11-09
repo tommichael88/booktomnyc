@@ -43,7 +43,7 @@ function stateLeg(env) {
     const cat = s.ui_taxonomy.category_id, grp = s.ui_taxonomy.group_id;
     const mk = over => Object.assign({ qty: 1, intent: { key: s.id, category: cat, label: 'x', qtyLabel: 'item' }, stype: 'Repair', answers: {}, detTagIds: [], manTagIds: [], negatedTagIds: [], inherentTagIds: (s.default_tags || []).slice(), userTagIds: [], _svc: s, _tagsAffirmed: false }, over);
     const none = rec(sb.computeQuoteFromState(mk({})));
-    for (const t of smart.filter(t => { try { return sb.tagValidForCategory(t, cat, grp); } catch (e) { return false; } })) {
+    for (const t of smart.filter(t => { try { return sb.tagValidForCategory(t, cat, grp, s.id); } catch (e) { return false; } })) {
       out.pairs++;
       const st = mk({ detTagIds: [t] }), q = sb.computeQuoteFromState(st);
       if (q.detTagsChargeable) out.metBar++;
@@ -74,7 +74,7 @@ function orchLeg(env) {
     const cat = s.ui_taxonomy.category_id, grp = s.ui_taxonomy.group_id, text = (s.ui_taxonomy.display_name || s.id).toLowerCase();
     const ctx = over => Object.assign(sb.collectBookingContext_freeText(text), { detectedTagIds: [], manuallyToggledTagIds: [], negatedTagIds: [], tagsAffirmed: false }, over);
     let none; try { none = orec(sb.executeWorkflow(ctx({}), DB).quote); } catch (e) { continue; }
-    for (const t of smart.filter(t => { try { return sb.tagValidForCategory(t, cat, grp); } catch (e) { return false; } })) {
+    for (const t of smart.filter(t => { try { return sb.tagValidForCategory(t, cat, grp, s.id); } catch (e) { return false; } })) {
       out.pairs++;
       const r = sb.executeWorkflow(ctx({ detectedTagIds: [t] }), DB);
       if (!r.quote.meetsConfidenceBar) { out.gated++; if (orec(r.quote) !== none) out.violations.push(`${s.id} + ${t}: ${r.quote.laborEstimate}`); }

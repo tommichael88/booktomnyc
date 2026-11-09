@@ -148,7 +148,7 @@ const PHRASES = [
         check('6.2 a scope that ignores the question (a tag answers anything): the reach is far more than the declared 17 pairs, and the check on the reach finds it', lreach.length > 17, { pairs: lreach.length });
     }
     {
-        const noExcl = load((() => { const d = clone(DB0); d.smart_tags['#brick_wall'].excluded_service_ids = ['flatscreen_mounting_standard']; return d; })(), w => w.replace("return !(tag.excluded_service_ids || []).includes(serviceId);", 'return true;'));
+        const noExcl = load((() => { const d = clone(DB0); d.smart_tags['#brick_wall'].excluded_service_ids = ['flatscreen_mounting_standard']; return d; })(), w => w.replace("if (tagExcludesService(tid, serviceId, DB)) return false;", '').replace("return !(tag.excluded_service_ids || []).includes(serviceId);", 'return true;'));
         check('6.3 a scope that ignores the exclusion: a tag authored as excluded for the service answers its question anyway, and the exclusion check finds it', noExcl.tagInScopeForRequest('#brick_wall', CAT, TV, 'flatscreen_mounting_standard') === true);
     }
     {
