@@ -130,8 +130,11 @@ const PHRASES = [
         // "... on very high ceiling") join the corpus. Each reaches the generic mounting service, which asks the wall ("cement" is the typed wall fact: "Brick or concrete") and the mounting height: the same class
         // as the twelve -- a service that asks the tag's question. Named by identity and by the answer, not by a looser count.
         const masonryCorpus = others.filter(t => /^mount a cement( on (vaulted|very high) ceiling)?$/.test(t) && (typed(E, t).r.entity || {}).id === 'generic_mounting_service' && (typed(E, t).r.answers || {}).wall_type === 'Brick or concrete');
-        check(`5.2 over the catalog's own ${lines.length} typed phrases exactly the twelve instances change (a service that asks the tag's question), plus the eight concealed-cable phrases the T197 vocabulary adds to the corpus and the three masonry phrases T198 adds (the generic mounting service asks the wall), and nothing else`,
-            changed.length === 23 && PHRASES.every(p => changed.includes(p[0])) && hiddenCable.length === 8 && masonryCorpus.length === 3 && others.length === 11, { count: changed.length, others });
+        // T198 (B1): a wall material is not the job. "mount a tv on plaster wall" and its siblings used to be a plaster repair (which does not ask the wall); they now reach the TV mounting services,
+        // which ask the wall, so the typed "Plaster (older homes)" answers it: again a service that asks the tag's question. Named by identity and by the answer.
+        const plasterTv = others.filter(t => /on plaster wall$/.test(t) && /^(flatscreen mounting|mount a tv|mount a television|mount a hidden cables?)/.test(t) && /^flatscreen_mounting/.test((typed(E, t).r.entity || {}).id || '') && (typed(E, t).r.answers || {}).wall_type === 'Plaster (older homes)');
+        check(`5.2 over the catalog's own ${lines.length} typed phrases exactly the twelve instances change (a service that asks the tag's question), plus the eight concealed-cable phrases the T197 vocabulary adds to the corpus the three masonry phrases T198 adds (the generic mounting service asks the wall) and the three TV-on-plaster phrases that change (the TV services ask the wall), and nothing else`,
+            changed.length === 26 && PHRASES.every(p => changed.includes(p[0])) && hiddenCable.length === 8 && masonryCorpus.length === 3 && plasterTv.length === 3 && others.length === 14, { count: changed.length, plasterTv: plasterTv.length, others });
     }
 
     // ===== 6. each defect turns a check red ====================================================================================================================================================
