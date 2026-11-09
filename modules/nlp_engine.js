@@ -1121,7 +1121,7 @@
              const y = bestMapping.yields_to, target = maps.find(x => x !== bestMapping && (x.keyword || '').toLowerCase() === y.object.toLowerCase());
              const damaged = (Array.isArray(y.unless_any) ? y.unless_any : []).some(/** @param {any} k */ k => typeof k === 'string' && wordBoundaryIncludes(lower, k.toLowerCase()));
              const targetScore = target ? (scoreByMapping.get(target) || 0) : 0;
-             if (target && !damaged && targetScore > 0) {
+             if (target && !damaged && targetScore > 0 && !Array.isArray(y.via_surfaces)) {   // T198 (E1): the install object yields only through the placed-on-a-surface branch below, never because mount merely scored
                  bestMapping = target;
                  top = targetScore;
                  best = buildCandidate(target, targetScore);
