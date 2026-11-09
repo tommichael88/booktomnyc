@@ -1805,7 +1805,10 @@
             const tag = ((typeof DB !== 'undefined' && DB.smart_tags) || {})[tid];
             if (!tag || !serviceId || !tagAnswersAskedByService(tag, serviceId)) return false;
             const cats = tag.applicable_categories;
-            if (!(!cats || cats.length === 0 || cats.includes('all') || cats.includes(cat))) return false;
+            // T198 (#252): the coarse boundary is judged in the category of the service the words reached as well as in the object's (a furniture word's `furniture_fixes_assembly` is not the category of the
+            // minor_home_repairs service it resolved to, so a water stain typed about it was dropped); the service's own question and exclusions still decide, as above.
+            const svcCat = (((DB.services || []).find(x => x.id === serviceId) || {}).ui_taxonomy || {}).category_id;
+            if (!(!cats || cats.length === 0 || cats.includes('all') || cats.includes(cat) || (svcCat && cats.includes(svcCat)))) return false;
             return !(tag.excluded_service_ids || []).includes(serviceId);
         }
 
