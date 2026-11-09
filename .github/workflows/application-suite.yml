@@ -1,0 +1,48 @@
+name: Application suite
+
+# The application's own regression suite (test_harness/MASTER_TEST_SUITE.json), run with every dependency declared in
+# test_harness/package.json (jsdom, ajv, ajv-formats, puppeteer-core) and a real Chrome. GitHub Pages and CodeQL being
+# green says nothing about this suite; this job is what does. It gates on the snapshot comparison (no pass->fail, no
+# red->worse), against the latest recorded baseline in archive/, and it fails if a browser half is skipped.
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: test_harness/package-lock.json
+      - name: Install the declared test dependencies
+        working-directory: test_harness
+        run: npm ci
+      - name: Chrome for the browser tests
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          echo "CHROME_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
+          "$CHROME_PATH" --version
+      - name: Full suite, compared with the recorded baseline
+        run: >
+          node test_harness/tools/suite_snapshot.js
+          --out suite_ci.tsv
+          --compare archive/suite_T197.tsv
+          --jobs 4 --timeout 700 --fail-on-gap
+      - name: Keep the snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-snapshot
+          path: suite_ci.tsv
