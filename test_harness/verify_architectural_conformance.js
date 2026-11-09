@@ -82,7 +82,7 @@ const KINDS = ['behavioral', 'source-shape', 'mixed'];
 const LABELS = ['Rationale', 'Endpoint', 'Defect class', 'Detector', 'Rules'];
 const CODE_RE_G = /\b[RGP]-[A-Z0-9]+(?:-[A-Z0-9]+)+\b/g;
 const PLACEHOLDER = /^(tbd|todo|n\/a|na|none|unknown|it feels wrong|\?+|-+|\.+)\b/i;
-const RUN_TIMEOUT_MS = 150000;
+const RUN_TIMEOUT_MS = Number(process.env.BTNYC_DETECTOR_TIMEOUT_MS) || 150000;   // T198: overridable for a slower machine (CI: verify_confidence_convergence.js alone takes ~9 minutes on a hosted runner); the default is unchanged
 
 // ───────────────────────────────────────── pure checks (each returns a list of problems; [] = conforms) ─────────────────────────────────────────
 // The Charter's declarations, as sets: { all, rules, classes }.
