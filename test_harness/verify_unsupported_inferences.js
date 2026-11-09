@@ -74,7 +74,7 @@ const without = mut => { const db = clone(DB0); mut(db); return load(db); };
 {
     const oldHints = without(db => { db.smart_tags['#emergency'].context_hints.push('leak', 'leaky', 'leakage'); });
     check('3.1 with "leak" back among the #emergency hints: Under-Sink Leak Repair is urgent again (the test would catch the old behaviour)', tagsOf(oldHints, 'Under-Sink Leak Repair').includes('#emergency') && typed(oldHints, 'Under-Sink Leak Repair').r.quote.laborEstimate > typed(E, 'Under-Sink Leak Repair').r.quote.laborEstimate);
-    const oldSyn = without(db => { db.smart_tags['#clogged_drain'].synonyms.unshift('slow drain'); });
+    const oldSyn = without(db => { db.smart_tags['#clogged_drain'].synonyms.unshift('slow drain'); db.smart_tags['#clogged_drain'].answers = { drain_speed: 'Standing water - completely blocked' }; });   // T198 (F1): the old tag also carried the answer; plant both
     check('3.2 with "slow drain" back among the #clogged_drain synonyms: Slow Drain Clearing is "completely blocked" again', tagsOf(oldSyn, 'Slow Drain Clearing').includes('#clogged_drain') && /completely blocked/.test((typed(oldSyn, 'Slow Drain Clearing').r.answers || {}).drain_speed || ''));
 }
 check('3.3 the real catalog lists neither word', !DB0.smart_tags['#emergency'].context_hints.some(h => /^leak/.test(h)) && !DB0.smart_tags['#clogged_drain'].synonyms.includes('slow drain'));
