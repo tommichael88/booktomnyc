@@ -1779,6 +1779,8 @@
         // is also in scope when the category matches (the coarse boundary, as before), the service the words reached asks the question the tag answers, and the tag is not authored as excluded
         // for that service. The group path is exactly as it was; this only adds. Pure; false for no service.
         function tagInScopeForRequest(tid, cat, groupId, serviceId) {
+            // T198 (#248): a tag authored as never-for-this-service (excluded_service_ids) is out for the service the words reached, on every route into this test.
+            if (serviceId && tagValidForCategory(tid, cat, groupId, serviceId) !== tagValidForCategory(tid, cat, groupId)) return false;
             if (tagValidForCategory(tid, cat, groupId)) return true;
             const tag = ((typeof DB !== 'undefined' && DB.smart_tags) || {})[tid];
             if (!tag || !serviceId || !tagAnswersAskedByService(tag, serviceId)) return false;
