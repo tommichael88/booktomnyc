@@ -24,7 +24,8 @@ const check = (name, ok, detail) => { if (ok) { pass++; console.log('  \u2713 ' 
 function findChrome() { const c = [process.env.CHROME_PATH, ...(() => { try { return execSync('find /home/*/.cache/puppeteer /root/.cache/puppeteer -type f -name chrome 2>/dev/null || true', { shell: '/bin/bash' }).toString().trim().split('\n').filter(Boolean); } catch { return []; } })(), '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium'].filter(Boolean); return c.find(p => fs.existsSync(p)) || null; }
 const VIS = `(sel)=>{const e=typeof sel==='string'?document.querySelector(sel):sel; if(!e||!e.getClientRects().length||e.offsetHeight<=0) return false; const r=e.getBoundingClientRect(); const t=document.elementFromPoint(r.left+Math.min(r.width/2,40), r.top+Math.min(r.height/2,12)); return !!(t&&(e===t||e.contains(t)));}`;
 const REQUESTS = [  // realistic customer phrases, chosen to reach each template the route can produce
-  { say: 'my dishwasher is leaking', expect: 'affirm' }, { say: 'mount a tv on the wall', expect: 'affirm' }, { say: 'toilet keeps running', expect: 'affirm' },
+  { say: 'my dishwasher is leaking, I need it fixed today', expect: 'affirm' }, { say: 'my dishwasher is leaking', expect: 'intake' },   // T198 (C1): the word "leak" alone no longer reads as urgent (no tag card); a stated "today" still does
+  { say: 'mount a tv on the wall', expect: 'affirm' }, { say: 'toilet keeps running', expect: 'affirm' },
   { say: 'urgent, need help with something in my house', expect: 'affirm' }, { say: 'install a dishwasher', expect: 'selfquote' }, { say: 'replace 3 light bulbs', expect: 'intake' },   // T190 (#138 I4): bulbs ask their count since T154, so the self-quote screen is reached by a service with no questions (the four appliance installs, $70)
  
   { say: 'hang a shelf', expect: 'intake' }, { say: 'install a ceiling fan', expect: 'intake' } ];
@@ -55,7 +56,7 @@ async function journey(puppeteer, chromePath, htmlPath, dataPath) {
     }
     // "No": remove the card and return focus
     await page.evaluate(() => { try { sqRestart(); } catch (e) {} document.getElementById('sqDescIn').value = ''; });
-    await page.click('#sqDescIn'); await page.type('#sqDescIn', 'my dishwasher is leaking', { delay: 3 }); await page.click('#sqUnifiedActionBtn'); await new Promise(x => setTimeout(x, 1100));
+    await page.click('#sqDescIn'); await page.type('#sqDescIn', 'my dishwasher is leaking, I need it fixed today', { delay: 3 }); await page.click('#sqUnifiedActionBtn'); await new Promise(x => setTimeout(x, 1100));
     if (await page.evaluate(`(${VIS})('#sqAffirmCard')`)) { await page.click('.affirm-no-btn'); await new Promise(x => setTimeout(x, 600));
       out.afterNo = await page.evaluate(`(()=>{ const vis=${VIS}; return { cardGone: !document.getElementById('sqAffirmCard'), focused: document.activeElement===document.getElementById('sqDescIn') }; })()`); }
     out.persist = await page.evaluate(() => ['serviceRequestSummary', 'serviceRequestList', 'totalAmount'].map((id, i) => { const e = document.getElementById(id); return !!e && e === window.__persist[i] && e.isConnected; }));
