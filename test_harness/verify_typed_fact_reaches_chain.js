@@ -73,7 +73,12 @@ const PHRASES = [
     const TV = 'wall_mounting_tv_flatscreen', WALLS = 'minor_home_repairs_walls', CAT = 'wall_mounting';
     check('2.1 the group path is exactly as it was: #brick_wall is in scope in the Brick or Concrete group with no service, and out of the TV Flatscreen group with none', E.tagInScopeForRequest('#brick_wall', CAT, 'wall_mounting_brick_or_concrete', null) === true && E.tagValidForCategory('#brick_wall', CAT, TV) === false && E.tagInScopeForRequest('#brick_wall', CAT, TV, null) === false);
     check('2.2 the service stands in for the group: the TV Flatscreen group with Flatscreen Mounting reached', E.tagInScopeForRequest('#brick_wall', CAT, TV, 'flatscreen_mounting_standard') === true);
-    check('2.3 the category still bounds: the same service judged in another category is out', E.tagInScopeForRequest('#brick_wall', 'electric_lighting', TV, 'flatscreen_mounting_standard') === false);
+    {
+        const db = clone(DB0); db.smart_tags['#brick_wall'].applicable_categories = ['plumbing_help'];
+        const P = load(db);
+        check('2.3 the category still bounds: a tag that covers neither the request\'s category nor the service\'s category is out', P.tagInScopeForRequest('#brick_wall', CAT, TV, 'flatscreen_mounting_standard') === false && P.tagInScopeForRequest('#brick_wall', 'electric_lighting', TV, 'flatscreen_mounting_standard') === false);
+        check('2.3b #252: a tag that covers the service\'s category is in scope though the request carries the object\'s other category', E.tagInScopeForRequest('#brick_wall', 'electric_lighting', TV, 'flatscreen_mounting_standard') === true);
+    }
     {
         const db = clone(DB0); db.smart_tags['#brick_wall'].excluded_service_ids = ['flatscreen_mounting_standard'];
         const P = load(db);
@@ -133,8 +138,11 @@ const PHRASES = [
         // T198 (B1): a wall material is not the job. "mount a tv on plaster wall" and its siblings used to be a plaster repair (which does not ask the wall); they now reach the TV mounting services,
         // which ask the wall, so the typed "Plaster (older homes)" answers it: again a service that asks the tag's question. Named by identity and by the answer.
         const plasterTv = others.filter(t => /on plaster wall$/.test(t) && /^(flatscreen mounting|mount a tv|mount a television|mount a hidden cables?)/.test(t) && /^flatscreen_mounting/.test((typed(E, t).r.entity || {}).id || '') && (typed(E, t).r.answers || {}).wall_type === 'Plaster (older homes)');
-        check(`5.2 over the catalog's own ${lines.length} typed phrases exactly the twelve instances change (a service that asks the tag's question), plus the eight concealed-cable phrases the T197 vocabulary adds to the corpus the three masonry phrases T198 adds (the generic mounting service asks the wall) and the three TV-on-plaster phrases that change (the TV services ask the wall), and nothing else`,
-            changed.length === 26 && PHRASES.every(p => changed.includes(p[0])) && hiddenCable.length === 8 && masonryCorpus.length === 3 && plasterTv.length === 3 && others.length === 14, { count: changed.length, plasterTv: plasterTv.length, others });
+        // T198 (D4, #252): a water stain typed beside a furniture word is kept once the service is reached (the scope test judges the category of the service the words reached as well as the object's);
+        // the group-only copy still drops it, so these three differ. Named by identity and by the answer.
+        const waterStain = others.filter(t => /water stain$/.test(t) && (typed(E, t).r.entity || {}).id === 'scratch_or_water_ring_removal' && (typed(E, t).r.answers || {}).damage_type === 'Water ring / moisture stain');
+        check(`5.2 over the catalog's own ${lines.length} typed phrases exactly the twelve instances change (a service that asks the tag's question), plus the eight concealed-cable phrases the T197 vocabulary adds to the corpus the three masonry phrases T198 adds (the generic mounting service asks the wall), the three TV-on-plaster phrases that change (the TV services ask the wall) and the three furniture water-stain phrases (#252), and nothing else`,
+            changed.length === 29 && PHRASES.every(p => changed.includes(p[0])) && hiddenCable.length === 8 && masonryCorpus.length === 3 && plasterTv.length === 3 && waterStain.length === 3 && others.length === 17, { count: changed.length, plasterTv: plasterTv.length, others });
     }
 
     // ===== 6. each defect turns a check red ====================================================================================================================================================
