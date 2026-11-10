@@ -26,6 +26,7 @@ const E = load(DB0), FULL = 'Standing water - completely blocked', SLOW = 'Slow 
 const sdc = E.DB.services.find(x => x.id === 'slow_drain_clearing');
 const tile = a => { const c = E.collectBookingContext_catalog(sdc, sdc.ui_taxonomy.category_id); c.answers = a ? { drain_speed: a } : {}; const q = E.executeWorkflow(c, E.DB).quote; return q.laborEstimate + '/' + q.totalMin; };
 const t0 = tile(null), tFull = tile(FULL), tSlow = tile(SLOW);
+function FULLQ() { return tFull; }
 check('0 the service tile: unanswered and "Slow" cost the same, "completely blocked" costs more (the charge lives in the answer)', t0 === tSlow && t0 !== tFull, { t0, tSlow, tFull });
 for (const p of ['clogged drain', 'clogged sink', 'unclog the drain', 'drain clog', 'clogged shower drain', 'bathtub drain clog']) {
     const x = typed(E, p);
@@ -44,5 +45,18 @@ check('3.1 "slow drain" (the service itself) is unchanged: Slow Drain Clearing, 
     const db = JSON.parse(JSON.stringify(DB0)); db.smart_tags['#clogged_drain'].answers = { drain_speed: FULL };
     const P = load(db); const x = typed(P, 'clogged drain');
     check('4 non-vacuity: with the answer back on #clogged_drain the plain clog word is "completely blocked" again', x.ans === FULL, x);
+}
+// 5. the job is a drain job, whatever the sink word says: a blocked or slow sink is not a faucet repair, and the degree tags price it as the drain service prices it
+for (const [p, price, tag] of [["sink won't drain at all", FULLQ(), '#drain_blocked_completely'], ['clogged sink', t0, '#clogged_drain'], ['unclog my sink', t0, '#clogged_drain'], ['my kitchen sink is clogged', t0, '#clogged_drain'],
+    ['bathroom sink is completely clogged', FULLQ(), '#drain_blocked_completely'], ['kitchen sink blocked', t0, null], ['sink is draining slowly', t0, '#drain_partially_clogged']]) {
+    const x = typed(E, p);
+    check(`5 "${p}": Slow Drain Clearing, ${price} (not a faucet repair or an under-sink leak)`, x.id === 'slow_drain_clearing' && x.q === price && (!tag || x.tags.includes(tag)), x);
+}
+for (const [p, id] of [['fix dripping faucet', 'faucet_repair_drip'], ['sink faucet replacement', 'faucet_repair_drip'], ['leak under the kitchen sink', 'leak_under_sink_repair'], ['leaky kitchen sink faucet', 'leak_under_sink_repair']])
+    check(`5.1 "${p}" is unchanged: ${id}`, typed(E, p).id === id, typed(E, p));
+{
+    const db = JSON.parse(JSON.stringify(DB0)); const f = db.intent_mappings.objects.find(o => o.keyword === 'faucet'); f.contextual_overrides = f.contextual_overrides.filter(c => c.override_sku !== 'slow_drain_clearing');
+    const P = load(db);
+    check('5.2 non-vacuity: without the faucet-object override a clogged sink is a faucet repair again', typed(P, 'clogged sink').id !== 'slow_drain_clearing' && typed(P, "sink won't drain at all").id === 'faucet_repair_drip');
 }
 finish();
