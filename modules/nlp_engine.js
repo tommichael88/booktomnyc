@@ -1104,17 +1104,33 @@
              }
          }
 
-         // T198 (B1): an object that names only the SURFACE a job happens on (brick, concrete, drywall, plaster) carries `yields_to`: when the customer also said the
+         /** True when `surface` (an object with authored `yields_to.placed_by_any`) is where an item is being placed: a placing verb, then on/onto/to/against ... the surface, and the word "wall" unless the surface is a wall by nature (`wall_optional`).
+         *  @param {string} lower @param {any} surface */
+        function placedOnSurface(lower, surface) {
+            const y = surface && surface.yields_to, verbs = y && y.placed_by_any;
+            if (!Array.isArray(verbs) || !verbs.some(v => typeof v === 'string' && wordBoundaryIncludes(lower, v.toLowerCase()))) return false;
+            if (!y.wall_optional && !/\bwalls?\b/.test(lower)) return false;
+            const names = [surface.keyword, ...(Array.isArray(surface.synonyms) ? surface.synonyms : [])].filter(n => typeof n === 'string' && n).map(n => n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+            return names.some(n => new RegExp('\\b(?:on|onto|to|against)\\s+(?:(?:the|a|an|my|our)\\s+)?(?:[a-z-]+\\s+){0,2}?' + n + '\\b').test(lower));
+        }
+
+        // T198 (B1): an object that names only the SURFACE a job happens on (brick, concrete, drywall, plaster) carries `yields_to`: when the customer also said the
          // action that object names ("hang", "mount") and no damage word (`unless_any`), the action's object wins and its own contextual overrides pick the service.
          // A wall material alone is not a crack repair. Authored data decides which objects yield and to what; this step only reads it.
          if (bestMapping && bestMapping.yields_to && typeof bestMapping.yields_to.object === 'string') {
              const y = bestMapping.yields_to, target = maps.find(x => x !== bestMapping && (x.keyword || '').toLowerCase() === y.object.toLowerCase());
              const damaged = (Array.isArray(y.unless_any) ? y.unless_any : []).some(/** @param {any} k */ k => typeof k === 'string' && wordBoundaryIncludes(lower, k.toLowerCase()));
              const targetScore = target ? (scoreByMapping.get(target) || 0) : 0;
-             if (target && !damaged && targetScore > 0) {
+             if (target && !damaged && targetScore > 0 && !Array.isArray(y.via_surfaces)) {   // T198 (E1): the install object yields only through the placed-on-a-surface branch below, never because mount merely scored
                  bestMapping = target;
                  top = targetScore;
                  best = buildCandidate(target, targetScore);
+             } else if (target && !damaged && Array.isArray(target.mounts_items_any) && target.mounts_items_any.some(/** @param {any} it */ it => typeof it === 'string' && wordBoundaryIncludes(lower, it.toLowerCase())) && (Array.isArray(y.placed_by_any) ? [bestMapping] : (Array.isArray(y.via_surfaces) ? y.via_surfaces.map(/** @param {any} n */ n => maps.find(x => (x.keyword || '').toLowerCase() === String(n).toLowerCase())) : []))
+                 .some(/** @param {any} m */ m => m && placedOnSurface(lower, m) && !(Array.isArray(m.yields_to.unless_any) ? m.yields_to.unless_any : []).some(/** @param {any} k */ k => typeof k === 'string' && wordBoundaryIncludes(lower, k.toLowerCase())))) {
+                 // T198 (E1): "install a towel bar on concrete wall" -- a verb that PLACES an item (`placed_by_any`, authored on the surface), an item the mount object says it mounts (`mounts_items_any`, authored), and the
+                 // surface named as where it goes ("on ... brick ... wall") say the job is mounting. "install" alone is not a mounting word: a dishwasher, a fan, "install tile on the wall" name no wall item and keep their own objects.
+                 bestMapping = target;
+                 best = buildCandidate(target, top);
              }
          }
 
