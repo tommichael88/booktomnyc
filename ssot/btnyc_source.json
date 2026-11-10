@@ -4248,12 +4248,7 @@
           "clogged shower",
           "backed up drain"
         ],
-        "answers": [
-          {
-            "question_id": "q.drain_speed",
-            "option_id": "standing_water_completely_blocked"
-          }
-        ],
+        "answers": [],
         "requires": [],
         "display_group": "Plumbing Conditions",
         "applicable_categories": [
@@ -4788,7 +4783,9 @@
         ],
         "mutually_exclusive": [
           "tag.toilet_running",
-          "tag.clogged_drain"
+          "tag.clogged_drain",
+          "tag.drain_blocked_completely",
+          "tag.drain_partially_clogged"
         ],
         "is_logistic": false,
         "ui_phrase": "with a leak",
@@ -5079,7 +5076,9 @@
         ],
         "mutually_exclusive": [
           "tag.clogged_drain",
-          "tag.leaky_faucet"
+          "tag.leaky_faucet",
+          "tag.drain_blocked_completely",
+          "tag.drain_partially_clogged"
         ],
         "is_logistic": false,
         "ui_phrase": "that runs constantly",
@@ -6066,6 +6065,82 @@
         "is_logistic": false,
         "ui_phrase": "a new fan",
         "negation_phrase": ""
+      },
+      {
+        "id": "tag.drain_blocked_completely",
+        "synonyms": [
+          "completely clogged",
+          "completely blocked",
+          "totally clogged",
+          "totally blocked",
+          "fully clogged",
+          "fully blocked",
+          "standing water",
+          "water backing up",
+          "backed up drain",
+          "blocked pipe",
+          "won't drain at all",
+          "wont drain at all",
+          "not draining at all"
+        ],
+        "answers": [
+          {
+            "question_id": "q.drain_speed",
+            "option_id": "standing_water_completely_blocked"
+          }
+        ],
+        "requires": [
+          "tag.clogged_drain"
+        ],
+        "display_group": "Plumbing Conditions",
+        "applicable_categories": [
+          "cat.plumbing_help"
+        ],
+        "mutually_exclusive": [
+          "tag.toilet_running",
+          "tag.leaky_faucet",
+          "tag.drain_partially_clogged"
+        ],
+        "is_logistic": false,
+        "ui_phrase": "that is completely blocked",
+        "negation_phrase": "",
+        "note": "T198 F1: the degree of a clog is stated, not assumed. #clogged_drain says only that something is clogged (it answers nothing, so the drain_speed question is asked where a service has it); this tag carries the words that say the drain is completely blocked and answers drain_speed accordingly."
+      },
+      {
+        "id": "tag.drain_partially_clogged",
+        "synonyms": [
+          "partially clogged",
+          "partly clogged",
+          "partially blocked",
+          "partly blocked",
+          "draining slowly",
+          "drains slowly",
+          "slow to drain",
+          "goes down slowly",
+          "drains but slowly"
+        ],
+        "answers": [
+          {
+            "question_id": "q.drain_speed",
+            "option_id": "slow_takes_a_few_minutes_to_empty"
+          }
+        ],
+        "requires": [
+          "tag.clogged_drain"
+        ],
+        "display_group": "Plumbing Conditions",
+        "applicable_categories": [
+          "cat.plumbing_help"
+        ],
+        "mutually_exclusive": [
+          "tag.toilet_running",
+          "tag.leaky_faucet",
+          "tag.drain_blocked_completely"
+        ],
+        "is_logistic": false,
+        "ui_phrase": "that is draining slowly",
+        "negation_phrase": "",
+        "note": "T198 F1: the words say the drain still drains, slowly; the answer is the question's own 'Slow' option (no fee)."
       }
     ],
     "materials": [
@@ -41620,6 +41695,29 @@
             ],
             "override_sku": "svc.leak_under_sink_repair",
             "override_base_price": 75
+          },
+          {
+            "keywords": [
+              "clog",
+              "clogged",
+              "clogging",
+              "unclog",
+              "blocked",
+              "blockage",
+              "won't drain",
+              "wont drain",
+              "not draining",
+              "doesn't drain",
+              "doesnt drain",
+              "backing up",
+              "backed up",
+              "draining slowly",
+              "drains slowly",
+              "slow to drain",
+              "goes down slowly"
+            ],
+            "override_sku": "svc.slow_drain_clearing",
+            "note": "T198 F1: a sink that will not drain is a drain job, not a faucet repair (the sink word is the object the job happens on, as the wall is for mounting)"
           }
         ],
         "confidence_weight": 80,
