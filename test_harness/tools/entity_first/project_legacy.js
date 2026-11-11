@@ -47,6 +47,7 @@ function project(src) {
     if (o.mat_min !== undefined) l.mat_min = o.mat_min; if (o.mat_max !== undefined) l.mat_max = o.mat_max;
     if (o.formula_id !== undefined) l.formula_override = stripId('fml', o.formula_id);
     if (o.location_hints !== undefined) l.location_hints = o.location_hints;
+    if (o.count_range !== undefined) l.count_range = o.count_range;
     if (o.tile !== undefined) l.tile = o.tile;
     if (o._note !== undefined) l._note = o._note;
     return l;

@@ -51,7 +51,7 @@
       *   public/callable API surface.
       *
       *   ANALYSIS PIPELINE (original names, unchanged): detectIntentNLP,
-      *   detectTagsNLP, extractObject, extractQty, extractLocation,
+      *   detectTagsNLP, extractObject, extractQty, extractStatedCounts, extractLocation,
       *   extractSizeHint, inferTagsFromContext, resolveGroupFromIntent,
       *   isServiceVerb. These ARE genuine top-level functions in qr.html (block
       *   1), called directly from  sqAnalyze and other SmartQuote flow code.
@@ -1691,6 +1691,24 @@
              return Math.min(parseInt(m[1]), 99);
          }
          return 1;
+     }
+
+     // extractStatedCounts -- NLP. Every count the customer stated, with the words right after it (#249, T198 G1). extractQty answers "how many units does the whole request price";
+     // this answers "which number was said beside which thing", which is what lets a typed count answer the count question of the service that asks about THAT thing. It reuses
+     // extractQty's own number words and dimension stripping and adds nothing to what a number is: a digit run or a number word, 1 to 99, that is not part of a measurement ("65 inch",
+     // "12 feet"), not a compound ("four-poster"), not an ordinal ("2nd floor") and not labelled as a designator ("model 4500", "part 12", "#7"). The orchestrator decides which question,
+     // if any, a stated count belongs to; this returns facts only: [{ value, following: [the next up to 2 words] }], in the order said: a count belongs to a noun only when that noun is the word right after it or the one after that ("3 bulbs", "3 light bulbs"; not "3 year old bulbs").
+     const _COUNT_DESIGNATORS = new Set(['model', 'no', 'number', 'part', 'sku', 'series', 'version', 'type', 'size', 'item', 'order', 'serial', 'id']);
+     function extractStatedCounts(text) {
+         const stripped = String(text || '').toLowerCase().replace(_DIMENSION_PATTERN, ' ').replace(/#\s*(\d)/g, ' no $1').replace(/[^a-z0-9'\- ]+/g, ' ');
+         const tokens = stripped.split(/\s+/).filter(Boolean), out = [];
+         tokens.forEach((t, i) => {
+             const value = /^\d{1,3}$/.test(t) ? parseInt(t, 10) : (Object.prototype.hasOwnProperty.call(_QTY_WORD_MAP, t) ? _QTY_WORD_MAP[t] : null);
+             if (value === null || value < 1 || value > 99) return;
+             if (i > 0 && _COUNT_DESIGNATORS.has(tokens[i - 1])) return;
+             out.push({ value, following: tokens.slice(i + 1, i + 3) });
+         });
+         return out;
      }
 
      function extractLocation(text) {

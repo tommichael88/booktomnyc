@@ -133,7 +133,7 @@ function migrate(L, opts = {}) {
   function convOption(o, qid) {
     const out = { id: optionId(qid, o.label), label: o.label, affects: [] };
     const aff = new Set();
-    const known = new Set(['label', 'tags', 'complexity_override', 'modifier_ref', 'checkout_state_override', 'qty_value', 'route_to', 'mat_min', 'mat_max', '_note', 'tile', 'location_hints', 'formula_override']);
+    const known = new Set(['label', 'tags', 'complexity_override', 'modifier_ref', 'checkout_state_override', 'qty_value', 'route_to', 'mat_min', 'mat_max', '_note', 'tile', 'location_hints', 'count_range', 'formula_override']);
     for (const k of Object.keys(o)) if (!known.has(k)) unresolved('option field with no mapping', `${qid}: ${k}`);
     if (UNKNOWN_RE.test(o.label)) out.evidence = 'unknown';
     if (o.tags) { out.tag_ids = o.tags.map(S.tag_hash.f); if (o.tags.length) aff.add('tags'); }
@@ -152,6 +152,7 @@ function migrate(L, opts = {}) {
     if (o.mat_min !== undefined) out.mat_min = o.mat_min; if (o.mat_max !== undefined) out.mat_max = o.mat_max; if (o.mat_min !== undefined || o.mat_max !== undefined) aff.add('materials');
     if (o.formula_override !== undefined) { out.formula_id = 'fml.' + o.formula_override; aff.add('price'); }
     if (o.location_hints !== undefined) { out.location_hints = o.location_hints; aff.add('prep'); }
+    if (o.count_range !== undefined) out.count_range = o.count_range;   // #249: which counts this answer applies to; no effect of its own
     if (o.tile !== undefined) out.tile = o.tile;
     if (o._note !== undefined) out._note = o._note;
     out.affects = AFFECT_ORDER.filter(a => aff.has(a));
