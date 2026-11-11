@@ -842,10 +842,10 @@
                 };
                 let exactQty = null;
                 for (const [moduleKey, answerLabel] of Object.entries(answers)) {
-                    const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
-                    // T198 I1: a parameterized step's answer key is composite ("item_count_template::walls"); its bands are the resolved chain entry's, not a step the plain-key find can see.
-                    const _bands = step?.params?.client_response || (String(moduleKey).indexOf('::') >= 0 ? resolveAnsweredModule(svc, moduleKey)?.client_response : null);
-                    const resp = _bands?.find(r => r.label === answerLabel);
+                    // T198 I1: a parameterized step's answer key is composite ("item_count_template::walls"); resolveAnsweredModule answers it with the bands the customer was offered.
+                    const answered = resolveAnsweredModule(svc, moduleKey);
+                    let resp;
+                    if (answered) resp = answered.responses.find(r => r.label === answerLabel);
                     if (resp?.formula_override === 'item_count_overflow_formula' && resp.modifier_ref && _mods[resp.modifier_ref]) flat = _mods[resp.modifier_ref];
                     if (exactQty == null && resp?.qty_value != null) exactQty = resp.qty_value;
                 }
@@ -1627,11 +1627,19 @@
         // resolveAnsweredModule -- LOGIC. The module definition an ANSWER KEY names, as the customer was asked it (T198 I1). A parameterized step (params.item_noun) stores its answer under the key
         // _resolveIntakeChain mints for it ("item_count_template::light bulbs"), which is not a key of intake_modules: reading that table with the stored key finds nothing, and every fee, minute and
         // formula a count band authors was silently never priced (LED, plaster, wall-hole and eleven more services). The resolved chain entry IS the definition (the shared module with the step's own
-        // question and bands merged in), so a composite key is answered from it; a plain key is the module itself, as before. One definition, read by both pricing loops; no second table.
+        // question and bands merged in), so a composite key is answered from it; a plain key is the module itself, as before. Returns {module, responses}: the module and the bands the customer was offered (the step's own when it authors them), so no caller composes a second source. One definition, read by both pricing loops and the overflow formula; no second table.
         function resolveAnsweredModule(svc, moduleKey) {
-            const plain = DB?.intake_modules?.[moduleKey] || null;   // DB, as every pricing reader reads it
-            if (plain || !svc || String(moduleKey).indexOf('::') < 0) return plain || null;
-            return _resolveIntakeChain(svc).find(/** @param {any} m */ m => m.moduleKey === moduleKey) || null;
+            let module = DB?.intake_modules?.[moduleKey] || null;   // DB, as every pricing reader reads it
+            if (!module && svc && String(moduleKey).indexOf('::') >= 0) {
+                const entry = _resolveIntakeChain(svc).find(/** @param {any} m */ m => m.moduleKey === moduleKey);
+                if (entry) module = entry;
+            }
+            if (!module) return null;
+            // the bands the customer was offered: the step's own (per-service) bands when it authors them, else the module's. A minted entry already carries the step's bands.
+            const step = (svc?.intake_chain || []).find(/** @param {any} s */ s => s.module === moduleKey);
+            let responses = module.client_response || [];
+            if (step?.params?.client_response) responses = step.params.client_response;
+            return { module, responses };
         }
 
         // v9.6: passive tag -> intake answer merge/skip. Confirmed via direct
@@ -2248,10 +2256,9 @@
                     // saw and answered) -- falls back to the generic, shared
                     // intake_modules[moduleKey] definition if no per-service
                     // override exists for this module.
-                    const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
-                    const overrideResponses = step?.params?.client_response;
-                    const mod = resolveAnsweredModule(svc, moduleKey);
-                    const chosen = (overrideResponses || mod?.client_response || []).find(r => r.label === answerLabel);
+                    const answered = resolveAnsweredModule(svc, moduleKey);
+                    let chosen;
+                    if (answered) chosen = answered.responses.find(r => r.label === answerLabel);
                     const fov = chosen?.formula_override;
                     if (fov && DB.pricing_formulas?.[fov]) {
                         effectiveFormulaId = fov;
@@ -2456,8 +2463,9 @@
             if (true) {
                 const _mods = DB.global_rules?.modifiers || {};
                 for (const [moduleKey, answerLabel] of Object.entries(answers)) {
-                    const mod = resolveAnsweredModule(svc, moduleKey);
-                    if (!mod) continue;
+                    const answered = resolveAnsweredModule(svc, moduleKey);
+                    if (!answered) continue;
+                    const mod = answered.module;
                     // T135+ FIX (PRICING_GUIDE B4, confirmed systemic root
                     // cause across all 5 affected item_count_overflow
                     // services): this loop is what actually computes fees --
@@ -2473,9 +2481,7 @@
                     // $15/$30 per-band fees never reachable. Fixed by
                     // checking the per-service override first, matching the
                     // same pattern already correct elsewhere in this function.
-                    const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
-                    const overrideResponses = step?.params?.client_response;
-                    const chosen = (overrideResponses || mod.client_response || []).find(r => r.label === answerLabel);
+                    const chosen = answered.responses.find(r => r.label === answerLabel);
                     if (!chosen) continue;
                     // v9.6: fee/minutes resolve exclusively via modifier_ref ->
                     // global_rules.modifiers. complexity_override/checkout_state_override

@@ -181,14 +181,14 @@ function tapSweep(sb) {
 
 // 7. non-vacuity ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 {
-    const D = load(w => w.replace('const mod = resolveAnsweredModule(svc, moduleKey);\n                    if (!mod) continue;', 'const mod = DB.intake_modules?.[moduleKey];\n                    if (!mod) continue;')
-        .replace('const mod = resolveAnsweredModule(svc, moduleKey);\n                    const chosen', 'const mod = DB.intake_modules?.[moduleKey];\n                    const chosen'));
+    // the original behaviour: a minted key is not a key of intake_modules, so nothing answers it
+    const D = load(w => w.replace("if (!module && svc && String(moduleKey).indexOf('::') >= 0) {", 'if (false) {'));
     const s1 = sweep(D), s2 = tapSweep(D);
     check(`7 planted original lookup: the builder sweep fails ${s1.bad.length} of ${s1.n} bands`, s1.bad.length > 20, s1.bad.slice(0, 3));
     check(`7.1 planted original lookup: the tap sweep fails ${s2.bad.length} of ${s2.n} bands`, s2.bad.length > 20, s2.bad.slice(0, 3));
     const led = affected.find(x => x.svc.id === 'led_bulb_upgrade');
     check('7.2 planted original lookup: LED "2-3 bulbs" prices $20, not $40', builderPrice(D, led, '2-3 bulbs').labor === 20);
-    const P = load(w => w.replace("const _bands = step?.params?.client_response || (String(moduleKey).indexOf('::') >= 0 ? resolveAnsweredModule(svc, moduleKey)?.client_response : null);", 'const _bands = step?.params?.client_response;'));
+    const P = load(w => w.replace('if (answered) resp = answered.responses.find(', "if (answered && String(moduleKey).indexOf('::') < 0) resp = answered.responses.find("));
     const pl = affected.find(x => x.svc.id === 'plaster_wall_repair');
     check('7.3 planted: without the overflow formula\'s band lookup "5 or more walls" falls to the 1-wall base $80, under the 4-wall $320', builderPrice(P, pl, '5 or more walls (specify exact count in notes)').labor === 80 && builderPrice(E, pl, '5 or more walls (specify exact count in notes)').labor === 400);
 }

@@ -366,8 +366,10 @@ function applyPricingFormula(formulaId, answers, qty, svc = null) {
                 };
                 let exactQty = null;
                 for (const [moduleKey, answerLabel] of Object.entries(answers)) {
-                    const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
-                    const resp = step?.params?.client_response?.find(r => r.label === answerLabel);
+                    // T198 I1: a parameterized step's answer key is composite ("item_count_template::walls"); resolveAnsweredModule answers it with the bands the customer was offered.
+                    const answered = resolveAnsweredModule(svc, moduleKey);
+                    let resp;
+                    if (answered) resp = answered.responses.find(r => r.label === answerLabel);
                     if (resp?.formula_override === 'item_count_overflow_formula' && resp.modifier_ref && _mods[resp.modifier_ref]) flat = _mods[resp.modifier_ref];
                     if (exactQty == null && resp?.qty_value != null) exactQty = resp.qty_value;
                 }
@@ -570,6 +572,116 @@ function applyPricingFormula(formulaId, answers, qty, svc = null) {
                 extraMin,
                 overrideHourlyRate
             };
+        }
+
+function _dependsOnAsLabels(dep, modules) {
+            if (!Array.isArray(dep)) return dep;
+            const out = /** @type {any} */ ({});
+            for (const p of dep) {
+                const key = p && typeof p.question_id === 'string' ? p.question_id.replace(/^q\./, '') : '';
+                const target = modules && modules[key];
+                const opt = ((target && target.client_response) || []).find(/** @param {any} o */ o => o && p && o.id === p.option_id);
+                out[key] = opt ? opt.label : '\u0000unresolved:' + (p && p.option_id);
+            }
+            return out;
+        }
+
+function _resolveIntakeChain(svc) {
+            if (!SERVICE_DATA.intake_modules) return [];
+            const resolved = /** @type {any[]} */ ([]);
+            const seen = new Set();
+            // v9.1: params support. A step can carry params:{item_noun,
+            // client_response, question_override} to specialize a shared
+            // template module (item_count_template) per-service without
+            // duplicating the module definition in intake_modules.
+            //
+            // Every consumer of a resolved module (_isModVisible, answer
+            // storage, rendering) treats `.moduleKey` as an opaque string
+            // key — none of them look it up back into intake_modules
+            // directly (only this function does, using the ORIGINAL
+            // lookupKey below). So when params are present we mint a
+            // unique moduleKey (e.g. "item_count_template::windows")
+            // for the resolved object's .moduleKey field, which keeps
+            // answers for two different parameterized instances of the
+            // same template from colliding in the same chain, while
+            // still resolving the underlying module definition from
+            // intake_modules under its real, unparameterized name.
+            // (T198 I1: the pricing loops DO read a stored answer key back into intake_modules; they do it through resolveAnsweredModule, which answers a minted key from this chain.)
+            const resolveOne = (lookupKey, thenMap, params) => {
+                const moduleKey = params?.item_noun ? `${lookupKey}::${params.item_noun}` : lookupKey;
+                if (seen.has(moduleKey)) {
+                    // T170 (PENDING_DECISIONS #180): a module the chain names twice -- once as another step's branch target (injected with an empty `then`) and once as a step of its own that carries the branch
+                    // map -- keeps the map. Dropping it silently made a NESTED branch (the answer that opens the next question) impossible to author in the chain; the only way round was to write the branch
+                    // into the module's definition, which every service that asks the module would inherit. A module that already has a branch map is left as it is.
+                    if (thenMap && Object.keys(thenMap).length) {
+                        const prior = resolved.find(/** @param {any} m */ m => m.moduleKey === moduleKey);
+                        if (prior && !Object.keys(prior.then || {}).length) prior.then = thenMap;
+                    }
+                    return; // avoid duplicates/cycles
+                }
+                seen.add(moduleKey);
+                const mod = SERVICE_DATA.intake_modules[lookupKey];
+                if (!mod) return;
+                let merged = {
+                    moduleKey,
+                    then: thenMap || {},
+                    ...mod
+                };
+                if (merged.depends_on) merged.depends_on = _dependsOnAsLabels(merged.depends_on, SERVICE_DATA.intake_modules);
+                if (params) {
+                    if (params.question_override) {
+                        // Preferred: the exact original authored question
+                        // text, preserved verbatim during the v9.1
+                        // template consolidation (see CHANGELOG_v9.1.md).
+                        merged.question = params.question_override;
+                    } else if (params.item_noun && typeof merged.question === 'string') {
+                        merged.question = merged.question.replace('{item_noun}', params.item_noun);
+                    }
+                    if (Array.isArray(params.client_response) && params.client_response.length) {
+                        merged.client_response = params.client_response;
+                    }
+                    merged._params = params;
+                }
+                // T136: a raw "{item_noun}" must never reach a client. Services that
+                // don't supply params.item_noun (dynamic entities) get the SSOT's
+                // neutral noun, not the template token.
+                if (typeof merged.question === 'string' && merged.question.includes('{item_noun}')) {
+                    merged.question = merged.question.split('{item_noun}').join(SERVICE_DATA.ui_config?.default_item_noun || 'items');
+                }
+                resolved.push(merged);
+            };
+            (svc.intake_chain || []).forEach(step => {
+                resolveOne(step.module, step.then, step.params);
+                // Inject every branch-target module named by ANY answer
+                // in this step's `then` map, so they exist in the
+                // resolved list for _isModVisible to gate on. They get
+                // their own `then` (usually {}) from intake_modules
+                // itself unless they branch further. Branch targets
+                // never carry params (schema: array of strings), so
+                // they always resolve under their own plain key.
+                const then = step.then || {};
+                Object.values(then).forEach(targets => {
+                    (targets || []).forEach(targetKey => {
+                        if (targetKey === step.module) return; // safety: no self-reference
+                        resolveOne(targetKey, undefined, undefined);
+                    });
+                });
+            });
+            return resolved;
+        }
+
+function resolveAnsweredModule(svc, moduleKey) {
+            let module = DB?.intake_modules?.[moduleKey] || null;   // DB, as every pricing reader reads it
+            if (!module && svc && String(moduleKey).indexOf('::') >= 0) {
+                const entry = _resolveIntakeChain(svc).find(/** @param {any} m */ m => m.moduleKey === moduleKey);
+                if (entry) module = entry;
+            }
+            if (!module) return null;
+            // the bands the customer was offered: the step's own (per-service) bands when it authors them, else the module's. A minted entry already carries the step's bands.
+            const step = (svc?.intake_chain || []).find(/** @param {any} s */ s => s.module === moduleKey);
+            let responses = module.client_response || [];
+            if (step?.params?.client_response) responses = step.params.client_response;
+            return { module, responses };
         }
 
 function sqTagLabel(t, tid) {
@@ -884,10 +996,9 @@ function computeUnifiedQuote(ctx) {
                     // saw and answered) -- falls back to the generic, shared
                     // intake_modules[moduleKey] definition if no per-service
                     // override exists for this module.
-                    const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
-                    const overrideResponses = step?.params?.client_response;
-                    const mod = DB.intake_modules?.[moduleKey];
-                    const chosen = (overrideResponses || mod?.client_response || []).find(r => r.label === answerLabel);
+                    const answered = resolveAnsweredModule(svc, moduleKey);
+                    let chosen;
+                    if (answered) chosen = answered.responses.find(r => r.label === answerLabel);
                     const fov = chosen?.formula_override;
                     if (fov && DB.pricing_formulas?.[fov]) {
                         effectiveFormulaId = fov;
@@ -1092,8 +1203,9 @@ function computeUnifiedQuote(ctx) {
             if (true) {
                 const _mods = DB.global_rules?.modifiers || {};
                 for (const [moduleKey, answerLabel] of Object.entries(answers)) {
-                    const mod = DB.intake_modules?.[moduleKey];
-                    if (!mod) continue;
+                    const answered = resolveAnsweredModule(svc, moduleKey);
+                    if (!answered) continue;
+                    const mod = answered.module;
                     // T135+ FIX (PRICING_GUIDE B4, confirmed systemic root
                     // cause across all 5 affected item_count_overflow
                     // services): this loop is what actually computes fees --
@@ -1109,9 +1221,7 @@ function computeUnifiedQuote(ctx) {
                     // $15/$30 per-band fees never reachable. Fixed by
                     // checking the per-service override first, matching the
                     // same pattern already correct elsewhere in this function.
-                    const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
-                    const overrideResponses = step?.params?.client_response;
-                    const chosen = (overrideResponses || mod.client_response || []).find(r => r.label === answerLabel);
+                    const chosen = answered.responses.find(r => r.label === answerLabel);
                     if (!chosen) continue;
                     // v9.6: fee/minutes resolve exclusively via modifier_ref ->
                     // global_rules.modifiers. complexity_override/checkout_state_override
