@@ -410,6 +410,14 @@ function extractFunctionDeclaration(source, funcName) {
   return parsedAny ? last : extractFunctionDeclarationText(source, funcName);
 }
 
+// T198 H1: extractQty reads the text through maskIncidentalNumbers (nlp_engine), which depends on its own module-level pattern constants. A sandbox that
+// extracts extractQty alone has to be given the same definitions, taken from the page's own source (not retyped), so the behavioural matrix runs the real thing.
+function incidentalNumbersPrelude(source) {
+  const a = source.indexOf('const _DESIGNATOR'), b = source.indexOf('function maskIncidentalNumbers');
+  const d = extractFunctionDeclaration(source, 'maskIncidentalNumbers');
+  return (a >= 0 && b > a && d) ? source.slice(a, b).replace(/\bconst /g, 'var ') + '\n' + d.header + '{' + d.body + '}\n' : '';
+}
+
 function extractFunctionBody(source, funcName) {
   const d = extractFunctionDeclaration(source, funcName);
   return d ? d.body : null;
@@ -645,6 +653,7 @@ logHeader('2. Governance & Client Operations (R-GOVERN / R-CLIENT)');
       var _vocabCache = null, _vocabDB = null;
       var _DIMENSION_PATTERN = /\\b\\d+\\s*-?\\s*(?:foot|feet|ft|inch|inches|in|cm|centimeters?|meters?|yards?|lbs?|pounds?|kg)\\b/gi;
       var _QTY_WORD_MAP = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 };
+      ${incidentalNumbersPrelude(qrHtmlContent)}
       var _GENERIC_QTY_MODULE_KEYS = new Set(['item_count','count','hybrid_qty','global_quantity']);
       var _SKIP_WORDS = () => window._NLP?.STOP || new Set();
       var _SVC_VERBS = () => window._NLP?.VERBS || new Set();
@@ -2351,6 +2360,7 @@ assertRule(
     const prelude = `
       var _DIMENSION_PATTERN = /\\b\\d+\\s*-?\\s*(?:foot|feet|ft|inch|inches|in|cm|centimeters?|meters?|yards?|lbs?|pounds?|kg)\\b/gi;
       var _QTY_WORD_MAP = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 };
+      ${incidentalNumbersPrelude(qrHtmlContent)}
     `;
     const sandbox = makeSandbox();
     const inputs = [
