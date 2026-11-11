@@ -104,7 +104,9 @@ check('4.2 a count beside a dimension still answers: "replace 3 light bulbs 12 f
 }
 for (const [withN, without] of [['replace 3 light bulbs', 'replace light bulbs'], ['replace 6 light bulbs', 'replace light bulbs'], ['install 2 dimmer switches', 'install dimmer switches'], ['fix 4 cabinet doors', 'fix cabinet doors'], ['seal 3 windows', 'seal windows']]) {
     const a = typed(E, withN), b = typed(E, without);
-    check(`5.1 "${withN}" quotes what "${without}" quotes (${a.q}): answering the question did not move the price`, a.id === b.id && a.q === b.q && a.units === b.units, { a, b });
+    // G1 recorded here that answering the question did not move the price. That was true only because the engine never priced a band answered under the key the chain mints (T198 I1,
+    // verify_composite_count_answers_price.js): every one of these bands authors a price (the minutes T182 prices), so the typed count now moves the quote, by exactly what tapping the band does (check 5).
+    check(`5.1 "${withN}" is the same service and one unit as "${without}", and its quote (${a.q}) now carries the band's authored price (was ${b.q})`, a.id === b.id && a.units === b.units && parseInt(a.q) > parseInt(b.q), { a, b });
 }
 
 // 6. the family -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
