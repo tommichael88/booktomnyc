@@ -75,7 +75,8 @@ check('1.1 the reported cases: no 99-fan, 36-shelf or 4,500-job quote any more',
         check(`3.5 "${p}": quantity ${q}; a service that asks its own count question prices one unit (${x.units}), no double count`, x.qty === q && (x.id === 'dynamic' ? x.units === q : x.units === 1) && (!label || Object.values(x.ans).includes(label)), x);
     }
     const plain = typed(E, 'replace 3 light bulbs'), lone = typed(E, 'replace light bulb');
-    check('3.6 a service that prices its own count question: "replace 3 light bulbs" quotes what "replace light bulb" quotes (no double count)', plain.units === 1 && plain.labor === lone.labor && plain.mins === lone.mins, { plain, lone });
+    // "replace 3 light bulbs" answers the "2-3 bulbs" band (#249), which since T198 I1 prices: $20 base + 15 min at $70/h rounded to $5 = $40 -- one unit of that band, not 3 x $20 and not 3 x $40.
+    check('3.6 a service that prices its own count question: "replace 3 light bulbs" prices its band once ($40 = $20 + 15 min, one unit), not per bulb on top of it (no double count)', plain.units === 1 && lone.labor === 20 && plain.labor === 40, { plain, lone });
 }
 
 // 4. a number that cannot be placed ----------------------------------------------------------------------------------------------------------------------------------------------------------

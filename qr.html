@@ -843,7 +843,9 @@
                 let exactQty = null;
                 for (const [moduleKey, answerLabel] of Object.entries(answers)) {
                     const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
-                    const resp = step?.params?.client_response?.find(r => r.label === answerLabel);
+                    // T198 I1: a parameterized step's answer key is composite ("item_count_template::walls"); its bands are the resolved chain entry's, not a step the plain-key find can see.
+                    const _bands = step?.params?.client_response || (String(moduleKey).indexOf('::') >= 0 ? resolveAnsweredModule(svc, moduleKey)?.client_response : null);
+                    const resp = _bands?.find(r => r.label === answerLabel);
                     if (resp?.formula_override === 'item_count_overflow_formula' && resp.modifier_ref && _mods[resp.modifier_ref]) flat = _mods[resp.modifier_ref];
                     if (exactQty == null && resp?.qty_value != null) exactQty = resp.qty_value;
                 }
@@ -1558,6 +1560,7 @@
             // same template from colliding in the same chain, while
             // still resolving the underlying module definition from
             // intake_modules under its real, unparameterized name.
+            // (T198 I1: the pricing loops DO read a stored answer key back into intake_modules; they do it through resolveAnsweredModule, which answers a minted key from this chain.)
             const resolveOne = (lookupKey, thenMap, params) => {
                 const moduleKey = params?.item_noun ? `${lookupKey}::${params.item_noun}` : lookupKey;
                 if (seen.has(moduleKey)) {
@@ -1619,6 +1622,16 @@
                 });
             });
             return resolved;
+        }
+
+        // resolveAnsweredModule -- LOGIC. The module definition an ANSWER KEY names, as the customer was asked it (T198 I1). A parameterized step (params.item_noun) stores its answer under the key
+        // _resolveIntakeChain mints for it ("item_count_template::light bulbs"), which is not a key of intake_modules: reading that table with the stored key finds nothing, and every fee, minute and
+        // formula a count band authors was silently never priced (LED, plaster, wall-hole and eleven more services). The resolved chain entry IS the definition (the shared module with the step's own
+        // question and bands merged in), so a composite key is answered from it; a plain key is the module itself, as before. One definition, read by both pricing loops; no second table.
+        function resolveAnsweredModule(svc, moduleKey) {
+            const plain = DB?.intake_modules?.[moduleKey] || null;   // DB, as every pricing reader reads it
+            if (plain || !svc || String(moduleKey).indexOf('::') < 0) return plain || null;
+            return _resolveIntakeChain(svc).find(/** @param {any} m */ m => m.moduleKey === moduleKey) || null;
         }
 
         // v9.6: passive tag -> intake answer merge/skip. Confirmed via direct
@@ -2237,7 +2250,7 @@
                     // override exists for this module.
                     const step = (svc?.intake_chain || []).find(s => s.module === moduleKey);
                     const overrideResponses = step?.params?.client_response;
-                    const mod = DB.intake_modules?.[moduleKey];
+                    const mod = resolveAnsweredModule(svc, moduleKey);
                     const chosen = (overrideResponses || mod?.client_response || []).find(r => r.label === answerLabel);
                     const fov = chosen?.formula_override;
                     if (fov && DB.pricing_formulas?.[fov]) {
@@ -2443,7 +2456,7 @@
             if (true) {
                 const _mods = DB.global_rules?.modifiers || {};
                 for (const [moduleKey, answerLabel] of Object.entries(answers)) {
-                    const mod = DB.intake_modules?.[moduleKey];
+                    const mod = resolveAnsweredModule(svc, moduleKey);
                     if (!mod) continue;
                     // T135+ FIX (PRICING_GUIDE B4, confirmed systemic root
                     // cause across all 5 affected item_count_overflow
