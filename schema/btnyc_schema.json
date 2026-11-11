@@ -1905,6 +1905,13 @@
                     "type": "string",
                     "description": "v9.6: top-level on the response (was nested under effects pre-v9.6). References a pricing_formulas key -- when this answer is selected, computeUnifiedQuote routes pricing through the named formula instead of the entity's default engine."
                   },
+                  "count_range": {
+                    "type": "object",
+                    "description": "#249 (T198 G1): the item counts THIS count answer applies to, authored on the option and never read from its label. min is the fewest items (an integer, 1 or more); max the most, omitted when the answer is open-ended (\"4 or more\"). The customer's own stated count answers the question only when exactly one option's range contains it; ranges of one question do not overlap (validate_source.js V-OPT-COUNT-RANGE). Read by orch_apply_typed_counts; it is not a price field: the answer's own modifier carries any price.",
+                    "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } },
+                    "required": ["min"],
+                    "additionalProperties": false
+                  },
                   "qty_value": {
                     "type": "integer",
                     "description": "v9.6: top-level on the response (was nested under effects pre-v9.6). Explicit numeric quantity this label represents (e.g. label '6 or more' -> qty_value 6), read instead of parsing the label text directly."
@@ -2499,6 +2506,7 @@
                     "type": "string",
                     "description": "v9.6: top-level (was nested under effects pre-v9.6)."
                   },
+                  "count_range": { "type": "object", "description": "#249: see intake_modules.client_response.count_range.", "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } }, "required": ["min"], "additionalProperties": false },
                   "qty_value": {
                     "type": "integer",
                     "description": "v9.6: top-level (was nested under effects pre-v9.6)."

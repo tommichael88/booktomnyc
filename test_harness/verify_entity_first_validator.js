@@ -179,6 +179,10 @@ mut('an option carries a priced modifier but does not declare price', ['V-OPT-EF
 mut('an option lists an effect twice', ['V-OPT-EFFECT'], s => { const o = questionsOf(s).flatMap(q => q.options || []).find(x => x.affects.length); o.affects = [o.affects[0], o.affects[0]]; });
 mut('evidence that is not "unknown"', ['V-OPT-EFFECT'], s => { questionsOf(s).find(q => q.options).options[0].evidence = 'probably'; });
 mut('two answers of a question share a label', ['V-OPT-LABEL-DUP'], s => { const q = questionsOf(s).find(x => x.options && x.options.length > 1); q.options[1].label = q.options[0].label; });
+// V-OPT-COUNT-RANGE (#249, T198 G1: the item counts a count answer applies to, authored on the option)
+const countQ = s => questionsOf(s).find(q => (q.options || []).filter(o => o.count_range).length >= 2);
+mut('two answers of one question whose count ranges overlap', ['V-OPT-COUNT-RANGE'], s => { const q = countQ(s), os = q.options.filter(o => o.count_range); os[1].count_range = { min: os[0].count_range.min }; });
+mut('a count range whose max is below its min', ['V-OPT-COUNT-RANGE'], s => { const o = countQ(s).options.find(x => x.count_range && x.count_range.min > 1); o.count_range = { min: o.count_range.min, max: o.count_range.min - 1 }; });
 // V-COMPLEX-* (R-COMPLEX-AXES, R-COMPLEX-COMPOUNDS, P-COMPLEX-FURNITURE: the three axes every service declares)
 const svcNamed = (s, id) => need(servicesOf(s).find(v => v.id === 'svc.' + id), 'service ' + id);
 mut('a service that declares no complexity_profile', ['V-COMPLEX-PROFILE'], s => { delete servicesOf(s)[0].complexity_profile; });

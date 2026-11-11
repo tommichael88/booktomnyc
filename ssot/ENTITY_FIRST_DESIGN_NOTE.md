@@ -168,6 +168,7 @@ Entity set = every curated `comp.*` (74) + entities that the 16 component-less s
 | `formula_override` | `price` |
 | `tags` non-empty | `tags` |
 | `location_hints` | `prep` |
+| `count_range` | none (#249, T198 G1): which item counts this count answer applies to; it selects the answer, it does not price it |
 
 No option gets a free-standing promise. A module with `affects_price: true` whose options declare no price effect is reported (it is the `affects_price` flag with nothing behind it), not silently kept or cleared. An option that carries no effect field has `affects: []`.
 

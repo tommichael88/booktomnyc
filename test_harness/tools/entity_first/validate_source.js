@@ -17,7 +17,7 @@
  *   V-COMPLEX-*       the three axes every service declares (R-COMPLEX-AXES, R-COMPLEX-COMPOUNDS, P-COMPLEX-FURNITURE): PROFILE (a missing or illegal axis), TIER (the skill tier is declared twice and the two disagree), RISK (the risk tier is not the highest hazard it names),
  *                     BATCH (the flag is not what its signals say), ASSEMBLY (the assembly class), VOCAB (the vocabulary they are written in)
  *   V-NAME-*          a curated service's name composed from the scope it authors (T188; service_naming.js): VOCAB, MISSING, PARTS, CHARS, CASE, STUTTER, STALE, UNIQUE, MODIFIER, ENTITY, TAIL, EXCEPTION
- *   V-UNC-*           uncertainty classes, profiles and retirement       V-CONF-*   confidence policy and gate       V-OPT-*   option effects     V-COMP-*   unsafe-to-compose services
+ *   V-UNC-*           uncertainty classes, profiles and retirement       V-CONF-*   confidence policy and gate       V-OPT-*   option effects (V-OPT-COUNT-RANGE: an authored count range's shape and non-overlap)     V-COMP-*   unsafe-to-compose services
  * Declared gaps are not errors and not hidden: they are returned as `residuals` and counted in the coverage report.
  */
 const fs = require('fs');
@@ -327,6 +327,20 @@ function validate(src, opts = {}) {
     }
     for (const k of Object.keys(f)) if (/_modifier_ref$/.test(k) && !named.has(k)) res('formula_modifier_without_input', `${f.id}.${k}`, `${f.id} names ${f[k]} as ${k}, but no input says which answer (or constant) applies it`);
   });
+
+  // ---- count ranges (#249, T198 G1): which counts a count answer applies to, authored on the option; the ranges of one question do not overlap, so a stated count has at most one answer ----------------------
+  for (const q of allQuestions) {
+    const spans = [];
+    (q.options || []).forEach((o, i) => {
+      if (o.count_range === undefined) return;
+      const op = `${decl.q.get(q.id).path}.options[${i}].count_range`, r = o.count_range;
+      const int = v => Number.isInteger(v) && v >= 1;
+      if (!r || typeof r !== 'object' || Array.isArray(r) || !int(r.min) || (r.max !== undefined && (!int(r.max) || r.max < r.min)) || Object.keys(r).some(k => k !== 'min' && k !== 'max')) { err('V-OPT-COUNT-RANGE', op, `${q.id}/${o.id}: count_range is { min: integer >= 1, max?: integer >= min }, found ${JSON.stringify(r)}`); return; }
+      spans.push({ id: o.id, min: r.min, max: r.max === undefined ? Infinity : r.max });
+    });
+    spans.sort((x, y) => x.min - y.min);
+    for (let j = 1; j < spans.length; j++) if (spans[j].min <= spans[j - 1].max) err('V-OPT-COUNT-RANGE', decl.q.get(q.id).path, `${q.id}: the count ranges of ${spans[j - 1].id} and ${spans[j].id} overlap, so a stated count could belong to two answers`);
+  }
 
   // ---- option fields and effects ----------------------------------------------------------------------------------------------------------------------------------------------------
   for (const q of allQuestions) {

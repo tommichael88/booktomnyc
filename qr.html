@@ -3790,6 +3790,7 @@
                         const pathFacts = orch_apply_path_facts(context, intakeChain, answers, db); // #194: what the walked path rules out
                         intakeChain = pathFacts.chain;
                         answers = pathFacts.answers;
+                        answers = orch_apply_typed_counts(context, intakeChain, answers); // #249: a count the customer said answers the count question that asks about that thing
                         outputSummary = {
                             moduleCount: intakeChain.length
                         };
@@ -4476,6 +4477,32 @@
                 return Object.assign({}, mod, { client_response: kept });
             });
             return { chain: nextChain, answers: nextAnswers };
+        }
+
+        // orch_apply_typed_counts -- LOGIC. A count the customer typed answers the count question of the service that asks about that thing (#249, T198 G1; the quantity twin of #195's typed fact).
+        // "replace 3 light bulbs" says how many bulbs, so "How many light bulbs need attention?" is answered with the option whose AUTHORED count_range contains 3 -- never an option read from
+        // its label. A question is answered only when ALL hold: it is an item_count_template step the customer has not answered; the number was stated right before one of the question's own
+        // item nouns (the head word of each "/"-separated alternative of its item_noun, singular or plural: so "65 inch", "model 4500" and "2nd floor" never answer it -- extractStatedCounts
+        // does not return them, and a number beside another noun answers a different question); every stated count beside that noun is the same number (two different counts are
+        // ambiguous: ask); and exactly one option's range contains it (none: ask; the ranges of a question do not overlap, validate_source V-OPT-COUNT-RANGE). It never changes the quantity
+        // the quote prices: an entity with its own count question already prices units = 1 (resolveQuantityUnits), so the outer quantity is not applied a second time. Pure: returns a new answers.
+        function orch_apply_typed_counts(context, chain, answers) {
+            const stated = Array.isArray(context && context.statedCounts) ? context.statedCounts : [];
+            if (!stated.length) return answers;
+            const base = w => { w = String(w || '').toLowerCase().replace(/[^a-z0-9]/g, ''); return /(ch|sh|x|s|z)es$/.test(w) ? w.slice(0, -2) : w.replace(/s$/, ''); };
+            const next = Object.assign({}, answers);
+            (chain || []).forEach(mod => {
+                const key = mod.moduleKey || mod.module;
+                if (typeof key !== 'string' || !/^item_count_template(::|$)/.test(key) || next[key]) return;
+                const heads = new Set(String(mod._params && mod._params.item_noun || '').split('/').map(alt => alt.trim().split(/\s+of\s+/)[0].trim().split(/\s+/).pop()).filter(Boolean).map(base));
+                if (!heads.size) return;
+                const values = new Set(stated.filter(c => c.following.some(w => heads.has(base(w)))).map(c => c.value));
+                if (values.size !== 1) return;   // none said beside this noun, or two different counts: ask
+                const n = [...values][0];
+                const hit = (mod.client_response || []).filter(o => o.count_range && n >= o.count_range.min && (o.count_range.max === undefined || n <= o.count_range.max));
+                if (hit.length === 1) next[key] = hit[0].label;
+            });
+            return next;
         }
 
         // orch_compute_confidence -- LOGIC. The orchestrator's gateway to the one confidence function (R-CONF-ONEFORMULA): it resolves the entity's base strategy
@@ -5421,6 +5448,7 @@
                 rawText,
                 nlpIntent,
                 extractedQty: extractQty(rawText),
+                statedCounts: extractStatedCounts(rawText),   // #249: the numbers said beside a thing, for the count question that asks about that thing
                 extractedObject,
                 resolutionObject,
                 extractedLocation: extractLocation(rawText),
@@ -5458,6 +5486,7 @@
                 rawText: null,
                 nlpIntent: null,
                 extractedQty: null,
+                statedCounts: [],
                 extractedObject: null,
                 resolutionObject: null,
                 extractedLocation: null,
