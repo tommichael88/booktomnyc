@@ -1658,13 +1658,52 @@
          ten: 10
      };
 
+     // maskIncidentalNumbers -- NLP. The one definition of "this number is not a job quantity" (#249 follow-up, T198 H1). A number that names a model, a serial, a room, a date, a time, a price,
+     // a size or an age says nothing about HOW MANY things the customer wants, and the engine used to read it as a quantity anyway (clamped to 99): "install ceiling fan serial 123456" priced
+     // 99 fans ($6,435), "install shelf 36 x 12" priced 36 shelves ($13,380), "install a 20 amp outlet" 20 outlets. Each is replaced by a space, so what is left is the numbers a customer says
+     // beside a thing they want done. Both extractQty (how many units the whole request prices) and extractStatedCounts (which number was said beside which thing) read the masked text, so
+     // there is one definition and the two cannot disagree. It masks only what the words themselves mark: a designator before the number ("model 52", "room four", "#7"), a unit after it
+     // ("55 inch", "20 amp", "3 pm", "10 years old", "$100", "5 %"), a shape ("36 x 12", "3/4", "11/12", "March 15"), a letter-digit identifier ("KD-4500", "rtx3080", "4b", "3-way") or an
+     // implausible count (0, or three digits and up: a year, a zip, a phone, a model). It never guesses: a number it cannot place is left alone, and hours ("2 hours of furniture repair")
+     // are a quantity the hourly services price, so they are left alone.
+     const _DESIGNATOR = '(?:model|mdl|number|part|sku|series|version|serial|s\\/n|id|type|size|order|invoice|ref|reference|confirmation|code|zip|pin|(?:bed|bath)?room|rm|apt|apartment|suite|ste|floor|level|unit|building|bldg|lot|no\\.|nr\\.?)';
+     const _NUMBER_WORDS = '(?:one|two|three|four|five|six|seven|eight|nine|ten)';
+     const _INCIDENTAL_NUMBER_RES = [
+         /\$\s*\d[\d,]*(?:\.\d+)?/g,                                                                                                    // $100, $ 2,500.50
+         /\b\d[\d,]*(?:\.\d+)?\s*(?:%|percent\b|dollars?\b|bucks?\b|usd\b|cents?\b)/gi,                                                  // 5 %, 100 dollars
+         new RegExp('(?:\\b' + _DESIGNATOR + '|#)\\s*[:#]?\\s*(?:[a-z]-?)?(?:\\d[a-z0-9-]*|' + _NUMBER_WORDS + '\\b)', 'gi'),             // model 52, room four, apt 4B, #7, no. 5
+         /\b\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.|o'?clock)(?![a-z])/gi,                                                           // 3 pm, 3:30pm, 3 o'clock
+         /\b\d{1,2}:\d{2}\b/g,                                                                                                           // 3:30
+         /\b\d{1,2}-\d{1,2}-\d{2,4}\b/g,                                                                                                 // 11-12-2026
+         /\b\d{1,4}[\/.]\d{1,4}(?:[\/.]\d{2,4})?\b/g,                                                                                    // 11/12, 11/12/2026, 3/4, 3.5 (a range such as "2-3 bulbs" is a different thing and is kept)
+         /\b\d+(?:\.\d+)?\s*(?:x|×|by)\s*\d+(?:\.\d+)?\b/gi,                                                                        // 36 x 12, 2 by 4
+         /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}\b(?:\s*,?\s*\d{4})?/gi, // March 15
+         /\b\d+(?:\.\d+)?\s*(?:years?|yrs?|months?)\b(?:\s*old)?/gi,                                                                     // 10 years old, 6 months
+         /\b\d+(?:\.\d+)?\s*(?:mm|sq\.?\s*(?:ft|feet|in|inches)|square\s+(?:feet|foot|inches)|gal(?:lons?)?|watts?|volts?|amps?|btu|lumens?|psi|degrees?)\b/gi, // 20 amp, 60 watt, 120 sq ft
+         /\b\d+(?:\.\d+)?\s*["”″]/g,                                                                                           // 55"
+         /\b\d+(?:st|nd|rd|th)\b/gi,                                                                                                     // 2nd floor, 15th
+         /\b\d+-[a-z][a-z0-9-]*/gi,                                                                                                      // 3-way, 4-pack, 2-inch
+         /\b[a-z]+-?\d+[a-z0-9-]*\b/gi,                                                                                                  // KD-4500, rtx3080, a1234
+         /\b\d+[a-z]+[a-z0-9-]*\b/gi,                                                                                                    // 4b, 12v, 6pk (a unit word such as "3 bulbs" has a space and is untouched)
+         /\b\d{1,3}(?:,\d{3})+\b|\b\d{3,}\b|\b0+\b/g                                                                                             // 1,200 / 4500 / 2024 / 10001 / 0: not a count of things a person can book
+     ];
+     function maskIncidentalNumbers(text) {
+         let t = String(text || '');
+         for (const re of _INCIDENTAL_NUMBER_RES) t = t.replace(re, ' ');   // shapes first ("3/4 inch" is one thing, not a 3 and an inch), then the unit words below
+         return t.replace(_DIMENSION_PATTERN, ' ');
+     }
+
+     // extractQty -- NLP. How many units the whole request prices: the number the customer said beside the job, or 1 when none can be told from an incidental number. Reads the text with
+     // incidental numbers masked (maskIncidentalNumbers); the order below is unchanged: a count before a known item word, then "replace/install/fix N", then a number word, then a bare number
+     // that is followed by a word (a thing: "3 light bulbs") -- a bare number with nothing after it ("fix door 5") cannot be placed and is not a quantity.
      function extractQty(text) {
+         const t = maskIncidentalNumbers(text);
          const patterns = [
              /\b(\d+)\s*(tiles?|items?|pieces?|units?|doors?|fixtures?|signs?|shelves?|outlets?|switches?)/i,
-             /replace\s+(\d+)/i, /install\s+(\d+)/i, /fix\s+(\d+)/i
+             /replace\s+(\d+)\b/i, /install\s+(\d+)\b/i, /fix\s+(\d+)\b/i
          ];
          for (const p of patterns) {
-             const m = text.match(p);
+             const m = t.match(p);
              if (m) return Math.min(parseInt(m[1]), 99);
          }
          // SSOT: spelled-out number words ("Replace four panes") were never
@@ -1673,39 +1712,22 @@
          // (?!-) excludes a compound-adjective use ("four-poster bed"),
          // same guard as the dimension check below.
          for (const [w, n] of Object.entries(_QTY_WORD_MAP)) {
-             if (new RegExp('\\b' + w + '\\b(?!-)', 'i').test(text)) return n;
+             if (new RegExp('\\b' + w + '\\b(?!-)', 'i').test(t)) return n;
          }
-         // Bare-digit fallback: strip dimension/measurement phrases first,
-         // so a leftover number is more likely to be a genuine count.
-         const stripped = text.replace(_DIMENSION_PATTERN, ' ');
-         const m = stripped.match(/\b(\d+)\b/);
-         if (m) {
-             // v9.6 FIX: only treat a bare digit as a real quantity
-             // signal if it appears alongside actual other content --
-             // a customer typing literally just a number (e.g. "12345")
-             // with nothing else has given no real quantity context at
-             // all, and was previously clamped to qty=99 regardless,
-             // producing a wildly wrong quote for meaningless input.
-             const remainder = stripped.replace(m[0], ' ').replace(/[^a-z]/gi, '').trim();
-             if (remainder.length === 0) return 1;
-             return Math.min(parseInt(m[1]), 99);
-         }
-         return 1;
+         const m = t.match(/\b(\d+)\b(?=\s+[a-z])/);
+         return m ? Math.min(parseInt(m[1]), 99) : 1;
      }
 
      // extractStatedCounts -- NLP. Every count the customer stated, with the words right after it (#249, T198 G1). extractQty answers "how many units does the whole request price";
-     // this answers "which number was said beside which thing", which is what lets a typed count answer the count question of the service that asks about THAT thing. It reuses
-     // extractQty's own number words and dimension stripping and adds nothing to what a number is: a digit run or a number word, 1 to 99, that is not part of a measurement ("65 inch",
-     // "12 feet"), not a compound ("four-poster"), not an ordinal ("2nd floor") and not labelled as a designator ("model 4500", "part 12", "#7"). The orchestrator decides which question,
-     // if any, a stated count belongs to; this returns facts only: [{ value, following: [the next up to 2 words] }], in the order said: a count belongs to a noun only when that noun is the word right after it or the one after that ("3 bulbs", "3 light bulbs"; not "3 year old bulbs").
-     const _COUNT_DESIGNATORS = new Set(['model', 'no', 'number', 'part', 'sku', 'series', 'version', 'type', 'size', 'item', 'order', 'serial', 'id']);
+     // this answers "which number was said beside which thing", which is what lets a typed count answer the count question of the service that asks about THAT thing. It reads the same
+     // masked text as extractQty (one definition of an incidental number) and adds nothing to what a number is: a digit run or a number word, 1 to 99, that is not a compound
+     // ("four-poster"). The orchestrator decides which question, if any, a stated count belongs to; this returns facts only: [{ value, following: [the next up to 2 words] }], in the order
+     // said: a count belongs to a noun only when that noun is the word right after it or the one after that ("3 bulbs", "3 light bulbs"; not "3 year old bulbs").
      function extractStatedCounts(text) {
-         const stripped = String(text || '').toLowerCase().replace(_DIMENSION_PATTERN, ' ').replace(/#\s*(\d)/g, ' no $1').replace(/[^a-z0-9'\- ]+/g, ' ');
-         const tokens = stripped.split(/\s+/).filter(Boolean), out = [];
+         const tokens = maskIncidentalNumbers(String(text || '').toLowerCase()).replace(/[^a-z0-9'\- ]+/g, ' ').split(/\s+/).filter(Boolean), out = [];
          tokens.forEach((t, i) => {
-             const value = /^\d{1,3}$/.test(t) ? parseInt(t, 10) : (Object.prototype.hasOwnProperty.call(_QTY_WORD_MAP, t) ? _QTY_WORD_MAP[t] : null);
+             const value = /^\d{1,2}$/.test(t) ? parseInt(t, 10) : (Object.prototype.hasOwnProperty.call(_QTY_WORD_MAP, t) ? _QTY_WORD_MAP[t] : null);
              if (value === null || value < 1 || value > 99) return;
-             if (i > 0 && _COUNT_DESIGNATORS.has(tokens[i - 1])) return;
              out.push({ value, following: tokens.slice(i + 1, i + 3) });
          });
          return out;
