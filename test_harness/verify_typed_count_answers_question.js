@@ -49,6 +49,13 @@ for (const { s, step } of family) {
     check(`0.1 ${s.id}: every option carries a count_range, and the ranges are disjoint`, shaped && disjoint, rs);
 }
 
+{
+    // The page validates btnyc.json against schema/btnyc_schema.json at boot with its OWN small checker (orch_validate_ssot), which supports a subset of JSON Schema. A keyword it does not know
+    // ("minimum") is an error, and a failing boot validation takes the whole page down (the first G1 gate: 17 pass->fail). The catalog and the schema have to agree in THAT checker.
+    const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, 'schema', 'btnyc_schema.json'), 'utf8')), v = E.orch_validate_ssot(DB0, SCHEMA);
+    check('0.2 the page\'s own boot checker accepts the catalog with its count ranges (no keyword it does not support)', v.valid === true, v.errors && v.errors.slice(0, 2));
+}
+
 // 1. representative: Led Bulb Upgrade ------------------------------------------------------------------------------------------------------------------------------------------------------
 for (const [p, label] of [['replace 1 light bulb', '1 bulb'], ['replace one light bulb', '1 bulb'], ['replace 2 light bulbs', '2-3 bulbs'], ['replace 3 light bulbs', '2-3 bulbs'], ['replace three light bulbs', '2-3 bulbs'],
     ['replace 4 light bulbs', '4-6 bulbs'], ['replace 6 light bulbs', '4-6 bulbs'], ['replace 3 bulbs', '2-3 bulbs'], ['3 light bulbs', '2-3 bulbs']]) {
