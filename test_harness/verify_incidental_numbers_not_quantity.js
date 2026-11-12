@@ -100,7 +100,7 @@ check('1.1 the reported cases: no 99-fan, 36-shelf or 4,500-job quote any more',
 // 6. non-vacuity: the original reader brings the defect back -----------------------------------------------------------------------------------------------------------------------------------
 {
     // the original reader: dimension words masked only, and any bare number counts (no "followed by a word" rule)
-    const P = load(w => w.replace('function maskIncidentalNumbers(text) {', 'function maskIncidentalNumbers(text) { return String(text || \'\').replace(_DIMENSION_PATTERN, \' \'); /*planted: dimension words only*/').replace('const m = t.match(/\\b(\\d+)\\b(?=\\s+[a-z])/);', 'const m = t.match(/\\b(\\d+)\\b/);'));
+    const P = load(w => w.replace('function maskIncidentalNumbers(text, keepLarge) {', 'function maskIncidentalNumbers(text) { return String(text || \'\').replace(_DIMENSION_PATTERN, \' \'); /*planted: dimension words only*/').replace('const m = t.match(/\\b(\\d+)\\b(?=\\s+[a-z])/);', 'const m = t.match(/\\b(\\d+)\\b/);'));
     const back = ['install ceiling fan serial 123456', 'install shelf 36 x 12', 'repair 4500', 'install a 20 amp outlet', 'fix leaky faucet by 11/12'].map(p => typed(P, p));
     check('6 planted (dimension words only, the original): the incidental numbers are quantities again', back.every(x => x.qty > 1) && back[0].units === 99, back.map(x => x.qty));
     check('6.1 planted: the test\'s own incidental table fails (it detects the original defect)', incidental.filter(([p]) => typed(P, p).qty !== 1).length >= 12);

@@ -1687,9 +1687,12 @@
          /\b\d+[a-z]+[a-z0-9-]*\b/gi,                                                                                                    // 4b, 12v, 6pk (a unit word such as "3 bulbs" has a space and is untouched)
          /\b\d{1,3}(?:,\d{3})+\b|\b\d{3,}\b|\b0+\b/g                                                                                             // 1,200 / 4500 / 2024 / 10001 / 0: not a count of things a person can book
      ];
-     function maskIncidentalNumbers(text) {
+     // `keepLarge` (T198 J1) leaves out only the last rule, the implausible-count one: a number of three digits and up that NO word marks as a model, a date, a size or a unit survives, so
+     // extractUnsupportedCount can tell "120 shelves" (a count, said plainly) from "model 4500" (masked by its designator) and from a bare "4500" (never a count). Every other rule still runs.
+     function maskIncidentalNumbers(text, keepLarge) {
          let t = String(text || '');
-         for (const re of _INCIDENTAL_NUMBER_RES) t = t.replace(re, ' ');   // shapes first ("3/4 inch" is one thing, not a 3 and an inch), then the unit words below
+         const rules = keepLarge ? _INCIDENTAL_NUMBER_RES.slice(0, -1) : _INCIDENTAL_NUMBER_RES;
+         for (const re of rules) t = t.replace(re, ' ');   // shapes first ("3/4 inch" is one thing, not a 3 and an inch), then the unit words below
          return t.replace(_DIMENSION_PATTERN, ' ');
      }
 
@@ -1731,6 +1734,29 @@
              out.push({ value, following: tokens.slice(i + 1, i + 3) });
          });
          return out;
+     }
+
+     // extractUnsupportedCount -- NLP. A count the customer stated plainly that is past what a request prices (T198 J1): the number is 100 or more (extractQty's ceiling is 99, and below it the
+     // stepper, the count questions and the price all work), it stands beside a plural thing ("120 shelves", "150 light bulbs", "100 hours"), and no word marks it as anything else. The
+     // mask above has already taken every number a word marks (a model, a date, a size, a unit, a zip), so what survives with a plural noun after it is the customer saying how many. It
+     // is EVIDENCE, not a quantity: extractQty still answers 1 for the same text (H1: an invented 99 is worse than a one), and the workflow uses this to ask rather than to price. A bare
+     // number with no thing after it ("furniture assembly 4500") is ambiguous and is not reported. Returns null, or { value, noun, phrase }.
+     const _NOT_A_PLURAL = new Set(['series', 'lumens', 'plus', 'this', 'its', 'was', 'has', 'does', 'across', 'pass', 'glass', 'class', 'access', 'address', 'business', 'dress', 'less', 'miss', 'boss']);
+     function extractUnsupportedCount(text) {
+         const tokens = maskIncidentalNumbers(String(text || '').toLowerCase(), true).replace(/[^a-z0-9'\-, ]+/g, ' ').split(/\s+/).filter(Boolean);
+         for (let i = 0; i < tokens.length; i++) {
+             const raw = tokens[i].replace(/,$/, '');
+             if (!/^(?:\d{3,5}|\d{1,3}(?:,\d{3})+)$/.test(raw)) continue;
+             const value = parseInt(raw.replace(/,/g, ''), 10);
+             if (value < 100 || value > 99999) continue;
+             const reach = (value >= 1900 && value <= 2099) ? 1 : 2;   // a year is a year unless the thing is its very next word ("2024 honda civic seats" is a car)
+             for (let j = i + 1; j <= i + reach && j < tokens.length; j++) {
+                 const w = tokens[j];
+                 if (/^\d/.test(w)) break;
+                 if (/(?:[^s]s|ies|ves)$/.test(w) && w.length >= 4 && !_NOT_A_PLURAL.has(w) && !/ss$/.test(w)) return { value, noun: w, phrase: tokens.slice(i + 1, j + 1).join(' ') };
+             }
+         }
+         return null;
      }
 
      function extractLocation(text) {
