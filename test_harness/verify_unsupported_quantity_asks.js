@@ -78,9 +78,9 @@ check('5.3 scope buttons are not routed to the chip-answer handler', /\.ims-chip
 }
 // 7. K1: a lone trailing number of unknown meaning is asked about (evidence, never a quantity)
 {
-    const amb = ['mount shelf 120', 'mount shelf 12', 'mount shelf 4', 'mount tv 55', 'furniture assembly 4500', 'light bulbs 3'];
-    const notAmb = ['mount shelf model 120', 'mount a 120-inch shelf', 'install shelves in room 120', 'mount 120 shelves', 'mount 12 shelves', 'mount shelf 1', 'mount shelf 2024', 'mount shelf 120 and paint the wall',
-        'mount 3 shelves 120', 'install shelf 36 x 12', 'replace bulb in 3', 'mount shelf', 'mount shelf KD-4500', 'mount shelf #120'];
+    const amb = ['mount shelf 120 and paint the wall', 'mount shelf 120, paint the wall', 'mount shelf 120', 'mount shelf 12', 'mount shelf 4', 'mount tv 55', 'furniture assembly 4500', 'light bulbs 3'];
+    const notAmb = ['mount shelf model 120', 'mount a 120-inch shelf', 'install shelves in room 120', 'mount 120 shelves', 'mount 12 shelves', 'mount shelf 1', 'mount shelf 2024',
+        'mount 3 shelves 120', 'install shelf 36 x 12', 'replace bulb in 3', 'mount shelf', 'mount shelf KD-4500', 'mount shelf #120', 'mount shelf 12 then fix the door', 'hang 2 and paint', 'mount shelf 120 and 4 bulbs', 'mount 3 shelves and paint', 'mount shelf 120 in the hall'];
     for (const p of amb) { const u = E.extractAmbiguousNumber(p); check(`7 "${p}" ends with a number of unknown meaning`, !!u && u.kind === 'ambiguous', u); }
     for (const p of notAmb) { const u = E.extractAmbiguousNumber(p); check(`7 "${p}" does not`, u === null, u); }
     const r = route(E, 'mount shelf 120'), s = r.scope;
