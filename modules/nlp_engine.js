@@ -1768,7 +1768,11 @@
          const tokens = maskIncidentalNumbers(String(text || '').toLowerCase(), true).replace(/[^a-z0-9'\-, ]+/g, ' ').split(/\s+/).filter(Boolean);
          const isNum = t => /^(?:\d{1,5}|\d{1,3}(?:,\d{3})+)$/.test(t.replace(/,$/, ''));
          const at = []; tokens.forEach((t, i) => { if (/\d/.test(t) && isNum(t)) at.push(i); else if (/\d/.test(t)) at.push(-1); });
-         if (at.length !== 1 || at[0] !== tokens.length - 1 || at[0] < 1) return null;
+         // The number ends the request, or ends a clause: "mount shelf 120 and paint the wall" (T198 L1). Only a conjunction or a comma after it; any other word after it is a noun/unit and is extractQty's to read.
+         const _CLAUSE_END = new Set(['and', 'then', 'also', 'plus', 'but']);
+         const last = at.length === 1 ? at[0] : -1, endsClause = last >= 0 && (last === tokens.length - 1 || /,$/.test(tokens[last]) || _CLAUSE_END.has(tokens[last + 1]));
+         if (at.length !== 1 || !endsClause || at[0] < 1) return null;
+         if (extractQty(text) !== 1) return null;   // the page already reads a quantity here; nothing is unresolved
          const value = parseInt(tokens[at[0]].replace(/,/g, ''), 10), prev = tokens[at[0] - 1].replace(/,$/, '');
          if (value < 2 || (value >= 1900 && value <= 2099)) return null;
          if (!/^[a-z]{2,}$/.test(prev) || _NOT_THE_THING.has(prev)) return null;
