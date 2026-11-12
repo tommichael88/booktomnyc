@@ -109,7 +109,7 @@ async function drive(puppeteer, chromePath, htmlPath) {
   const c = real.cart;
   check('after setting three on shelf mounting, Add to Request puts one item in the cart priced as the card says', !!c && c.n === 1 && c.shown && c.shown.qty === 3 && Number(String(c.price).replace(/[^0-9]/g, '')) === c.shown.price, JSON.stringify(c));
   console.log('\n=== 5. mutant: a renderer that does not draw the control is caught ===');
-  const src = require('./_page.js').readPage(HTML), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qty-')); const a = "if (_qtyModule && route.quantity && route.quantity.stance === 'batched') {";
+  const src = require('./_page.js').readPage(HTML), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qty-')); const a = "if (_qtyModule && route.quantity && route.quantity.stance === 'batched' && !_scopeHeld && !(_scope && _scope.review)) {";
   if (!src.includes(a)) throw new Error('mutant anchor missing');
   const f = path.join(tmp, 'nocontrol.html'); fs.writeFileSync(f, src.replace(a, 'if (false) {'));
   const m = await drive(puppeteer, chromePath, f);

@@ -157,7 +157,7 @@ function report(real) {
 
 // the mutant needs only the scenarios it targets: the first few chip services, and (for the amount mutant) the steppers
 const MUTANTS = [
-  { name: 'the quantity is not recorded on the line', expect: ['qtyTwoLines', 'qtyWording'], anchor: '...(!onsite && _unitsPriced !== null ? { __qty: _unitsPriced } : {})', to: '' },
+  { name: 'the quantity is not recorded on the line', expect: ['qtyTwoLines', 'qtyWording'], anchor: '...(!onsite && _unitsPriced !== null ? { __qty: _unitsPriced } : {})', to: '...{}' }   /* J1: another spread follows it, so the removal is an empty one, not a hole */,
   { name: 'the total ignores qty', expect: ['summaryTotal', 'overlayTotal'], anchor: 'cartLineAmount(it) * cartLineQty(it)', to: 'cartLineAmount(it)' },
   { name: 'the line wording ignores qty', expect: ['summaryWording'], anchor: "return n > 1 ? shown + ' \\u00d7 ' + n : shown;", to: 'return shown;' },
   { name: 'the answers dropped from the line identity', expect: ['otherAnswer'], anchor: /\n\s*answersPart,\n/, to: "\n        '',\n" },
