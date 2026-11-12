@@ -12579,3 +12579,5 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **T198 (K1) result (2026-11-12; run 43213074767).** 246 tests: 240 pass, 6 fail (the same six reds), 2 environment gaps; pass->fail none, red->worse none. Merged.
 
 **T198 (L1; 2026-11-12).** The K1 trailing-number question now also fires when the lone number ends a clause ("mount shelf 120 and paint the wall"); guarded by `extractQty === 1`. Golden master 0 differ of 2,988; corpora unchanged. Details in `archive/honest_review_request_T198_K1.md` (L1). Gate pending.
+
+**T198 (L1) result (2026-11-12; run 43250705324).** 246 tests: 240 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
