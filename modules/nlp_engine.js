@@ -1759,6 +1759,22 @@
          return null;
      }
 
+     // extractAmbiguousNumber -- NLP. A number the customer left at the very end of the request with nothing to say what it is (T198 K1): "mount shelf 120". It may be how many, or a model, a label or a
+     // size; the words do not say, and extractQty prices one unit either way. It is evidence, not a quantity: the card asks which it is, and prices nothing until answered. It reads the same masked
+     // text as extractQty, so "shelf model 120", "room 120", "120-inch", "2024" and "KD-4500" never get here; it fires only when this is the ONLY number left and it is the last word, after a word
+     // (not a preposition: "in 3" says nothing), and not 0 or 1 (one is what is priced anyway). Returns null or { kind:'ambiguous', value, noun, phrase }.
+     const _NOT_THE_THING = new Set(['to','for','by','at','about','around','over','under','of','in','on','is','are','be','than','approx','approximately','roughly','maybe','like','and','or','from','until','till','after','before','within','with','the','and','not','but','was','were','has','had','have','that','this','these','those','some','any','all','each','per','total','only','just','another','next','last','first','second','third']);
+     function extractAmbiguousNumber(text) {
+         const tokens = maskIncidentalNumbers(String(text || '').toLowerCase(), true).replace(/[^a-z0-9'\-, ]+/g, ' ').split(/\s+/).filter(Boolean);
+         const isNum = t => /^(?:\d{1,5}|\d{1,3}(?:,\d{3})+)$/.test(t.replace(/,$/, ''));
+         const at = []; tokens.forEach((t, i) => { if (/\d/.test(t) && isNum(t)) at.push(i); else if (/\d/.test(t)) at.push(-1); });
+         if (at.length !== 1 || at[0] !== tokens.length - 1 || at[0] < 1) return null;
+         const value = parseInt(tokens[at[0]].replace(/,/g, ''), 10), prev = tokens[at[0] - 1].replace(/,$/, '');
+         if (value < 2 || (value >= 1900 && value <= 2099)) return null;
+         if (!/^[a-z]{2,}$/.test(prev) || _NOT_THE_THING.has(prev)) return null;
+         return { kind: 'ambiguous', value, noun: prev, phrase: prev };
+     }
+
      function extractLocation(text) {
          // T118 (PENDING_DECISIONS.md #19): two real, distinct
          // gaps found and fixed together, confirmed via direct

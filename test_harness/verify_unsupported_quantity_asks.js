@@ -76,4 +76,24 @@ check('5.3 scope buttons are not routed to the chip-answer handler', /\.ims-chip
     const r = route(O, 'mount 120 shelves');
     check('6 planted original: "mount 120 shelves" is not held (this is the defect)', !(r.scope && r.scope.pending) && r.quote && r.quote.laborEstimate > 0);
 }
+// 7. K1: a lone trailing number of unknown meaning is asked about (evidence, never a quantity)
+{
+    const amb = ['mount shelf 120', 'mount shelf 12', 'mount shelf 4', 'mount tv 55', 'furniture assembly 4500', 'light bulbs 3'];
+    const notAmb = ['mount shelf model 120', 'mount a 120-inch shelf', 'install shelves in room 120', 'mount 120 shelves', 'mount 12 shelves', 'mount shelf 1', 'mount shelf 2024', 'mount shelf 120 and paint the wall',
+        'mount 3 shelves 120', 'install shelf 36 x 12', 'replace bulb in 3', 'mount shelf', 'mount shelf KD-4500', 'mount shelf #120'];
+    for (const p of amb) { const u = E.extractAmbiguousNumber(p); check(`7 "${p}" ends with a number of unknown meaning`, !!u && u.kind === 'ambiguous', u); }
+    for (const p of notAmb) { const u = E.extractAmbiguousNumber(p); check(`7 "${p}" does not`, u === null, u); }
+    const r = route(E, 'mount shelf 120'), s = r.scope;
+    check('7.1 "mount shelf 120": scope pending, kind ambiguous, 120', !!s && s.pending && s.kind === 'ambiguous' && s.stated === 120, s);
+    check('7.2 extractQty is still 1 (nothing is priced as 120)', E.extractQty('mount shelf 120') === 1);
+    const yes12 = E.orch_resolve_scope(route(E, 'mount shelf 12'), 'count', E.DB), typed12 = route(E, 'mount 12 shelves');
+    check('7.3 "yes, 12" prices exactly what "mount 12 shelves" prices', yes12.scope && !yes12.scope.pending && yes12.quote.laborEstimate === typed12.quote.laborEstimate, [yes12.quote && yes12.quote.laborEstimate, typed12.quote && typed12.quote.laborEstimate]);
+    const yes120 = E.orch_resolve_scope(r, 'count', E.DB);
+    check('7.4 "yes, 120" is a review (no online price), not 120 priced', yes120.scope.review && !yes120.scope.pending);
+    const no = E.orch_resolve_scope(r, 'not_a_count', E.DB);
+    check('7.5 "it is a model or label" is the one-unit quote of the same words', !no.scope.pending && no.quote.laborEstimate === route(E, 'mount shelf').quote.laborEstimate);
+    check('7.6 a supported count, a model, a dimension, a room carry no scope', ['mount 12 shelves', 'mount shelf model 120', 'mount a 120-inch shelf', 'install shelves in room 120'].every(t => route(E, t).scope === null));
+    const O = load(w => w.replace('function extractAmbiguousNumber(text) {', 'function extractAmbiguousNumber(text) { return null;'));
+    check('7.7 planted original: "mount shelf 120" is not held (this is the defect)', !(route(O, 'mount shelf 120').scope && route(O, 'mount shelf 120').scope.pending));
+}
 finish();

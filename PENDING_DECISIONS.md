@@ -4155,3 +4155,6 @@ _I1 follow-up (T198): the count bands answered under a minted key now price (`ar
 **Where the fix lands.** Either the request's category is the resolved service's category once a service is reached (orchestrator block of `qr.html`; the premise "the request's category is the object's" is the broken one, `G-GOVERN-RAISE`), or `#water_damage` is scoped to the furniture services that ask `damage_type` by `applicable_group_ids` (authored, no code). Measure with the wide corpus and the golden master `text|` family either way.
 **Done when.** The three typed instances are removed from `test_harness/fixtures/state_ignorance_baseline.json` in the same commit as the fix.
 **Operator question:** none. **Default if unanswered:** the authored group scoping, in its own session after the next sweep.
+
+## K1 (T198, 2026-11-12) — request submission channel (reserved to the operator: external integration)
+Evidence: `finalizeBooking()` has never transmitted anything; the page and `api/` contain no submission endpoint. K1 made the page say so ("Not sent yet … Nothing has been sent to BookTOM") and hands the customer their own text/email/copy of the request. A genuine "send" needs an operator decision on an external destination and credentials (form/email service or backend). Until then the honest state stands; no mechanism was invented. Not a blocker for ordinary work.

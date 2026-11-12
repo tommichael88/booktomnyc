@@ -108,7 +108,8 @@
         </div>
         <div class="cart-overlay-actions">
             <div class="cart-overlay-secondary"><button class="clear-all-btn" id="clearAllServicesBtn" aria-label="Clear all">Clear All 🗑</button> <button class="add-more-button" id="addMoreBtn">➕ Add More Services</button></div>
-            <button class="final-book-button" id="finalBookBtn" disabled aria-label="Book now">★ BOOK NOW ★</button>
+            <div class="cart-preview-notice" id="cartPreviewNotice">This page can't send requests yet. The button below gets your request ready to text or email — nothing is sent to BookTOM until you send it.</div>
+            <button class="final-book-button" id="finalBookBtn" disabled aria-label="Prepare my request">★ PREPARE MY REQUEST ★</button>
         </div>
     </div>
 </div>
@@ -4817,13 +4818,20 @@
             const b = context && context.statedBeyondRange;
             if (!b || typeof b.value !== 'number') return null;
             const resolution = (context && context.scopeResolution) || null;
-            return { stated: b.value, noun: b.noun, phrase: b.phrase, resolution, pending: resolution === null, review: resolution === 'review' };
+            const kind = b.kind === 'ambiguous' ? 'ambiguous' : 'count';
+            return { kind, stated: b.value, noun: b.noun, phrase: b.phrase, label: kind === 'ambiguous' ? b.value + ' × ' + b.phrase : b.value + ' ' + b.phrase, resolution, pending: resolution === null, review: resolution === 'review' };
         }
 
         // orch_resolve_scope -- LOGIC. The twin of orch_apply_quantity for the stated-scope question: route in, route out. resolution is 'review', 'not_a_count', or null (take it back: ask again).
         /** @param {any} prevRoute @param {any} resolution @param {any} DB */
         function orch_resolve_scope(prevRoute, resolution, DB) {
             if (!prevRoute || !prevRoute.context) return prevRoute;
+            // T198 K1: 'count' = "yes, that number is how many". A number the page prices (up to 99) is set as the quantity, exactly as typing it would; a larger one is quoted after a review.
+            if (resolution === 'count') {
+                const st = prevRoute.scope && prevRoute.scope.stated;
+                if (typeof st === 'number' && st <= 99) return orch_apply_quantity(prevRoute, st, DB);
+                resolution = 'review';
+            }
             const ok = resolution === 'review' || resolution === 'not_a_count';
             const ctx = Object.assign({}, prevRoute.context, { scopeResolution: ok ? resolution : null });
             const next = executeWorkflow(ctx, DB);
@@ -5478,6 +5486,9 @@
             // charged for both (measured: 13 situations, up to $124 apart from the builder's answer for the same words). It is the same function, called once, where the words become
             // tags: a named service is a curated session (no group default), exactly as the builder treats it. Nothing here is a second rule.
             const selectedServiceId = (nlpIntent?._matchConfidence >= thresholds.auto_select_named_service) ? (nlpIntent?.recommendedSku || null) : null;
+            // T198 J1/K1: the number the customer stated that the page cannot apply as a quantity -- a count past the range, else a lone trailing number of unknown meaning. Evidence only.
+            let _scopeEvidence = extractUnsupportedCount(rawText);
+            if (!_scopeEvidence) _scopeEvidence = extractAmbiguousNumber(rawText);
             const ruled = resolveTagRules({
                 category: detCat,
                 groupId: selectedGroupId,
@@ -5494,7 +5505,7 @@
                 nlpIntent,
                 extractedQty: extractQty(rawText),
                 statedCounts: extractStatedCounts(rawText),   // #249: the numbers said beside a thing, for the count question that asks about that thing
-                statedBeyondRange: extractUnsupportedCount(rawText),   // T198 J1: a count of 100 or more said beside a thing -- evidence for the card to ask about, never a quantity to price
+                statedBeyondRange: _scopeEvidence,   // T198 J1/K1: a count of 100 or more said beside a thing, or a lone trailing number that may or may not be a count -- evidence for the card to ask about, never a quantity to price
                 extractedObject,
                 resolutionObject,
                 extractedLocation: extractLocation(rawText),
@@ -7410,7 +7421,7 @@
             const laborEstimate = route.quote?.laborEstimate;
             // T198 J1: a count past what is priced online is confirmed before any figure is shown -- "From $65" beside "150 outlets" would read as the price of the 150.
             const priceDisplay = (route.scope && route.scope.pending) ?
-                `<span class="affirm-scope">You asked for ${escapeHtml(route.scope.stated + ' ' + route.scope.phrase)}. We'll confirm that number with you next, before we show a price.</span>` :
+                `<span class="affirm-scope">${route.scope.kind === 'ambiguous' ? 'Your request ends with ' + escapeHtml(String(route.scope.stated)) + '. We\'ll check what that number is next, before we show a price.' : 'You asked for ' + escapeHtml(route.scope.label) + '. We\'ll confirm that number with you next, before we show a price.'}</span>` :
                 ((typeof laborEstimate === 'number' && laborEstimate > 0) ?
                 `<span class="affirm-price">From $${laborEstimate}</span>` :
                 '');
@@ -7723,22 +7734,22 @@
             } else if (q && _scopeHeld) {
                 // T198 J1: the customer said a count we do not price online ("120 shelves"). No price is shown -- a one-unit figure would read as the price of the whole job -- and the customer is asked, in place, with the
                 // three honest answers: yes that many (quoted after a review), a number we do price (set here, no retyping), or "that was not a count".
-                const _thing = escapeHtml(_scope.stated + ' ' + _scope.phrase);
+                const _thing = escapeHtml(_scope.label), _amb = _scope.kind === 'ambiguous';
                 html += `<div class="scope-notice" role="group" aria-label="Confirm the quantity" style="margin-top:16px; padding:14px; border:1px solid #d9a441; background:#fff8e6; border-radius:10px;">
-                    <div class="scope-notice-title" style="font-weight:bold;">You asked for ${_thing}.</div>
-                    <div class="scope-notice-body" style="margin-top:6px; font-size:14px; color:#444;">We price up to 99 of one thing online, so we haven't put a price on this yet. Which is right?</div>
+                    <div class="scope-notice-title" style="font-weight:bold;">${_amb ? 'Is ' + escapeHtml(String(_scope.stated)) + ' how many you want?' : 'You asked for ' + _thing + '.'}</div>
+                    <div class="scope-notice-body" style="margin-top:6px; font-size:14px; color:#444;">${_amb ? 'Your request ends with ' + escapeHtml(String(_scope.stated)) + ', which could be how many, or a model or label number. We haven\'t put a price on this yet. Which is right?' : 'We price up to 99 of one thing online, so we haven\'t put a price on this yet. Which is right?'}</div>
                     <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
-                        <button type="button" class="book-now-button" id="btn-scope-review">Yes, ${_thing} — quote it after a review</button>
+                        ${_amb ? `<button type="button" class="book-now-button" id="btn-scope-count">Yes, ${escapeHtml(String(_scope.stated))} of them${_scope.stated > 99 ? ' — quote it after a review' : ''}</button>` : `<button type="button" class="book-now-button" id="btn-scope-review">Yes, ${_thing} — quote it after a review</button>`}
                         <div style="display:flex; gap:8px; align-items:center;">
-                            <label for="scope-qty-input" style="font-size:14px;">Fewer? Enter a number up to 99:</label>
+                            <label for="scope-qty-input" style="font-size:14px;">${_amb ? 'A different number, up to 99:' : 'Fewer? Enter a number up to 99:'}</label>
                             <input type="number" id="scope-qty-input" min="1" max="99" inputmode="numeric" style="width:84px; padding:8px; border:1px solid #ccc; border-radius:8px;">
                             <button type="button" class="ims-chip scope-action" id="btn-scope-qty">Use this number</button>
                         </div>
-                        <button type="button" class="ims-chip scope-action" id="btn-scope-notcount">That number isn't how many</button>
+                        <button type="button" class="ims-chip scope-action" id="btn-scope-notcount">${_amb ? 'No, it\'s a model or label — just one' : 'That number isn\'t how many'}</button>
                     </div>
                  </div>`;
             } else if (q && _scope && _scope.review) {
-                const _thing = escapeHtml(_scope.stated + ' ' + _scope.phrase);
+                const _thing = escapeHtml(_scope.label);
                 html += `<div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
                     <span>Estimated labor:</span>
                     <span class="price-value">Quote after review</span>
@@ -7826,6 +7837,7 @@
             // T198 J1: the stated-count answers. Dispatch only: Logic (orch_resolve_scope / orch_apply_quantity) decides, the card is drawn again from the new route.
             const _scopeBtn = (id, fn) => { const b = container.querySelector(id); if (b) b.addEventListener('click', fn); };
             _scopeBtn('#btn-scope-review', () => window.handleIntakeScope && window.handleIntakeScope('review'));
+            _scopeBtn('#btn-scope-count', () => window.handleIntakeScope && window.handleIntakeScope('count'));
             _scopeBtn('#btn-scope-notcount', () => window.handleIntakeScope && window.handleIntakeScope('not_a_count'));
             _scopeBtn('#btn-scope-change', () => window.handleIntakeScope && window.handleIntakeScope(null));
             _scopeBtn('#btn-scope-qty', () => {
@@ -7843,13 +7855,13 @@
                 id: 'curated-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
                 serviceId: entity.id,
                 category_id: entity.ui_taxonomy?.category_id || 'other',
-                name: (entity.ui_taxonomy?.display_name || 'Service') + (onsite ? ' – On-site diagnostic' : '') + (_reviewScope ? ' — ' + _reviewScope.stated + ' ' + _reviewScope.phrase : ''),
+                name: (entity.ui_taxonomy?.display_name || 'Service') + (onsite ? ' – On-site diagnostic' : '') + (_reviewScope ? ' — ' + _reviewScope.label : ''),
                 price: _reviewScope ? 'Quote after review' : '$' + (onsite ? terms.fee : q.laborEstimate),
                 reviewRequired: !!_reviewScope,
                 icon: entity.ui_taxonomy?.icon || '🔧',
                 detail: onsite ? 'On-site diagnostic (flat rate)' : 'Curated intake',
-                notes: 'Answers: ' + JSON.stringify(answers) + (!onsite && _unitsPriced > 1 ? '\nQuantity: ' + _unitsPriced : '') + (onsite ? '\n' + terms.bookingNote : '') + (_reviewScope ? '\nStated scope: ' + _reviewScope.stated + ' ' + _reviewScope.phrase + ' (more than is priced online). No online price was given; quote after review.' : ''),
-                intakeAnswers: { ...answers, ...(!onsite && _unitsPriced !== null ? { __qty: _unitsPriced } : {}), ...(_reviewScope ? { __stated_scope: _reviewScope.stated + ' ' + _reviewScope.phrase } : {}) },   // structured; the merge key reads this. __qty: the quantity priced, as the guided builders record it (the on-site diagnostic is a flat fee: no quantity)
+                notes: 'Answers: ' + JSON.stringify(answers) + (!onsite && _unitsPriced > 1 ? '\nQuantity: ' + _unitsPriced : '') + (onsite ? '\n' + terms.bookingNote : '') + (_reviewScope ? '\nStated scope: ' + _reviewScope.label + (_reviewScope.kind === 'ambiguous' ? ' (the customer confirmed this number is how many; more than is priced online). No online price was given; quote after review.' : ' (more than is priced online). No online price was given; quote after review.') : ''),
+                intakeAnswers: { ...answers, ...(!onsite && _unitsPriced !== null ? { __qty: _unitsPriced } : {}), ...(_reviewScope ? { __stated_scope: _reviewScope.label } : {}) },   // structured; the merge key reads this. __qty: the quantity priced, as the guided builders record it (the on-site diagnostic is a flat fee: no quantity)
                 _variant: onsite ? 'onsite' : null,    // NEW — discriminates the Fork-B line
                 materialsNotIncluded: true,
                 materialsEstimateRange: [0, 0]
@@ -10591,6 +10603,19 @@ function cartTotalLabel(items) {
     return total > 0 ? '$' + total + ' + ' + open + ' to be quoted' : 'To be quoted';
 }
 
+// cartRequestText -- LOGIC. The cart as a plain-language request, for the customer to send themselves. Priced lines show their price and quantity;
+// a line awaiting a review quote says so and keeps the quantity the customer stated. It never prices a review line.
+function cartRequestText(items) {
+    const list = Array.isArray(items) ? items : [];
+    const lines = list.map(it => {
+        if (it.reviewRequired) return '- ' + it.name + ' -- needs a review quote (no price given online)';
+        const n = cartLineQty(it), u = it.intakeAnswers && it.intakeAnswers.__qty;
+        return '- ' + it.name + (u > 1 ? ' (quantity ' + u + ')' : '') + (n > 1 ? ' x ' + n : '') + ' -- ' + (it.price || 'price not shown');
+    });
+    const open = list.filter(it => it && it.reviewRequired).length;
+    return 'Hi, I would like to request:\n' + lines.join('\n') + '\nPriced online: $' + cartTotal(list) + (open ? '\nNeeds a review quote: ' + open + ' (not priced)' : '');
+}
+
 // canonicalAnswerKey -- LOGIC. Order-independent signature of an answers
 // object. Two objects with the same key/value pairs in any order produce
 // the same string. Nested plain objects are sorted too. Never throws.
@@ -10702,6 +10727,10 @@ function resolveCartTransition(entry, currentCart) {
         const idx = cart.findIndex(it => !it.furnitureItems && cartLineKey(it) === key);
         if (idx !== -1) {
             const existing = cart[idx];
+            // T198 K1: a line awaiting a review quote is a statement of scope ("120 shelves"), not a unit that adds up -- asking again must not read as 240.
+            if (existing.reviewRequired || entry.reviewRequired) {
+                return { action: 'no-op', cart, targetId: existing.id, source: 'review-line-held' };
+            }
             const updated = { ...existing, qty: (existing.qty || 1) + 1 };
             const next = cart.map((it, i) => i === idx ? updated : it);
             return { action: 'increment-qty', cart: next, targetId: existing.id, source: 'line-key-match' };
@@ -10878,20 +10907,35 @@ function addToCart(entry) {
             S.negatedTagIds = r.negatedTagIds;
         }
 
+        // T198 K1: this page has no submission channel (no backend, no form endpoint). Pressing the button used to say "Booking confirmed! (demo)", clear the cart and thank the
+        // customer, so a request that went nowhere read as sent -- and a review request read as one someone would answer. It now says plainly that nothing was sent, keeps the list
+        // (stated quantities and review status intact), and offers the existing contact channels with the request written out; it is sent only if the customer sends it.
         function finalizeBooking() {
-            DOM.overlaybookNowBtn.disabled = true;
-            DOM.overlaybookNowBtn.textContent = 'Submitting…';
-            toast('Booking confirmed! (demo)', 'success');
-            window.__store.dispatch({
-                type: 'cart/SET',
-                payload: {
-                    serviceRequest: []
-                }
-            });
-            renderCart();
-            closeCartOverlay();
-            restoreCategoryView();
-            setTimeout(() => toast('Thank you for your request!', 'success'), 1500);
+            const items = window.__store.getState().cart.serviceRequest;
+            const content = DOM.cartOverlay && DOM.cartOverlay.querySelector('.cart-modal-content');
+            if (!content || !items.length) return;
+            const old = content.querySelector('#requestNotSent'); if (old) old.remove();
+            const text = cartRequestText(items), open = items.filter(it => it && it.reviewRequired);
+            const panel = create('div', { id: 'requestNotSent', class: 'request-not-sent', role: 'alert' });
+            panel.appendChild(create('h3', { text: 'Not sent yet' }));
+            panel.appendChild(create('p', { text: "This page can't send requests yet. Nothing has been sent to BookTOM, and no one has been notified or will reply to this. Use one of the buttons below to send it yourself." }));
+            const ul = create('ul', { class: 'request-not-sent-list' });
+            items.forEach(it => ul.appendChild(create('li', { text: it.reviewRequired ? it.name + ' — needs a review quote (not priced)' : it.name + (it.intakeAnswers && it.intakeAnswers.__qty > 1 ? ' × ' + it.intakeAnswers.__qty : '') + (cartLineQty(it) > 1 ? ' × ' + cartLineQty(it) : '') + ' — ' + (it.price || '') })));
+            panel.appendChild(ul);
+            panel.appendChild(create('p', { class: 'request-not-sent-total', text: 'Priced online: ' + cartTotalLabel(items) + (open.length ? '. ' + open.length + ' to be quoted after a review — no price has been given for ' + (open.length === 1 ? 'it' : 'them') + '.' : '') }));
+            const row = create('div', { class: 'request-not-sent-actions' });
+            const mk = (label, fn) => { const bt = create('button', { type: 'button', class: 'add-more-button', text: label }); bt.addEventListener('click', fn); row.appendChild(bt); return bt; };
+            const phoneEl = document.querySelector('.contact-sms'), mailEl = document.querySelector('.contact-mail');
+            const sms = phoneEl ? safePhone(phoneEl.getAttribute('data-sms') || '') : '', mail = mailEl ? safeEmail(decodeB64(mailEl.getAttribute('data-email') || '')) : '';
+            // These open the customer's own messaging app with the request filled in; nothing is sent until they press send there.
+            if (sms) mk('Text this request', () => { window.location.href = 'sms:' + sms + '?&body=' + encodeURIComponent(text); });
+            if (mail) mk('Email this request', () => { window.location.href = 'mailto:' + mail + '?subject=' + encodeURIComponent('Service request') + '&body=' + encodeURIComponent(text); });
+            mk('Copy request', () => { try { navigator.clipboard.writeText(text).then(() => toast('Request copied.', 'success'), () => toast('Could not copy — select the list above.', 'error')); } catch (_) { toast('Could not copy — select the list above.', 'error'); } });
+            mk('Back to my list', () => { panel.remove(); content.classList.remove('not-sent'); });
+            panel.appendChild(row);
+            content.classList.add('not-sent');
+            content.appendChild(panel);
+            toast("Nothing was sent — this page can't submit requests yet.", 'error');
         }
 
         function prefillSmartQuoteFromOtherTile(tile, category_id) {
