@@ -238,7 +238,7 @@ function mutantHtml(label, from, to) {
   console.log('\n=== 4. non-vacuity: a deliberately mismatched fee fails the test ===');
   const SMALL = { services: ['dishwasher_repair'], quantities: [1], skipQuoteAdd: true };
   { // the curated card carries the labor estimate instead of the fee
-    const h = mutantHtml('the curated card adds the labor estimate, not the fee', "price: '$' + (onsite ? terms.fee : q.laborEstimate),", "price: '$' + q.laborEstimate,");
+    const h = mutantHtml('the curated card adds the labor estimate, not the fee', "price: _reviewScope ? 'Quote after review' : '$' + (onsite ? terms.fee : q.laborEstimate),", "price: _reviewScope ? 'Quote after review' : '$' + q.laborEstimate,");
     const r = await runAll(h, SMALL);
     check('  -> the cart entry disagrees with the Fork (' + r.problems.length + ' violation(s)): ' + (r.problems[0] || '').slice(0, 90), r.problems.some(p => /cart entry price|subtotal|Due Today/.test(p))); }
   { // the terms' fee drifts away from the one the Fork displays

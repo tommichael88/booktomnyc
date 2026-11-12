@@ -3908,6 +3908,8 @@
                 triagePending: orch_route_still_possible(intakeChain, answers),
                 // T189 (#184): the job waits on a question that guards the quote (see orch_guard_pending); the card holds the price until it is answered. A fact the renderer reads.
                 guardPending: orch_guard_pending(intakeChain, answers, db),
+                // T198 J1: the count the customer stated that is past what a request prices, and what they have said about it (see orch_scope_state). A fact the card reads; it decides nothing.
+                scope: orch_scope_state(context),
                 // v9.5: expose activeTagIds on the route so downstream
                 // renderers (renderCuratedCardFromRoute, renderSelfQuoteFromRoute)
                 // can pass the same tags to computeUnifiedQuote for live
@@ -4805,6 +4807,29 @@
             return prevRoute.divergenceApplied === 'remote' ? orch_splice_remote_deep_dive(next, DB) : next;
         }
 
+        // orch_scope_state -- LOGIC. The relation between the scope the customer STATED and the scope the quote PRICES (T198 J1, R-PRICE-PRECISION: a price covers exactly the work it is shown for). A request prices 1 to 99 of
+        // a thing; a count past that ("mount 120 shelves") is kept as evidence (context.statedBeyondRange, from extractUnsupportedCount) while extractQty still answers 1 -- an invented 99 is worse than
+        // a one (H1). Without more, that one-unit price would read as the price of 120 shelves, so the job is `pending`: the card holds the price and asks. The customer's answer is
+        // context.scopeResolution: 'review' (yes, that many; it is quoted after a review -- no online price is given), 'quantity' (a number we do price, set on the card) or 'not_a_count' (that number was
+        // not how many). Returns null when no such count was stated, else { stated, noun, phrase, resolution, pending, review }.
+        /** @param {any} context */
+        function orch_scope_state(context) {
+            const b = context && context.statedBeyondRange;
+            if (!b || typeof b.value !== 'number') return null;
+            const resolution = (context && context.scopeResolution) || null;
+            return { stated: b.value, noun: b.noun, phrase: b.phrase, resolution, pending: resolution === null, review: resolution === 'review' };
+        }
+
+        // orch_resolve_scope -- LOGIC. The twin of orch_apply_quantity for the stated-scope question: route in, route out. resolution is 'review', 'not_a_count', or null (take it back: ask again).
+        /** @param {any} prevRoute @param {any} resolution @param {any} DB */
+        function orch_resolve_scope(prevRoute, resolution, DB) {
+            if (!prevRoute || !prevRoute.context) return prevRoute;
+            const ok = resolution === 'review' || resolution === 'not_a_count';
+            const ctx = Object.assign({}, prevRoute.context, { scopeResolution: ok ? resolution : null });
+            const next = executeWorkflow(ctx, DB);
+            return prevRoute.divergenceApplied === 'remote' ? orch_splice_remote_deep_dive(next, DB) : next;
+        }
+
         // T153: the quantity twin of orch_apply_answer. A card that shows a price which scales with quantity (stance 'batched') must let the customer SET the quantity; it hands the new
         // number here, the workflow re-runs with it, and the card re-renders from the new route (the renderer decides nothing). The bound is a UI sanity limit, not a business rule.
         function orch_apply_quantity(prevRoute, qty, DB) {
@@ -4813,6 +4838,7 @@
             const ctx = Object.assign({}, prevRoute.context, {
                 extractedQty: n
             });
+            if (ctx.statedBeyondRange) ctx.scopeResolution = 'quantity';   // T198 J1: the customer set a number we do price; the stated count past the range no longer waits on an answer
             const next = executeWorkflow(ctx, DB);
             return prevRoute.divergenceApplied === 'remote' ? orch_splice_remote_deep_dive(next, DB) : next;
         }
@@ -5468,6 +5494,7 @@
                 nlpIntent,
                 extractedQty: extractQty(rawText),
                 statedCounts: extractStatedCounts(rawText),   // #249: the numbers said beside a thing, for the count question that asks about that thing
+                statedBeyondRange: extractUnsupportedCount(rawText),   // T198 J1: a count of 100 or more said beside a thing -- evidence for the card to ask about, never a quantity to price
                 extractedObject,
                 resolutionObject,
                 extractedLocation: extractLocation(rawText),
@@ -5506,6 +5533,7 @@
                 nlpIntent: null,
                 extractedQty: null,
                 statedCounts: [],
+                statedBeyondRange: null,
                 extractedObject: null,
                 resolutionObject: null,
                 extractedLocation: null,
@@ -7380,9 +7408,12 @@
             const adlibText = escapeHtml(affirmJobPhrase(entity));
 
             const laborEstimate = route.quote?.laborEstimate;
-            const priceDisplay = (typeof laborEstimate === 'number' && laborEstimate > 0) ?
+            // T198 J1: a count past what is priced online is confirmed before any figure is shown -- "From $65" beside "150 outlets" would read as the price of the 150.
+            const priceDisplay = (route.scope && route.scope.pending) ?
+                `<span class="affirm-scope">You asked for ${escapeHtml(route.scope.stated + ' ' + route.scope.phrase)}. We'll confirm that number with you next, before we show a price.</span>` :
+                ((typeof laborEstimate === 'number' && laborEstimate > 0) ?
                 `<span class="affirm-price">From $${laborEstimate}</span>` :
-                '';
+                '');
 
             // T64 follow-up: real port of the legacy affirmation-card renderer's pivotInfo-aware
             // framing -- same component, different headline/note, per the design's
@@ -7658,7 +7689,8 @@
             // T158: the quantity the card PRICED (route.quantity, resolved by the orchestrator); null when the service has no quantity stance. Drawn by the stepper below, and recorded on the
             // cart line by the Add handler -- a line that carries only its price loses how many the customer asked for (three knobs and one knob both quote the visit minimum).
             const _unitsPriced = (route.quantity && route.quantity.stance === 'batched') ? (route.quantity.requestedQty || route.quantity.units || 1) : null;
-            if (_qtyModule && route.quantity && route.quantity.stance === 'batched') {
+            const _scope = route.scope || null, _scopeHeld = !!(_scope && _scope.pending);   // T198 J1: a stated count past what a request prices: the stepper's 1 would read as that count's price
+            if (_qtyModule && route.quantity && route.quantity.stance === 'batched' && !_scopeHeld && !(_scope && _scope.review)) {
                 const _qtyNow = _unitsPriced;
                 html += `<div class="intake-module-step ims-qty" style="margin-bottom:16px;">
                      <div class="ims-label" data-mod="${_qtyModule.moduleKey || _qtyModule.module}" style="font-weight:bold; margin-bottom:8px;">${escapeHtml(_qtyModule.question || 'How many?')}</div>
@@ -7678,7 +7710,7 @@
             const terms = onsite ? (route.onsiteTerms || null) : null;
             // T174 (#201): a registered diagnostic whose questions can still name the part has no price to show yet, on either path: the Fork is not offered (route.triagePending) and the hourly estimate
             // behind the diagnostic is not a quote. The customer sees the questions and, as for any unfinished request, the line that asks them to answer.
-            const awaitingTriage = !!(q && ((q.divergenceEligible && route.triagePending && !divergencePath) || route.guardPending));
+            const awaitingTriage = !!(q && ((q.divergenceEligible && route.triagePending && !divergencePath) || route.guardPending || _scopeHeld));
             if (q && onsite) {
                 html += `<div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
                     <span>${escapeHtml(terms.label)}</span>
@@ -7687,6 +7719,34 @@
                 if (terms.creditNote) html += `<div class="divergence-credit-note" style="margin-top:6px; font-size:13px; color:#555;">${escapeHtml(terms.creditNote)}</div>`;
                 html += `<div class="action-buttons" style="display:flex; gap:10px; margin-top:16px;">
                     <button class="book-now-button" id="btn-curated-add">Add to Request</button>
+                 </div>`;
+            } else if (q && _scopeHeld) {
+                // T198 J1: the customer said a count we do not price online ("120 shelves"). No price is shown -- a one-unit figure would read as the price of the whole job -- and the customer is asked, in place, with the
+                // three honest answers: yes that many (quoted after a review), a number we do price (set here, no retyping), or "that was not a count".
+                const _thing = escapeHtml(_scope.stated + ' ' + _scope.phrase);
+                html += `<div class="scope-notice" role="group" aria-label="Confirm the quantity" style="margin-top:16px; padding:14px; border:1px solid #d9a441; background:#fff8e6; border-radius:10px;">
+                    <div class="scope-notice-title" style="font-weight:bold;">You asked for ${_thing}.</div>
+                    <div class="scope-notice-body" style="margin-top:6px; font-size:14px; color:#444;">We price up to 99 of one thing online, so we haven't put a price on this yet. Which is right?</div>
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
+                        <button type="button" class="book-now-button" id="btn-scope-review">Yes, ${_thing} — quote it after a review</button>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <label for="scope-qty-input" style="font-size:14px;">Fewer? Enter a number up to 99:</label>
+                            <input type="number" id="scope-qty-input" min="1" max="99" inputmode="numeric" style="width:84px; padding:8px; border:1px solid #ccc; border-radius:8px;">
+                            <button type="button" class="ims-chip scope-action" id="btn-scope-qty">Use this number</button>
+                        </div>
+                        <button type="button" class="ims-chip scope-action" id="btn-scope-notcount">That number isn't how many</button>
+                    </div>
+                 </div>`;
+            } else if (q && _scope && _scope.review) {
+                const _thing = escapeHtml(_scope.stated + ' ' + _scope.phrase);
+                html += `<div class="summary-estimate" style="display:flex; justify-content:space-between; margin-top:16px; font-weight:bold;">
+                    <span>Estimated labor:</span>
+                    <span class="price-value">Quote after review</span>
+                 </div>
+                 <div class="price-statement-sub" style="font-size:13px; color:#555; margin-top:4px;">${_thing} is more than we price online. We'll confirm the price after a quick review — nothing is charged now.</div>
+                 <div class="action-buttons" style="display:flex; gap:10px; margin-top:16px;">
+                    <button class="book-now-button" id="btn-curated-add">Request a review quote — ${_thing}</button>
+                    <button type="button" class="ims-chip scope-action" id="btn-scope-change">Change the number</button>
                  </div>`;
             } else if (q && !awaitingTriage) {
                 // T182: a flat quote the time model priced states its price the way the quote panel does (resolvePriceStatement, the one definition): "From $X" until confident, with the materials line.
@@ -7728,7 +7788,7 @@
             });
 
             // Attach event listeners for chip clicks
-            container.querySelectorAll('.ims-chip').forEach(btn => {
+            container.querySelectorAll('.ims-chip:not(.scope-action)').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const modKey = this.dataset.mod;
                     const label = this.dataset.label;
@@ -7763,20 +7823,33 @@
                 });
             });
 
+            // T198 J1: the stated-count answers. Dispatch only: Logic (orch_resolve_scope / orch_apply_quantity) decides, the card is drawn again from the new route.
+            const _scopeBtn = (id, fn) => { const b = container.querySelector(id); if (b) b.addEventListener('click', fn); };
+            _scopeBtn('#btn-scope-review', () => window.handleIntakeScope && window.handleIntakeScope('review'));
+            _scopeBtn('#btn-scope-notcount', () => window.handleIntakeScope && window.handleIntakeScope('not_a_count'));
+            _scopeBtn('#btn-scope-change', () => window.handleIntakeScope && window.handleIntakeScope(null));
+            _scopeBtn('#btn-scope-qty', () => {
+                const n = parseInt((container.querySelector('#scope-qty-input') || {}).value, 10);
+                if (!(n >= 1 && n <= 99)) { toast('Enter a number from 1 to 99.', 'error'); return; }
+                if (typeof window.handleIntakeQuantity === 'function') window.handleIntakeQuantity(n);
+            });
+
             // Attach add-to-cart if button exists
             const addBtn = container.querySelector('#btn-curated-add');
             if (addBtn && q) {
                 addBtn.addEventListener('click', function() {
+            const _reviewScope = (route.scope && route.scope.review) ? route.scope : null;
             const entry = {
                 id: 'curated-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
                 serviceId: entity.id,
                 category_id: entity.ui_taxonomy?.category_id || 'other',
-                name: (entity.ui_taxonomy?.display_name || 'Service') + (onsite ? ' – On-site diagnostic' : ''),
-                price: '$' + (onsite ? terms.fee : q.laborEstimate),
+                name: (entity.ui_taxonomy?.display_name || 'Service') + (onsite ? ' – On-site diagnostic' : '') + (_reviewScope ? ' — ' + _reviewScope.stated + ' ' + _reviewScope.phrase : ''),
+                price: _reviewScope ? 'Quote after review' : '$' + (onsite ? terms.fee : q.laborEstimate),
+                reviewRequired: !!_reviewScope,
                 icon: entity.ui_taxonomy?.icon || '🔧',
                 detail: onsite ? 'On-site diagnostic (flat rate)' : 'Curated intake',
-                notes: 'Answers: ' + JSON.stringify(answers) + (!onsite && _unitsPriced > 1 ? '\nQuantity: ' + _unitsPriced : '') + (onsite ? '\n' + terms.bookingNote : ''),
-                intakeAnswers: { ...answers, ...(!onsite && _unitsPriced !== null ? { __qty: _unitsPriced } : {}) },   // structured; the merge key reads this. __qty: the quantity priced, as the guided builders record it (the on-site diagnostic is a flat fee: no quantity)
+                notes: 'Answers: ' + JSON.stringify(answers) + (!onsite && _unitsPriced > 1 ? '\nQuantity: ' + _unitsPriced : '') + (onsite ? '\n' + terms.bookingNote : '') + (_reviewScope ? '\nStated scope: ' + _reviewScope.stated + ' ' + _reviewScope.phrase + ' (more than is priced online). No online price was given; quote after review.' : ''),
+                intakeAnswers: { ...answers, ...(!onsite && _unitsPriced !== null ? { __qty: _unitsPriced } : {}), ...(_reviewScope ? { __stated_scope: _reviewScope.stated + ' ' + _reviewScope.phrase } : {}) },   // structured; the merge key reads this. __qty: the quantity priced, as the guided builders record it (the on-site diagnostic is a flat fee: no quantity)
                 _variant: onsite ? 'onsite' : null,    // NEW — discriminates the Fork-B line
                 materialsNotIncluded: true,
                 materialsEstimateRange: [0, 0]
@@ -10301,7 +10374,7 @@
         function updateCartOverlayTotal(cart) {
             const items = cart || window.__store.getState().cart.serviceRequest;
             const total = cartTotal(items); // LOGIC (cart_logic): the sum of amount x qty -- no renderer sums prices on its own
-            if (DOM.cartTotal) setText(DOM.cartTotal, `$${total}`);
+            if (DOM.cartTotal) setText(DOM.cartTotal, cartTotalLabel(items));
             if (DOM.serviceCount) setText(DOM.serviceCount, String(items.length));
         }
 
@@ -10415,7 +10488,7 @@
             const total = cartTotal(items); // LOGIC (cart_logic)
             const hasItems = items.length > 0;
             if (DOM.estimateTotalSummary) DOM.estimateTotalSummary.style.display = hasItems ? 'flex' : 'none';
-            if (DOM.totalAmount) setText(DOM.totalAmount, `$${total}`);
+            if (DOM.totalAmount) setText(DOM.totalAmount, cartTotalLabel(items));
             if (DOM.serviceRequestSummary) DOM.serviceRequestSummary.style.display = hasItems ? 'block' : 'none';
             if (DOM.serviceCount) setText(DOM.serviceCount, String(items.length));
             if (DOM.fabCount) setText(DOM.fabCount, String(items.length));
@@ -10506,6 +10579,16 @@ function cartLineQty(entry) {
 function cartTotal(items) {
     if (!Array.isArray(items)) return 0;
     return items.reduce((sum, it) => sum + cartLineAmount(it) * cartLineQty(it), 0);
+}
+
+// cartTotalLabel -- LOGIC. The cart's total as the customer reads it (T198 J1). A line the customer confirmed as larger than is priced online (reviewRequired) has no price by design -- it is quoted
+// after a review -- so a total that summed it as $0 would read as "this request costs $0". The label says what is priced and that something is not: "$478", "$478 + 1 to be quoted", or
+// "To be quoted" when nothing in the cart has a price yet.
+function cartTotalLabel(items) {
+    const list = Array.isArray(items) ? items : [];
+    const open = list.filter(it => it && it.reviewRequired).length, total = cartTotal(list);
+    if (!open) return '$' + total;
+    return total > 0 ? '$' + total + ' + ' + open + ' to be quoted' : 'To be quoted';
 }
 
 // canonicalAnswerKey -- LOGIC. Order-independent signature of an answers
@@ -12144,6 +12227,18 @@ function addToCart(entry) {
                     return;
                 }
                 const next = orch_apply_quantity(prev, qty, DB);
+                if (next.uiTemplate === 'curated_card') sqRenderCuratedCard(next, S._lastContainerId);
+                else renderRoute(next); // the dispatcher owns a change of template
+            };
+
+            // T198 J1: the stated-count twin of handleIntakeQuantity: dispatch only. Logic (orch_resolve_scope) decides; the renderer draws.
+            window.handleIntakeScope = function(resolution) {
+                const prev = S._lastRoute;
+                if (!prev || !prev.context) {
+                    toast('Cannot update the request - context lost.', 'error');
+                    return;
+                }
+                const next = orch_resolve_scope(prev, resolution, DB);
                 if (next.uiTemplate === 'curated_card') sqRenderCuratedCard(next, S._lastContainerId);
                 else renderRoute(next); // the dispatcher owns a change of template
             };
