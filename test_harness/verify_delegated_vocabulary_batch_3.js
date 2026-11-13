@@ -86,7 +86,7 @@ const cases = [
     { phrase: 'lathe and plaster repair', key: 'plaster', sku: 'plaster_wall_repair', group: 'minor_home_repairs_walls' },
     { phrase: 'set up my wifi router', key: 'router', sku: 'router_configuration', group: 'tech_trouble_networking' },
     { phrase: 'I need a smart plug', key: 'smart plug', sku: 'smart_plug_configuration', group: 'tech_trouble_smart_home' },
-    { phrase: 'my floor is squeaky', key: 'squeaky', sku: 'squeaky_floor_repair', group: 'minor_home_repairs_floors_trim' },
+    { phrase: 'my floor is squeaky', key: 'squeaky floor', sku: 'squeaky_floor_repair', group: 'minor_home_repairs_floors_trim' }, // T198 N1: the object is now keyed by its floor phrase; the sku and group are unchanged
     { phrase: 'watch tv mounting', key: 'tv', sku: 'flatscreen_mounting_standard', group: 'wall_mounting_tv_flatscreen' },
     { phrase: 'usb outlet install', key: 'usb', sku: 'usb_outlet_install', group: 'electric_lighting_outlets' },
     { phrase: 'remove a virus', key: 'virus', sku: 'virus_or_malware_removal', group: 'tech_trouble_computer_repair' },

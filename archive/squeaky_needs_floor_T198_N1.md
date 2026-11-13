@@ -6,3 +6,5 @@
 **Measured.** Golden master 2,988 points: 1 differs, the intended one (`text|corpus|07` "fix a squeaky door": floor service $50 → general intake; `archive/golden_master_T198_N1_diff.txt`). Typed corpora 357 / 7,803 / 275: no entity changes (2 wide-corpus cosmetic lines).
 **Lost, accepted.** "the floor is so squeaky" (words between "floor" and "squeaky") no longer matches; it goes to the general intake, never a wrong service.
 **Test.** `verify_squeaky_needs_floor.js` (13; the planted bare-keyword original fails).
+
+**Gate (run 43434114578): one pass->fail, `verify_delegated_vocabulary_batch_3.js`** asserted the matched object's internal key `squeaky` for "my floor is squeaky"; the key is now `squeaky floor` (the sku `squeaky_floor_repair` and the group, asserted beside it, are unchanged and passed). Expectation updated to the renamed key, nothing else touched.
