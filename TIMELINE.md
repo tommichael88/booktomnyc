@@ -12581,3 +12581,5 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **T198 (L1; 2026-11-12).** The K1 trailing-number question now also fires when the lone number ends a clause ("mount shelf 120 and paint the wall"); guarded by `extractQty === 1`. Golden master 0 differ of 2,988; corpora unchanged. Details in `archive/honest_review_request_T198_K1.md` (L1). Gate pending.
 
 **T198 (L1) result (2026-11-12; run 43250705324).** 246 tests: 240 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
+
+**T198 (M1; 2026-11-12).** `orch_apply_object_based_resolution` matched objects by raw substring: "install a doorbell camera" became Prehung Interior Door Install ("door" inside "doorbell"). Containment is now by whole words (plural s/es allowed). Golden master 0 differ of 2,988; typed corpora unchanged; 25-phrase page sweep changed only the two wrong routes. New `verify_object_match_whole_words.js` (6; planted original fails). Details: `archive/object_whole_words_T198_M1.md`. Gate pending.

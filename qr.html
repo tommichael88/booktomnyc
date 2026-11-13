@@ -4259,9 +4259,11 @@
             for (const o of objects) {
                 const nk = normalizeForMatch(o.keyword || '');
                 if (!nk) continue;
+                // T198 M1: containment is by whole words (a plural s/es allowed). Raw substring made "doorbell camera" contain the keyword "door" and route to Prehung Interior Door Install.
+                const _hasWords = (hay, needle) => (' ' + hay + ' ').replace(/(?:es|s)(?= )/g, '').includes(' ' + needle.replace(/(?:es|s)$/, '') + ' ') || (' ' + hay + ' ').includes(' ' + needle + ' ');
                 if (nk === normalizedObject) exactMatches.push(o);
-                else if (normalizedObject.includes(nk)) objectContainsKeyword.push(o);
-                else if (nk.includes(normalizedObject)) keywordContainsObject.push(o);
+                else if (_hasWords(normalizedObject, nk)) objectContainsKeyword.push(o);
+                else if (_hasWords(nk, normalizedObject)) keywordContainsObject.push(o);
             }
             objectContainsKeyword.sort((a, b) => normalizeForMatch(b.keyword).length - normalizeForMatch(a.keyword).length);
             keywordContainsObject.sort((a, b) => normalizeForMatch(a.keyword).length - normalizeForMatch(b.keyword).length);
