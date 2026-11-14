@@ -1114,6 +1114,25 @@
             return names.some(n => new RegExp('\\b(?:on|onto|to|against)\\s+(?:(?:the|a|an|my|our)\\s+)?(?:[a-z-]+\\s+){0,2}?' + n + '\\b').test(lower));
         }
 
+        // T198 (O2): an object whose only match is a LOCATOR ("the sink" in "put a shelf under the sink") yields to another object the customer named: the sink is where the item goes, not the job.
+        // Authored on the object as `yields_to_item.locator_prepositions`; the highest-scoring other object that matched wins, and its own contextual overrides still apply (a leak under the sink is still the leak job).
+        if (bestMapping && bestMapping.yields_to_item && Array.isArray(bestMapping.yields_to_item.locator_prepositions)) {
+            const esc = x => x.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const here = bestMapping;
+            const names = [here.keyword, ...(Array.isArray(here.synonyms) ? here.synonyms : [])].filter(n => typeof n === 'string' && n).map(esc);
+            const preps = here.yields_to_item.locator_prepositions.filter(x => typeof x === 'string' && x).map(esc);
+            if (names.length && preps.length) {
+                const locatorRe = '\\b(?:' + preps.join('|') + ')\\s+(?:(?:the|a|an|my|our)\\s+)?(?:[a-z-]+\\s+)?(?:' + names.join('|') + ')\\b';
+                const rest = lower.replace(new RegExp(locatorRe, 'g'), ' ');
+                const located = rest !== lower, namedElsewhere = names.some(n => new RegExp('\\b' + n + '\\b').test(rest));
+                if (located && !namedElsewhere) {
+                    let alt = null, altScore = 0;
+                    for (const m of maps) { const sc = scoreByMapping.get(m) || 0; if (m !== here && !m.resolver && sc > altScore) { alt = m; altScore = sc; } }
+                    if (alt) { bestMapping = alt; top = altScore; best = buildCandidate(alt, altScore); }
+                }
+            }
+        }
+
         // T198 (B1): an object that names only the SURFACE a job happens on (brick, concrete, drywall, plaster) carries `yields_to`: when the customer also said the
          // action that object names ("hang", "mount") and no damage word (`unless_any`), the action's object wins and its own contextual overrides pick the service.
          // A wall material alone is not a crack repair. Authored data decides which objects yield and to what; this step only reads it.

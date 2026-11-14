@@ -1,0 +1,8 @@
+# T198 O2 — the sink is where an item goes, not the job
+
+**Defect.** "Put a shelf under the sink" (also "add a shelf under sink", "shelf under the kitchen sink") was quoted as *Angle Stop Replacement* (or, after O1's override scope, a leak job): the "sink" synonym is full weight on the faucet object and outscored the item's own keyword, so a plumbing price was quoted for a shelf.
+**Change.** Owner: `modules/nlp_engine.js` (one step before the surface-yields step) reading new authored data on the faucet/sink object, `yields_to_item.locator_prepositions` (under, beneath, below, underneath, behind, inside, in, next to; source `vocabulary.nlp_objects`, mirror `intent_mappings.objects`, graph/reports regenerated). When the sink appears only as the object of such a preposition and another object matched, the highest-scoring other (non-resolver) object wins and keeps its own contextual overrides (so a leak under the sink still reaches the leak job via O1's override). A sink named elsewhere in the text keeps the sink object.
+**After.** "Put a shelf under the sink" → Shelf Mounting (Standard); cabinet → cabinet adjustment; light → under-cabinet light. Unchanged: leak/drip/angle stop/P-trap/clean under the sink, clogged sink, faucet leaking, replace the sink.
+**Measured.** Golden master 2,988 points vs O1: 0 differ. Typed corpora 357 / 7,803 / 275: no changes.
+**Known, unchanged.** "Install a sink" / "install a new sink" resolve to Under-Sink Leak Repair (same on `main` before this change; separate defect). "Put a hook under the sink" has no hook object and still goes to Angle Stop Replacement.
+**Test.** `verify_item_under_sink_not_plumbing.js` (18; the planted original without `yields_to_item` fails).
