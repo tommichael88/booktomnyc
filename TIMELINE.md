@@ -12593,3 +12593,5 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **T198 (N1) result (2026-11-13; run 43438531541).** 248 tests: 242 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
 
 **T198 (O1; 2026-11-13).** A leak described under the sink ("fix a leaking pipe under the sink", "water leaking under the sink", "dripping under the sink") was quoted as Angle Stop Replacement, Faucet Drip Repair, or nothing; it is now Under-Sink Leak Repair ($75). Two contextual overrides (faucet object, generic leak object), by the dual-source path. Golden master 1 differs of 2,988 (same service/price, confidence 56→58); corpora unchanged. New `verify_under_sink_leak_routes.js` (15). Details: `archive/under_sink_leak_T198_O1.md`. Gate pending.
+
+**T198 (O1) result (2026-11-14; run 43555507469).** 249 tests: 243 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
