@@ -4263,7 +4263,8 @@
                 const _hasWords = (hay, needle) => (' ' + hay + ' ').replace(/(?:es|s)(?= )/g, '').includes(' ' + needle.replace(/(?:es|s)$/, '') + ' ') || (' ' + hay + ' ').includes(' ' + needle + ' ');
                 if (nk === normalizedObject) exactMatches.push(o);
                 else if (_hasWords(normalizedObject, nk)) objectContainsKeyword.push(o);
-                else if (_hasWords(nk, normalizedObject)) keywordContainsObject.push(o);
+                // T198 P1: an object may opt out of being found by a mere FRAGMENT of its keyword (`fragment_match: false`): "install a sink" is not the "sink leak" job.
+                else if (o.fragment_match !== false && _hasWords(nk, normalizedObject)) keywordContainsObject.push(o);
             }
             objectContainsKeyword.sort((a, b) => normalizeForMatch(b.keyword).length - normalizeForMatch(a.keyword).length);
             keywordContainsObject.sort((a, b) => normalizeForMatch(a.keyword).length - normalizeForMatch(b.keyword).length);

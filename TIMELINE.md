@@ -12599,3 +12599,5 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **T198 (O2; 2026-11-14).** "Put a shelf under the sink" was quoted as Angle Stop Replacement: the sink word outscored the item. The faucet/sink object now yields (authored `yields_to_item`, read in `modules/nlp_engine.js`) to the object named when the sink is only a locator. Golden master 0 differ of 2,988; corpora unchanged. New `verify_item_under_sink_not_plumbing.js` (18). Details: `archive/item_under_sink_T198_O2.md`. Gate pending.
 
 **T198 (O2) result (2026-11-14; run 43574443733).** 250 tests: 244 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
+
+**T198 (P1; 2026-11-14).** "Install a sink" was quoted as Under-Sink Leak Repair: the install resolver matched the object "sink leak" by a fragment of its keyword. An object may now opt out of fragment matching (`fragment_match: false`, authored on "sink leak"; read in the resolver in `qr.html`). Golden master 0 differ of 2,988; corpora unchanged. New `verify_install_sink_not_leak.js` (15). Details: `archive/install_sink_T198_P1.md`. Gate pending.
