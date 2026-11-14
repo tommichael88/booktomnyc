@@ -12601,3 +12601,5 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **T198 (O2) result (2026-11-14; run 43574443733).** 250 tests: 244 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
 
 **T198 (P1; 2026-11-14).** "Install a sink" was quoted as Under-Sink Leak Repair: the install resolver matched the object "sink leak" by a fragment of its keyword. An object may now opt out of fragment matching (`fragment_match: false`, authored on "sink leak"; read in the resolver in `qr.html`). Golden master 0 differ of 2,988; corpora unchanged. New `verify_install_sink_not_leak.js` (15). Details: `archive/install_sink_T198_P1.md`. Gate pending.
+
+**T198 (P1) result (2026-11-14; run 43578183744).** 251 tests: 245 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
