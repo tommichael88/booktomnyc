@@ -12603,3 +12603,7 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **T198 (P1; 2026-11-14).** "Install a sink" was quoted as Under-Sink Leak Repair: the install resolver matched the object "sink leak" by a fragment of its keyword. An object may now opt out of fragment matching (`fragment_match: false`, authored on "sink leak"; read in the resolver in `qr.html`). Golden master 0 differ of 2,988; corpora unchanged. New `verify_install_sink_not_leak.js` (15). Details: `archive/install_sink_T198_P1.md`. Gate pending.
 
 **T198 (P1) result (2026-11-14; run 43578183744).** 251 tests: 245 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
+
+**T198 (Q1; 2026-11-14).** "Water leak at the sink", "leak in the sink" and "water leaking from sink" got no service: the generic leak object took them and its O1 override knew only "under the sink". It now covers at/in/from/near/beneath the sink; they are Under-Sink Leak Repair ($75). Data only. Golden master 0 differ of 2,988; corpora unchanged. New `verify_leak_at_sink_routes.js` (18). Details: `archive/leak_at_sink_T198_Q1.md`. Gate pending.
+
+**T198 (Q1) result (2026-11-15; run 43671436957).** 252 tests: 246 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
