@@ -52,7 +52,7 @@ for (const [p, price, tag] of [["sink won't drain at all", FULLQ(), '#drain_bloc
     const x = typed(E, p);
     check(`5 "${p}": Slow Drain Clearing, ${price} (not a faucet repair or an under-sink leak)`, x.id === 'slow_drain_clearing' && x.q === price && (!tag || x.tags.includes(tag)), x);
 }
-for (const [p, id] of [['fix dripping faucet', 'faucet_repair_drip'], ['sink faucet replacement', 'faucet_repair_drip'], ['leak under the kitchen sink', 'leak_under_sink_repair'], ['leaky kitchen sink faucet', 'leak_under_sink_repair']])
+for (const [p, id] of [['fix dripping faucet', 'faucet_repair_drip'], ['sink faucet replacement', 'faucet_repair_drip'], ['leak under the kitchen sink', 'leak_under_sink_repair'], ['leaky kitchen sink faucet', 'faucet_repair_drip']]) // T198 R1: a leaky faucet is the faucet repair (this row pinned the under-sink leak job the description scoring picked on the word leaky)
     check(`5.1 "${p}" is unchanged: ${id}`, typed(E, p).id === id, typed(E, p));
 {
     const db = JSON.parse(JSON.stringify(DB0)); const f = db.intent_mappings.objects.find(o => o.keyword === 'faucet'); f.contextual_overrides = f.contextual_overrides.filter(c => c.override_sku !== 'slow_drain_clearing');
