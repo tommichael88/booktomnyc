@@ -12607,3 +12607,9 @@ Governing: `NEXT_SESSION_BRIEF.md` A1 (the reroute recorded in `archive/typed_co
 **T198 (Q1; 2026-11-14).** "Water leak at the sink", "leak in the sink" and "water leaking from sink" got no service: the generic leak object took them and its O1 override knew only "under the sink". It now covers at/in/from/near/beneath the sink; they are Under-Sink Leak Repair ($75). Data only. Golden master 0 differ of 2,988; corpora unchanged. New `verify_leak_at_sink_routes.js` (18). Details: `archive/leak_at_sink_T198_Q1.md`. Gate pending.
 
 **T198 (Q1) result (2026-11-15; run 43671436957).** 252 tests: 246 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
+
+**T198 (R1; 2026-11-19).** "Faucet leak" / "kitchen faucet leaking" were quoted as Under-Sink Leak Repair and "water leak from the faucet" / "tap is leaking" got no service; all are now Faucet Drip Repair ($50). Two contextual overrides (faucet and generic leak objects) plus hyphenated "under-sink" on the O1 overrides; data only. Golden master 0 differ of 2,988; typed corpora: only "faucet a pipe leak [on …]" phrases change (no service -> Faucet Drip Repair). New `verify_faucet_leak_routes.js` (22). Details: `archive/faucet_leak_T198_R1.md`. Gate pending.
+
+**T198 (R1) test expectation changed (2026-11-19).** The R1 gate (run 44611106626) failed `verify_clog_degree_stated.js` 5.1: it pinned "leaky kitchen sink faucet" at Under-Sink Leak Repair, which is the defect R1 corrects (a leaky faucet is the faucet repair). The expectation is now `faucet_repair_drip`; every other 5.1 row and the F1 non-vacuity check are unchanged. Re-gated before merge.
+
+**T198 (R1) result (2026-11-19; run 44616100332; the first run 44611106626 had one new red, the pinned clog-test row above).** 253 tests: 247 pass, 6 fail (the same six), 2 environment gaps; pass->fail none, red->worse none. Merged.
