@@ -5,7 +5,7 @@
  * Before: "water leak", "I have a leak", "leak", "my house is leaking", "roof leak" produced NO response on the page. The plumbing category has a Diagnostic dynamic definition but no Repair one, so a repair request
  * naming no fixture fell to the catastrophic fallback (a vetoed legacy route with no quantity); sqAnalyze then threw "Cannot read properties of undefined (reading 'units')" and the customer saw nothing.
  * After: such a request resolves to the category's diagnostic (which asks which fixture; on-site diagnostic offered), and a route without a quantity can no longer throw.
- *   A. ENGINE   the leak phrasings resolve to a dynamic route with a quantity (not vetoed); named-fixture leaks keep their routes.
+ *   A. ENGINE   the leak phrasings resolve to a dynamic route with a quantity (not vetoed); named-fixture leaks keep their routes; a leaking window AC is the window AC repair (not a plumbing question).
  *   B. THE PAGE real browser: those phrasings show the on-site quote panel (answer questions / book the diagnostic), with no page error; a faucet leak is unchanged.
  *   C. NON-VACUITY the fallback branch planted back (no Diagnostic substitute) vetoes the route again.
  */
@@ -29,10 +29,10 @@ const LEAKS = ['water leak', 'I have a leak', 'leak', 'my house is leaking', 'ro
 const E = load();
 console.log('A. engine');
 for (const t of LEAKS) { const r = route(E, t); check(`A1 "${t}" is a dynamic route with a quantity (not vetoed)`, !r._vetoed && r.entityType === 'dynamic' && r.quantity && r.quantity.units >= 1, JSON.stringify({ v: r._vetoed, e: r.entityType, q: r.quantity })); }
-for (const [t, id] of [['faucet leak', 'faucet_repair_drip'], ['leak under the sink', 'leak_under_sink_repair'], ['dripping faucet', 'faucet_repair_drip']]) check(`A2 "${t}" keeps ${id}`, (route(E, t).entity || {}).id === id, (route(E, t).entity || {}).id);
+for (const [t, id] of [['faucet leak', 'faucet_repair_drip'], ['leak under the sink', 'leak_under_sink_repair'], ['dripping faucet', 'faucet_repair_drip'], ['window air conditioner leaking', 'window_ac_repair']]) check(`A2 "${t}" keeps ${id}`, (route(E, t).entity || {}).id === id, (route(E, t).entity || {}).id);
 console.log('C. non-vacuity');
-const P = load(code => { const a = "|| (/^repair$/i.test(_stype) ? resolveDynamicService(effectiveContext.selectedCategoryId, 'Diagnostic', null) : null)"; return code.includes(a) ? code.replace(a, '') : code; });
-check('C1 the fallback without the Diagnostic substitute vetoes "water leak" again (this is the defect)', route(P, 'water leak')._vetoed === true, JSON.stringify({ v: route(P, 'water leak')._vetoed, e: route(P, 'water leak').entityType }));
+const P = load(code => { const a = "lastResort === true && normSt === 'Repair'"; return code.includes(a) ? code.replace(a, 'false') : code; });
+check('C1 the resolver without the last-resort Diagnostic rule vetoes "water leak" again (this is the defect)', route(P, 'water leak')._vetoed === true, JSON.stringify({ v: route(P, 'water leak')._vetoed, e: route(P, 'water leak').entityType }));
 (async () => {
   let puppeteer = null; try { puppeteer = require('puppeteer-core'); } catch { /* below */ }
   const chromePath = findChrome();
