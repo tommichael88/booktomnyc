@@ -3708,7 +3708,26 @@
                 visited.push(target.id);
                 route = orch_run_workflow(ctx, db);
             }
+            // T198 W1: a hazard the customer described (gas, carbon monoxide, fire) is answered with what to do, before any quote. A fact the renderer reads; it decides nothing.
+            if (route && typeof route === 'object') route.safetyStop = orch_safety_stop(context, db);
             return route;
+        }
+
+        // orch_safety_stop -- LOGIC. The authored hazard (global_rules.safety_stops) the customer's own words describe, or null. A stop names its phrases and the words that make a phrase NOT a
+        // hazard ("install a gas leak detector"); a whole-word match, so "co" never matches inside another word. Only typed or built text is read: a catalog tap carries none.
+        /** @param {any} context @param {any} db */
+        function orch_safety_stop(context, db) {
+            const stops = db && db.global_rules && db.global_rules.safety_stops;
+            const text = ' ' + String((context && context.rawText) || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+            if (!Array.isArray(stops) || text.trim() === '') return null;
+            /** @param {string} w */
+            const has = w => text.includes(' ' + w.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() + ' ');
+            for (const st of stops) {
+                if (!(st.patterns || []).some(has)) continue;
+                if ((st.unless_any || []).some(has)) continue;
+                return { id: st.id, title: st.title, message: st.message };
+            }
+            return null;
         }
 
         // orch_unroute -- LOGIC. "Not right? Change my answer": returns to the service that asked, with the answer that moved the job removed (the question is open again) and that route declined, so a tag that
@@ -10063,6 +10082,8 @@
             // price (or a surface-material question) for a request the system
             // never actually understood. The builder is a Gateway, not a dead end:
             // it resolves to the same BookingContext.
+            // T198 W1: a described hazard (gas, carbon monoxide, fire) is answered at once with what to do; it is not asked "what item?" first.
+            if (orch_safety_stop({ rawText: desc }, DB)) { sqAnalyze(); return; }
             const understood = understandRequest(desc, {
                 quiet: true
             });
@@ -12857,6 +12878,14 @@ function addToCart(entry) {
                     }
                     if (quoteOut) quoteOut.style.display = 'none';
 
+                    // T198 W1: a described hazard is answered with what to do, not a quote: no price, no Add.
+                    if (route.safetyStop && routeHost) {
+                        routeHost.style.display = 'block';
+                        routeHost.innerHTML = '<div class="safety-stop" role="alert" data-safety-stop="' + String(route.safetyStop.id).replace(/[^a-z_]/g, '') + '"><h3></h3><p></p></div>';
+                        routeHost.querySelector('h3').textContent = route.safetyStop.title;
+                        routeHost.querySelector('p').textContent = route.safetyStop.message;
+                        return;
+                    }
                     switch (route.uiTemplate) {
                         case 'self_quote':
                             renderSelfQuoteFromRoute(route);
