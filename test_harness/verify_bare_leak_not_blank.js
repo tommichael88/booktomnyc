@@ -47,11 +47,13 @@ check('C1 the resolver without the last-resort Diagnostic rule vetoes "water lea
   const type = async say => { await page.evaluate(() => { try { sqRestart(); } catch (e) {} const i = document.getElementById('sqDescIn'); i.value = ''; }); await page.click('#sqDescIn'); await page.type('#sqDescIn', say, { delay: 2 }); await page.click('#sqUnifiedActionBtn'); await sleep(1300); };
   const body = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   console.log('\nB. the page');
-  for (const t of ['water leak', 'I have a leak', 'leak', 'my house is leaking', 'roof leak']) {
+  for (const t of ['water leak', 'I have a leak', 'leak', 'my house is leaking']) {  // W3: "roof leak" is no longer a plumbing diagnostic: it is answered by the roofer stop (below)
     errors.clear(); await type(t); const b = await body();
     check(`B1 "${t}" shows the on-site quote panel`, /On-site quote/.test(b) && /Book an on-site diagnostic/.test(b) && /Answer a few more questions/.test(b), b.slice(0, 300));
     check(`B2 "${t}" throws no page error`, errors.size === 0, [...errors].join('; '));
   }
+  errors.clear(); await type('roof leak'); const rf = await body();
+  check('B1b "roof leak" is answered (the roofer stop: not a plumbing quote, not blank), no page error', /needs a roofer/.test(rf) && !/Book an on-site diagnostic/.test(rf) && errors.size === 0, rf.slice(0, 300));
   errors.clear(); await type('faucet leak'); const f = await body();
   check('B3 "faucet leak" is unchanged: Faucet Drip Repair, From $50', /Faucet Drip Repair/.test(f) && /From \$50/.test(f) && errors.size === 0, f.slice(0, 300));
   await browser.close();
