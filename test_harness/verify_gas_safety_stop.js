@@ -1,5 +1,5 @@
 /**
- * verify_gas_safety_stop.js -- T198 (W1): a described gas, carbon-monoxide or fire hazard is answered with what to do, never a quote.
+ * verify_gas_safety_stop.js -- T198 (W1): a described gas, carbon-monoxide, fire, burst-pipe/flood, sewage or roof hazard is answered with what to do, never a quote.
  *   A. ENGINE   hazard phrasings carry route.safetyStop (authored in global_rules.safety_stops); lookalike jobs (gas stove install, gas leak detector, smoke detector, candle) do not.
  *   B. THE PAGE real browser: hazard phrasings show the stop panel with 911 and no price or Add; a leak job is unchanged.
  *   C. NON-VACUITY the stop removed (no safetyStop) -> the hazard is quoted again.
@@ -21,8 +21,8 @@ function load(mutate) {
 }
 const route = (sb, t) => sb.executeWorkflow(Object.assign({}, sb.collectBookingContext_freeText(t), { tagsAffirmed: true }), sb.DB);
 
-const STOP = [['I smell gas in my kitchen','gas_odor'],['gas leak in the basement','gas_odor'],['my carbon monoxide alarm is going off','carbon_monoxide'],['there is smoke coming from the outlet','fire_smoke'],['the wire caught fire','fire_smoke'],['smells like gas near the stove','gas_odor']];
-const OK = ['install a gas leak detector','hook up a gas stove','mount a smoke detector','replace smoke alarm battery','faucet leak','leak under the sink','install a carbon monoxide detector','candle smoke on the wall','fix the fireplace screen','clean behind the gas stove','paint a ceiling'];
+const STOP = [['I smell gas in my kitchen','gas_odor'],['gas leak in the basement','gas_odor'],['my carbon monoxide alarm is going off','carbon_monoxide'],['there is smoke coming from the outlet','fire_smoke'],['the wire caught fire','fire_smoke'],['smells like gas near the stove','gas_odor'],['burst pipe','water_emergency'],['water is flooding my basement','water_emergency'],['sewer backup in basement','sewage_backup'],['sewage backing up','sewage_backup'],['roof leak','roof_leak'],['my roof is leaking','roof_leak']];
+const OK = ['install a gas leak detector','hook up a gas stove','mount a smoke detector','replace smoke alarm battery','faucet leak','leak under the sink','install a carbon monoxide detector','candle smoke on the wall','fix the fireplace screen','clean behind the gas stove','paint a ceiling','install a flood sensor','install a water leak detector','ceiling leak','toilet overflowing','sewer smell in the bathroom','clean the gutters','dripping tap'];
 const E = load();
 console.log('A. engine');
 for (const [t, id] of STOP) { const r = route(E, t); check(`A1 "${t}" is the ${id} stop`, r.safetyStop && r.safetyStop.id === id, JSON.stringify(r.safetyStop)); }
@@ -44,9 +44,9 @@ check('C1 without the stop the hazard has no safetyStop (this is the defect)', !
   const type = async say => { await page.evaluate(() => { try { sqRestart(); } catch (e) {} const i = document.getElementById('sqDescIn'); i.value = ''; }); await page.click('#sqDescIn'); await page.type('#sqDescIn', say, { delay: 2 }); await page.click('#sqUnifiedActionBtn'); await sleep(1300); };
   const body = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   console.log('\nB. the page');
-  for (const t of ['I smell gas in my kitchen', 'my carbon monoxide alarm is going off', 'there is smoke coming from the outlet']) {
+  for (const t of ['I smell gas in my kitchen', 'my carbon monoxide alarm is going off', 'there is smoke coming from the outlet', 'burst pipe', 'sewer backup in basement', 'roof leak']) {
     errors.clear(); await type(t); const b = await body();
-    const host = await page.evaluate(() => (document.getElementById('routeCardHost') || {}).innerText || ''); check(`B1 "${t}" shows the stop with 911, no price, no Add`, /911/.test(host) && !/\$\d/.test(host) && !/add to cart/i.test(host), host.slice(0, 300) + ' || ' + (await body()).slice(0, 200));
+    const host = await page.evaluate(() => (document.getElementById('routeCardHost') || {}).innerText || ''); check(`B1 "${t}" shows the stop (what to do), no price, no Add`, /(911|licensed plumber|roofer)/.test(host) && !/\$\d/.test(host) && !/add to cart/i.test(host), host.slice(0, 300) + ' || ' + (await body()).slice(0, 200));
     check(`B2 "${t}" throws no page error`, errors.size === 0, [...errors].join('; '));
   }
   errors.clear(); await type('faucet leak'); const f = await body();
