@@ -40644,7 +40644,144 @@
           "call_for_quote": "Price text shown on a service card that lists no price and has no hourly rate to quote from. No other home in the SSOT: this is the word on the card, not a number.",
           "disclaimer_text": "Disclaimer shown under a quote when neither meta.estimate_disclaimers (the texts normally shown, keyed flat_fee, hourly, project_based) nor the checkout state's ui_message supplies one. A shorter text than any of those, and with no other home in the SSOT."
         }
-      }
+      },
+      "safety_stops": [
+        {
+          "id": "gas_odor",
+          "title": "Smell gas? Leave now.",
+          "message": "If you smell gas or hear a hiss, don't touch switches or use your phone inside. Leave the building, then call 911 and your gas utility (in NYC, National Grid or Con Edison) from outside. We can book a visit once it has been made safe.",
+          "patterns": [
+            "gas leak",
+            "gas leaking",
+            "smell gas",
+            "smells like gas",
+            "smell of gas",
+            "gas smell",
+            "gas odor",
+            "rotten egg",
+            "hissing gas",
+            "gas line leak"
+          ],
+          "unless_any": [
+            "detector",
+            "alarm",
+            "install",
+            "installing",
+            "mount",
+            "stove hookup",
+            "hook up",
+            "hookup",
+            "replace the"
+          ]
+        },
+        {
+          "id": "carbon_monoxide",
+          "title": "Carbon monoxide alarm? Get outside.",
+          "message": "If a carbon monoxide alarm is sounding, or you have headaches or dizziness at home, leave the building and call 911 from outside. Don't go back in until the fire department says it is safe.",
+          "patterns": [
+            "carbon monoxide",
+            "co alarm going off",
+            "co detector going off",
+            "co alarm sounding",
+            "co alarm beeping"
+          ],
+          "unless_any": [
+            "install",
+            "installing",
+            "mount",
+            "replace battery",
+            "new detector"
+          ]
+        },
+        {
+          "id": "fire_smoke",
+          "title": "Fire or smoke? Call 911.",
+          "message": "If something is on fire, or there is smoke or a burning smell you can't explain, leave and call 911. Please book us only after the fire department has cleared the home.",
+          "patterns": [
+            "on fire",
+            "caught fire",
+            "smoke coming from",
+            "sparking and smoking",
+            "burning smell",
+            "smells like burning",
+            "smell burning"
+          ],
+          "unless_any": [
+            "fireplace",
+            "candle",
+            "incense",
+            "install",
+            "smoke detector",
+            "smoke alarm"
+          ]
+        },
+        {
+          "id": "water_emergency",
+          "title": "Burst pipe or flooding? Shut the water off first.",
+          "message": "Turn off the main water valve (or the fixture's stop valve) right away, and switch off power to any wet area if you can do it safely. A burst pipe or flooding needs a licensed plumber on an emergency call, which we can't quote online. Once the water is stopped and the pipe is repaired, we can help with the follow-up work.",
+          "patterns": [
+            "burst pipe",
+            "pipe burst",
+            "pipe burst in the wall",
+            "pipe bursts",
+            "flooding",
+            "flooded",
+            "water everywhere",
+            "flood"
+          ],
+          "unless_any": [
+            "install",
+            "installing",
+            "sensor",
+            "alarm",
+            "detector",
+            "sump pump",
+            "flood light",
+            "floodlight"
+          ]
+        },
+        {
+          "id": "sewage_backup",
+          "title": "Sewage backup? Call a licensed plumber.",
+          "message": "Sewage is a health hazard. Keep people and pets out of the area, don't run water or flush, and call a licensed plumber or your building superintendent. We don't quote sewer or sewage work online.",
+          "patterns": [
+            "sewage",
+            "sewer backup",
+            "sewer back up",
+            "sewer line",
+            "sewer is backing up",
+            "backed up sewer",
+            "raw sewage"
+          ],
+          "unless_any": [
+            "install",
+            "smell",
+            "odor",
+            "odour"
+          ]
+        },
+        {
+          "id": "roof_leak",
+          "title": "Roof leak? That needs a roofer.",
+          "message": "We don't work on roofs. If water is coming in, move belongings away, catch the drip with a bucket, and call a roofer (or your landlord or building management). Once it is sealed, we can help with interior repairs such as patching or painting the ceiling.",
+          "patterns": [
+            "roof leak",
+            "roof leaks",
+            "roof leaking",
+            "roof is leaking",
+            "roof is leaking",
+            "leaking roof",
+            "leak in the roof",
+            "leak from the roof",
+            "hole in the roof"
+          ],
+          "unless_any": [
+            "install",
+            "gutter",
+            "skylight"
+          ]
+        }
+      ]
     },
     "ui_config": {
       "_internal_only": {
@@ -42057,6 +42194,21 @@
             "override_sku": "svc.faucet_repair_drip",
             "override_base_price": 50,
             "note": "T198 R1: a leak at the faucet is the faucet repair, not the under-sink leak job (the description-sibling scoring picked it on the word leak)"
+          },
+          {
+            "keywords": [
+              "drip",
+              "drips",
+              "dripping",
+              "dripped"
+            ],
+            "requires_any": [
+              "tap",
+              "taps"
+            ],
+            "override_sku": "svc.faucet_repair_drip",
+            "override_base_price": 50,
+            "note": "T198 W4: a dripping TAP is the faucet repair, as a leaking tap is (the word faucet already scores the object; this applies only when the customer says tap)"
           }
         ],
         "confidence_weight": 80,

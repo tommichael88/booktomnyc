@@ -4158,3 +4158,6 @@ _I1 follow-up (T198): the count bands answered under a minted key now price (`ar
 
 ## K1 (T198, 2026-11-12) — request submission channel (reserved to the operator: external integration)
 Evidence: `finalizeBooking()` has never transmitted anything; the page and `api/` contain no submission endpoint. K1 made the page say so ("Not sent yet … Nothing has been sent to BookTOM") and hands the customer their own text/email/copy of the request. A genuine "send" needs an operator decision on an external destination and credentials (form/email service or backend). Until then the honest state stands; no mechanism was invented. Not a blocker for ordinary work.
+
+### T198 W — scope facts applied as defaults (not blocking; the operator may overrule)
+`ServiceAgreement.html` §5 says the provider is not a contractor, plumber or electrician and may decline specialized, licensed or permit work. Applied: gas, carbon monoxide and fire are a safety stop with no quote; burst pipe/flooding and sewage backup are a what-to-do panel with no online quote (licensed plumber); roof leaks are declined (roofer). The wording is authored in `global_rules.safety_stops`, so changing a stop's scope or message is a catalog edit, not code. Whether BookTOM wants to take any of these on is a business fact the operator can supply; until then the stop stands.
