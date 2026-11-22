@@ -2,7 +2,7 @@
  * verify_tap_shower_pipe_routes.js -- T198 (W4): a dripping tap is the faucet repair (as a leaking tap is); a shower or pipe leak is answered, not blank.
  *   A. ENGINE   "dripping tap"/"tap dripping" -> faucet_repair_drip $50 (same as "tap leaking"); "shower leaking", "leaking pipe", "pipe leak" resolve to the plumbing diagnostic (an entity, a curated card), not a null entity.
  *   B. THE PAGE real browser: "leaking pipe", then "Yes, that's it", shows the on-site quote panel (it showed nothing), no page error; "dripping tap" suggests Faucet Drip Repair From $50.
- *   C. NON-VACUITY the group branch without the last-resort rule leaves "leaking pipe" with no entity again.
+ *   C. NON-VACUITY the resolver without the Diagnostic rule leaves "leaking pipe" with no entity again.
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), { execSync } = require('child_process');
@@ -27,7 +27,7 @@ console.log('A. engine');
 for (const t of ['dripping tap', 'tap dripping', 'leaky tap', 'tap leaking', 'dripping faucet']) { const r = route(E, t); check(`A1 "${t}" is Faucet Drip Repair at $50`, r.entity && r.entity.id === 'faucet_repair_drip' && Number(r.basePrice || r.price && r.price.base) === 50 || (r.entity && r.entity.id === 'faucet_repair_drip' && /50/.test(JSON.stringify(r.price || r.basePrice))), JSON.stringify({ e: r.entity && r.entity.id, b: r.basePrice })); }
 for (const t of ['shower leaking', 'shower head leaking', 'leaking pipe', 'pipe leak', 'basin leaking', 'drain trap leaking']) { const r = route(E, t); check(`A2 "${t}" has an entity (the plumbing diagnostic), not a null route`, !r._vetoed && r.entity && r.entityType === 'dynamic', JSON.stringify({ e: r.entity && r.entity.id, t: r.entityType, v: r._vetoed })); }
 console.log('C. non-vacuity');
-const P = load(code => { const a = "effectiveContext.selectedGroupId, true); // T198 W4"; return code.includes(a) ? code.replace(a, 'effectiveContext.selectedGroupId); // T198 W4') : code; });
+const P = load(code => { const a = "!catDef && normSt === 'Repair'"; return code.includes(a) ? code.replace(a, 'false') : code; });
 check('C1 without the group last-resort rule "leaking pipe" has no entity again (this is the defect)', !route(P, 'leaking pipe').entity);
 (async () => {
   let puppeteer = null; try { puppeteer = require('puppeteer-core'); } catch { /* below */ }

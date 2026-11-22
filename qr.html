@@ -429,9 +429,9 @@
                 setPrototypeOf: readOnly,
             });
         })();
-        // `lastResort` (T198 S1): the caller has nothing more specific. A Repair request of a category that declares a Diagnostic definition but no Repair one (plumbing_help) is then that category's diagnostic,
+        // (T198 S1, W4) A Repair request of a category that declares a Diagnostic definition but no Repair one (plumbing_help) is then that category's diagnostic,
         // which asks which fixture; without it the request fell to the vetoed fallback and the customer saw nothing. The rule lives here, in the one resolver, not composed at a call site.
-        function resolveDynamicService(category, stype, groupId, lastResort) {
+        function resolveDynamicService(category, stype, groupId) {
             if (!window.DB?.dynamic_services) return null;
             const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
             const cat = category || 'other';
@@ -442,7 +442,7 @@
             }
             const catKey = cat + '+' + normSt;
             const catDef = window.DB.dynamic_services[catKey];
-            if (!catDef && lastResort === true && normSt === 'Repair') return window.DB.dynamic_services[cat + '+Diagnostic'] || null;
+            if (!catDef && normSt === 'Repair') return window.DB.dynamic_services[cat + '+Diagnostic'] || null;
             return catDef || null;
         }
 
@@ -4097,7 +4097,7 @@
             }
             if (effectiveContext.selectedGroupId) {
                 const group = (db.group || []).find(g => g.id === effectiveContext.selectedGroupId);
-                const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', effectiveContext.selectedGroupId, true); // T198 W4: last resort, as below: a group whose category has no Repair definition is the category's diagnostic, never a null entity
+                const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', effectiveContext.selectedGroupId);
 
                 // v9.5 GAP 3 FIX: use routing_archetypes to resolve a specific
                 // named service from group-level context. Previously, a phrase
@@ -4193,7 +4193,7 @@
                 };
             }
             if (effectiveContext.selectedCategoryId) {
-                const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', null, true); // T198 S1: last resort, see resolveDynamicService
+                const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', null); // T198 S1: a category with no Repair definition resolves to its diagnostic inside resolveDynamicService
                 if (dynDef) return {
                     entityType: 'dynamic',
                     entity: dynDef,

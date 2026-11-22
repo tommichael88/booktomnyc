@@ -31,7 +31,7 @@ console.log('A. engine');
 for (const t of LEAKS) { const r = route(E, t); check(`A1 "${t}" is a dynamic route with a quantity (not vetoed)`, !r._vetoed && r.entityType === 'dynamic' && r.quantity && r.quantity.units >= 1, JSON.stringify({ v: r._vetoed, e: r.entityType, q: r.quantity })); }
 for (const [t, id] of [['faucet leak', 'faucet_repair_drip'], ['leak under the sink', 'leak_under_sink_repair'], ['dripping faucet', 'faucet_repair_drip'], ['window air conditioner leaking', 'window_ac_repair']]) check(`A2 "${t}" keeps ${id}`, (route(E, t).entity || {}).id === id, (route(E, t).entity || {}).id);
 console.log('C. non-vacuity');
-const P = load(code => { const a = "lastResort === true && normSt === 'Repair'"; return code.includes(a) ? code.replace(a, 'false') : code; });
+const P = load(code => { const a = "!catDef && normSt === 'Repair'"; return code.includes(a) ? code.replace(a, 'false') : code; });
 check('C1 the resolver without the last-resort Diagnostic rule vetoes "water leak" again (this is the defect)', route(P, 'water leak')._vetoed === true, JSON.stringify({ v: route(P, 'water leak')._vetoed, e: route(P, 'water leak').entityType }));
 (async () => {
   let puppeteer = null; try { puppeteer = require('puppeteer-core'); } catch { /* below */ }

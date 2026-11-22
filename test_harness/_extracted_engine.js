@@ -49,7 +49,7 @@ const TIER_RANK = Object.freeze({
 const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_formula', 'hardware_install_formula', 'buy_the_hour_qty_gate_formula']);
 
 // ─── Functions (source order) ───
-function resolveDynamicService(category, stype, groupId, lastResort) {
+function resolveDynamicService(category, stype, groupId) {
             if (!window.DB?.dynamic_services) return null;
             const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
             const cat = category || 'other';
@@ -60,7 +60,7 @@ function resolveDynamicService(category, stype, groupId, lastResort) {
             }
             const catKey = cat + '+' + normSt;
             const catDef = window.DB.dynamic_services[catKey];
-            if (!catDef && lastResort === true && normSt === 'Repair') return window.DB.dynamic_services[cat + '+Diagnostic'] || null;
+            if (!catDef && normSt === 'Repair') return window.DB.dynamic_services[cat + '+Diagnostic'] || null;
             return catDef || null;
         }
 
