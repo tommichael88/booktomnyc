@@ -429,7 +429,9 @@
                 setPrototypeOf: readOnly,
             });
         })();
-        function resolveDynamicService(category, stype, groupId) {
+        // `lastResort` (T198 S1): the caller has nothing more specific. A Repair request of a category that declares a Diagnostic definition but no Repair one (plumbing_help) is then that category's diagnostic,
+        // which asks which fixture; without it the request fell to the vetoed fallback and the customer saw nothing. The rule lives here, in the one resolver, not composed at a call site.
+        function resolveDynamicService(category, stype, groupId, lastResort) {
             if (!window.DB?.dynamic_services) return null;
             const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
             const cat = category || 'other';
@@ -439,7 +441,9 @@
                 if (groupDef) return groupDef;
             }
             const catKey = cat + '+' + normSt;
-            return window.DB.dynamic_services[catKey] || null;
+            const catDef = window.DB.dynamic_services[catKey];
+            if (!catDef && lastResort === true && normSt === 'Repair') return window.DB.dynamic_services[cat + '+Diagnostic'] || null;
+            return catDef || null;
         }
 
         function resolveEngineKey(pricingType) {
@@ -4170,7 +4174,7 @@
                 };
             }
             if (effectiveContext.selectedCategoryId) {
-                const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', null);
+                const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', null, true); // T198 S1: last resort, see resolveDynamicService
                 if (dynDef) return {
                     entityType: 'dynamic',
                     entity: dynDef,
@@ -5210,6 +5214,8 @@
                 answers: {},
                 flags: null,
                 confidence: null,
+                // T198 (S1): the vetoed route's own quantity (decided by the one resolver, R-INTAKE-QTYONCE) is kept; the fallback used to drop it, so sqAnalyze threw on the route.
+                quantity: originalRoute ? originalRoute.quantity : undefined,
                 uiTemplate: 'legacy_flow',
                 bypassIntake: false,
                 skipTypeSelection: false,
