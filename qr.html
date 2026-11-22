@@ -4170,7 +4170,10 @@
                 };
             }
             if (effectiveContext.selectedCategoryId) {
-                const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, effectiveContext.nlpIntent?.stype || 'Repair', null);
+                // T198 (S1): a category with a Diagnostic definition but no Repair one (plumbing_help) is still reached by a repair request that names no fixture ("water leak", "I have a leak"): with no
+                // Repair definition the request fell to the catastrophic fallback and the customer saw nothing. A repair of an unnamed cause starts as that category's diagnostic, which asks which fixture.
+                const _stype = effectiveContext.nlpIntent?.stype || 'Repair';
+                const dynDef = resolveDynamicService(effectiveContext.selectedCategoryId, _stype, null) || (/^repair$/i.test(_stype) ? resolveDynamicService(effectiveContext.selectedCategoryId, 'Diagnostic', null) : null);
                 if (dynDef) return {
                     entityType: 'dynamic',
                     entity: dynDef,
@@ -11410,7 +11413,7 @@ function addToCart(entry) {
             // line, not the earlier one this replaced), since
             // entityHasOwnQtyQuestion needs the real, resolved entity to
             // check against.
-            S.qty = route.quantity.units;
+            S.qty = route.quantity?.units ?? 1; // T198 S1: a vetoed fallback route carries no quantity; it must still render, not throw
             window._currentContext = ctx;
             renderRoute(route);
         }
