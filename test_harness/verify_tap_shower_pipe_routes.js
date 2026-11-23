@@ -27,7 +27,7 @@ console.log('A. engine');
 for (const t of ['dripping tap', 'tap dripping', 'leaky tap', 'tap leaking', 'dripping faucet']) { const r = route(E, t); check(`A1 "${t}" is Faucet Drip Repair at $50`, r.entity && r.entity.id === 'faucet_repair_drip' && Number(r.basePrice || r.price && r.price.base) === 50 || (r.entity && r.entity.id === 'faucet_repair_drip' && /50/.test(JSON.stringify(r.price || r.basePrice))), JSON.stringify({ e: r.entity && r.entity.id, b: r.basePrice })); }
 for (const t of ['shower leaking', 'shower head leaking', 'leaking pipe', 'pipe leak', 'basin leaking', 'drain trap leaking']) { const r = route(E, t); check(`A2 "${t}" has an entity (the plumbing diagnostic), not a null route`, !r._vetoed && r.entity && r.entityType === 'dynamic', JSON.stringify({ e: r.entity && r.entity.id, t: r.entityType, v: r._vetoed })); }
 console.log('C. non-vacuity');
-const P = load(code => { const a = "!catDef && normSt === 'Repair'"; return code.includes(a) ? code.replace(a, 'false') : code; });
+const P = load(code => { const a = "if (normSt === 'Repair') return defs[cat + '+Diagnostic']"; return code.includes(a) ? code.replace(a, "if (false) return defs[cat + '+Diagnostic']") : code; });
 check('C1 without the group last-resort rule "leaking pipe" has no entity again (this is the defect)', !route(P, 'leaking pipe').entity);
 (async () => {
   let puppeteer = null; try { puppeteer = require('puppeteer-core'); } catch { /* below */ }

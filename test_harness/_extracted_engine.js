@@ -50,18 +50,25 @@ const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_for
 
 // ─── Functions (source order) ───
 function resolveDynamicService(category, stype, groupId) {
-            if (!window.DB?.dynamic_services) return null;
+            const defs = window.DB?.dynamic_services;
+            if (!defs) return null;
             const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
             const cat = category || 'other';
-            if (groupId) {
-                const groupKey = cat + '+' + groupId + '+' + normSt;
-                const groupDef = window.DB.dynamic_services[groupKey];
-                if (groupDef) return groupDef;
+            const groupObj = groupId ? ((window.DB.group || []).find(g => g.id === groupId) || null) : null;
+            const groupCat = groupObj ? (groupObj.category_id || null) : null;
+            const parentId = groupObj ? (groupObj.parent_group || groupObj.parent_id || null) : null; // a sub-group (Dryer) without its own definition is its parent group's (Appliances) before the category's
+            const alt = normSt === 'Install' ? 'Mount' : normSt === 'Mount' ? 'Install' : null;
+            for (const st of alt ? [normSt, alt] : [normSt]) {
+                if (groupId) {
+                    const groupDef = defs[cat + '+' + groupId + '+' + st] || (groupCat && groupCat !== cat ? defs[groupCat + '+' + groupId + '+' + st] : null)
+                        || (parentId ? (defs[(groupCat || cat) + '+' + parentId + '+' + st] || null) : null);
+                    if (groupDef) return groupDef;
+                }
+                const catDef = defs[cat + '+' + st] || (groupCat && groupCat !== cat ? defs[groupCat + '+' + st] : null);
+                if (catDef) return catDef;
             }
-            const catKey = cat + '+' + normSt;
-            const catDef = window.DB.dynamic_services[catKey];
-            if (!catDef && normSt === 'Repair') return window.DB.dynamic_services[cat + '+Diagnostic'] || null;
-            return catDef || null;
+            if (normSt === 'Repair') return defs[cat + '+Diagnostic'] || (groupCat && groupCat !== cat ? defs[groupCat + '+Diagnostic'] : null) || null;
+            return null;
         }
 
 function entityHasOwnQtyQuestion(entity) {
