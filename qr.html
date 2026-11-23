@@ -439,7 +439,9 @@
             if (!defs) return null;
             const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
             const cat = category || 'other';
-            const groupObj = groupId ? ((window.DB.group || []).find(g => g.id === groupId) || null) : null;
+            // Only for a caller that names a category: the guided builder resolves with none (BLD._cat is null), and its quantity step relies on that answer staying "no definition"
+            // (resolveBuilderQuantity: a definition that asks its own count would drop the count the customer just chose -- verify_dynamic_service_qty_gate.js).
+            const groupObj = (groupId && category) ? ((window.DB.group || []).find(g => g.id === groupId) || null) : null;
             const groupCat = groupObj ? (groupObj.category_id || null) : null;
             const parentId = groupObj ? (groupObj.parent_group || groupObj.parent_id || null) : null; // a sub-group (Dryer) without its own definition is its parent group's (Appliances) before the category's
             const alt = normSt === 'Install' ? 'Mount' : normSt === 'Mount' ? 'Install' : null;
