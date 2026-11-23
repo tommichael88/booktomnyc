@@ -38,27 +38,30 @@ const REPO_ROOT = path.dirname(__dirname);
 let pass = 0, fail = 0;
 function check(label, cond) { if (cond) { pass++; console.log(`  ✓ ${label}`); } else { fail++; console.log(`  ✗ ${label}`); } }
 
+// Use CI's configured Chrome first; the earlier cache-only search left this
+// browser check unexecuted even when Chrome was installed by GitHub Actions.
 function findChrome() {
+    const candidates = [process.env.CHROME_PATH, process.env.PUPPETEER_EXECUTABLE_PATH,
+        '/opt/pw-browsers/chromium', '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium'];
     try {
-        return execSync('find /home/*/.cache/puppeteer /root/.cache/puppeteer -type f -name chrome 2>/dev/null', { shell: '/bin/bash' })
-            .toString().trim().split('\n')[0];
-    } catch { return null; }
+        candidates.push(...execSync('find /home/*/.cache/puppeteer /root/.cache/puppeteer -type f -name chrome 2>/dev/null || true', { shell: '/bin/bash' })
+            .toString().trim().split('\n').filter(Boolean));
+    } catch (_) { /* the configured/system Chrome may still exist */ }
+    return candidates.filter(Boolean).find(p => fs.existsSync(p)) || null;
 }
 
 (async () => {
     const chromePath = findChrome();
     if (!chromePath) {
-        console.log('  ⚠ No Chrome/Chromium binary found -- skipping real-browser check (environment gap, not a code failure).');
-        console.log('\n[Quote template complete-fields verification] 0 passed, 0 failed (skipped)\n');
-        process.exit(0);
+        console.error('  ✗ Chrome is required for this real-browser test (set CHROME_PATH).');
+        process.exit(1);
     }
 
     let puppeteer;
     try { puppeteer = require('puppeteer-core'); }
     catch {
-        console.log('  ⚠ puppeteer-core not installed. Skipping.');
-        console.log('\n[Quote template complete-fields verification] 0 passed, 0 failed (skipped)\n');
-        process.exit(0);
+        console.error('  ✗ puppeteer-core is required for this real-browser test (run npm ci in test_harness).');
+        process.exit(1);
     }
 
     const http = require('http');
@@ -91,9 +94,19 @@ function findChrome() {
             await page.click('.affirm-yes-btn');
             await new Promise(r => setTimeout(r, 800));
 
+            // The current sqAnalyze affirmation follows the canonical intake route;
+            // it no longer opens the legacy sqRenderQuote panel automatically. Set
+            // an actual quote answer and render that panel before asserting its
+            // headline, subtext and disclaimer (otherwise the selectors matched
+            // nothing, a stale test-path error rather than missing quote fields).
+            await page.evaluate(() => {
+                window.S.answers = { urgency: 'Urgent - today or tomorrow' };
+                window.sqRenderQuote();
+            });
+            await page.waitForSelector('#sqQuoteOut .qpanel', { timeout: 5000 });
             const rowsText = await page.evaluate(() =>
                 [...document.querySelectorAll('#sqQuoteOut .ql')].map(l => l.textContent).join(' | '));
-            check('no row anywhere in the quote contains the literal text "undefined"', !rowsText.includes('undefined'));
+            check('the quote panel has actual rows, none containing the literal text "undefined"', rowsText.length > 0 && !rowsText.includes('undefined'));
 
             const hero = await page.evaluate(() => ({
                 price: document.querySelector('#sqQuoteOut .qprice, #sqQuoteOut .qpranger')?.textContent,
