@@ -91,8 +91,10 @@ console.log('\n=== The real, motivating trace: the wrong, confident, incidental 
     const after = sandbox.detectIntentNLP(TRACE);
     check('no longer confidently matches on the incidental parenthetical content (drywall/plaster)',
         after?.key !== 'drywall' && after?.key !== 'plaster');
-    check('recommendedSku is suppressed rather than confidently wrong',
-        after?.recommendedSku == null);
+    // T198 (X2): the request itself is "I need a bed assembled", and the furniture object now names the assembly job by its assembly words, so the recommendation is the RIGHT
+    // service (Flat-Pack Furniture Assembly) rather than none. Still never the incidental drywall/plaster one: the intent of this check.
+    check('recommendedSku is never the incidental match: suppressed, or the job the customer actually named (bed assembled -> Flat-Pack Furniture Assembly)',
+        after?.recommendedSku == null || after?.recommendedSku === 'furniture_assembly_flat_pack');
 }
 
 console.log('\n=== Positive case: a real PRIMARY keyword still wins cleanly over an incidental one ===');

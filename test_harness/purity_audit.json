@@ -107,6 +107,13 @@
     ]
   },
   {
+    "name": "_hasWords",
+    "lines": 1,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
+  },
+  {
     "name": "_iconContent",
     "lines": 9,
     "direct_impure": true,
@@ -281,7 +288,7 @@
   },
   {
     "name": "_resolveIntakeChain",
-    "lines": 82,
+    "lines": 83,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
@@ -289,6 +296,13 @@
       "has",
       "resolveOne"
     ]
+  },
+  {
+    "name": "_scopeBtn",
+    "lines": 1,
+    "direct_impure": true,
+    "transitively_impure": true,
+    "calls": []
   },
   {
     "name": "_simpleHash",
@@ -423,18 +437,19 @@
   },
   {
     "name": "applyPricingFormula",
-    "lines": 277,
+    "lines": 279,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
       "_mod",
       "graduatedTierTotal",
+      "resolveAnsweredModule",
       "resolveQtyValue"
     ]
   },
   {
     "name": "applySSOTRules",
-    "lines": 15,
+    "lines": 16,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -671,6 +686,16 @@
     "calls": []
   },
   {
+    "name": "cartRequestText",
+    "lines": 10,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "cartLineQty",
+      "cartTotal"
+    ]
+  },
+  {
     "name": "cartTotal",
     "lines": 4,
     "direct_impure": false,
@@ -681,8 +706,17 @@
     ]
   },
   {
+    "name": "cartTotalLabel",
+    "lines": 6,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "cartTotal"
+    ]
+  },
+  {
     "name": "catastrophicFallbackRoute",
-    "lines": 23,
+    "lines": 27,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": []
@@ -768,16 +802,19 @@
   },
   {
     "name": "collectBookingContext_freeText",
-    "lines": 225,
+    "lines": 231,
     "direct_impure": false,
     "transitively_impure": true,
     "calls": [
       "_resolutionThresholds",
       "computeNegatedGroupHints",
       "detectTagsNLP",
+      "extractAmbiguousNumber",
       "extractLocation",
       "extractQty",
       "extractSizeHint",
+      "extractStatedCounts",
+      "extractUnsupportedCount",
       "inferTagsFromContext",
       "makeBookingContext",
       "resolveGroupFromIntent",
@@ -859,7 +896,7 @@
   },
   {
     "name": "computeUnifiedQuote",
-    "lines": 874,
+    "lines": 872,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
@@ -869,6 +906,7 @@
       "has",
       "intentKeywordWeight",
       "priceAddedTime",
+      "resolveAnsweredModule",
       "resolveBaseConfidenceStrategy",
       "resolveConfidence",
       "resolveQuantityMultiplier",
@@ -1014,7 +1052,7 @@
   },
   {
     "name": "detectIntentNLP",
-    "lines": 541,
+    "lines": 576,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -1023,6 +1061,7 @@
       "isInflectionOnly",
       "matchesInRegion",
       "overrideRequiresMet",
+      "placedOnSurface",
       "realWordList",
       "scoreAgainst",
       "stripActionPhrases",
@@ -1124,12 +1163,13 @@
   },
   {
     "name": "executeWorkflow",
-    "lines": 35,
+    "lines": 37,
     "direct_impure": false,
     "transitively_impure": true,
     "calls": [
       "orch_find_route_tos",
-      "orch_run_workflow"
+      "orch_run_workflow",
+      "orch_safety_stop"
     ]
   },
   {
@@ -1138,6 +1178,17 @@
     "direct_impure": true,
     "transitively_impure": true,
     "calls": []
+  },
+  {
+    "name": "extractAmbiguousNumber",
+    "lines": 14,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "extractQty",
+      "has",
+      "maskIncidentalNumbers"
+    ]
   },
   {
     "name": "extractCondition",
@@ -1180,10 +1231,12 @@
   },
   {
     "name": "extractQty",
-    "lines": 34,
+    "lines": 21,
     "direct_impure": false,
     "transitively_impure": false,
-    "calls": []
+    "calls": [
+      "maskIncidentalNumbers"
+    ]
   },
   {
     "name": "extractSizeHint",
@@ -1191,6 +1244,25 @@
     "direct_impure": false,
     "transitively_impure": false,
     "calls": []
+  },
+  {
+    "name": "extractStatedCounts",
+    "lines": 9,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "maskIncidentalNumbers"
+    ]
+  },
+  {
+    "name": "extractUnsupportedCount",
+    "lines": 16,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "has",
+      "maskIncidentalNumbers"
+    ]
   },
   {
     "name": "fallbackHandler",
@@ -1203,14 +1275,19 @@
   },
   {
     "name": "finalizeBooking",
-    "lines": 15,
+    "lines": 27,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
-      "closeCartOverlay",
-      "dispatch",
-      "renderCart",
-      "restoreCategoryView",
+      "cartLineQty",
+      "cartRequestText",
+      "cartTotalLabel",
+      "create",
+      "decodeB64",
+      "getState",
+      "mk",
+      "safeEmail",
+      "safePhone",
       "toast"
     ]
   },
@@ -1297,7 +1374,7 @@
   },
   {
     "name": "init",
-    "lines": 242,
+    "lines": 285,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -1313,6 +1390,7 @@
       "loadCart",
       "orch_resolve_schema_location",
       "orch_validate_ssot",
+      "prefillSmartQuoteFromService",
       "refreshNlpPreviewBindings",
       "renderBootFailure",
       "renderCart",
@@ -1320,6 +1398,7 @@
       "renderSelfQuoteFromRoute",
       "renderTagAffirmationFromRoute",
       "setViewportHeight",
+      "showSubGroups",
       "sqRenderCuratedCard",
       "subscribe",
       "toast",
@@ -1487,7 +1566,7 @@
   },
   {
     "name": "makeBookingContext",
-    "lines": 38,
+    "lines": 40,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": []
@@ -1495,6 +1574,13 @@
   {
     "name": "makeLegacyS",
     "lines": 31,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
+  },
+  {
+    "name": "maskIncidentalNumbers",
+    "lines": 6,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": []
@@ -1512,6 +1598,15 @@
     "direct_impure": false,
     "transitively_impure": false,
     "calls": []
+  },
+  {
+    "name": "mk",
+    "lines": 1,
+    "direct_impure": true,
+    "transitively_impure": true,
+    "calls": [
+      "create"
+    ]
   },
   {
     "name": "nearTokens",
@@ -1610,10 +1705,11 @@
   },
   {
     "name": "orch_apply_object_based_resolution",
-    "lines": 124,
+    "lines": 127,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
+      "_hasWords",
       "overrideRequiresMet",
       "resolveDynamicService"
     ]
@@ -1630,7 +1726,7 @@
   },
   {
     "name": "orch_apply_quantity",
-    "lines": 9,
+    "lines": 10,
     "direct_impure": false,
     "transitively_impure": true,
     "calls": [
@@ -1647,6 +1743,15 @@
       "collectBookingContext_catalog",
       "executeWorkflow",
       "orch_splice_remote_deep_dive"
+    ]
+  },
+  {
+    "name": "orch_apply_typed_counts",
+    "lines": 18,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "has"
     ]
   },
   {
@@ -1786,6 +1891,17 @@
     "calls": []
   },
   {
+    "name": "orch_resolve_scope",
+    "lines": 13,
+    "direct_impure": false,
+    "transitively_impure": true,
+    "calls": [
+      "executeWorkflow",
+      "orch_apply_quantity",
+      "orch_splice_remote_deep_dive"
+    ]
+  },
+  {
     "name": "orch_route_is_held",
     "lines": 13,
     "direct_impure": false,
@@ -1805,7 +1921,7 @@
   },
   {
     "name": "orch_run_workflow",
-    "lines": 252,
+    "lines": 261,
     "direct_impure": false,
     "transitively_impure": true,
     "calls": [
@@ -1817,6 +1933,7 @@
       "orch_apply_intake_bypass_rules",
       "orch_apply_location_hints",
       "orch_apply_path_facts",
+      "orch_apply_typed_counts",
       "orch_compose_intake_chain",
       "orch_compute_confidence",
       "orch_compute_quote",
@@ -1827,11 +1944,27 @@
       "orch_recommended_service_ids",
       "orch_resolve_entity",
       "orch_route_still_possible",
+      "orch_scope_state",
       "orch_select_ui_template",
+      "orch_tags_for_service",
       "resolveQuantityUnits",
       "synthesizeAnswersFromTags",
       "validateRoute"
     ]
+  },
+  {
+    "name": "orch_safety_stop",
+    "lines": 13,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
+  },
+  {
+    "name": "orch_scope_state",
+    "lines": 7,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
   },
   {
     "name": "orch_select_ui_template",
@@ -1851,6 +1984,17 @@
       "_isModVisible",
       "has",
       "orch_depends_on_as_labels"
+    ]
+  },
+  {
+    "name": "orch_tags_for_service",
+    "lines": 7,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "closeTagsOverRequires",
+      "synthesizeAnswersFromTags",
+      "tagIdsForService"
     ]
   },
   {
@@ -1907,6 +2051,15 @@
     "transitively_impure": true,
     "calls": [
       "sqBuildAdlib"
+    ]
+  },
+  {
+    "name": "placedOnSurface",
+    "lines": 7,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "wordBoundaryIncludes"
     ]
   },
   {
@@ -2120,12 +2273,13 @@
   },
   {
     "name": "renderCuratedCardFromRoute",
-    "lines": 310,
+    "lines": 353,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
       "_afterAdd",
       "_iconContent",
+      "_scopeBtn",
       "addToCart",
       "buildDivergenceResolutionHtml",
       "escapeHtml",
@@ -2246,7 +2400,7 @@
   },
   {
     "name": "renderTagAffirmationFromRoute",
-    "lines": 69,
+    "lines": 72,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -2269,6 +2423,15 @@
     "direct_impure": false,
     "transitively_impure": false,
     "calls": []
+  },
+  {
+    "name": "resolveAnsweredModule",
+    "lines": 13,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "_resolveIntakeChain"
+    ]
   },
   {
     "name": "resolveBaseConfidenceStrategy",
@@ -2318,7 +2481,7 @@
   },
   {
     "name": "resolveCartTransition",
-    "lines": 55,
+    "lines": 59,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
@@ -2361,10 +2524,12 @@
   },
   {
     "name": "resolveDynamicService",
-    "lines": 12,
+    "lines": 21,
     "direct_impure": true,
     "transitively_impure": true,
-    "calls": []
+    "calls": [
+      "s"
+    ]
   },
   {
     "name": "resolveEngineKey",
@@ -2515,11 +2680,13 @@
   },
   {
     "name": "resolveSessionTagIds",
-    "lines": 3,
+    "lines": 4,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
-      "closeTagsOverRequires"
+      "closeTagsOverRequires",
+      "sessionServiceId",
+      "tagIdsForService"
     ]
   },
   {
@@ -2647,6 +2814,13 @@
     "calls": [
       "wordBoundaryIncludes"
     ]
+  },
+  {
+    "name": "sessionServiceId",
+    "lines": 3,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
   },
   {
     "name": "setFocusedTextBarAllowed",
@@ -3129,11 +3303,12 @@
   },
   {
     "name": "sqUnifiedAction",
-    "lines": 30,
+    "lines": 32,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
       "detectTagsNLP",
+      "orch_safety_stop",
       "sqAnalyze",
       "sqBuilderRender",
       "sqToggleBuilder",
@@ -3184,7 +3359,9 @@
     "transitively_impure": false,
     "calls": [
       "closeTagsOverRequires",
-      "synthesizeAnswersFromTags"
+      "sessionServiceId",
+      "synthesizeAnswersFromTags",
+      "tagIdsForService"
     ]
   },
   {
@@ -3205,12 +3382,30 @@
     ]
   },
   {
-    "name": "tagInScopeForRequest",
-    "lines": 8,
+    "name": "tagExcludesService",
+    "lines": 4,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": []
+  },
+  {
+    "name": "tagIdsForService",
+    "lines": 3,
     "direct_impure": false,
     "transitively_impure": false,
     "calls": [
+      "tagExcludesService"
+    ]
+  },
+  {
+    "name": "tagInScopeForRequest",
+    "lines": 13,
+    "direct_impure": false,
+    "transitively_impure": false,
+    "calls": [
+      "s",
       "tagAnswersAskedByService",
+      "tagExcludesService",
       "tagValidForCategory"
     ]
   },
@@ -3311,6 +3506,7 @@
     "transitively_impure": true,
     "calls": [
       "cartTotal",
+      "cartTotalLabel",
       "getState",
       "setText"
     ]
@@ -3322,6 +3518,7 @@
     "transitively_impure": true,
     "calls": [
       "cartTotal",
+      "cartTotalLabel",
       "create",
       "formatCartLinePrice",
       "getState",
@@ -3389,7 +3586,7 @@
   },
   {
     "name": "wireGlobalEvents",
-    "lines": 287,
+    "lines": 299,
     "direct_impure": true,
     "transitively_impure": true,
     "calls": [
@@ -3405,6 +3602,7 @@
       "openTel",
       "orch_apply_answer",
       "orch_apply_quantity",
+      "orch_resolve_scope",
       "orch_unroute",
       "prefillSmartQuoteFromService",
       "renderCategoryCards",

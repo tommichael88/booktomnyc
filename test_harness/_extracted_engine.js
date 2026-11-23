@@ -50,18 +50,28 @@ const QTY_AWARE_FORMULAS = new Set(['furniture_repair_formula', 'tile_repair_for
 
 // ─── Functions (source order) ───
 function resolveDynamicService(category, stype, groupId) {
-            if (!window.DB?.dynamic_services) return null;
+            const defs = window.DB?.dynamic_services;
+            if (!defs) return null;
             const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
             const cat = category || 'other';
-            if (groupId) {
-                const groupKey = cat + '+' + groupId + '+' + normSt;
-                const groupDef = window.DB.dynamic_services[groupKey];
-                if (groupDef) return groupDef;
+            // Only for a caller that names a category: the guided builder resolves with none (BLD._cat is null), and its quantity step relies on that answer staying "no definition"
+            // (resolveBuilderQuantity: a definition that asks its own count would drop the count the customer just chose -- verify_dynamic_service_qty_gate.js).
+            const groupObj = (groupId && category) ? ((window.DB.group || []).find(g => g.id === groupId) || null) : null;
+            const groupCat = groupObj ? (groupObj.category_id || null) : null;
+            const parentId = groupObj ? (groupObj.parent_group || groupObj.parent_id || null) : null; // a sub-group (Dryer) without its own definition is its parent group's (Appliances) before the category's
+            const alt = normSt === 'Install' ? 'Mount' : normSt === 'Mount' ? 'Install' : null;
+            for (const st of alt ? [normSt, alt] : [normSt]) {
+                if (groupId) {
+                    const groupDef = defs[cat + '+' + groupId + '+' + st] || (groupCat && groupCat !== cat ? defs[groupCat + '+' + groupId + '+' + st] : null)
+                        || (parentId ? (defs[(groupCat || cat) + '+' + parentId + '+' + st] || null) : null);
+                    if (groupDef) return groupDef;
+                }
+                if (st !== normSt && !groupId) continue; // Install = Mount only for a named group: a bare category guess under the other verb would quote a weak word ("blind spot monitor") instead of asking
+                const catDef = defs[cat + '+' + st] || (groupCat && groupCat !== cat ? defs[groupCat + '+' + st] : null);
+                if (catDef) return catDef;
             }
-            const catKey = cat + '+' + normSt;
-            const catDef = window.DB.dynamic_services[catKey];
-            if (!catDef && normSt === 'Repair') return window.DB.dynamic_services[cat + '+Diagnostic'] || null;
-            return catDef || null;
+            if (normSt === 'Repair') return defs[cat + '+Diagnostic'] || (groupCat && groupCat !== cat ? defs[groupCat + '+Diagnostic'] : null) || null;
+            return null;
         }
 
 function entityHasOwnQtyQuestion(entity) {

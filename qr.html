@@ -431,19 +431,32 @@
         })();
         // (T198 S1, W4) A Repair request of a category that declares a Diagnostic definition but no Repair one (plumbing_help) is then that category's diagnostic,
         // which asks which fixture; without it the request fell to the vetoed fallback and the customer saw nothing. The rule lives here, in the one resolver, not composed at a call site.
+        // (T198 X3) A group is looked up under its OWN category (the object that named the job may carry another default category: "install furniture" named the furniture group of
+        // minor_home_repairs while the furniture object's category is furniture_fixes_assembly, so nothing was found and the page went blank), and Install and Mount are the same request
+        // for a category that authors only one of them (wall_mounting authors Mount: "fix curtains" found no Install definition and fell to the vetoed fallback).
         function resolveDynamicService(category, stype, groupId) {
-            if (!window.DB?.dynamic_services) return null;
+            const defs = window.DB?.dynamic_services;
+            if (!defs) return null;
             const normSt = (window._normServiceType ? window._normServiceType(stype) : (stype || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install'));
             const cat = category || 'other';
-            if (groupId) {
-                const groupKey = cat + '+' + groupId + '+' + normSt;
-                const groupDef = window.DB.dynamic_services[groupKey];
-                if (groupDef) return groupDef;
+            // Only for a caller that names a category: the guided builder resolves with none (BLD._cat is null), and its quantity step relies on that answer staying "no definition"
+            // (resolveBuilderQuantity: a definition that asks its own count would drop the count the customer just chose -- verify_dynamic_service_qty_gate.js).
+            const groupObj = (groupId && category) ? ((window.DB.group || []).find(g => g.id === groupId) || null) : null;
+            const groupCat = groupObj ? (groupObj.category_id || null) : null;
+            const parentId = groupObj ? (groupObj.parent_group || groupObj.parent_id || null) : null; // a sub-group (Dryer) without its own definition is its parent group's (Appliances) before the category's
+            const alt = normSt === 'Install' ? 'Mount' : normSt === 'Mount' ? 'Install' : null;
+            for (const st of alt ? [normSt, alt] : [normSt]) {
+                if (groupId) {
+                    const groupDef = defs[cat + '+' + groupId + '+' + st] || (groupCat && groupCat !== cat ? defs[groupCat + '+' + groupId + '+' + st] : null)
+                        || (parentId ? (defs[(groupCat || cat) + '+' + parentId + '+' + st] || null) : null);
+                    if (groupDef) return groupDef;
+                }
+                if (st !== normSt && !groupId) continue; // Install = Mount only for a named group: a bare category guess under the other verb would quote a weak word ("blind spot monitor") instead of asking
+                const catDef = defs[cat + '+' + st] || (groupCat && groupCat !== cat ? defs[groupCat + '+' + st] : null);
+                if (catDef) return catDef;
             }
-            const catKey = cat + '+' + normSt;
-            const catDef = window.DB.dynamic_services[catKey];
-            if (!catDef && normSt === 'Repair') return window.DB.dynamic_services[cat + '+Diagnostic'] || null;
-            return catDef || null;
+            if (normSt === 'Repair') return defs[cat + '+Diagnostic'] || (groupCat && groupCat !== cat ? defs[groupCat + '+Diagnostic'] : null) || null;
+            return null;
         }
 
         function resolveEngineKey(pricingType) {
@@ -5235,6 +5248,8 @@
                 confidence: null,
                 // T198 (S1): the vetoed route's own quantity (decided by the one resolver, R-INTAKE-QTYONCE) is kept; the fallback used to drop it, so sqAnalyze threw on the route.
                 quantity: originalRoute ? originalRoute.quantity : undefined,
+                // T198 X1: the kind of job the customer named (a fact; may be null), so the fallback can ask which job it is instead of showing nothing useful.
+                intentCategory: originalRoute ? (originalRoute.intentCategory || null) : null,
                 uiTemplate: 'legacy_flow',
                 bypassIntake: false,
                 skipTypeSelection: false,
@@ -12902,9 +12917,44 @@ function addToCart(entry) {
                             renderTagAffirmationFromRoute(route);
                             break;
                         case 'legacy_flow':
+                            // T198 X1: this template was a placeholder that told the customer "Legacy flow – please use the new UI.". It has two real meanings, and each gets its real view.
+                            // (a) A resolved service the catalog routes to the older intake panel (furniture selection, an "Other" service): the panel the catalog tap shows for it.
+                            if (route.entity && route.entityType === 'service') {
+                                prefillSmartQuoteFromService(route.entity, route.entity.ui_taxonomy?.category_id || null);
+                                break;
+                            }
+                            // (b) The vetoed fallback (nothing could be priced with confidence): ask, never guess. The kind of job named, if any, offers its groups; every customer can browse.
                             if (intakeContainer) {
                                 intakeContainer.style.display = 'block';
-                                intakeContainer.innerHTML = '<div class="repair-hint">Legacy flow – please use the new UI.</div>';
+                                const box = document.createElement('div');
+                                box.className = 'route-clarify';
+                                box.setAttribute('data-route-clarify', '');
+                                const p = document.createElement('p');
+                                p.className = 'repair-hint';
+                                const cat = route.intentCategory ? (DB.category || []).find(c => c.id === route.intentCategory) : null;
+                                const groups = cat ? (DB.group || []).filter(g => g.category_id === cat.id && !(g.parent_group || g.parent_id)) : [];
+                                p.textContent = groups.length
+                                    ? 'We need one more detail to price this. Which of these is it?'
+                                    : 'We need one more detail to price this. Tell us what the item is and what is wrong with it, or browse our services.';
+                                box.appendChild(p);
+                                const row = document.createElement('div');
+                                row.className = 'route-clarify-options';
+                                for (const g of groups) {
+                                    const b = document.createElement('button');
+                                    b.type = 'button';
+                                    b.className = 'chip';
+                                    b.textContent = g.display_name || g.name || g.id;
+                                    b.addEventListener('click', () => { box.remove(); showSubGroups(g, cat.id); });
+                                    row.appendChild(b);
+                                }
+                                const all = document.createElement('button');
+                                all.type = 'button';
+                                all.className = 'chip';
+                                all.textContent = groups.length ? 'Something else: browse all services' : 'Browse all services';
+                                all.addEventListener('click', () => { box.remove(); if (catGrid) { catGrid.style.display = 'grid'; catGrid.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+                                row.appendChild(all);
+                                box.appendChild(row);
+                                intakeContainer.replaceChildren(box);
                             }
                             break;
                         default:
