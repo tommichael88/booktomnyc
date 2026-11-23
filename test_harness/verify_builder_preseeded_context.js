@@ -104,24 +104,30 @@ console.log('\n=== Fix 2: sqBuilderChoose skips forward past already-answered st
         QR_HTML.includes('stepsAfterChoice[BLD.step]] !== null'));
 }
 
-console.log('\n=== Real browser: the complete Walls "Other" tile flow works end-to-end ===');
+console.log('\n=== Real browser: a current multi-action "Other" tile flow works end-to-end ===');
 {
+    // The suite runner and GitHub Actions supply CHROME_PATH. The old cache-only
+    // search skipped this browser half even while Chrome was installed in CI.
     function findChrome() {
+        const candidates = [process.env.CHROME_PATH, process.env.PUPPETEER_EXECUTABLE_PATH,
+            '/opt/pw-browsers/chromium', '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium'];
         try {
-            return execSync('find /home/*/.cache/puppeteer /root/.cache/puppeteer -type f -name chrome 2>/dev/null', { shell: '/bin/bash' })
-                .toString().trim().split('\n')[0];
-        } catch { return null; }
+            candidates.push(...execSync('find /home/*/.cache/puppeteer /root/.cache/puppeteer -type f -name chrome 2>/dev/null || true', { shell: '/bin/bash' })
+                .toString().trim().split('\n').filter(Boolean));
+        } catch (_) { /* no cache; the configured/system Chrome may still exist */ }
+        return candidates.filter(Boolean).find(p => fs.existsSync(p)) || null;
     }
     const chromePath = findChrome();
     if (!chromePath) {
-        console.log('  ⚠ No Chrome/Chromium binary found -- skipping real-browser check (environment gap, not a code failure).');
+        check('Chrome is required for the real-browser half (set CHROME_PATH)', false);
+        finish();
     } else {
-        runBrowserCheck(chromePath).catch(err => {
+        runBrowserCheck(chromePath).then(finish).catch(err => {
             fail++;
             console.log(`  ✗ Real-browser check threw: ${err.message}`);
             finish();
         });
-        return; // async path handles finish()
+        return; // async path invokes finish() after all browser assertions, including on success
     }
 }
 
@@ -149,37 +155,92 @@ async function runBrowserCheck(chromePath) {
         await page.goto(`http://127.0.0.1:${PORT}/qr.html`, { waitUntil: 'networkidle0', timeout: 15000 });
         await new Promise(r => setTimeout(r, 1000));
 
-        const catCards = await page.$$('.category-card');
-        for (const card of catCards) {
-            if ((await page.evaluate(el => el.textContent, card)).includes('Minor Home Repairs')) { await card.click(); break; }
-        }
-        await new Promise(r => setTimeout(r, 800));
-        const groupTiles = await page.$$('.group-tile');
-        for (const tile of groupTiles) {
-            if ((await page.evaluate(el => el.textContent, tile)).includes('Walls')) { await tile.click(); break; }
-        }
-        await new Promise(r => setTimeout(r, 800));
-        const serviceTiles = await page.$$('.service-tile');
-        for (const tile of serviceTiles) {
-            if ((await page.evaluate(el => el.textContent, tile)).includes('Walls Other')) { await tile.click(); break; }
-        }
-        await new Promise(r => setTimeout(r, 1000));
+        // Select a navigable nested leaf with multiple uncovered types.
+        // After T72 the old Walls=Mount+Diagnose fixture was retired;
+        // the remaining real examples live under the Appliances parent.
+        const candidate = await page.evaluate(() => {
+            const normalize = t => (t || 'Repair').replace('Install / Mount', 'Install').replace('Install/Mount', 'Install');
+            const groups = DB.group || [];
+            const candidates = groups.filter(g => {
+                // The remaining multi-action Other tiles are nested leaves under
+                // Appliances. The parent group delegates to children and has no
+                // own Other tile, so select a leaf and walk its authored ancestry.
+                if (groups.some(child => child.parent_group === g.id || child.parent_id === g.id)) return false;
+                const covered = new Set((DB.services || []).filter(s => s.ui_taxonomy?.group_id === g.id).map(s => normalize(s.service_type)));
+                const uncovered = (g.dynamic_service_types || []).map(normalize).filter(t => !covered.has(t));
+                return uncovered.length > 1 && !!document.querySelector('.category-card[data-category-id="' + g.category_id + '"]');
+            }).map(g => {
+                const ancestry = []; let curr = g, limit = groups.length;
+                while (curr && limit-- > 0) {
+                    ancestry.unshift({ id: curr.id, label: curr.display_name });
+                    const parent = curr.parent_group || curr.parent_id;
+                    curr = parent ? groups.find(x => x.id === parent) : null;
+                }
+                return {
+                    id: g.id, category: g.category_id, label: g.display_name, ancestry,
+                    uncovered: (g.dynamic_service_types || []).map(normalize).filter(t =>
+                        !(DB.services || []).some(s => s.ui_taxonomy?.group_id === g.id && normalize(s.service_type) === t))
+                };
+            });
+            return candidates.find(g => g.id === 'minor_home_repairs_appliances_dryer') || candidates[0] || null;
+        });
+        check('a navigable leaf group with multiple uncovered actions exists', !!candidate);
+        if (!candidate) return;
+        await page.click('.category-card[data-category-id="' + candidate.category + '"]');
+        await new Promise(r => setTimeout(r, 500));
 
-        const chips = await page.$$eval('#sqBuilderChips .sq-b-chip', els => els.map(el => el.textContent.trim()));
-        check('the action step shows both real uncovered options (Mount and Diagnose), not just one', chips.length === 2 && chips.includes('Hang / Mount') && chips.includes('Diagnose'));
-
-        const chipEls = await page.$$('#sqBuilderChips .sq-b-chip');
-        for (const chip of chipEls) {
-            if ((await page.evaluate(el => el.textContent, chip)).includes('Mount')) { await chip.click(); break; }
+        let navigated = true;
+        for (const step of candidate.ancestry) {
+            let tileClicked = false;
+            for (const tile of await page.$$('.group-tile')) {
+                if ((await page.evaluate(el => el.querySelector('.tile-name')?.textContent.trim(), tile)) === step.label) {
+                    await tile.click(); tileClicked = true; break;
+                }
+            }
+            if (!tileClicked) { navigated = false; break; }
+            await new Promise(r => setTimeout(r, 400));
         }
+        check('every level of the selected catalog group was opened, including its parent', navigated);
+        if (!navigated) return;
+
+        let otherClicked = false;
+        for (const tile of await page.$$('.service-tile-other')) {
+            if ((await page.evaluate(el => el.querySelector('h4')?.textContent.trim(), tile)) === candidate.label + ' Other') {
+                await tile.click(); otherClicked = true; break;
+            }
+        }
+        check('the selected Other tile was actually opened', otherClicked);
+        if (!otherClicked) return;
+        await new Promise(r => setTimeout(r, 500));
+
+        const state = await page.evaluate(() => ({
+            prompt: document.getElementById('sqBuilderPrompt')?.textContent.trim() || '',
+            allowed: (typeof BLD !== 'undefined' && BLD._allowedTypes) ? BLD._allowedTypes : [],
+            chips: [...document.querySelectorAll('#sqBuilderChips .sq-b-chip')].map(el => el.textContent.trim()),
+            expected: (typeof BLD_ACTION_MAP !== 'undefined' ? BLD_ACTION_MAP : [])
+                .filter(a => (typeof BLD !== 'undefined' && BLD._allowedTypes || []).includes(a.stype)).map(a => a.label)
+        }));
+        console.log('  Browser action fixture: ' + candidate.id + ' ' + JSON.stringify(state));
+        const sameMembers = (a, b) => a.length === b.length && [...a].sort().join('|') === [...b].sort().join('|');
+        check('the action step offers each currently authored uncovered action (not the old Walls/Mount fixture)',
+            state.prompt.includes('What do you need done') &&
+            state.allowed.length > 1 && sameMembers(state.allowed, candidate.uncovered) &&
+            // One service type may expose two distinct actions (Repair => Fix and Remove).
+            state.expected.length >= state.allowed.length && sameMembers(state.chips, state.expected));
+
+        const chosenChip = (await page.$$('#sqBuilderChips .sq-b-chip'))[0];
+        check('an action chip is genuinely present and tappable', !!chosenChip);
+        if (!chosenChip) return;
+        await chosenChip.click();
         await new Promise(r => setTimeout(r, 500));
 
         const promptAfter = await page.evaluate(() => document.getElementById('sqBuilderPrompt')?.textContent || '');
-        check('tapping an action chip does NOT re-ask "What is it?" (the group is already known)', !promptAfter.includes('What is it'));
+        check('tapping an action does NOT re-ask "What is it?" (the group is already known)',
+            !!promptAfter && !promptAfter.includes('What is it'));
 
         const nextChips = await page.$$eval('#sqBuilderChips .sq-b-chip', els => els.map(el => el.textContent.trim()));
-        const hasUnrelatedGroups = nextChips.some(c => ['Bulbs', 'Sinks', 'Toilets', 'Computer Repair'].includes(c));
-        check('the next step does not show unrelated groups from entirely different categories', !hasUnrelatedGroups);
+        check('the next step does not show an unrelated group grid',
+            nextChips.length > 0 && !nextChips.some(c => ['Bulbs', 'Sinks', 'Toilets', 'Computer Repair'].includes(c)));
     } finally {
         await browser.close();
         server.close();
