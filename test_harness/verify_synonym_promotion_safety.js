@@ -23,11 +23,13 @@ const BATCH1 = JSON.parse(fs.readFileSync(path.join(__dirname, 'tools', 'synonym
 const POLY = JSON.parse(fs.readFileSync(path.join(__dirname, 'tools', 'synonym_batches', 'polysemy_probes.json'), 'utf8'));
 
 // ---- the HELD list: judged by hand in T147, with the reason. May only shrink; to promote one, remove it here WITH its justification and run the batch differential. ----
+// T198 (X2) promoted, with the reason: 'curtains' and 'drapes' were held as "the covering, not the rod", but the curtain-rod object's own service is Blinds, Shades or Curtains
+// (blinds_shades_curtains_buy_the_hour), whose job IS the covering; no polysemy probe routes after the promotion, and the batch differential is unchanged. 'blind', 'shades', 'rod' and 'sconce' stay held.
 const HELD = [
  ['backup', 'transfer data', 'recovery and transfer are different jobs from backup'], ['backup', 'data recovery', 'a different (specialist) job'], ['backup', 'recover data', 'a different job'], ['backup', 'lost files', 'a recovery problem, not a backup'],
  ['baseboard', 'crown moulding', 'ceiling trim: a different job'], ['baseboard', 'trim', 'generic: door and window trim'], ['baseboard', 'molding', 'generic: crown, door, window'],
  ['brick', 'mortar', 'a material, not the object'], ['cabinet', 'pantry', 'a room or closet, not a cabinet'],
- ['curtain rod', 'rod', 'generic: shower rod, closet rod'], ['curtain rod', 'curtains', 'the covering, not the rod'], ['curtain rod', 'drapes', 'the covering, not the rod'], ['curtain rod', 'blind', 'a separate service; "blind spot"'], ['curtain rod', 'shades', 'a separate service; sunglasses'],
+ ['curtain rod', 'rod', 'generic: shower rod, closet rod'], ['curtain rod', 'blind', 'a separate service; "blind spot"'], ['curtain rod', 'shades', 'a separate service; sunglasses'],
  ['deadbolt', 'lock', 'generic: padlock, bike lock, car lock'], ['door', 'entry', 'generic: entry level, entry form'],
  ['faucet', 'tap', 'homonym: tap water, tap to pay'], ['faucet', 'basin', 'toilet or wash basin'],
  ['furniture', 'table', 'generic token: data table'], ['furniture', 'desk', 'generic token: help desk'], ['garbage disposal', 'disposal', 'generic: waste or junk disposal'],

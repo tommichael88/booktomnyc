@@ -1,6 +1,6 @@
 /**
  * verify_light_window_furniture_routes.js -- T198 (X1-X3): lighting, window-treatment and furniture requests are answered; nothing says "Legacy flow".
- *   A. ENGINE   curtains/drapes/shades/blind -> Blinds, Shades or Curtains (hourly); sconce -> Light Fixture Replacement; assemble furniture -> Flat-Pack Furniture Assembly
+ *   A. ENGINE   curtains/drapes/blinds -> Blinds, Shades or Curtains (hourly); ceiling/wall light -> Light Fixture Replacement; the held words (blind, shades, sconce, rod, light, fixture) are asked about; assemble furniture -> Flat-Pack Furniture Assembly
  *               (take-apart and repair unchanged); install furniture / a cupboard shelf / fix a rod resolve (a group under its own category; Install = Mount where only one is authored);
  *               an ambiguous "fix light" / "fix fixture" is NOT guessed: the vetoed fallback carries the kind of job (electric_lighting) so the page can ask.
  *   B. THE PAGE real browser: furniture assembly shows the furniture selection (it showed "Legacy flow – please use the new UI."); "fix light" asks which lighting job, a choice opens
@@ -28,23 +28,26 @@ const route = (sb, t) => sb.executeWorkflow(Object.assign({}, sb.collectBookingC
 const E = load();
 const ent = r => r._vetoed ? 'VETO' : r.entityType === 'service' ? r.entity.id : r.entity ? 'dynamic' : 'NULL';
 console.log('A. engine');
-for (const t of ['fix curtains', 'my blind is broken', 'replace shades', 'drapes making noise', 'hang curtains', 'install blinds'])
+for (const t of ['fix curtains', 'curtains not working', 'drapes making noise', 'hang curtains', 'install blinds', 'fix my blinds'])
     check(`A1 "${t}" is Blinds, Shades or Curtains`, ent(route(E, t)) === 'blinds_shades_curtains_buy_the_hour', ent(route(E, t)));
-for (const t of ['fix sconce', 'sconce not working', 'replace sconce', 'replace light fixture'])
+for (const t of ['replace light fixture', 'fix the ceiling light', 'wall light not working'])
     check(`A2 "${t}" is Light Fixture Replacement`, ent(route(E, t)) === 'light_fixture_replacement', ent(route(E, t)));
 for (const [t, id] of [['assemble furniture', 'furniture_assembly_flat_pack'], ['assemble an ikea dresser', 'furniture_assembly_flat_pack'], ['furniture assembly', 'furniture_assembly_flat_pack'], ['disassemble my bed', 'furniture_disassembly_for_moving'], ['fix my wobbly chair', 'furniture_repair_hourly']])
     check(`A3 "${t}" is ${id}`, ent(route(E, t)) === id, ent(route(E, t)));
-for (const t of ['install furniture', 'install a cupboard shelf', 'fix rod', 'organize cables'])
+for (const t of ['install furniture', 'install a cupboard shelf', 'fix organize', 'organize cables'])
     check(`A4 "${t}" resolves (not a null or vetoed route)`, !['VETO', 'NULL'].includes(ent(route(E, t))), ent(route(E, t)));
-for (const t of ['fix light', 'fix fixture', 'flickering light'])
-    { const r = route(E, t); check(`A5 "${t}" is not guessed: the fallback carries intentCategory electric_lighting`, r._vetoed && r.intentCategory === 'electric_lighting', JSON.stringify({ v: r._vetoed, c: r.intentCategory })); }
+// The HELD synonyms (verify_synonym_promotion_safety.js: "blind spot", sunglasses "shades", "candle sconce", a closet "rod") are not promoted; a request that names only one is asked about.
+for (const [t, cat] of [['fix light', 'electric_lighting'], ['fix fixture', 'electric_lighting'], ['flickering light', 'electric_lighting'], ['fix sconce', 'electric_lighting'], ['my blind is broken', 'wall_mounting'], ['replace shades', 'wall_mounting'], ['fix rod', 'wall_mounting']])
+    { const r = route(E, t); check(`A5 "${t}" is not guessed: the fallback carries intentCategory ${cat}, so the page asks`, r._vetoed && r.intentCategory === cat, JSON.stringify({ v: r._vetoed, c: r.intentCategory })); }
+for (const t of ['blind spot monitor', 'paint in shades of gray', 'candle sconce'])
+    check(`A8 the polysemy probe "${t}" is not quoted as a service`, !!route(E, t)._vetoed, ent(route(E, t)));
 check('A6 resolveDynamicService finds a group under its own category', !!E.resolveDynamicService('furniture_fixes_assembly', 'Install', 'minor_home_repairs_furniture'));
-check('A7 Install resolves to the Mount definition where only Mount is authored', E.resolveDynamicService('wall_mounting', 'Install', null) === E.DB.dynamic_services['wall_mounting+Mount']);
+check('A7 for a named group, Install resolves to the Mount definition where only Mount is authored; with no group it does not guess', E.resolveDynamicService('wall_mounting', 'Install', 'wall_mounting_frames_shelves') === E.DB.dynamic_services['wall_mounting+wall_mounting_frames_shelves+Mount'] && E.resolveDynamicService('wall_mounting', 'Install', null) === null);
 console.log('C. non-vacuity');
 const P1 = load(code => code.replace("const groupCat = groupObj ? (groupObj.category_id || null) : null;", 'const groupCat = null;'));
 check('C1 without the group\'s own category "install furniture" has no entity again (the blank)', !route(P1, 'install furniture').entity);
 const P2 = load(code => code.replace("const alt = normSt === 'Install' ? 'Mount' : normSt === 'Mount' ? 'Install' : null;", 'const alt = null;'));
-check('C2 without Install = Mount "fix rod" is vetoed again', !!route(P2, 'fix rod')._vetoed);
+check('C2 without Install = Mount, "fix organize" (its group authors Mount only) has no entity again', !route(P2, 'fix organize').entity);
 (async () => {
   let puppeteer = null; try { puppeteer = require('puppeteer-core'); } catch { /* below */ }
   const chromePath = findChrome();
@@ -67,6 +70,8 @@ check('C2 without Install = Mount "fix rod" is vetoed again', !!route(P2, 'fix r
   check('B2 "light wont turn on" asks which lighting job (Bulbs, Light Fixtures, Switches), never "Legacy flow"', /We need one more detail/.test(b) && /Light Fixtures/.test(b) && /Switches/.test(b) && noLegacy(b) && errors.size === 0, b.slice(0, 400));
   await clickText('^Light Fixtures$'); await sleep(1000); b = await body();
   check('B3 choosing Light Fixtures opens that group, and the question goes', /Which part\?/.test(b) && !/We need one more detail/.test(b) && errors.size === 0, b.slice(0, 400));
+  errors.clear(); await type('replace my shades'); b = await body();
+  check('B7 "replace my shades" (a held, polysemous word) asks which mounting job, Blinds & Curtains among them, never "Legacy flow"', (/We need one more detail/.test(b) || /What's the issue\?|What is it\?|Where in the home\?/.test(b)) && !/Add to Cart/.test(b) && noLegacy(b) && errors.size === 0, b.slice(-700));
   errors.clear(); await type('fix curtains'); b = await body();
   check('B5 "fix curtains" shows the Blinds, Shades or Curtains card', /Blinds, Shades or Curtains/.test(b) && noLegacy(b) && errors.size === 0, b.slice(0, 400));
   errors.clear(); await type('install furniture'); await clickText('^Looks right'); await sleep(1200); b = await body();

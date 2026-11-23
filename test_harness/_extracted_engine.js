@@ -64,6 +64,7 @@ function resolveDynamicService(category, stype, groupId) {
                         || (parentId ? (defs[(groupCat || cat) + '+' + parentId + '+' + st] || null) : null);
                     if (groupDef) return groupDef;
                 }
+                if (st !== normSt && !groupId) continue; // Install = Mount only for a named group: a bare category guess under the other verb would quote a weak word ("blind spot monitor") instead of asking
                 const catDef = defs[cat + '+' + st] || (groupCat && groupCat !== cat ? defs[groupCat + '+' + st] : null);
                 if (catDef) return catDef;
             }
