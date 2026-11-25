@@ -3724,7 +3724,7 @@
             // T198 W1: a hazard the customer described (gas, carbon monoxide, fire) is answered with what to do, before any quote. A fact the renderer reads; it decides nothing.
             if (route && typeof route === 'object') route.safetyStop = orch_safety_stop(context, db);
             // T198 Y1: work the customer described that is understood but is not a service we offer (painting) is answered as that, not priced as another trade. A fact the renderer reads.
-            if (route && typeof route === 'object') route.unsupportedTrade = orch_unsupported_trade(context, db);
+            if (route && typeof route === 'object') route.unsupportedTrade = orch_unsupported_trade(context, db, route);
             return route;
         }
 
@@ -3738,8 +3738,19 @@
         // orch_unsupported_trade -- LOGIC. The authored trade (global_rules.unsupported_trades) the customer's own words ask for that the business does not offer, or null. It is a different answer from a hazard
         // (what to do) and from an unclear request (a question): the request is understood and is outside the offering, so it is neither priced nor turned into another service.
         /** @param {any} context @param {any} db */
-        function orch_unsupported_trade(context, db) {
-            return orch_authored_stop(context, db && db.global_rules && db.global_rules.unsupported_trades);
+        // The answer has two modes (T198 Z1). 'answer': nothing else supported is asked for, so the trade is said and nothing is priced. 'notice': the request also names work we do (a patch, a mount, an install),
+        // so that work is quoted and the trade is disclosed beside it -- the customer's painting intent is never silently dropped from a price that looks like it covers it. A service that authors the trade's
+        // own material (the patch service's paint touch-up) already covers it, so no notice is made for it.
+        /** @param {any} context @param {any} db @param {any} [route] */
+        function orch_unsupported_trade(context, db, route) {
+            const t = orch_authored_stop(context, db && db.global_rules && db.global_rules.unsupported_trades);
+            if (!t) return null;
+            const words = (' ' + String((context && context.rawText) || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() + ' ');
+            const alongside = (t.alongside_any || []).some(w => words.includes(' ' + String(w).toLowerCase() + ' '));
+            if (!alongside) return Object.assign({}, t, { mode: 'answer' });
+            const mats = (route && route.entity && route.entity.optional_materials) || [];
+            if (route && t.covered_by_material && mats.indexOf(t.covered_by_material) >= 0) return null;
+            return Object.assign({}, t, { mode: 'notice' });
         }
 
         // orch_authored_stop -- LOGIC. The first authored entry whose phrase the words contain and whose exceptions they do not; whole words only.
@@ -3752,7 +3763,7 @@
             for (const st of stops) {
                 if (!(st.patterns || []).some(has)) continue;
                 if ((st.unless_any || []).some(has)) continue;
-                return { id: st.id, title: st.title, message: st.message };
+                return Object.assign({}, st);
             }
             return null;
         }
@@ -12933,7 +12944,7 @@ function addToCart(entry) {
                         return;
                     }
                     // T198 Y1: understood work that is outside what we offer (painting) is said so: no price, no Add, no other service put in its place.
-                    if (route.unsupportedTrade && routeHost) {
+                    if (route.unsupportedTrade && route.unsupportedTrade.mode !== 'notice' && routeHost) {
                         routeHost.style.display = 'block';
                         routeHost.innerHTML = '<div class="safety-stop" role="status" data-unsupported-trade="' + String(route.unsupportedTrade.id).replace(/[^a-z_]/g, '') + '"><h3></h3><p></p></div>';
                         routeHost.querySelector('h3').textContent = route.unsupportedTrade.title;
@@ -12998,6 +13009,16 @@ function addToCart(entry) {
                             break;
                         default:
                             if (catGrid) catGrid.style.display = 'grid';
+                    }
+                    // T198 Z1: the work we do is quoted; the trade we do not offer is said beside it, so nothing the customer asked for disappears from the page unmentioned.
+                    if (route.unsupportedTrade && route.unsupportedTrade.mode === 'notice' && intakeContainer) {
+                        const n = document.createElement('div');
+                        n.className = 'safety-stop trade-notice';
+                        n.setAttribute('role', 'status');
+                        n.setAttribute('data-unsupported-trade', String(route.unsupportedTrade.id).replace(/[^a-z_]/g, ''));
+                        n.textContent = route.unsupportedTrade.notice || route.unsupportedTrade.message;
+                        intakeContainer.style.display = intakeContainer.style.display === 'none' ? 'block' : intakeContainer.style.display;
+                        intakeContainer.insertBefore(n, intakeContainer.firstChild);
                     }
                 };
 
