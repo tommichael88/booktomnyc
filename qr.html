@@ -3723,6 +3723,8 @@
             }
             // T198 W1: a hazard the customer described (gas, carbon monoxide, fire) is answered with what to do, before any quote. A fact the renderer reads; it decides nothing.
             if (route && typeof route === 'object') route.safetyStop = orch_safety_stop(context, db);
+            // T198 Y1: work the customer described that is understood but is not a service we offer (painting) is answered as that, not priced as another trade. A fact the renderer reads.
+            if (route && typeof route === 'object') route.unsupportedTrade = orch_unsupported_trade(context, db);
             return route;
         }
 
@@ -3730,7 +3732,19 @@
         // hazard ("install a gas leak detector"); a whole-word match, so "co" never matches inside another word. Only typed or built text is read: a catalog tap carries none.
         /** @param {any} context @param {any} db */
         function orch_safety_stop(context, db) {
-            const stops = db && db.global_rules && db.global_rules.safety_stops;
+            return orch_authored_stop(context, db && db.global_rules && db.global_rules.safety_stops);
+        }
+
+        // orch_unsupported_trade -- LOGIC. The authored trade (global_rules.unsupported_trades) the customer's own words ask for that the business does not offer, or null. It is a different answer from a hazard
+        // (what to do) and from an unclear request (a question): the request is understood and is outside the offering, so it is neither priced nor turned into another service.
+        /** @param {any} context @param {any} db */
+        function orch_unsupported_trade(context, db) {
+            return orch_authored_stop(context, db && db.global_rules && db.global_rules.unsupported_trades);
+        }
+
+        // orch_authored_stop -- LOGIC. The first authored entry whose phrase the words contain and whose exceptions they do not; whole words only.
+        /** @param {any} context @param {any} stops */
+        function orch_authored_stop(context, stops) {
             const text = ' ' + String((context && context.rawText) || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
             if (!Array.isArray(stops) || text.trim() === '') return null;
             /** @param {string} w */
@@ -10097,8 +10111,10 @@
             // price (or a surface-material question) for a request the system
             // never actually understood. The builder is a Gateway, not a dead end:
             // it resolves to the same BookingContext.
+            // T198 Y1: a new request replaces the last answer; a stop/unsupported-trade panel from the previous one must not stay on screen beside the builder's questions.
+            { const staleHost = document.getElementById('routeCardHost'); if (staleHost && staleHost.querySelector('.safety-stop')) { staleHost.innerHTML = ''; staleHost.style.display = 'none'; } }
             // T198 W1: a described hazard (gas, carbon monoxide, fire) is answered at once with what to do; it is not asked "what item?" first.
-            if (orch_safety_stop({ rawText: desc }, DB)) { sqAnalyze(); return; }
+            if (orch_safety_stop({ rawText: desc }, DB) || orch_unsupported_trade({ rawText: desc }, DB)) { sqAnalyze(); return; }
             const understood = understandRequest(desc, {
                 quiet: true
             });
@@ -12899,6 +12915,14 @@ function addToCart(entry) {
                         routeHost.innerHTML = '<div class="safety-stop" role="alert" data-safety-stop="' + String(route.safetyStop.id).replace(/[^a-z_]/g, '') + '"><h3></h3><p></p></div>';
                         routeHost.querySelector('h3').textContent = route.safetyStop.title;
                         routeHost.querySelector('p').textContent = route.safetyStop.message;
+                        return;
+                    }
+                    // T198 Y1: understood work that is outside what we offer (painting) is said so: no price, no Add, no other service put in its place.
+                    if (route.unsupportedTrade && routeHost) {
+                        routeHost.style.display = 'block';
+                        routeHost.innerHTML = '<div class="safety-stop" role="status" data-unsupported-trade="' + String(route.unsupportedTrade.id).replace(/[^a-z_]/g, '') + '"><h3></h3><p></p></div>';
+                        routeHost.querySelector('h3').textContent = route.unsupportedTrade.title;
+                        routeHost.querySelector('p').textContent = route.unsupportedTrade.message;
                         return;
                     }
                     switch (route.uiTemplate) {
