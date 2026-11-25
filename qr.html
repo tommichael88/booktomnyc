@@ -3723,6 +3723,8 @@
             }
             // T198 W1: a hazard the customer described (gas, carbon monoxide, fire) is answered with what to do, before any quote. A fact the renderer reads; it decides nothing.
             if (route && typeof route === 'object') route.safetyStop = orch_safety_stop(context, db);
+            // T198 Z2: what the customer asked to be DONE (fix/install/assemble...) travels with the route as its own fact; the service identity may be authored as another type (a blind's service is an Install) and must not stand in for it.
+            if (route && typeof route === 'object') route.requestedAction = (context && context.statedStype) || null;
             // T198 Y1: work the customer described that is understood but is not a service we offer (painting) is answered as that, not priced as another trade. A fact the renderer reads.
             if (route && typeof route === 'object') route.unsupportedTrade = orch_unsupported_trade(context, db, route);
             return route;
@@ -5585,6 +5587,7 @@
                 extractedQty: extractQty(rawText),
                 statedCounts: extractStatedCounts(rawText),   // #249: the numbers said beside a thing, for the count question that asks about that thing
                 statedBeyondRange: _scopeEvidence,   // T198 J1/K1: a count of 100 or more said beside a thing, or a lone trailing number that may or may not be a count -- evidence for the card to ask about, never a quantity to price
+                statedStype: understanding.statedStype || null, // T198 Z2: the service type of the customer's own verb -- the requested action, distinct from the resolved service's type
                 extractedObject,
                 resolutionObject,
                 extractedLocation: extractLocation(rawText),
@@ -10058,7 +10061,10 @@
                     // Map intent stype → builder action value
                     // T136: derived from the builder's own action table (was a second hardcoded
                     // map with no 'Mount' entry, so "hang my clock" was never seeded).
-                    const _st = intent?.stype || '';
+                    // T198 Z2: the requested action is the customer's own verb (authored: fix -> Repair); the resolved object's service type is only the fallback when no verb was said. "my blind is broken" is a repair even though the blind's service is authored as an Install.
+                    const _stated = understood.statedStype, _resolved = intent?.stype || '';
+                    // Install, hang and mount are one authored family of verbs: the object's own type may refine them (a clock is hung = Mount), but it never overrides a different kind of work (fix, assemble, set up).
+                    const _st = !_stated ? _resolved : (_stated === 'Install' && /Mount/.test(_resolved)) ? _resolved : _stated;
                     const _byStype = BLD_ACTION_MAP.find(a => a.stype === _st);
                     const detectedAction = _byStype ? _byStype.value : (_st === 'Install / Mount' ? 'mount' : null);
 
