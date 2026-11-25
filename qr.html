@@ -3757,6 +3757,17 @@
             return null;
         }
 
+        // orch_builder_unresolved -- LOGIC. Whether the shared resolution declines to price the sentence a guided-builder session composed (the route is vetoed: an ambiguous word -- "light", "fixture" --
+        // that the customer's other words do not settle). The builder resolves to the same BookingContext as typed words (T198 Y2); a decision the orchestrator makes about those facts is the decision on
+        // both ways in, so the builder does not price what free text asks about. A session that already names its group is not asked again.
+        /** @param {string} desc @param {any} db @param {string|null} groupId */
+        function orch_builder_unresolved(desc, db, groupId) {
+            if (groupId || !desc) return false;
+            const ctx = collectBookingContext_freeText(desc);
+            const r = executeWorkflow(Object.assign({}, ctx, { tagsAffirmed: true }), db);
+            return !!(r && r._vetoed);
+        }
+
         // orch_unroute -- LOGIC. "Not right? Change my answer": returns to the service that asked, with the answer that moved the job removed (the question is open again) and that route declined, so a tag that
         // supplies the same answer (a sentence the customer typed) does not move them round again. A route that was not moved is returned unchanged.
         /** @param {any} route @param {any} db */
@@ -11924,6 +11935,10 @@ function addToCart(entry) {
             const builder = document.getElementById('sqBuilder');
             if (builder) builder.style.display = 'none';
             document.getElementById('sqUnifiedActionBtn')?.classList.remove('active');
+
+            // T198 Y2: the builder's facts go through the same resolution as typed words. Where that resolution will not price them (an ambiguous word no other answer settled), the customer is asked
+            // the same question free text asks, not handed the category's default price.
+            if (orch_builder_unresolved(desc, DB, BLD._groupId)) { sqAnalyze(); return; }
 
             // ── Seed S entirely from builder choices (no NLP re-detection) ─
             const normStype = (BLD._stype || 'Repair').replace('Install / Mount', 'Install');
