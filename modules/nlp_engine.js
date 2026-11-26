@@ -561,9 +561,9 @@
      // All recognised actions in the order the client said them (max 2),
      // as natural infinitives -- "repair and hang", never just the one the
      // table happens to list first.
-     // detectStatedStype -- the service type the customer's OWN verb names ("fix" -> Repair, "hang" -> Install; authored in action_conjugations), or null when no authored verb was said.
+     // _detectStatedStype -- the service type the customer's OWN verb names ("fix" -> Repair, "hang" -> Install; authored in action_conjugations), or null when no authored verb was said.
      // It is the requested action, a different fact from the resolved service's type: a blind's service is authored as an Install, but "my blind is broken" asks for a repair (T198 Z2).
-     function detectStatedStype(text) {
+     function _detectStatedStype(text) {
          const l = String(text || '').toLowerCase().replace(/\u2019/g, "'");
          const acts = window._NLP?.ACTIONS || [];
          let best = null;
@@ -777,7 +777,7 @@
              text: parts.map(p => p.text || '').join('').trim(),
              parts,
              actions,
-             statedStype: detectStatedStype(src),
+             statedStype: _detectStatedStype(src),
              object,
              subject,
              resolutionObject,
