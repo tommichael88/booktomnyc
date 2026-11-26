@@ -20,6 +20,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same pull request replaces its still-running suite (a 150-minute job); runs on main are never cancelled.
+concurrency:
+  group: application-suite-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   suite:
     runs-on: ubuntu-latest
