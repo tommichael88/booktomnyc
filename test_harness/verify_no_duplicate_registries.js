@@ -194,7 +194,7 @@ const FILED = {
         check('every group of structurally equal constants is filed with the ledger entry that names it', unfiled.length === 0,
             unfiled.map(g => `${g.key} x${g.count} (${g.kind}, ${g.n} entries) at ${g.sites.map(s => `${s.fn} L${s.line}`).join(', ')}: ${g.c.slice(0, 80)}`).join(' | '));
         const LEDGER = fs.readFileSync(path.join(REPO_ROOT, 'PENDING_DECISIONS.md'), 'utf8');
-        const missing = filedKeys.filter(k => { const ref = FILED[k][1]; return !(ref.startsWith('#') ? new RegExp('^### ' + ref + ' ', 'm') : new RegExp('^\\*\\*' + ref + ' ', 'm')).test(LEDGER); });
+        const missing = filedKeys.filter(k => { const ref = FILED[k][1]; return require('./_ledger_ref.js').parseRef(ref) ? require('./_ledger_ref.js').filingProblem(ref, LEDGER) !== null : !new RegExp('^\\*\\*' + ref + ' ', 'm').test(LEDGER); });
         check('every filed group cites a ledger entry that exists in PENDING_DECISIONS.md (R-INVARIANT-DUPLICATION-TICKET: a second copy is ticketed)', missing.length === 0, fmt(missing.map(k => `${k} -> ${FILED[k][1]}`)));
         check('no filed group has gained a copy', grown.length === 0, fmt(grown.map(g => `${g.key}: ${g.count} copies, filed ${FILED[g.key][0]}`)));
         check('every filed group still exists at its filed size (the list only shrinks: delete the entry when the copies go)', gone.length === 0, fmt(gone.map(k => `${k}: ${FILED[k][2]}`)));

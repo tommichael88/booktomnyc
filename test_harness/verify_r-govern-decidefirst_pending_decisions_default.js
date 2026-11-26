@@ -7,6 +7,11 @@
  * (#105(3)) and has not been withdrawn, so the linter keeps running and every ledger entry filed since still carries its default. It is a project convention now, not
  * a Charter Rule; PENDING_DECISIONS records the question of whether to keep it. Everything below describes the rule as it was when it was a Charter Rule.
  *
+ * WORKFLOW CONSOLIDATION NOTE. PENDING_DECISIONS.md is frozen history now; a decision needing the operator is a GitHub Issue from the `decision-needed` form, whose
+ * "Default in force" field is REQUIRED, and `work_queue.js check` lints every open Issue for a real default. That forward-looking half of this rule is held, with
+ * planted counterexamples (empty, placeholder, field missing, default of the next section), by verify_workflow_contract.js. This linter now holds the other half: that the
+ * frozen ledger still obeys the rule it was written under (it cannot change, so a red here means the frozen file was edited). It is not retired and nothing is added to it.
+ *
  * THE RULE. Before a decision is filed as needing the operator, its ledger entry carries the measurement that would settle it and the decision the
  * agent will take if it is not answered ("Default if unanswered"). Only a question that turns on information the agent cannot obtain (customer intent,
  * business appetite, legal standing) may be deferred without a measurement, and the entry says which. G-GOVERN-AUTONOMY governs where an older

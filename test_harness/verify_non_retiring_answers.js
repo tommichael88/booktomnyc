@@ -220,7 +220,7 @@ section('1-2. the delta check on the real catalog, and the filed list', () => {
         unfiled.map(m => `${m}: ${REAL.flagged.filter(f => f.module === m).map(f => `"${f.fallback}" = ${f.equalTo.map(l => `"${l}"`).join(' = ')}`).join('; ')} (asked in ${REAL.flagged.find(f => f.module === m).services.join(', ')})`).join(' | '));
     check('every filed module still flags (a module that no longer flags is deleted from the list: the list only shrinks)', stale.length === 0, stale.join(', ') + ': delete from FILED');
     const ledger = read('PENDING_DECISIONS.md');
-    check(`the filed list cites a ledger entry that exists (${FILED_LEDGER})`, new RegExp('^### ' + FILED_LEDGER.replace('#', '#') + ' ', 'm').test(ledger));
+    check(`the filed list cites a ledger entry that exists (${FILED_LEDGER})`, require('./_ledger_ref.js').filingProblem(FILED_LEDGER, ledger) === null);
     check('the filed list has no duplicates and no retired module in it', new Set(FILED).size === FILED.length && !FILED.some(m => RETIRED.includes(m)));
 });
 
