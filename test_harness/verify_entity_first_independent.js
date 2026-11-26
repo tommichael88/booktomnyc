@@ -66,6 +66,7 @@ function washerSource() {
   f.policy.complexity_axes.single_use_consumable_material_ids = []; f.policy.complexity_axes.assembly_family_service_ids = []; // the washer owns no catalog material and is no assembly service; the three axes it declares are the real washer_repair's (R-COMPLEX-AXES)
   f.vocabulary.nlp_objects = []; f.vocabulary.nlp_default_fallback.category = 'cat.fixture_home';
   f.vocabulary.action_vocabulary.actions = f.vocabulary.action_vocabulary.actions.filter(a => a.action_id === 'act.repair');
+  for (const v of f.vocabulary.action_vocabulary.unmapped_verbs) if (v.offering) v.offering.partial_coverage = []; // T198 AA: an offering's partial coverage names a catalog service (V-OFFER-DANGLING); the washer fixture owns no such service, as it owns no other catalog id it borrows
 
   // the service: the scaffolding of any service (presentation, pricing path, runtime_compat) borrowed from one real service, then every identity, question, weight and threshold set by hand
   const donor = REAL.entities.find(e => e.id === 'ent.computer').services.find(s => s.confidence_gate && s.confidence_gate.mode === 'weighted_uncertainty');

@@ -140,7 +140,7 @@ console.log('\nThe action vocabulary is id-keyed in the source and label-keyed a
   check('the projection hands the NLP engine the legacy shape (negation_library equal to btnyc.json\'s, every label key present)', lib.diff(A.negation_library, project(SRC).negation_library) === null && labels.every(k => Object.prototype.hasOwnProperty.call(projected, k)), labels.join());
   const noVocab = actions.filter(a => !av.actions.some(x => x.action_id === a.id)).map(a => a.id);
   check('an action with no vocabulary is reported, not invented (act.mount)', JSON.stringify(noVocab) === JSON.stringify(['act.mount']) && V.validate(SRC).residuals.some(r => r.kind === 'action_without_vocabulary' && r.id === 'act.mount'), noVocab.join());
-  check('verbs that name no action (remove, replace) are kept as unmapped verbs and reported', av.unmapped_verbs.map(v => v.verb).sort().join() === 'remove,replace' && V.validate(SRC).residuals.filter(r => r.kind === 'verb_without_action').map(r => r.id).sort().join() === 'remove,replace');
+  check('verbs that name no action (remove, paint) are kept as unmapped verbs and reported', av.unmapped_verbs.map(v => v.verb).sort().join() === 'paint,remove' && V.validate(SRC).residuals.filter(r => r.kind === 'verb_without_action').map(r => r.id).sort().join() === 'paint,remove');
   // counterfactual: the round trip is not a tautology -- a lost form is seen
   const lossy = lib.clone(av); lossy.actions[0].all_forms = lossy.actions[0].all_forms.slice(1);
   check('counterfactual: dropping one verb form breaks the round trip', JSON.stringify(vocab.joinActionVocabulary(lossy, actions)) !== JSON.stringify(legacyAc));

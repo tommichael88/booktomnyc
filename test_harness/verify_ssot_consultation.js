@@ -294,6 +294,7 @@ const NESTED_DICT_OF_DICTS_PATHS = [
     'confidence_tiers',                          // keys: high_confidence_simple/medium_confidence_standard/low_confidence_complex
     'adlib_phrase_overrides.group_templates',     // keys: real display_group names ("Wall Material", etc.) + default_template
     'negation_library.negation_confirmations',    // keys: tag IDs (#heavy_item, etc.)
+    'negation_library.action_conjugations',       // T198 AA: keyed by service-type name (Install, Repair, ... and any type authored later, e.g. Replace) -- an id, not a field; read as action_conjugations[stype] (nlp_engine, qr.html bldActionMap). The type set is open by design (the runtime schema no longer closes it), so each new type must not read as a new unconsulted field.
     'routing_archetypes',                        // v9.5: keyed by group_id -- compiler output, consumed by validateRoute/checkRoutingArchetypeConsistency
     'pricing_archetypes',                        // v9.5: keyed by archetype name -- compiler output, consumed by computeUnifiedQuote/computeArchetypeQuote dispatch
     'global_rules.modifiers',                    // v9.4: keyed by modifier ID (e.g. tile_grout, symptom_won_t_spin_no_movement) -- value shape = {fee, minutes, note?}. Resolved via client_response.modifier_ref / pricing_formula .*_modifier_ref fields.
