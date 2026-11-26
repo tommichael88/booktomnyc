@@ -17,6 +17,7 @@
  *   V-COMPLEX-*       the three axes every service declares (R-COMPLEX-AXES, R-COMPLEX-COMPOUNDS, P-COMPLEX-FURNITURE): PROFILE (a missing or illegal axis), TIER (the skill tier is declared twice and the two disagree), RISK (the risk tier is not the highest hazard it names),
  *                     BATCH (the flag is not what its signals say), ASSEMBLY (the assembly class), VOCAB (the vocabulary they are written in)
  *   V-NAME-*          a curated service's name composed from the scope it authors (T188; service_naming.js): VOCAB, MISSING, PARTS, CHARS, CASE, STUTTER, STALE, UNIQUE, MODIFIER, ENTITY, TAIL, EXCEPTION
+ *   V-OFFER-*         a verb understood and not offered (T198 AA): SHAPE (the three texts), SHADOW (the same words are also a mapped action: offered and not offered), DANGLING (a partial coverage names no service)
  *   V-UNC-*           uncertainty classes, profiles and retirement       V-CONF-*   confidence policy and gate       V-OPT-*   option effects (V-OPT-COUNT-RANGE: an authored count range's shape and non-overlap)     V-COMP-*   unsafe-to-compose services
  * Declared gaps are not errors and not hidden: they are returned as `residuals` and counted in the coverage report.
  */
@@ -327,6 +328,22 @@ function validate(src, opts = {}) {
     }
     for (const k of Object.keys(f)) if (/_modifier_ref$/.test(k) && !named.has(k)) res('formula_modifier_without_input', `${f.id}.${k}`, `${f.id} names ${f[k]} as ${k}, but no input says which answer (or constant) applies it`);
   });
+
+  // ---- offering (T198 AA): a verb the catalog understands and does not offer is authored once, on the verb (vocabulary.action_vocabulary.unmapped_verbs[*].offering); the runtime reads it from there and nowhere else --
+  // The contract: authoring the verb as a mapped action (a service type) lifts the decline, and a source that says both is rejected here with the fix named, not left to show two answers to a customer.
+  {
+    const av = (src.vocabulary && src.vocabulary.action_vocabulary) || {};
+    const formsOf = d => [...(d.all_forms || []), ...((d.synonym_clusters || []).flatMap(c => c.forms || []))].map(f => String(f).toLowerCase());
+    const mappedForms = new Map();
+    (av.actions || []).forEach(a => formsOf(a).forEach(f => { if (!mappedForms.has(f)) mappedForms.set(f, a.action_id); }));
+    (av.unmapped_verbs || []).forEach((v, i) => {
+      if (v.offering === undefined) return;
+      const op = `vocabulary.action_vocabulary.unmapped_verbs[${i}].offering`, o = v.offering;
+      if (!o || typeof o !== 'object' || o.status !== 'not_offered' || ['title', 'message', 'notice'].some(k => typeof o[k] !== 'string' || !o[k].trim())) { err('V-OFFER-SHAPE', op, `${v.verb}: an offering is { status: "not_offered", title, message, notice } (all three texts non-empty: the customer is told what is not offered, why nothing is priced, and what a mixed quote leaves out), found ${JSON.stringify(o).slice(0, 120)}`); return; }
+      for (const f of formsOf(v)) if (mappedForms.has(f)) { err('V-OFFER-SHADOW', op, `${v.verb}: "${f}" is also a form of the mapped action ${mappedForms.get(f)}, so this verb is both offered and declared not offered. When a verb becomes an offered action, delete its unmapped_verbs entry (and with it this offering); keep the offering only while no action carries these words`); break; }
+      (o.partial_coverage || []).forEach((c, j) => { if (!c || !exists(c.service_id) || idType(c.service_id) !== 'svc') err('V-OFFER-DANGLING', `${op}.partial_coverage[${j}]`, `${v.verb}: partial_coverage names ${c && c.service_id}, which is not a service in this source`); else if (typeof c.note !== 'string' || !c.note.trim()) err('V-OFFER-SHAPE', `${op}.partial_coverage[${j}]`, `${v.verb}: a partial coverage states its limit in a note (what part of the work the service covers)`); });
+    });
+  }
 
   // ---- count ranges (#249, T198 G1): which counts a count answer applies to, authored on the option; the ranges of one question do not overlap, so a stated count has at most one answer ----------------------
   for (const q of allQuestions) {

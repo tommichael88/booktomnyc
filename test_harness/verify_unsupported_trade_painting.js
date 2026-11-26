@@ -1,6 +1,6 @@
 /**
  * verify_unsupported_trade_painting.js -- T198 (Y1): painting is understood as painting ("light" is a colour there) and answered as outside what we offer: no price, no other trade put in its place.
- *   A. ENGINE   painting phrasings carry route.unsupportedTrade (authored in global_rules.unsupported_trades); supported neighbours (patch and paint, hang a painting, a light that will not turn on) do not.
+ *   A. ENGINE   painting phrasings carry route.unsupportedTrade (authored once, on the verb "paint" in the action vocabulary: its `offering`); supported neighbours (patch and paint, hang a painting, a light that will not turn on) do not.
  *   B. THE PAGE real browser: the answer shows no price or Add; neighbours unchanged.
  *   C. NON-VACUITY the rule removed -> the request is priced as another trade again.
  */
@@ -22,15 +22,16 @@ function load(mutate) {
 const route = (sb, t) => sb.executeWorkflow(Object.assign({}, sb.collectBookingContext_freeText(t), { tagsAffirmed: true }), sb.DB);
 
 const STOP = ['touch up paint','paint is peeling on the wall','paint the walls light gray','paint my bedroom','repaint the ceiling','light gray walls need painting','paint the door light blue','white shades of paint','I need a painter','painting my kitchen'];
-const OK = ['hang a painting','mount a framed picture','I will paint it myself, just patch the crack','light wont turn on','install a ceiling light','fix a light fixture','replace smoke alarm battery','hang a mirror'];
+const OK = ['hang a painting','mount a framed picture','light wont turn on','install a ceiling light','fix a light fixture','replace smoke alarm battery','hang a mirror'];
 // T198 Z1: a request that also names work we do keeps that work's quote AND discloses the painting (mode 'notice'); a service that authors the paint touch-up covers it (no notice).
-const MIXED = ['paint the room and hang a picture','repaint the bedroom and mount a tv','install a shelf and paint the room','patch the hole and paint it'];
+const MIXED = ['I will paint it myself, just patch the crack','paint the room and hang a picture','repaint the bedroom and mount a tv','install a shelf and paint the room','patch the hole and paint it'];
+// T198 AA: the patch service authors a PARTIAL coverage of painting (touch-up of the repaired spot only); it is disclosed as such, never read as covering a whole wall.
 const COVERED = ['patch and paint the wall','paint the walls and patch the crack','fix the drywall hole then paint the whole room'];
 const E = load();
 console.log('A. engine');
-for (const t of STOP) { const r = route(E, t); check(`A1 "${t}" is the painting answer`, r.unsupportedTrade && r.unsupportedTrade.id === 'painting' && r.unsupportedTrade.mode === 'answer' && !r.safetyStop, JSON.stringify(r.unsupportedTrade && r.unsupportedTrade.mode)); }
+for (const t of STOP) { const r = route(E, t); check(`A1 "${t}" is the painting answer`, r.unsupportedTrade && r.unsupportedTrade.id === 'paint' && r.unsupportedTrade.mode === 'answer' && !r.safetyStop, JSON.stringify(r.unsupportedTrade && r.unsupportedTrade.mode)); }
 for (const t of MIXED) { const r = route(E, t); check(`A1m "${t}" quotes its supported work and discloses painting`, r.unsupportedTrade && r.unsupportedTrade.mode === 'notice' && r.uiTemplate === 'curated_card' && !!r.entity, JSON.stringify([r.unsupportedTrade && r.unsupportedTrade.mode, r.uiTemplate])); }
-for (const t of COVERED) { const r = route(E, t); check(`A1c "${t}" is covered by the patch service's own paint touch-up (no notice)`, !r.unsupportedTrade && r.entity && r.entity.id === 'wall_hole_or_crack_repair', JSON.stringify([r.unsupportedTrade, r.entity && r.entity.id])); }
+for (const t of COVERED) { const r = route(E, t); check(`A1c "${t}" is the patch service with its authored partial-coverage note (touch-up of the repaired spot only)`, r.unsupportedTrade && r.unsupportedTrade.mode === 'notice' && /touch-up of the repaired spot only/.test(r.unsupportedTrade.notice) && r.entity && r.entity.id === 'wall_hole_or_crack_repair', JSON.stringify([r.unsupportedTrade && r.unsupportedTrade.notice, r.entity && r.entity.id])); }
 for (const t of OK) { const r = route(E, t); check(`A2 "${t}" is not an unsupported trade`, !r.unsupportedTrade, JSON.stringify(r.unsupportedTrade)); }
 check('A3 an unsupported trade has no price on its own (nothing authored for painting)', !JSON.stringify(E.DB.services).match(/"id":\s*"svc\.paint/i));
 console.log('C. non-vacuity');
@@ -63,7 +64,7 @@ check('C1 without the rule painting has no answer and is priced as another trade
     check(`B4 "${t}" shows the supported quote and says painting is not included`, /painting itself isn't something we offer/i.test(m) && /\$\d/.test(m) && !/legacy flow/i.test(m) && errors.size === 0, [...errors].join('; ') + ' || ' + m.slice(0, 260));
   }
   errors.clear(); await type('patch and paint the wall'); const pw = await body();
-  check('B5 "patch and paint the wall" is the patch service with no painting disclaimer (its own touch-up)', /\$\d/.test(pw) && !/painting itself isn't something we offer/i.test(pw) && !/Painting isn't something we offer/.test(pw) && errors.size === 0, pw.slice(0, 260));
+  check('B5 "patch and paint the wall" is the patch service and says its paint covers the touch-up of the repaired spot only', /\$\d/.test(pw) && /touch-up of the repaired spot only/i.test(pw) && !/Painting isn't something we offer/.test(pw) && errors.size === 0, pw.slice(0, 260));
   await browser.close();
   console.log(`\n[unsupported trade: painting] ${pass} passed, ${fail} failed (of ${pass + fail} checks)`); process.exit(fail ? 1 : 0);
 })();

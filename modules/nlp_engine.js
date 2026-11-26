@@ -254,6 +254,7 @@
                  infinitive: def.infinitive_for_adlib || key,
                  wordInfinitiveMap: buildWordMap(def),
                  pattern,
+                 offering: def.offering || null, // authored: this verb is understood but not offered (title, message, notice, partial_coverage)
                  _extraKey: key
              });
          }
@@ -561,23 +562,35 @@
      // All recognised actions in the order the client said them (max 2),
      // as natural infinitives -- "repair and hang", never just the one the
      // table happens to list first.
-     // _detectStatedStype -- the service type the customer's OWN verb names ("fix" -> Repair, "hang" -> Install; authored in action_conjugations), or null when no authored verb was said.
-     // It is the requested action, a different fact from the resolved service's type: a blind's service is authored as an Install, but "my blind is broken" asks for a repair (T198 Z2).
-     function _detectStatedStype(text) {
+     // _detectStatedAction -- what the customer's OWN verbs say, read from the authored action vocabulary only (one classification, P-SYSTEM-CLASSIFY-ONE):
+     //   stype        the service type of the first mapped verb ("fix" -> Repair, "hang" -> Install), or the implied Repair of a stated malfunction, else null. This is the REQUESTED ACTION, a different fact from
+     //                the resolved service's own type: a blind's service is authored as an Install, but "my blind is broken" asks for a repair (T198 Z2).
+     //   notOffered   the authored offering of a verb the catalog understands and does not offer ("paint"), or null; withMappedVerb says an explicitly mapped verb is also present (mixed work).
+     //                A verb that has been given a service type (a mapped action at the same place) is offered: authoring it lifts the decline with no other change (T198 AA).
+     function _detectStatedAction(text) {
          const l = String(text || '').toLowerCase().replace(/\u2019/g, "'");
          const acts = window._NLP?.ACTIONS || [];
-         let best = null;
+         const hits = [];
          for (const a of acts) {
              const re = new RegExp(a.pattern.source, 'gi');
              let m;
              while ((m = re.exec(l))) {
-                 if (a.serviceTypeKey && (!best || m.index < best.idx)) best = { stype: a.serviceTypeKey, idx: m.index };
+                 hits.push({ a, idx: m.index });
                  if (m[0].length === 0) re.lastIndex++;
              }
          }
-         if (best) return best.stype;
+         let mapped = null;
+         for (const h of hits) if (h.a.serviceTypeKey && (!mapped || h.idx < mapped.idx)) mapped = h;
+         let off = null;
+         for (const h of hits) {
+             if (!h.a.offering || h.a.serviceTypeKey) continue;
+             if (hits.some(o => o.a.serviceTypeKey && o.idx === h.idx)) continue;
+             if (!off || h.idx < off.idx) off = h;
+         }
          // no verb: a stated malfunction (broken, won't turn on, ...) is the same implied "fix" detectActionsInOrder already reads -- one rule, so the two cannot disagree
-         return detectActionsInOrder(text)[0] === 'fix' ? 'Repair' : null;
+         const stype = mapped ? mapped.a.serviceTypeKey : (detectActionsInOrder(text)[0] === 'fix' ? 'Repair' : null);
+         const notOffered = off ? Object.assign({ verb: off.a._extraKey, withMappedVerb: !!mapped }, off.a.offering) : null;
+         return { stype, notOffered };
      }
 
      function detectActionsInOrder(text) {
@@ -669,6 +682,7 @@
 
      function understandRequest(text, opts) {
          const src = _normalizeTypedText(text);
+         const statedAction = _detectStatedAction(src);
          const hasText = !!src.trim();
          const empty = {
              hasText,
@@ -777,7 +791,8 @@
              text: parts.map(p => p.text || '').join('').trim(),
              parts,
              actions,
-             statedStype: _detectStatedStype(src),
+             statedStype: statedAction.stype,
+             statedNotOffered: statedAction.notOffered,
              object,
              subject,
              resolutionObject,

@@ -3737,22 +3737,23 @@
             return orch_authored_stop(context, db && db.global_rules && db.global_rules.safety_stops);
         }
 
-        // orch_unsupported_trade -- LOGIC. The authored trade (global_rules.unsupported_trades) the customer's own words ask for that the business does not offer, or null. It is a different answer from a hazard
-        // (what to do) and from an unclear request (a question): the request is understood and is outside the offering, so it is neither priced nor turned into another service.
-        /** @param {any} context @param {any} db */
-        // The answer has two modes (T198 Z1). 'answer': nothing else supported is asked for, so the trade is said and nothing is priced. 'notice': the request also names work we do (a patch, a mount, an install),
-        // so that work is quoted and the trade is disclosed beside it -- the customer's painting intent is never silently dropped from a price that looks like it covers it. A service that authors the trade's
-        // own material (the patch service's paint touch-up) already covers it, so no notice is made for it.
+        // orch_unsupported_trade -- LOGIC. Whether the customer asked for work the catalog understands and does not offer (T198 Y1/Z1/AA). That fact is authored once, on the verb in the action vocabulary
+        // (an unmapped verb's `offering`), and read by the NLP into the booking context (statedNotOffered); this function only decides what the page does with it, from the route:
+        //   'answer'  no mapped verb is asked for: the work is said not to be offered and nothing is priced or put in its place.
+        //   'notice'  a mapped verb is asked for too (hang, mount, patch...): that work is quoted and the unoffered work is said not included. A service the offering names in `partial_coverage` states its
+        //             own limit (the patch service's paint touch-up covers the repaired spot only), so a coverage of part of the work is never read as coverage of all of it.
+        // Authoring a service type for the verb (a mapped action) lifts the decline in the NLP; there is no second list here to keep in step (R-INVARIANT-SOURCE, P-SYSTEM-CLASSIFY-ONE).
         /** @param {any} context @param {any} db @param {any} [route] */
         function orch_unsupported_trade(context, db, route) {
-            const t = orch_authored_stop(context, db && db.global_rules && db.global_rules.unsupported_trades);
-            if (!t) return null;
-            const words = (' ' + String((context && context.rawText) || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() + ' ');
-            const alongside = (t.alongside_any || []).some(w => words.includes(' ' + String(w).toLowerCase() + ' '));
-            if (!alongside) return Object.assign({}, t, { mode: 'answer' });
-            const mats = (route && route.entity && route.entity.optional_materials) || [];
-            if (route && t.covered_by_material && mats.indexOf(t.covered_by_material) >= 0) return null;
-            return Object.assign({}, t, { mode: 'notice' });
+            const n = context && context.statedNotOffered;
+            if (!n) return null;
+            const out = { id: String(n.verb || ''), title: n.title, message: n.message, notice: n.notice, mode: n.withMappedVerb ? 'notice' : 'answer' };
+            if (out.mode === 'notice') {
+                const id = route && route.entity && route.entity.charter_id;
+                const cov = (n.partial_coverage || []).find(c => id && c.service_id === id);
+                if (cov && cov.note) out.notice = cov.note;
+            }
+            return out;
         }
 
         // orch_authored_stop -- LOGIC. The first authored entry whose phrase the words contain and whose exceptions they do not; whole words only.
@@ -5587,7 +5588,8 @@
                 extractedQty: extractQty(rawText),
                 statedCounts: extractStatedCounts(rawText),   // #249: the numbers said beside a thing, for the count question that asks about that thing
                 statedBeyondRange: _scopeEvidence,   // T198 J1/K1: a count of 100 or more said beside a thing, or a lone trailing number that may or may not be a count -- evidence for the card to ask about, never a quantity to price
-                statedStype: understanding.statedStype || null, // T198 Z2: the service type of the customer's own verb -- the requested action, distinct from the resolved service's type
+                statedStype: understanding.statedStype || null, // T198 Z2: the customer's own verb's type
+                statedNotOffered: understanding.statedNotOffered || null, // T198 AA: authored not-offered verb
                 extractedObject,
                 resolutionObject,
                 extractedLocation: extractLocation(rawText),
@@ -5628,6 +5630,7 @@
                 statedCounts: [],
                 statedBeyondRange: null,
                 statedStype: null,   // T198 Z2: the service type of the customer's own verb (the requested action); null where no words were typed, so every gateway has the same shape
+                statedNotOffered: null, // T198 AA: the authored offering of a verb we understand and do not offer; null where none, so every gateway has the same shape
                 extractedObject: null,
                 resolutionObject: null,
                 extractedLocation: null,
@@ -8437,7 +8440,7 @@
             container.appendChild(prompt);
 
             types.forEach(stype => {
-                const actionInfo = (typeof BLD_ACTION_MAP !== 'undefined' ? BLD_ACTION_MAP : []).find(a => a.stype === stype);
+                const actionInfo = (typeof bldActionMap === 'function' ? bldActionMap() : []).find(a => a.stype === stype);
                 const label = actionInfo?.label || stype;
                 const tile = document.createElement('div');
                 tile.className = 'group-tile';
@@ -9165,6 +9168,20 @@
             },
         ];
 
+        // bldActionMap -- GLUE (T198 AA). The builder's action choices: the rows above (their labels and icons are presentation the catalog does not yet author) PLUS one row for every authored service type that
+        // has a customer verb (negation_library.action_conjugations) and no row here. Authoring an action in the catalog (act.replace) therefore reaches the guided builder with no change to this file; the rows above
+        // are the bounded legacy set, and a row is added here only for a label the catalog cannot yet carry.
+        function bldActionMap() {
+            const rows = BLD_ACTION_MAP.slice(), have = new Set(rows.map(r => r.stype));
+            const st = (typeof DB !== 'undefined' && DB && DB.service_types) || {}, conj = (typeof DB !== 'undefined' && DB && DB.negation_library && DB.negation_library.action_conjugations) || {};
+            for (const key of Object.keys(st)) {
+                if (have.has(key) || !conj[key] || !conj[key].infinitive_for_adlib) continue;
+                const inf = String(conj[key].infinitive_for_adlib);
+                rows.push({ label: inf.charAt(0).toUpperCase() + inf.slice(1), icon: st[key].icon || 'ti ti-tool', value: inf, stype: key, verbLabel: st[key].verb_natural || inf, derived: true });
+            }
+            return rows;
+        }
+
         // Location step: NOT in btnyc.json — hardcoded UI list
         // v9.5 FIX: was a hardcoded 8-room array, completely bypassing
         // negation_library.nlp_location_words (the real SSOT, with 21
@@ -9441,9 +9458,9 @@
                 // chips that don't even apply there). Falls back to the
                 // full list for fresh/free-text-seeded builder sessions.
                 choices: (bld) => {
-                    if (!bld._allowedTypes || !bld._allowedTypes.length) return BLD_ACTION_MAP;
-                    const filtered = BLD_ACTION_MAP.filter(a => bld._allowedTypes.includes(a.stype));
-                    return filtered.length ? filtered : BLD_ACTION_MAP;
+                    if (!bld._allowedTypes || !bld._allowedTypes.length) return bldActionMap();
+                    const filtered = bldActionMap().filter(a => bld._allowedTypes.includes(a.stype));
+                    return filtered.length ? filtered : bldActionMap();
                 }
             },
             {
@@ -10066,7 +10083,7 @@
                     const _stated = understood.statedStype, _resolved = intent?.stype || '';
                     // Install, hang and mount are one authored family of verbs: the object's own type may refine them (a clock is hung = Mount), but it never overrides a different kind of work (fix, assemble, set up).
                     const _st = !_stated ? _resolved : (_stated === 'Install' && /Mount/.test(_resolved)) ? _resolved : _stated;
-                    const _byStype = BLD_ACTION_MAP.find(a => a.stype === _st);
+                    const _byStype = bldActionMap().find(a => a.stype === _st);
                     const detectedAction = _byStype ? _byStype.value : (_st === 'Install / Mount' ? 'mount' : null);
 
                     // Reset BLD and seed from NLP
@@ -10143,7 +10160,7 @@
             // T198 Y1: a new request replaces the last answer; a stop/unsupported-trade panel from the previous one must not stay on screen beside the builder's questions.
             { const staleHost = document.getElementById('routeCardHost'); if (staleHost && staleHost.querySelector('.safety-stop')) { staleHost.innerHTML = ''; staleHost.style.display = 'none'; } }
             // T198 W1: a described hazard (gas, carbon monoxide, fire) is answered at once with what to do; it is not asked "what item?" first.
-            if (orch_safety_stop({ rawText: desc }, DB) || orch_unsupported_trade({ rawText: desc }, DB)) { sqAnalyze(); return; }
+            if (orch_safety_stop({ rawText: desc }, DB) || orch_unsupported_trade(collectBookingContext_freeText(desc), DB)) { sqAnalyze(); return; }
             const understood = understandRequest(desc, {
                 quiet: true
             });

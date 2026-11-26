@@ -179,6 +179,13 @@ mut('an option carries a priced modifier but does not declare price', ['V-OPT-EF
 mut('an option lists an effect twice', ['V-OPT-EFFECT'], s => { const o = questionsOf(s).flatMap(q => q.options || []).find(x => x.affects.length); o.affects = [o.affects[0], o.affects[0]]; });
 mut('evidence that is not "unknown"', ['V-OPT-EFFECT'], s => { questionsOf(s).find(q => q.options).options[0].evidence = 'probably'; });
 mut('two answers of a question share a label', ['V-OPT-LABEL-DUP'], s => { const q = questionsOf(s).find(x => x.options && x.options.length > 1); q.options[1].label = q.options[0].label; });
+// V-OFFER-* (T198 AA: a verb understood and not offered is authored once, on the verb; the contradictions fail publication with the fix named)
+const offerVerb = s => s.vocabulary.action_vocabulary.unmapped_verbs.find(v => v.offering);
+mut('an offering with no message', ['V-OFFER-SHAPE'], s => { delete offerVerb(s).offering.message; });
+mut('an offering whose status is not not_offered', ['V-OFFER-SHAPE'], s => { offerVerb(s).offering.status = 'maybe'; });
+mut('a verb declared not offered whose words are also a mapped action (offered AND not offered)', ['V-OFFER-SHADOW'], s => { s.vocabulary.action_vocabulary.actions[0].all_forms.push(offerVerb(s).all_forms[0]); });
+mut('a partial coverage naming no service', ['V-OFFER-DANGLING'], s => { offerVerb(s).offering.partial_coverage[0].service_id = 'svc.no_such_service'; });
+mut('a partial coverage with no limit stated', ['V-OFFER-SHAPE'], s => { delete offerVerb(s).offering.partial_coverage[0].note; });
 // V-OPT-COUNT-RANGE (#249, T198 G1: the item counts a count answer applies to, authored on the option)
 const countQ = s => questionsOf(s).find(q => (q.options || []).filter(o => o.count_range).length >= 2);
 mut('two answers of one question whose count ranges overlap', ['V-OPT-COUNT-RANGE'], s => { const q = countQ(s), os = q.options.filter(o => o.count_range); os[1].count_range = { min: os[0].count_range.min }; });
