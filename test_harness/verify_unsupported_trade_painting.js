@@ -21,15 +21,20 @@ function load(mutate) {
 }
 const route = (sb, t) => sb.executeWorkflow(Object.assign({}, sb.collectBookingContext_freeText(t), { tagsAffirmed: true }), sb.DB);
 
-const STOP = ['paint the walls light gray','paint my bedroom','repaint the ceiling','light gray walls need painting','paint the door light blue','white shades of paint','I need a painter','painting my kitchen'];
-const OK = ['patch the hole and paint it','touch up paint after drywall repair','hang a painting','mount a framed picture','I will paint it myself, just patch the crack','paint is peeling on the wall','light wont turn on','install a ceiling light','fix a light fixture','replace smoke alarm battery','hang a mirror'];
+const STOP = ['touch up paint','paint is peeling on the wall','paint the walls light gray','paint my bedroom','repaint the ceiling','light gray walls need painting','paint the door light blue','white shades of paint','I need a painter','painting my kitchen'];
+const OK = ['hang a painting','mount a framed picture','I will paint it myself, just patch the crack','light wont turn on','install a ceiling light','fix a light fixture','replace smoke alarm battery','hang a mirror'];
+// T198 Z1: a request that also names work we do keeps that work's quote AND discloses the painting (mode 'notice'); a service that authors the paint touch-up covers it (no notice).
+const MIXED = ['paint the room and hang a picture','repaint the bedroom and mount a tv','install a shelf and paint the room','patch the hole and paint it'];
+const COVERED = ['patch and paint the wall','paint the walls and patch the crack','fix the drywall hole then paint the whole room'];
 const E = load();
 console.log('A. engine');
-for (const t of STOP) { const r = route(E, t); check(`A1 "${t}" is the painting answer`, r.unsupportedTrade && r.unsupportedTrade.id === 'painting' && !r.safetyStop, JSON.stringify(r.unsupportedTrade)); }
+for (const t of STOP) { const r = route(E, t); check(`A1 "${t}" is the painting answer`, r.unsupportedTrade && r.unsupportedTrade.id === 'painting' && r.unsupportedTrade.mode === 'answer' && !r.safetyStop, JSON.stringify(r.unsupportedTrade && r.unsupportedTrade.mode)); }
+for (const t of MIXED) { const r = route(E, t); check(`A1m "${t}" quotes its supported work and discloses painting`, r.unsupportedTrade && r.unsupportedTrade.mode === 'notice' && r.uiTemplate === 'curated_card' && !!r.entity, JSON.stringify([r.unsupportedTrade && r.unsupportedTrade.mode, r.uiTemplate])); }
+for (const t of COVERED) { const r = route(E, t); check(`A1c "${t}" is covered by the patch service's own paint touch-up (no notice)`, !r.unsupportedTrade && r.entity && r.entity.id === 'wall_hole_or_crack_repair', JSON.stringify([r.unsupportedTrade, r.entity && r.entity.id])); }
 for (const t of OK) { const r = route(E, t); check(`A2 "${t}" is not an unsupported trade`, !r.unsupportedTrade, JSON.stringify(r.unsupportedTrade)); }
 check('A3 an unsupported trade has no price on its own (nothing authored for painting)', !JSON.stringify(E.DB.services).match(/"id":\s*"svc\.paint/i));
 console.log('C. non-vacuity');
-const P = load(code => { const a = 'route.unsupportedTrade = orch_unsupported_trade(context, db);'; return code.includes(a) ? code.replace(a, 'route.unsupportedTrade = null;') : code; });
+const P = load(code => { const a = 'route.unsupportedTrade = orch_unsupported_trade(context, db, route);'; return code.includes(a) ? code.replace(a, 'route.unsupportedTrade = null;') : code; });
 const pr = route(P, 'paint my bedroom');
 check('C1 without the rule painting has no answer and is priced as another trade (this is the defect)', !pr.unsupportedTrade && !!pr.entity && !!(pr.quote && pr.quote.total != null || pr.basePrice != null), JSON.stringify([pr.uiTemplate, pr.basePrice]));
 (async () => {
@@ -52,9 +57,13 @@ check('C1 without the rule painting has no answer and is priced as another trade
     check(`B2 "${t}" throws no page error`, errors.size === 0, [...errors].join('; '));
   }
   errors.clear(); await type('hang a painting'); const h = await body();
-  const stale3 = await page.evaluate(() => { const e = document.getElementById('routeCardHost'); return e ? e.style.display + '|' + e.innerText.slice(0,60) : 'none'; }); check('B3 "hang a painting" is not the painting answer (the builder asks what to hang)', !/Painting isn't something we offer/.test(h) && /hang|mount/i.test(h) && errors.size === 0, stale3 + ' || ' + h.slice(0, 120));
-  errors.clear(); await type('patch the hole and paint it'); const ph = await body();
-  check('B4 "patch the hole and paint it" is still patch work (the builder asks about the hole)', !/Painting isn't something we offer/.test(ph) && /patch|hole/i.test(ph) && errors.size === 0, [...errors].join('; ') + ' || ' + ph.slice(0, 300));
+  check('B3 "hang a painting" is not the painting answer', !/Painting isn't something we offer/.test(h) && !/painting itself isn't something we offer/i.test(h) && errors.size === 0, h.slice(0, 200));
+  for (const t of ['paint the room and hang a picture', 'repaint the bedroom and mount a tv']) {
+    errors.clear(); await type(t); const m = await body();
+    check(`B4 "${t}" shows the supported quote and says painting is not included`, /painting itself isn't something we offer/i.test(m) && /\$\d/.test(m) && !/legacy flow/i.test(m) && errors.size === 0, [...errors].join('; ') + ' || ' + m.slice(0, 260));
+  }
+  errors.clear(); await type('patch and paint the wall'); const pw = await body();
+  check('B5 "patch and paint the wall" is the patch service with no painting disclaimer (its own touch-up)', /\$\d/.test(pw) && !/painting itself isn't something we offer/i.test(pw) && !/Painting isn't something we offer/.test(pw) && errors.size === 0, pw.slice(0, 260));
   await browser.close();
   console.log(`\n[unsupported trade: painting] ${pass} passed, ${fail} failed (of ${pass + fail} checks)`); process.exit(fail ? 1 : 0);
 })();
