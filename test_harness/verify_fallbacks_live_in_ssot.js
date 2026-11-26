@@ -341,7 +341,7 @@ const FILED = {
             added.map(k => `${k} ×${tally[k]}${FILED[k] ? ` (filed ${FILED[k][0]})` : ' (not filed)'}`).join('; '));
         const stale = Object.keys(FILED).filter(k => (tally[k] || 0) < FILED[k][0]);
         check('no filed default has gone (a retired one must be deleted from FILED so the list only shrinks)', stale.length === 0, stale.map(k => `${k} filed ×${FILED[k][0]}, found ×${tally[k] || 0}`).join('; '));
-        const missingLedger = [...new Set(Object.values(FILED).map(v => v[1]))].filter(n => !new RegExp(`^### #${n} `, 'm').test(LEDGER));
+        const missingLedger = [...new Set(Object.values(FILED).map(v => v[1]))].filter(n => require('./_ledger_ref.js').filingProblem(n, LEDGER) !== null);
         check('every filed default cites a ledger entry that exists in PENDING_DECISIONS.md', missingLedger.length === 0, `no entry for: [${missingLedger.map(n => '#' + n)}]`);
         const total = Object.values(tally).reduce((a, b) => a + b, 0);
         console.log(`    (${total} numeric defaults in ${Object.keys(tally).length} places; ${Object.values(FILED).reduce((a, v) => a + v[0], 0)} filed)`);

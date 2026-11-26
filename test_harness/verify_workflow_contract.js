@@ -113,5 +113,15 @@ const h = mergedSince(pulls, '2026-11-01');
 check('the history lists merged PRs from the date, oldest first, never unmerged or earlier ones', h.map(p => p.number).join() === '2,3' && h[0].sha === 'bbbbbbb');
 check('planted: a bad date is an error, not an empty history', (() => { try { mergedSince(pulls, 'soon'); return false; } catch (e) { return true; } })());
 
+// ---- 6. filing references (the ratchets' "ticketed" rule) ---------------------------------------------------------------------------------------------------------
+console.log('\n6. A ratchet\'s filing reference is a frozen-ledger entry or an Issue');
+const { parseRef, filingProblem } = require('./_ledger_ref.js');
+const LEDGER_SAMPLE = '### #155 duplicate constants\ntext\n### #144 defaults\n';
+check('#n, LEGACY-LEDGER-n and a bare number name the frozen ledger; issue:n names an Issue', parseRef('#155').kind === 'ledger' && parseRef('LEGACY-LEDGER-155').n === 155 && parseRef(144).kind === 'ledger' && parseRef('issue:42').kind === 'issue');
+check('a legacy entry that exists is sound, one that does not is a dangling reference', filingProblem('#155', LEDGER_SAMPLE) === null && /no entry "### #999"/.test(filingProblem('LEGACY-LEDGER-999', LEDGER_SAMPLE)));
+check('an Issue reference needs no ledger heading (a new filing never touches the frozen file)', filingProblem('issue:42', LEDGER_SAMPLE) === null);
+check('planted: "#42" is read as the LEGACY ledger, never as Issue 42 (the numberings overlap)', parseRef('#42').kind === 'ledger' && filingProblem('#42', LEDGER_SAMPLE) !== null);
+check('planted: free text, an empty reference and issue:0 are not filings', ['soon', '', 'issue:0', 'issue:', 'TODO'].every(r => parseRef(r) === null && filingProblem(r, LEDGER_SAMPLE) !== null));
+
 console.log('\n[Issues-based workflow contract] ' + passed + ' passed, ' + failed + ' failed (of ' + (passed + failed) + ' checks)');
 process.exit(failed ? 1 : 0);
